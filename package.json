@@ -1,0 +1,52 @@
+{
+  "name": "tiger-api-client",
+  "version": "0.1.0",
+  "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
+  "author": "jtaoufik",
+  "license": "MIT",
+  "type": "module",
+  "main": "./out/main/index.js",
+  "homepage": "https://github.com/jtaoufik/tiger",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jtaoufik/tiger.git"
+  },
+  "keywords": [
+    "api-client",
+    "http",
+    "rest",
+    "electron",
+    "bruno",
+    "offline",
+    "git-friendly"
+  ],
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "npm run typecheck && electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^34.0.0",
+    "electron-vite": "^2.3.0",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.11",
+    "vitest": "^3.0.2"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
