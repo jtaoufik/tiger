@@ -30,6 +30,7 @@
     "mcp": "node out/mcp/server.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "package": "npm run build && electron-builder",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "devDependencies": {
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.4.2",
@@ -53,5 +55,38 @@
     "react-dom": "^19.0.0",
     "yaml": "^2.6.1",
     "zod": "^3.24.1"
+  },
+  "build": {
+    "appId": "com.taoufikjabbari.tiger",
+    "productName": "Tiger",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "files": ["out/**", "package.json"],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Development",
+      "target": ["AppImage", "deb"]
+    }
   }
 }
