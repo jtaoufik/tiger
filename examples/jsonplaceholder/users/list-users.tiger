@@ -1,0 +1,12 @@
+meta {
+  name: List users
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users
+}
+
+headers {
+  Accept: application/json
+}

@@ -1,0 +1,8 @@
+meta {
+  name: demo
+}
+
+vars {
+  baseUrl: https://jsonplaceholder.typicode.com
+  userId: 1
+}

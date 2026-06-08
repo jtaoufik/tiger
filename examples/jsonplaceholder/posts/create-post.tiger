@@ -1,0 +1,20 @@
+meta {
+  name: Create post
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/posts
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Hello from Tiger",
+    "body": "Roar",
+    "userId": 1
+  }
+}

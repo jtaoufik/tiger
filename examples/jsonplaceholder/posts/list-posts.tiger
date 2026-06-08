@@ -1,0 +1,16 @@
+meta {
+  name: List posts
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/posts
+}
+
+query {
+  userId: {{userId}}
+}
+
+headers {
+  Accept: application/json
+}
