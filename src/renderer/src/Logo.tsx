@@ -1,71 +1,74 @@
 /**
- * Tiger's mascot — an orange cat, drawn entirely in code so it scales cleanly
- * from a 16px tab favicon to a 1024px app icon. The same markup is rendered to
- * PNG/ICNS by scripts/generate-icon.mjs.
+ * Tiger's mascot, an orange tiger cat. The artwork's source of truth is
+ * scripts/icon-mark.svg (also used to build the app icon); keep this JSX in
+ * sync with it. `rounded` draws the warm tile behind the head, matching the
+ * app icon.
  */
 export function Logo({ size = 26, rounded = false }: { size?: number; rounded?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 256 256" role="img" aria-label="Tiger">
-      <defs>
-        <linearGradient id="tg-bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffab46" />
-          <stop offset="1" stopColor="#f25c06" />
-        </linearGradient>
-        <linearGradient id="tg-face" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff4e7" />
-          <stop offset="1" stopColor="#ffdfc0" />
-        </linearGradient>
-      </defs>
-
-      {rounded && <rect x="6" y="6" width="244" height="244" rx="58" fill="url(#tg-bg)" />}
-
-      {/* ears */}
-      <path d="M66 98 L74 38 L122 80 Z" fill="#ff7a18" stroke="#d75800" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M190 98 L182 38 L134 80 Z" fill="#ff7a18" stroke="#d75800" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M80 86 L85 56 L108 80 Z" fill="#ffc090" />
-      <path d="M176 86 L171 56 L148 80 Z" fill="#ffc090" />
-
-      {/* head */}
-      <path
-        d="M128 68 C178 68 198 104 198 146 C198 191 167 214 128 214 C89 214 58 191 58 146 C58 104 78 68 128 68 Z"
-        fill="url(#tg-face)"
-        stroke="#ef6a12"
-        strokeWidth="5"
-      />
-
-      {/* tiger stripes */}
-      <g stroke="#ff7a18" strokeWidth="7" strokeLinecap="round" fill="none">
-        <path d="M128 78 L128 106" />
-        <path d="M110 82 L104 104" />
-        <path d="M146 82 L152 104" />
-        <path d="M70 134 L86 140" />
-        <path d="M70 152 L86 154" />
-        <path d="M186 134 L170 140" />
-        <path d="M186 152 L170 154" />
-      </g>
-
-      {/* eyes */}
-      <ellipse cx="104" cy="142" rx="11.5" ry="14.5" fill="#2a1c12" />
-      <ellipse cx="152" cy="142" rx="11.5" ry="14.5" fill="#2a1c12" />
-      <circle cx="108.5" cy="137" r="3.6" fill="#fff" />
-      <circle cx="156.5" cy="137" r="3.6" fill="#fff" />
-
-      {/* nose + mouth */}
-      <path d="M119 164 L137 164 L128 174 Z" fill="#ff6a6a" stroke="#d94f4f" strokeWidth="2" strokeLinejoin="round" />
-      <path
-        d="M128 174 L128 182 M128 182 C121 190 113 186 111 180 M128 182 C135 190 143 186 145 180"
-        stroke="#b06a3a"
-        strokeWidth="3.4"
-        fill="none"
-        strokeLinecap="round"
-      />
-
-      {/* whiskers */}
-      <g stroke="#dd9255" strokeWidth="3.2" strokeLinecap="round">
-        <path d="M88 160 L50 152" />
-        <path d="M88 170 L50 172" />
-        <path d="M168 160 L206 152" />
-        <path d="M168 170 L206 172" />
+      {rounded && (
+        <defs>
+          <linearGradient id="tg-tile" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#fff7ec" />
+            <stop offset="1" stopColor="#ffe9cf" />
+          </linearGradient>
+        </defs>
+      )}
+      {rounded && <rect x="4" y="4" width="248" height="248" rx="58" fill="url(#tg-tile)" />}
+      <g transform={rounded ? 'translate(16 16) scale(0.875)' : undefined}>
+        <path
+          fill="#ff7a18"
+          stroke="#171717"
+          strokeWidth="14"
+          strokeLinejoin="round"
+          d="M43 112 28 35l57 30c13-8 28-12 43-12s30 4 43 12l57-30-15 77c10 16 15 35 15 55 0 51-41 79-100 79s-100-28-100-79c0-20 5-39 15-55Z"
+        />
+        <path
+          fill="#ff9a2f"
+          d="M72 96c14-16 34-25 56-25s42 9 56 25c14 16 21 39 21 70 0 42-31 62-77 62s-77-20-77-62c0-31 7-54 21-70Z"
+        />
+        <path
+          fill="#171717"
+          d="M42 55 77 76 50 94Zm172 0-35 21 27 18ZM119 58h18l-9 35Zm-33 9 16 7-25 31Zm84 0 9 38-25-31Z"
+        />
+        <path
+          fill="#c94f0b"
+          d="M120 89h16l-8 44Zm-37 22 14-7 18 34-17 5Zm90 0-15-7-17 34 17 5ZM54 151l39 7-7 16-33-6Zm148 0-39 7 7 16 33-6ZM64 190l32-9 3 16-28 11Zm128 0-32-9-3 16 28 11Z"
+        />
+        <path
+          fill="#ffe1b8"
+          stroke="#171717"
+          strokeWidth="9"
+          strokeLinejoin="round"
+          d="M128 149c31 0 55 18 55 43 0 30-24 45-55 45s-55-15-55-45c0-25 24-43 55-43Z"
+        />
+        <path
+          fill="#fff0d2"
+          d="M97 163c12 0 23 9 25 23-18 2-36-4-43-16 4-4 10-7 18-7Zm62 0c-12 0-23 9-25 23 18 2 36-4 43-16-4-4-10-7-18-7Z"
+        />
+        <path
+          fill="#171717"
+          d="M88 128c8-9 22-9 31 0-7 7-23 7-31 0Zm49 0c9-9 23-9 31 0-8 7-24 7-31 0Z"
+        />
+        <path
+          fill="#171717"
+          d="M101 123a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm54 0a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"
+        />
+        <path
+          fill="#ff7aa2"
+          stroke="#171717"
+          strokeWidth="7"
+          strokeLinejoin="round"
+          d="M128 176 112 164h32Z"
+        />
+        <path
+          fill="none"
+          stroke="#171717"
+          strokeWidth="7"
+          strokeLinecap="round"
+          d="M128 176v17m0 0c-9 9-23 9-32 0m32 0c9 9 23 9 32 0"
+        />
       </g>
     </svg>
   )
