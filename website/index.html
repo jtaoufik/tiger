@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>Tiger · Free local-first API client with Git-friendly collections</title>
-  <meta name="description" content="Tiger is a free, open source API client. Collections are plain text files you can commit to Git. Import from Postman, Bruno, OpenAPI and Insomnia. Built-in MCP server for AI assistants. macOS and Windows." />
+  <title>Tiger · The API client for teams: Git-based, offline, zero per-seat cost</title>
+  <meta name="description" content="Tiger is a Postman alternative for engineering teams: collections live in your Git repos, requests stay on your machines, no per-seat pricing." />
   <link rel="canonical" href="https://tiger.example.com/" />
   <meta name="robots" content="index, follow" />
   <link rel="icon" type="image/png" href="/icon.png" />
@@ -13,26 +13,65 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://tiger.example.com/" />
-  <meta property="og:title" content="Tiger · Free local-first API client" />
-  <meta property="og:description" content="Your API collections as plain text files on disk. No cloud, no account, no lock-in. Imports Postman, Bruno, OpenAPI, Insomnia. MCP server included." />
+  <meta property="og:title" content="Tiger · The API client for teams" />
+  <meta property="og:description" content="Collections in your Git repos. Requests that stay on your machines. No accounts, no per-seat pricing. Free and open source for any team size." />
   <meta property="og:image" content="https://tiger.example.com/icon.png" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Tiger · Free local-first API client" />
-  <meta name="twitter:description" content="Your API collections as plain text files on disk. No cloud, no account, no lock-in." />
+  <meta name="twitter:title" content="Tiger · The API client for teams" />
+  <meta name="twitter:description" content="Git-based API collections, fully offline, zero per-seat cost. Imports your Postman collections in minutes." />
   <meta name="twitter:image" content="https://tiger.example.com/icon.png" />
 
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Tiger",
-    "operatingSystem": "macOS, Windows, Linux",
-    "applicationCategory": "DeveloperApplication",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-    "description": "A free, local-first API client. Collections are plain text files on disk, friendly to Git. Imports Postman, Bruno, OpenAPI and Insomnia collections. Includes an MCP server so AI assistants can run requests.",
-    "url": "https://tiger.example.com/",
-    "image": "https://tiger.example.com/icon.png",
-    "license": "https://opensource.org/licenses/MIT"
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Tiger",
+        "operatingSystem": "macOS, Windows, Linux",
+        "applicationCategory": "DeveloperApplication",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "A local-first API client for engineering teams. Collections are plain text files in Git, requests run entirely on your own machines, and importers cover Postman, Insomnia, Bruno and OpenAPI.",
+        "url": "https://tiger.example.com/",
+        "image": "https://tiger.example.com/icon.png",
+        "license": "https://opensource.org/licenses/MIT"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Where does our API data live?",
+            "acceptedAnswer": { "@type": "Answer", "text": "On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure." }
+          },
+          {
+            "@type": "Question",
+            "name": "Can we use it commercially, and what does it cost per seat?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Tiger is MIT licensed and free for commercial use. No per-seat pricing, no paid tier, no feature gating. A 5-person startup and a 5,000-person enterprise run the same software at the same cost: zero." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do we migrate off Postman or Insomnia?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it work behind our corporate proxy?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. HTTP, HTTPS and SOCKS proxies are supported, SSL verification can be switched off when developing against self-signed or internal certificates, and redirects and timeouts are configurable." }
+          },
+          {
+            "@type": "Question",
+            "name": "How does the team collaborate without a sync server?",
+            "acceptedAnswer": { "@type": "Answer", "text": "With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do we deploy it company-wide?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Standard installers per platform: DMG and ZIP for macOS, NSIS and portable for Windows, AppImage and deb for Linux. Push them with your existing deployment tooling. No accounts or license keys to provision." }
+          }
+        ]
+      }
+    ]
   }
   </script>
 
@@ -43,6 +82,7 @@
       --border: rgba(28,38,72,.1); --border-strong: rgba(28,38,72,.16);
       --text: #1a2233; --dim: #5b6680;
       --accent: #ff7a18; --accent-weak: rgba(255,122,24,.12);
+      --good: #2ca36a; --bad: #e0533d;
       --shadow: 0 10px 34px rgba(30,40,80,.14);
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     }
@@ -67,7 +107,7 @@
       background-attachment: fixed;
       -webkit-font-smoothing: antialiased;
     }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px; }
+    .wrap { max-width: 1020px; margin: 0 auto; padding: 0 22px; }
     .glass {
       background: var(--glass);
       backdrop-filter: blur(22px) saturate(160%);
@@ -77,14 +117,18 @@
     header.site { display:flex; align-items:center; gap:10px; padding:22px 0; }
     header.site img { width:34px; height:34px; }
     header.site .name { font-weight:700; font-size:18px; }
-    header.site nav { margin-left:auto; display:flex; gap:18px; }
+    header.site nav { margin-left:auto; display:flex; gap:18px; flex-wrap:wrap; }
     header.site a { color: var(--dim); text-decoration:none; font-size:14px; font-weight:550; }
     header.site a:hover { color: var(--accent); }
 
-    .hero { text-align:center; padding: 64px 26px 54px; margin-top: 8px; }
-    .hero img { width: 96px; height: 96px; }
-    h1 { font-size: clamp(30px, 5vw, 46px); line-height:1.15; margin: 18px 0 14px; letter-spacing:-.5px; }
-    .hero p.lead { color: var(--dim); font-size: 18px; max-width: 620px; margin: 0 auto 28px; }
+    .hero { text-align:center; padding: 62px 26px 52px; margin-top: 8px; }
+    .hero img { width: 92px; height: 92px; }
+    .kicker {
+      display:inline-block; font-size:12.5px; font-weight:700; letter-spacing:.8px;
+      text-transform:uppercase; color:var(--accent); margin-top:16px;
+    }
+    h1 { font-size: clamp(30px, 5vw, 46px); line-height:1.12; margin: 10px 0 14px; letter-spacing:-.5px; }
+    .hero p.lead { color: var(--dim); font-size: 18px; max-width: 680px; margin: 0 auto 28px; }
     .cta { display:inline-flex; gap:12px; flex-wrap:wrap; justify-content:center; }
     .btn {
       display:inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 650;
@@ -96,15 +140,30 @@
       color:#fff; border-color: transparent; box-shadow: 0 6px 18px var(--accent-weak);
     }
     .btn:hover { filter: brightness(1.06); }
-    .free-note { color: var(--dim); font-size: 13px; margin-top: 14px; }
+    .trust { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top: 20px; }
+    .trust span {
+      font-size: 12.5px; font-weight:600; color: var(--dim);
+      padding: 6px 13px; border-radius: 99px;
+      background: var(--glass-strong); border: 1px solid var(--border);
+    }
 
-    section { margin: 46px 0; }
-    h2 { font-size: 26px; margin: 0 0 18px; letter-spacing:-.3px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap:14px; }
+    section { margin: 48px 0; }
+    h2 { font-size: 27px; margin: 0 0 8px; letter-spacing:-.3px; }
+    .sub { color: var(--dim); max-width: 680px; margin: 0 0 20px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
     .card { padding: 20px; }
     .card h3 { margin: 0 0 6px; font-size: 16.5px; }
     .card p { margin: 0; color: var(--dim); font-size: 14.5px; }
-    .card .ico { font-size: 22px; margin-bottom: 8px; display:block; }
+
+    table.compare {
+      width:100%; border-collapse: collapse; overflow:hidden;
+      font-size: 14.5px;
+    }
+    table.compare th, table.compare td { padding: 12px 16px; text-align:left; border-bottom: 1px solid var(--border); }
+    table.compare th { font-size: 13px; text-transform: uppercase; letter-spacing:.6px; color: var(--dim); }
+    table.compare td:first-child { font-weight: 600; }
+    .yes { color: var(--good); font-weight: 700; }
+    .no { color: var(--bad); font-weight: 700; }
 
     pre.code {
       margin:0; padding: 20px; overflow:auto;
@@ -126,7 +185,8 @@
     details summary { font-weight: 650; cursor: pointer; }
     details p { color: var(--dim); margin: 10px 0 2px; }
 
-    footer { padding: 40px 0 50px; color: var(--dim); font-size: 13.5px; text-align:center; }
+    .final-cta { text-align:center; padding: 46px 26px; }
+    footer { padding: 36px 0 50px; color: var(--dim); font-size: 13.5px; text-align:center; }
     footer a { color: var(--accent); text-decoration: none; }
   </style>
 </head>
@@ -137,9 +197,10 @@
       <img src="/icon.png" alt="Tiger logo, an orange cat" />
       <span class="name">Tiger</span>
       <nav aria-label="Main">
-        <a href="#features">Features</a>
-        <a href="#format">Format</a>
-        <a href="#mcp">AI / MCP</a>
+        <a href="#teams">Why teams switch</a>
+        <a href="#compare">Compare</a>
+        <a href="#migrate">Migration</a>
+        <a href="#security">Security</a>
         <a href="#faq">FAQ</a>
         <a href="https://github.com/jtaoufik/tiger" rel="noopener">GitHub</a>
       </nav>
@@ -147,75 +208,109 @@
 
     <section class="hero glass">
       <img src="/icon.png" alt="" aria-hidden="true" />
-      <h1>The API client that lives in your repo</h1>
+      <span class="kicker">The Postman alternative for engineering teams</span>
+      <h1>API collections that live in your repos,<br/>not in someone else's cloud</h1>
       <p class="lead">
-        Tiger stores every request as a plain text file on your disk. Diff it, branch it,
-        review it like code. No cloud sync, no account, no subscription. Just files.
+        Tiger stores every request as a plain text file your team reviews like code.
+        No vendor cloud, no accounts to provision, no per-seat invoice that grows with headcount.
       </p>
       <div class="cta">
-        <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases" rel="noopener">Download for macOS</a>
-        <a class="btn" href="https://github.com/jtaoufik/tiger/releases" rel="noopener">Download for Windows</a>
+        <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases" rel="noopener">Download Tiger</a>
+        <a class="btn" href="https://github.com/jtaoufik/tiger" rel="noopener">View the source</a>
       </div>
-      <p class="free-note">Free and open source. MIT license. Linux builds available too.</p>
+      <div class="trust">
+        <span>$0 per seat, forever</span>
+        <span>MIT licensed</span>
+        <span>No accounts, no telemetry of request data</span>
+        <span>macOS · Windows · Linux</span>
+      </div>
     </section>
 
-    <section id="features">
-      <h2>Everything you need, nothing you have to rent</h2>
+    <section id="teams">
+      <h2>Why teams switch to Tiger</h2>
+      <p class="sub">
+        Cloud API clients made collections a SaaS subscription. Tiger makes them an
+        engineering asset: versioned, reviewed and owned by your team.
+      </p>
       <div class="grid">
         <div class="card glass">
-          <span class="ico">📁</span>
-          <h3>Git-friendly collections</h3>
-          <p>A collection is a folder of .tiger files. Pull requests on your API workflows finally make sense.</p>
+          <h3>Collaboration through Git, not a sync server</h3>
+          <p>Collections are folders of .tiger files, and every service's collection opens side by side in one workspace, each backed by its own repo. Branch them, review them in pull requests, onboard with git clone.</p>
         </div>
         <div class="card glass">
-          <span class="ico">🌗</span>
-          <h3>Glass UI, light and dark</h3>
-          <p>A frosted interface that follows your system theme, or locks to the side you prefer.</p>
+          <h3>Data residency by construction</h3>
+          <p>Requests, tokens and responses stay on the engineer's machine. There is no vendor cloud to audit, no DPA to negotiate, no breach surface you do not control.</p>
         </div>
         <div class="card glass">
-          <span class="ico">🔐</span>
-          <h3>Auth that covers the real world</h3>
-          <p>Bearer, Basic, API key in header or query, and OAuth 2.0 client credentials with automatic token exchange.</p>
+          <h3>Built for corporate networks</h3>
+          <p>HTTP, HTTPS and SOCKS proxy support, an SSL verification switch for development against self-signed or internal certificates, redirect policy and timeouts. Configured once in Settings.</p>
         </div>
         <div class="card glass">
-          <span class="ico">🧪</span>
-          <h3>Environments and variables</h3>
-          <p>Switch dev, staging and production with one dropdown. {{variables}} resolve in URLs, headers, bodies and auth.</p>
+          <h3>Auth your APIs actually use</h3>
+          <p>OAuth 2.0 client credentials with automatic token exchange, Bearer, Basic and API keys. Secrets resolve from environment files you can keep out of Git.</p>
         </div>
         <div class="card glass">
-          <span class="ico">🛰️</span>
-          <h3>Proxy and network control</h3>
-          <p>Route through HTTP or SOCKS proxies, toggle SSL verification for self-signed certs, set redirect policy and timeouts.</p>
+          <h3>One tool across the fleet</h3>
+          <p>The same app on macOS, Windows and Linux, with standard installers for each. No license keys or seat assignments to manage.</p>
         </div>
         <div class="card glass">
-          <span class="ico">⚡</span>
-          <h3>Code generation</h3>
-          <p>Any request becomes a curl command or a JavaScript fetch call in one click.</p>
+          <h3>AI-ready with MCP</h3>
+          <p>Tiger ships a Model Context Protocol server, so Claude and other MCP clients can list, inspect and run your collections in agentic workflows.</p>
         </div>
       </div>
     </section>
 
-    <section id="format">
+    <section id="compare">
+      <h2>Tiger vs cloud API clients</h2>
+      <p class="sub">The structural differences that matter to a platform or security review.</p>
+      <div class="glass" style="overflow:auto;">
+        <table class="compare">
+          <thead>
+            <tr><th scope="col">Capability</th><th scope="col">Tiger</th><th scope="col">Typical cloud client</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Where collections live</td><td class="yes">Your Git repos</td><td class="no">Vendor cloud</td></tr>
+            <tr><td>Account required</td><td class="yes">Never</td><td class="no">Per user</td></tr>
+            <tr><td>Cost per seat</td><td class="yes">$0</td><td class="no">Grows with headcount</td></tr>
+            <tr><td>Works fully offline</td><td class="yes">Yes</td><td class="no">Degraded or blocked</td></tr>
+            <tr><td>Change review</td><td class="yes">Pull requests</td><td class="no">Proprietary history</td></tr>
+            <tr><td>Source code auditable</td><td class="yes">MIT, public</td><td class="no">Closed</td></tr>
+            <tr><td>Request history</td><td class="yes">Local only</td><td class="no">Often synced to cloud</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="migrate">
       <div class="split">
         <div class="copy">
-          <h2>A format you can read</h2>
+          <h2>Migrate the whole team in an afternoon</h2>
           <p>
-            One request per file. Open it in any editor, grep it, template it.
-            Saving an unchanged request never produces a diff, so your history stays clean.
+            Import your existing Postman collections (v2.0 and v2.1), Insomnia v4 exports,
+            Bruno folders, and OpenAPI 3 or Swagger 2 documents. Folders, headers, query
+            parameters and bodies carry over, with variable references preserved. Environment
+            values and auth settings are entered once in Tiger, then live in files your team shares.
           </p>
           <p>
-            Prefix a line with <code>~</code> to disable it without deleting it.
-            Environments are files too.
+            Exports work too: whole collections back to Postman v2.1, single requests as .tiger files
+            or curl commands. You are never locked in, not even to Tiger.
           </p>
+          <div class="logos" role="list">
+            <span role="listitem">Postman</span>
+            <span role="listitem">Insomnia</span>
+            <span role="listitem">Bruno</span>
+            <span role="listitem">OpenAPI 3</span>
+            <span role="listitem">Swagger 2</span>
+          </div>
         </div>
         <div class="glass">
 <pre class="code"><span class="tok-k">meta</span> {
-  name: Create post
-  seq: 2
+  name: Create invoice
+  seq: 4
 }
 
 <span class="tok-k">post</span> {
-  url: {{baseUrl}}/posts
+  url: {{baseUrl}}/v1/invoices
 }
 
 <span class="tok-k">headers</span> {
@@ -223,73 +318,72 @@
   <span class="tok-c">~X-Debug: 1</span>
 }
 
-<span class="tok-k">body:json</span> {
-  { "title": "Hello from Tiger" }
+<span class="tok-k">auth:oauth2</span> {
+  token_url: {{idp}}/token
+  client_id: {{clientId}}
+  client_secret: {{clientSecret}}
 }</pre>
         </div>
       </div>
     </section>
 
-    <section id="import">
-      <h2>Switch without starting over</h2>
-      <p style="color:var(--dim); max-width:640px;">
-        Tiger imports your existing collections and gets out of the way. Exports work too,
-        so you are never locked in. Not even to Tiger.
+    <section id="security">
+      <h2>Security posture you can verify, not trust</h2>
+      <p class="sub">
+        There is no server side: no vendor storage of your request data, no DPA to sign for
+        API payloads, no vendor breach-notification clause to negotiate.
       </p>
-      <div class="logos" role="list">
-        <span role="listitem">Postman v2.0 / v2.1</span>
-        <span role="listitem">Bruno (.bru)</span>
-        <span role="listitem">OpenAPI 3</span>
-        <span role="listitem">Swagger 2</span>
-        <span role="listitem">Insomnia v4</span>
-      </div>
-    </section>
-
-    <section id="mcp">
-      <div class="split">
-        <div class="copy">
-          <h2>Your AI assistant can drive it</h2>
-          <p>
-            Tiger ships a Model Context Protocol server. Point Claude (or any MCP client)
-            at a collection and it can list requests, read them and run them, with
-            environments resolved, and get structured responses back.
-          </p>
-          <p>Debugging an API with an assistant stops being copy-paste archaeology.</p>
+      <div class="grid">
+        <div class="card glass">
+          <h3>Request data stays on the machine</h3>
+          <p>Request definitions, history and settings are stored locally. Your API calls go to your APIs and nowhere else.</p>
         </div>
-        <div class="glass">
-<pre class="code">{
-  "mcpServers": {
-    "tiger": {
-      "command": "node",
-      "args": [
-        "tiger/out/mcp/server.mjs",
-        "path/to/collection"
-      ]
-    }
-  }
-}</pre>
+        <div class="card glass">
+          <h3>Auditable by your own team</h3>
+          <p>The entire codebase is MIT licensed and readable. Your security engineers can review what runs on company laptops, line by line.</p>
+        </div>
+        <div class="card glass">
+          <h3>Analytics you own</h3>
+          <p>Anonymous app events only, sent solely to a GA4 property you configure yourselves. Out of the box nothing is sent anywhere, and one switch in Settings turns the feature off entirely.</p>
         </div>
       </div>
     </section>
 
     <section id="faq">
-      <h2>Questions, answered</h2>
+      <h2>Questions engineering leaders ask</h2>
       <details class="glass">
-        <summary>Is Tiger really free?</summary>
-        <p>Yes. Tiger is MIT licensed, free for personal and commercial use. There is no paid tier, no seat pricing and no feature gate.</p>
+        <summary>Where does our API data live?</summary>
+        <p>On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure.</p>
       </details>
       <details class="glass">
-        <summary>Where is my data stored?</summary>
-        <p>On your disk, in folders you choose. Tiger has no server and no account system. Anonymous usage analytics (never your URLs, headers or bodies) can be switched off in Settings.</p>
+        <summary>Can we use it commercially, and what does it cost per seat?</summary>
+        <p>Tiger is MIT licensed and free for commercial use. No per-seat pricing, no paid tier, no feature gating. A 5-person startup and a 5,000-person enterprise run the same software at the same cost: zero.</p>
       </details>
       <details class="glass">
-        <summary>Does it work on Windows?</summary>
-        <p>Yes. Tiger builds for macOS, Windows and Linux from the same codebase, with installers for each.</p>
+        <summary>How do we migrate off Postman or Insomnia?</summary>
+        <p>Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too.</p>
       </details>
       <details class="glass">
-        <summary>Can I migrate from Postman?</summary>
-        <p>Export your collection from Postman as v2.1 JSON and import it from the sidebar. Folders, headers, query params, bodies and variables carry over.</p>
+        <summary>Does it work behind our corporate proxy?</summary>
+        <p>Yes. HTTP, HTTPS and SOCKS proxies are supported, SSL verification can be switched off when developing against self-signed or internal certificates, and redirects and timeouts are configurable.</p>
       </details>
+      <details class="glass">
+        <summary>How does the team collaborate without a sync server?</summary>
+        <p>With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone.</p>
+      </details>
+      <details class="glass">
+        <summary>How do we deploy it company-wide?</summary>
+        <p>Standard installers per platform: DMG and ZIP for macOS, NSIS and portable for Windows, AppImage and deb for Linux. Push them with your existing deployment tooling. No accounts or license keys to provision.</p>
+      </details>
+    </section>
+
+    <section class="final-cta glass">
+      <h2 style="margin-bottom:8px;">Put your API collections back in the repo</h2>
+      <p class="sub" style="margin: 0 auto 24px;">Free for any team size. Import your Postman collections and see them in your next pull request.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases" rel="noopener">Download Tiger</a>
+        <a class="btn" href="https://github.com/jtaoufik/tiger" rel="noopener">View the source</a>
+      </div>
     </section>
 
     <footer>
