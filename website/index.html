@@ -21,6 +21,10 @@
   <meta name="twitter:description" content="Git-based API collections, fully offline, zero per-seat cost. Imports your Postman collections in minutes." />
   <meta name="twitter:image" content="https://tiger.62-238-17-135.sslip.io/icon.png" />
 
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -77,117 +81,314 @@
 
   <style>
     :root {
-      --bg-1: #eef1f7; --bg-2: #d9e0ee; --bg-3: #f3ecff;
-      --glass: rgba(255,255,255,.55); --glass-strong: rgba(255,255,255,.75);
-      --border: rgba(28,38,72,.1); --border-strong: rgba(28,38,72,.16);
-      --text: #1a2233; --dim: #5b6680;
-      --accent: #ff7a18; --accent-weak: rgba(255,122,24,.12);
-      --good: #2ca36a; --bad: #e0533d;
-      --shadow: 0 10px 34px rgba(30,40,80,.14);
-      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg-1: #0e1016; --bg-2: #161a26; --bg-3: #1b1530;
-        --glass: rgba(32,36,50,.55); --glass-strong: rgba(38,43,58,.75);
-        --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.14);
-        --text: #e7ebf5; --dim: #98a1b8;
-        --accent: #ff8c42; --accent-weak: rgba(255,140,66,.16);
-        --shadow: 0 12px 38px rgba(0,0,0,.45);
-      }
+      --ink: #0d0a07;
+      --ink-2: #14100a;
+      --surface: #191309;
+      --surface-2: #1f180d;
+      --line: rgba(255, 173, 96, 0.14);
+      --line-strong: rgba(255, 173, 96, 0.28);
+      --cream: #f5eddf;
+      --dim: #b3a58e;
+      --faint: #786b58;
+      --orange: #ff7a18;
+      --orange-hot: #ffa54d;
+      --orange-deep: #c75500;
+      --good: #6fd69b;
+      --bad: #ff7e63;
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      --disp: "Bricolage Grotesque", -apple-system, sans-serif;
+      --stripe: repeating-linear-gradient(
+        -55deg,
+        var(--orange) 0 8px,
+        transparent 8px 22px
+      );
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      margin: 0; color: var(--text);
-      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background:
-        radial-gradient(1100px 650px at 12% -8%, var(--bg-3), transparent 60%),
-        radial-gradient(900px 600px at 110% 10%, var(--accent-weak), transparent 55%),
-        linear-gradient(160deg, var(--bg-1), var(--bg-2));
-      background-attachment: fixed;
+      margin: 0;
+      background: var(--ink);
+      color: var(--cream);
+      font-family: var(--disp);
+      font-size: 16.5px;
+      line-height: 1.65;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
-    .wrap { max-width: 1020px; margin: 0 auto; padding: 0 22px; }
-    .glass {
-      background: var(--glass);
-      backdrop-filter: blur(22px) saturate(160%);
-      -webkit-backdrop-filter: blur(22px) saturate(160%);
-      border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(1000px 600px at 8% -5%, rgba(255, 122, 24, 0.13), transparent 60%),
+        radial-gradient(900px 700px at 105% 15%, rgba(255, 122, 24, 0.05), transparent 55%);
     }
-    header.site { display:flex; align-items:center; gap:10px; padding:22px 0; }
-    header.site img { width:34px; height:34px; }
-    header.site .name { font-weight:700; font-size:18px; }
-    header.site nav { margin-left:auto; display:flex; gap:18px; flex-wrap:wrap; }
-    header.site a { color: var(--dim); text-decoration:none; font-size:14px; font-weight:550; }
-    header.site a:hover { color: var(--accent); }
+    body::after {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.7 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
-    .hero { text-align:center; padding: 62px 26px 52px; margin-top: 8px; }
-    .hero img { width: 92px; height: 92px; }
-    .kicker {
-      display:inline-block; font-size:12.5px; font-weight:700; letter-spacing:.8px;
-      text-transform:uppercase; color:var(--accent); margin-top:16px;
+    ::selection { background: var(--orange); color: var(--ink); }
+    a { color: var(--orange-hot); }
+    :focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
+
+    /* ---------- type helpers ---------- */
+    .eyebrow {
+      font-family: var(--mono); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--orange);
+      display: inline-flex; align-items: center; gap: 10px;
     }
-    h1 { font-size: clamp(30px, 5vw, 46px); line-height:1.12; margin: 10px 0 14px; letter-spacing:-.5px; }
-    .hero p.lead { color: var(--dim); font-size: 18px; max-width: 680px; margin: 0 auto 28px; }
-    .cta { display:inline-flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+    .eyebrow::before {
+      content: ""; width: 26px; height: 10px;
+      background: var(--stripe); background-size: 200% 100%;
+    }
+    h2 {
+      font-size: clamp(30px, 4.4vw, 44px); font-weight: 700;
+      letter-spacing: -0.02em; line-height: 1.08; margin: 14px 0 14px;
+    }
+    .sub { color: var(--dim); max-width: 640px; margin: 0 0 36px; font-size: 17px; }
+    .m { font-family: var(--mono); }
+
+    /* ---------- header ---------- */
+    header.site {
+      display: flex; align-items: center; gap: 12px; padding: 26px 0;
+    }
+    header.site img { width: 38px; height: 38px; }
+    header.site .name {
+      font-weight: 800; font-size: 21px; letter-spacing: -0.02em;
+    }
+    header.site nav { margin-left: auto; display: flex; gap: 26px; flex-wrap: wrap; align-items: center; }
+    header.site nav a {
+      font-family: var(--mono); font-size: 13px; color: var(--dim);
+      text-decoration: none; transition: color 0.15s;
+    }
+    header.site nav a:hover { color: var(--orange-hot); }
+    .gh-btn {
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      color: var(--cream) !important; text-decoration: none;
+      border: 1px solid var(--line-strong); border-radius: 10px;
+      padding: 8px 16px; transition: border-color 0.15s, background 0.15s;
+    }
+    .gh-btn:hover { border-color: var(--orange); background: rgba(255, 122, 24, 0.08); }
+
+    /* ---------- hero ---------- */
+    .hero {
+      display: grid; grid-template-columns: 1.05fr 0.95fr;
+      gap: 48px; align-items: center; padding: 64px 0 84px; position: relative;
+    }
+    @media (max-width: 920px) { .hero { grid-template-columns: 1fr; padding-top: 36px; } }
+    .hero h1 {
+      font-size: clamp(40px, 6.2vw, 68px); font-weight: 800;
+      line-height: 1.02; letter-spacing: -0.03em; margin: 20px 0 22px;
+    }
+    .hero h1 em {
+      font-style: normal; color: var(--orange);
+      position: relative; white-space: nowrap;
+    }
+    .hero h1 em::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 4px; height: 10px;
+      background: var(--stripe); opacity: 0.35; z-index: -1;
+    }
+    .hero .lead { color: var(--dim); font-size: 19px; max-width: 480px; margin: 0 0 34px; }
+    .cta { display: flex; gap: 14px; flex-wrap: wrap; }
     .btn {
-      display:inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 650;
-      text-decoration:none; border:1px solid var(--border-strong);
-      background: var(--glass-strong); color: var(--text);
+      font-family: var(--mono); font-weight: 600; font-size: 14.5px;
+      text-decoration: none; padding: 15px 28px; border-radius: 12px;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
     }
     .btn.primary {
-      background: linear-gradient(180deg, var(--accent), #e05f00);
-      color:#fff; border-color: transparent; box-shadow: 0 6px 18px var(--accent-weak);
+      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
+      color: #1a0d02; box-shadow: 0 10px 36px rgba(255, 122, 24, 0.35);
     }
-    .btn:hover { filter: brightness(1.06); }
-    .trust { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top: 20px; }
-    .trust span {
-      font-size: 12.5px; font-weight:600; color: var(--dim);
-      padding: 6px 13px; border-radius: 99px;
-      background: var(--glass-strong); border: 1px solid var(--border);
+    .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(255, 122, 24, 0.45); }
+    .btn.ghost {
+      color: var(--cream); border: 1px solid var(--line-strong);
+    }
+    .btn.ghost:hover { background: rgba(255, 173, 96, 0.07); }
+    .trust {
+      display: flex; gap: 22px; flex-wrap: wrap; margin-top: 36px;
+      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
+    }
+    .trust b { color: var(--dim); font-weight: 600; }
+
+    /* hero code windows */
+    .stage { position: relative; min-height: 480px; }
+    @media (max-width: 920px) { .stage { min-height: 0; } }
+    .win {
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+    .win .bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 11px 14px; border-bottom: 1px solid var(--line);
+    }
+    .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--faint); opacity: 0.5; }
+    .win .bar i:first-child { background: var(--bad); opacity: 0.9; }
+    .win .bar i:nth-child(2) { background: #ffc24d; opacity: 0.9; }
+    .win .bar i:nth-child(3) { background: var(--good); opacity: 0.9; }
+    .win .bar .file {
+      margin-left: 10px; font-family: var(--mono); font-size: 12px; color: var(--dim);
+    }
+    .win pre {
+      margin: 0; padding: 20px 22px; font-family: var(--mono);
+      font-size: 13.5px; line-height: 1.75; overflow-x: auto;
+    }
+    .win-a { position: relative; z-index: 2; transform: rotate(-1.2deg); }
+    .win-b {
+      position: absolute; right: -14px; bottom: -36px; width: 62%; z-index: 3;
+      transform: rotate(1.6deg);
+    }
+    @media (max-width: 920px) { .win-b { position: static; width: 100%; margin-top: 16px; transform: none; } }
+    .k { color: var(--orange); font-weight: 600; }
+    .key { color: var(--cream); }
+    .v { color: var(--dim); }
+    .var { color: var(--orange-hot); }
+    .cm { color: var(--faint); }
+
+    /* ---------- ticker strip ---------- */
+    .strip {
+      border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      padding: 26px 0; margin: 10px 0 30px;
+    }
+    .strip .row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; text-align: center;
+    }
+    @media (max-width: 760px) { .strip .row { grid-template-columns: repeat(2, 1fr); row-gap: 26px; } }
+    .stat .n {
+      font-weight: 800; font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -0.02em;
+      color: var(--cream);
+    }
+    .stat .n span { color: var(--orange); }
+    .stat .l { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+
+    /* ---------- sections ---------- */
+    section { padding: 72px 0; }
+
+    .bento {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    @media (max-width: 920px) { .bento { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 620px) { .bento { grid-template-columns: 1fr; } }
+    .cell {
+      position: relative; overflow: hidden;
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line); border-radius: 16px; padding: 26px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .cell:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+    .cell::after {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--stripe); opacity: 0; transition: opacity 0.2s;
+    }
+    .cell:hover::after { opacity: 1; }
+    .cell.wide { grid-column: span 2; }
+    @media (max-width: 620px) { .cell.wide { grid-column: span 1; } }
+    .cell .num {
+      font-family: var(--mono); font-size: 12px; color: var(--orange);
+      letter-spacing: 0.14em;
+    }
+    .cell h3 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 8px; }
+    .cell p { margin: 0; color: var(--dim); font-size: 14.5px; line-height: 1.6; }
+
+    .tree {
+      margin-top: 18px; font-family: var(--mono); font-size: 13px; line-height: 1.9;
+      color: var(--dim); border-left: 1px solid var(--line-strong); padding-left: 16px;
+    }
+    .tree .dir { color: var(--orange-hot); }
+    .tree .badge {
+      font-size: 10.5px; color: var(--good); border: 1px solid rgba(111, 214, 155, 0.35);
+      border-radius: 5px; padding: 1px 7px; margin-left: 8px;
     }
 
-    section { margin: 48px 0; }
-    h2 { font-size: 27px; margin: 0 0 8px; letter-spacing:-.3px; }
-    .sub { color: var(--dim); max-width: 680px; margin: 0 0 20px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
-    .card { padding: 20px; }
-    .card h3 { margin: 0 0 6px; font-size: 16.5px; }
-    .card p { margin: 0; color: var(--dim); font-size: 14.5px; }
-
-    table.compare {
-      width:100%; border-collapse: collapse; overflow:hidden;
-      font-size: 14.5px;
+    /* ---------- compare ---------- */
+    .spec {
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      background: var(--surface);
     }
-    table.compare th, table.compare td { padding: 12px 16px; text-align:left; border-bottom: 1px solid var(--border); }
-    table.compare th { font-size: 13px; text-transform: uppercase; letter-spacing:.6px; color: var(--dim); }
-    table.compare td:first-child { font-weight: 600; }
-    .yes { color: var(--good); font-weight: 700; }
-    .no { color: var(--bad); font-weight: 700; }
-
-    pre.code {
-      margin:0; padding: 20px; overflow:auto;
-      font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+    .spec table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .spec th {
+      font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--faint); text-align: left;
+      padding: 16px 22px; border-bottom: 1px solid var(--line-strong);
     }
-    .tok-k { color: var(--accent); font-weight: 600; }
-    .tok-c { color: var(--dim); }
-    .split { display:grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items:center; }
-    @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
-    .split .copy p { color: var(--dim); }
+    .spec td { padding: 15px 22px; border-bottom: 1px solid var(--line); }
+    .spec tr:last-child td { border-bottom: none; }
+    .spec tbody tr { transition: background 0.15s; }
+    .spec tbody tr:hover { background: rgba(255, 122, 24, 0.04); }
+    .spec td:first-child { color: var(--cream); font-weight: 600; }
+    .yes { color: var(--good); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
+    .no { color: var(--bad); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
 
-    .logos { display:flex; gap:10px; flex-wrap:wrap; }
-    .logos span {
-      padding: 8px 16px; border-radius: 10px; font-weight:600; font-size:14px;
-      background: var(--glass-strong); border:1px solid var(--border);
+    /* ---------- migrate ---------- */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
+    @media (max-width: 920px) { .split { grid-template-columns: 1fr; } }
+    .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+    .chips span {
+      font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--dim);
+      border: 1px solid var(--line-strong); border-radius: 9px; padding: 8px 15px;
+      transition: color 0.15s, border-color 0.15s;
     }
+    .chips span:hover { color: var(--orange-hot); border-color: var(--orange); }
+    .split .copy p { color: var(--dim); font-size: 15.5px; }
 
-    details { padding: 16px 20px; margin-bottom: 10px; }
-    details summary { font-weight: 650; cursor: pointer; }
-    details p { color: var(--dim); margin: 10px 0 2px; }
+    /* ---------- faq ---------- */
+    .faq details {
+      border-bottom: 1px solid var(--line); padding: 4px 0;
+    }
+    .faq details:first-of-type { border-top: 1px solid var(--line); }
+    .faq summary {
+      display: flex; align-items: baseline; gap: 18px; cursor: pointer;
+      padding: 20px 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em;
+      list-style: none; transition: color 0.15s;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary:hover { color: var(--orange-hot); }
+    .faq summary .ix {
+      font-family: var(--mono); font-size: 12.5px; color: var(--orange); flex-shrink: 0;
+    }
+    .faq summary .pm {
+      margin-left: auto; font-family: var(--mono); color: var(--faint);
+      transition: transform 0.2s; flex-shrink: 0;
+    }
+    .faq details[open] .pm { transform: rotate(45deg); color: var(--orange); }
+    .faq details p { margin: 0 0 22px 44px; color: var(--dim); max-width: 720px; font-size: 15.5px; }
 
-    .final-cta { text-align:center; padding: 46px 26px; }
-    footer { padding: 36px 0 50px; color: var(--dim); font-size: 13.5px; text-align:center; }
-    footer a { color: var(--accent); text-decoration: none; }
+    /* ---------- final cta ---------- */
+    .finale {
+      position: relative; text-align: center; padding: 96px 24px; margin: 40px 0 0;
+      border-top: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .finale::before {
+      content: ""; position: absolute; inset: auto -10% -70% -10%; height: 200px;
+      background: var(--stripe); opacity: 0.06; transform: rotate(-2deg);
+    }
+    .finale h2 { font-size: clamp(34px, 5.4vw, 58px); margin-bottom: 14px; }
+    .finale .sub { margin: 0 auto 36px; }
+
+    footer {
+      padding: 34px 0 56px; color: var(--faint);
+      font-family: var(--mono); font-size: 12.5px; text-align: center;
+    }
+    footer a { color: var(--orange-hot); text-decoration: none; }
+
+    /* ---------- motion ---------- */
+    @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+    .hero > div > * { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    .hero > div > *:nth-child(2) { animation-delay: 0.08s; }
+    .hero > div > *:nth-child(3) { animation-delay: 0.16s; }
+    .hero > div > *:nth-child(4) { animation-delay: 0.24s; }
+    .hero > div > *:nth-child(5) { animation-delay: 0.32s; }
+    .stage { animation: rise 0.9s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.7s, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, .hero > div > *, .stage { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
   </style>
 </head>
 <body>
@@ -200,71 +401,123 @@
         <a href="#teams">Why teams switch</a>
         <a href="#compare">Compare</a>
         <a href="#migrate">Migration</a>
-        <a href="#security">Security</a>
         <a href="#faq">FAQ</a>
-        <a href="https://github.com/jtaoufik/tiger" rel="noopener">GitHub</a>
+        <a class="gh-btn" href="https://github.com/jtaoufik/tiger" rel="noopener">GitHub ↗</a>
       </nav>
     </header>
 
-    <section class="hero glass">
-      <img src="/icon.png" alt="" aria-hidden="true" />
-      <span class="kicker">The Postman alternative for engineering teams</span>
-      <h1>API collections that live in your repos,<br/>not in someone else's cloud</h1>
-      <p class="lead">
-        Tiger stores every request as a plain text file your team reviews like code.
-        No vendor cloud, no accounts to provision, no per-seat invoice that grows with headcount.
-      </p>
-      <div class="cta">
-        <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases" rel="noopener">Download Tiger</a>
-        <a class="btn" href="https://github.com/jtaoufik/tiger" rel="noopener">View the source</a>
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Free · Open source · Local-first</span>
+        <h1>API collections that live <em>in your repos</em>, not in someone else's cloud</h1>
+        <p class="lead">
+          Tiger stores every request as a plain text file your team reviews like code.
+          No vendor cloud, no accounts to provision, no per-seat invoice that grows with headcount.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases" rel="noopener">Download Tiger</a>
+          <a class="btn ghost" href="https://github.com/jtaoufik/tiger" rel="noopener">View the source</a>
+        </div>
+        <div class="trust">
+          <span><b>$0</b> per seat, forever</span>
+          <span><b>MIT</b> licensed</span>
+          <span><b>0</b> accounts, no telemetry of request data</span>
+        </div>
       </div>
-      <div class="trust">
-        <span>$0 per seat, forever</span>
-        <span>MIT licensed</span>
-        <span>No accounts, no telemetry of request data</span>
-        <span>macOS · Windows · Linux</span>
+
+      <div class="stage" aria-hidden="true">
+        <div class="win win-a">
+          <div class="bar"><i></i><i></i><i></i><span class="file">payments / create-invoice.tiger</span></div>
+<pre><span class="k">meta</span> {
+  <span class="key">name</span>: <span class="v">Create invoice</span>
+  <span class="key">seq</span>: <span class="v">4</span>
+}
+
+<span class="k">post</span> {
+  <span class="key">url</span>: <span class="var">{{baseUrl}}</span><span class="v">/v1/invoices</span>
+}
+
+<span class="k">headers</span> {
+  <span class="key">Content-Type</span>: <span class="v">application/json</span>
+  <span class="cm">~X-Debug: 1</span>
+}
+
+<span class="k">auth:oauth2</span> {
+  <span class="key">token_url</span>: <span class="var">{{idp}}</span><span class="v">/token</span>
+  <span class="key">client_id</span>: <span class="var">{{clientId}}</span>
+}</pre>
+        </div>
+        <div class="win win-b">
+          <div class="bar"><i></i><i></i><i></i><span class="file">git log --oneline</span></div>
+<pre><span class="v">a3f81c2</span> <span class="key">fix: invoice auth moves to oauth2</span>
+<span class="v">9b04e77</span> <span class="key">add refunds collection</span>
+<span class="v">512fd09</span> <span class="key">review: tighten timeout</span> <span class="cm">(#214)</span></pre>
+        </div>
       </div>
     </section>
 
-    <section id="teams">
-      <h2>Why teams switch to Tiger</h2>
+    <div class="strip reveal">
+      <div class="row">
+        <div class="stat"><div class="n">$0<span>/seat</span></div><div class="l">any team size</div></div>
+        <div class="stat"><div class="n">100<span>%</span></div><div class="l">offline capable</div></div>
+        <div class="stat"><div class="n">4<span>+</span></div><div class="l">import formats</div></div>
+        <div class="stat"><div class="n">3</div><div class="l">platforms, one build</div></div>
+      </div>
+    </div>
+
+    <section id="teams" class="reveal">
+      <span class="eyebrow">Why teams switch</span>
+      <h2>Collections become an engineering asset</h2>
       <p class="sub">
-        Cloud API clients made collections a SaaS subscription. Tiger makes them an
-        engineering asset: versioned, reviewed and owned by your team.
+        Cloud API clients made collections a SaaS subscription. Tiger makes them
+        versioned, reviewed and owned by your team.
       </p>
-      <div class="grid">
-        <div class="card glass">
+      <div class="bento">
+        <div class="cell wide">
+          <span class="num">01</span>
           <h3>Collaboration through Git, not a sync server</h3>
           <p>Collections are folders of .tiger files, and every service's collection opens side by side in one workspace, each backed by its own repo. Branch them, review them in pull requests, onboard with git clone.</p>
+          <div class="tree">
+<span class="dir">payments/</span><br/>
+├── create-invoice.tiger<span class="badge">+12 −3</span><br/>
+├── refund.tiger<br/>
+└── <span class="dir">environments/</span> staging.tiger · prod.tiger
+          </div>
         </div>
-        <div class="card glass">
+        <div class="cell">
+          <span class="num">02</span>
           <h3>Data residency by construction</h3>
-          <p>Requests, tokens and responses stay on the engineer's machine. There is no vendor cloud to audit, no DPA to negotiate, no breach surface you do not control.</p>
+          <p>Requests, tokens and responses stay on the engineer's machine. No vendor cloud to audit, no DPA to negotiate, no breach surface you do not control.</p>
         </div>
-        <div class="card glass">
+        <div class="cell">
+          <span class="num">03</span>
           <h3>Built for corporate networks</h3>
-          <p>HTTP, HTTPS and SOCKS proxy support, an SSL verification switch for development against self-signed or internal certificates, redirect policy and timeouts. Configured once in Settings.</p>
+          <p>HTTP, HTTPS and SOCKS proxy support, an SSL verification switch for development against self-signed certificates, redirect policy and timeouts.</p>
         </div>
-        <div class="card glass">
+        <div class="cell">
+          <span class="num">04</span>
           <h3>Auth your APIs actually use</h3>
           <p>OAuth 2.0 client credentials with automatic token exchange, Bearer, Basic and API keys. Secrets resolve from environment files you can keep out of Git.</p>
         </div>
-        <div class="card glass">
+        <div class="cell">
+          <span class="num">05</span>
           <h3>One tool across the fleet</h3>
           <p>The same app on macOS, Windows and Linux, with standard installers for each. No license keys or seat assignments to manage.</p>
         </div>
-        <div class="card glass">
+        <div class="cell">
+          <span class="num">06</span>
           <h3>AI-ready with MCP</h3>
           <p>Tiger ships a Model Context Protocol server, so Claude and other MCP clients can list, inspect and run your collections in agentic workflows.</p>
         </div>
       </div>
     </section>
 
-    <section id="compare">
+    <section id="compare" class="reveal">
+      <span class="eyebrow">Compare</span>
       <h2>Tiger vs cloud API clients</h2>
       <p class="sub">The structural differences that matter to a platform or security review.</p>
-      <div class="glass" style="overflow:auto;">
-        <table class="compare">
+      <div class="spec">
+        <table>
           <thead>
             <tr><th scope="col">Capability</th><th scope="col">Tiger</th><th scope="col">Typical cloud client</th></tr>
           </thead>
@@ -281,10 +534,11 @@
       </div>
     </section>
 
-    <section id="migrate">
+    <section id="migrate" class="reveal">
       <div class="split">
         <div class="copy">
-          <h2>Migrate the whole team in an afternoon</h2>
+          <span class="eyebrow">Migration</span>
+          <h2>Move the whole team in an afternoon</h2>
           <p>
             Import your existing Postman collections (v2.0 and v2.1), Insomnia v4 exports,
             Bruno folders, and OpenAPI 3 or Swagger 2 documents. Folders, headers, query
@@ -292,10 +546,10 @@
             values and auth settings are entered once in Tiger, then live in files your team shares.
           </p>
           <p>
-            Exports work too: whole collections back to Postman v2.1, single requests as .tiger files
-            or curl commands. You are never locked in, not even to Tiger.
+            Exports work too: whole collections back to Postman v2.1, single requests as
+            .tiger files or curl commands. You are never locked in, not even to Tiger.
           </p>
-          <div class="logos" role="list">
+          <div class="chips" role="list">
             <span role="listitem">Postman</span>
             <span role="listitem">Insomnia</span>
             <span role="listitem">Bruno</span>
@@ -303,96 +557,101 @@
             <span role="listitem">Swagger 2</span>
           </div>
         </div>
-        <div class="glass">
-<pre class="code"><span class="tok-k">meta</span> {
-  name: Create invoice
-  seq: 4
+        <div class="win">
+          <div class="bar"><i></i><i></i><i></i><span class="file">environments / staging.tiger</span></div>
+<pre><span class="k">meta</span> {
+  <span class="key">name</span>: <span class="v">staging</span>
 }
 
-<span class="tok-k">post</span> {
-  url: {{baseUrl}}/v1/invoices
-}
-
-<span class="tok-k">headers</span> {
-  Content-Type: application/json
-  <span class="tok-c">~X-Debug: 1</span>
-}
-
-<span class="tok-k">auth:oauth2</span> {
-  token_url: {{idp}}/token
-  client_id: {{clientId}}
-  client_secret: {{clientSecret}}
+<span class="k">vars</span> {
+  <span class="key">baseUrl</span>: <span class="v">https://api.staging.acme.dev</span>
+  <span class="key">idp</span>: <span class="v">https://id.staging.acme.dev</span>
+  <span class="key">clientId</span>: <span class="v">acme-ci</span>
+  <span class="cm">~clientSecret: kept-out-of-git</span>
 }</pre>
         </div>
       </div>
     </section>
 
-    <section id="security">
-      <h2>Security posture you can verify, not trust</h2>
+    <section id="security" class="reveal">
+      <span class="eyebrow">Security</span>
+      <h2>A posture you can verify, not trust</h2>
       <p class="sub">
         There is no server side: no vendor storage of your request data, no DPA to sign for
         API payloads, no vendor breach-notification clause to negotiate.
       </p>
-      <div class="grid">
-        <div class="card glass">
+      <div class="bento">
+        <div class="cell">
+          <span class="num">A</span>
           <h3>Request data stays on the machine</h3>
           <p>Request definitions, history and settings are stored locally. Your API calls go to your APIs and nowhere else.</p>
         </div>
-        <div class="card glass">
+        <div class="cell">
+          <span class="num">B</span>
           <h3>Auditable by your own team</h3>
           <p>The entire codebase is MIT licensed and readable. Your security engineers can review what runs on company laptops, line by line.</p>
         </div>
-        <div class="card glass">
+        <div class="cell">
+          <span class="num">C</span>
           <h3>Analytics you own</h3>
           <p>Anonymous app events only, sent solely to a GA4 property you configure yourselves. Out of the box nothing is sent anywhere, and one switch in Settings turns the feature off entirely.</p>
         </div>
       </div>
     </section>
 
-    <section id="faq">
+    <section id="faq" class="reveal">
+      <span class="eyebrow">FAQ</span>
       <h2>Questions engineering leaders ask</h2>
-      <details class="glass">
-        <summary>Where does our API data live?</summary>
-        <p>On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure.</p>
-      </details>
-      <details class="glass">
-        <summary>Can we use it commercially, and what does it cost per seat?</summary>
-        <p>Tiger is MIT licensed and free for commercial use. No per-seat pricing, no paid tier, no feature gating. A 5-person startup and a 5,000-person enterprise run the same software at the same cost: zero.</p>
-      </details>
-      <details class="glass">
-        <summary>How do we migrate off Postman or Insomnia?</summary>
-        <p>Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too.</p>
-      </details>
-      <details class="glass">
-        <summary>Does it work behind our corporate proxy?</summary>
-        <p>Yes. HTTP, HTTPS and SOCKS proxies are supported, SSL verification can be switched off when developing against self-signed or internal certificates, and redirects and timeouts are configurable.</p>
-      </details>
-      <details class="glass">
-        <summary>How does the team collaborate without a sync server?</summary>
-        <p>With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone.</p>
-      </details>
-      <details class="glass">
-        <summary>How do we deploy it company-wide?</summary>
-        <p>Standard installers per platform: DMG and ZIP for macOS, NSIS and portable for Windows, AppImage and deb for Linux. Push them with your existing deployment tooling. No accounts or license keys to provision.</p>
-      </details>
+      <div class="faq">
+        <details>
+          <summary><span class="ix">01</span>Where does our API data live?<span class="pm">+</span></summary>
+          <p>On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure.</p>
+        </details>
+        <details>
+          <summary><span class="ix">02</span>Can we use it commercially, and what does it cost per seat?<span class="pm">+</span></summary>
+          <p>Tiger is MIT licensed and free for commercial use. No per-seat pricing, no paid tier, no feature gating. A 5-person startup and a 5,000-person enterprise run the same software at the same cost: zero.</p>
+        </details>
+        <details>
+          <summary><span class="ix">03</span>How do we migrate off Postman or Insomnia?<span class="pm">+</span></summary>
+          <p>Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too.</p>
+        </details>
+        <details>
+          <summary><span class="ix">04</span>Does it work behind our corporate proxy?<span class="pm">+</span></summary>
+          <p>Yes. HTTP, HTTPS and SOCKS proxies are supported, SSL verification can be switched off when developing against self-signed or internal certificates, and redirects and timeouts are configurable.</p>
+        </details>
+        <details>
+          <summary><span class="ix">05</span>How does the team collaborate without a sync server?<span class="pm">+</span></summary>
+          <p>With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone.</p>
+        </details>
+        <details>
+          <summary><span class="ix">06</span>How do we deploy it company-wide?<span class="pm">+</span></summary>
+          <p>Standard installers per platform: DMG and ZIP for macOS, NSIS and portable for Windows, AppImage and deb for Linux. Push them with your existing deployment tooling. No accounts or license keys to provision.</p>
+        </details>
+      </div>
     </section>
 
-    <section class="final-cta glass">
-      <h2 style="margin-bottom:8px;">Put your API collections back in the repo</h2>
-      <p class="sub" style="margin: 0 auto 24px;">Free for any team size. Import your Postman collections and see them in your next pull request.</p>
-      <div class="cta">
+    <section class="finale reveal">
+      <span class="eyebrow" style="justify-content:center;">Get started</span>
+      <h2>Put your collections<br/>back in the repo</h2>
+      <p class="sub">Free for any team size. Import your Postman collections and see them in your next pull request.</p>
+      <div class="cta" style="justify-content:center;">
         <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases" rel="noopener">Download Tiger</a>
-        <a class="btn" href="https://github.com/jtaoufik/tiger" rel="noopener">View the source</a>
+        <a class="btn ghost" href="https://github.com/jtaoufik/tiger" rel="noopener">Star on GitHub</a>
       </div>
     </section>
 
     <footer>
-      <p>
-        Tiger is open source under the MIT license.
-        <a href="https://github.com/jtaoufik/tiger" rel="noopener">Star it on GitHub</a>.
-      </p>
+      <p>Tiger · open source under the MIT license · <a href="https://github.com/jtaoufik/tiger" rel="noopener">github.com/jtaoufik/tiger</a></p>
     </footer>
 
   </div>
+
+  <script>
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add('in')),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  </script>
 </body>
 </html>
