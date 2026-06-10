@@ -1,7 +1,8 @@
 /**
- * Opt-in, anonymous usage analytics. This module is pure: it shapes events and
- * builds a GA4 Measurement Protocol payload. The actual network send lives in
- * the main process and only runs when the user has enabled analytics.
+ * Anonymous usage analytics. The toggle defaults to on, but nothing is ever
+ * sent until the user configures their own GA4 credentials in Settings, so a
+ * stock build is inert. This module is pure: it shapes events and builds a GA4
+ * Measurement Protocol payload; the network send lives in the main process.
  *
  * Privacy rules enforced here:
  *  - no URLs, hostnames, header values or response bodies are ever recorded;

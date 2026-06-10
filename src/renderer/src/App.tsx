@@ -542,16 +542,16 @@ export default function App() {
         <button className="icon-btn" title="Manage environment" onClick={() => setModal('env')}>
           <PencilIcon />
         </button>
-        <button className="icon-btn" title="History" onClick={openHistory}>
-          <ClockIcon />
+        <button className="btn ghost" title="History" onClick={openHistory}>
+          <ClockIcon size={15} /> History
         </button>
         <button
-          className="icon-btn"
+          className="btn ghost"
           title="Settings"
           style={view === 'settings' ? { color: 'var(--accent)' } : undefined}
           onClick={() => setView(view === 'settings' ? 'workspace' : 'settings')}
         >
-          <GearIcon />
+          <GearIcon size={15} /> Settings
         </button>
       </div>
 
