@@ -126,6 +126,15 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
+  // Packaged builds get the icon from the bundle; in dev, set the Dock icon
+  // explicitly so the mascot shows instead of the stock Electron logo.
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    try {
+      app.dock.setIcon(join(__dirname, '../../build/icon.png'))
+    } catch {
+      /* missing icon asset must not block startup */
+    }
+  }
   registerIpc()
   applyNetworkSettings()
   createWindow()

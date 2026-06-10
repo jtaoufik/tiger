@@ -59,6 +59,7 @@
   "build": {
     "appId": "com.taoufikjabbari.tiger",
     "productName": "Tiger",
+    "artifactName": "Tiger-${version}-${os}-${arch}.${ext}",
     "directories": {
       "buildResources": "build",
       "output": "release"
@@ -80,8 +81,12 @@
       ]
     },
     "nsis": {
+      "artifactName": "Tiger-Setup-${version}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "portable": {
+      "artifactName": "Tiger-Portable-${version}-${arch}.${ext}"
     },
     "linux": {
       "icon": "build/icon.png",
