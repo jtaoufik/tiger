@@ -17,6 +17,7 @@ import type { ImportKind } from '../../main/importers'
 import { Logo } from './Logo'
 import { Sidebar, type SidebarEntry, type SyncState } from './components/Sidebar'
 import { GitModal } from './components/GitModal'
+import { WelcomeView } from './components/WelcomeView'
 import { RequestEditor } from './components/RequestEditor'
 import { ResponsePanel } from './components/ResponsePanel'
 import { SettingsView } from './components/SettingsView'
@@ -174,7 +175,7 @@ let toastSeq = 0
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(FALLBACK_SETTINGS)
-  const [view, setView] = useState<'workspace' | 'settings'>('workspace')
+  const [view, setView] = useState<'workspace' | 'settings' | 'home'>('workspace')
   const [modal, setModal] = useState<ModalKind>('none')
   const [toasts, setToasts] = useState<Toast[]>([])
 
@@ -803,10 +804,15 @@ export default function App() {
   return (
     <div className="app">
       <div className="titlebar">
-        <span className="brand">
+        <button
+          className="brand"
+          style={{ border: 'none', background: 'transparent', padding: 0, font: 'inherit' }}
+          title="Home"
+          onClick={() => setView(view === 'home' ? 'workspace' : 'home')}
+        >
           <Logo size={22} rounded />
           Tiger
-        </span>
+        </button>
         <span className="spacer" />
         {update && (
           <button
@@ -892,7 +898,25 @@ export default function App() {
           }
         />
 
-        {view === 'settings' ? (
+        {view === 'home' ? (
+          <WelcomeView
+            version={appVersion}
+            onOpenCollection={openCollection}
+            onImportExport={() => setModal('io')}
+            onNewRequest={() => {
+              if (collections[0]) newRequest(collections[0].id)
+            }}
+            onPalette={() => setPaletteOpen(true)}
+            onHistory={openHistory}
+            onEnvironments={() => setModal('env')}
+            onSettings={() => setView('settings')}
+            onGit={() => {
+              const diskCol = collections.find((c) => c.root)
+              if (diskCol) setGitColId(diskCol.id)
+              else toast('Open a collection folder first to sync it with Git')
+            }}
+          />
+        ) : view === 'settings' ? (
           <SettingsView settings={settings} onChange={updateSettings} />
         ) : (
           <div
@@ -922,7 +946,12 @@ export default function App() {
                 <div className="empty">
                   <Logo size={54} rounded />
                   <h3>No request selected</h3>
-                  <div>Choose one from the sidebar, open a folder, or import a collection.</div>
+                  <div>Choose one from the sidebar, or start here:</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button className="btn" onClick={openCollection}>Open a folder</button>
+                    <button className="btn" onClick={() => setModal('io')}>Import / Export</button>
+                    <button className="btn" onClick={() => setView('home')}>All features</button>
+                  </div>
                 </div>
               </section>
             )}
