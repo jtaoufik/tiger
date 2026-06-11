@@ -9,6 +9,7 @@ import { exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
 import { importCurl } from '@core/import'
 import { extractCaptures } from '@core/capture'
+import { runScript, type ScriptTestResult } from '@core/script'
 import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
 import type { ImportedRequest } from '@core/import'
@@ -43,6 +44,7 @@ import type { UpdateInfo } from '@core/version'
 import {
   CheckIcon,
   ClockIcon,
+  CloseIcon,
   CodeIcon,
   CopyIcon,
   FileIcon,
@@ -63,6 +65,8 @@ interface ResponseState {
   loading: boolean
   error?: string
   data?: FormattedResponse
+  tests?: ScriptTestResult[]
+  logs?: string[]
 }
 
 interface EnvRef {
@@ -236,6 +240,7 @@ export default function App() {
   const [appVersion, setAppVersion] = useState('dev')
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
+  const [downloadedUpdate, setDownloadedUpdate] = useState<string | null>(null)
   const [gitStates, setGitStates] = useState<Record<string, SyncState>>({})
   const [gitColId, setGitColId] = useState<string | null>(null)
   const [authColId, setAuthColId] = useState<string | null>(null)
@@ -303,6 +308,9 @@ export default function App() {
         setUpdateModalOpen(true)
       }
     })
+    // electron-updater (packaged builds) downloads in the background and fires
+    // this when the new version is ready to install on restart.
+    window.tiger?.onUpdateDownloaded?.((info) => setDownloadedUpdate(info.version))
   }, [])
 
   useEffect(() => {
@@ -537,6 +545,12 @@ export default function App() {
     [collections, setCollectionEnvironments, toast]
   )
 
+  /** Variables the script changed vs the env it started from, for persistence. */
+  const scriptVarDelta = (before: Record<string, string>, after: Record<string, string>) =>
+    Object.entries(after)
+      .filter(([k, v]) => before[k] !== v)
+      .map(([name, value]) => ({ name, value }))
+
   const send = useCallback(async () => {
     if (!activeId || !active) return
     const id = activeId
@@ -544,9 +558,32 @@ export default function App() {
     setSendingIds((prev) => new Set(prev).add(id))
     setResponses((prev) => ({ ...prev, [id]: { loading: true } }))
     try {
-      const data = await runRequest(activeEffective ?? active, activeEnv, settings.timeoutMs, id)
+      // Pre-request script: may set variables used for interpolation this send.
+      let envForSend = activeEnv
+      const baseVars = envToVars(activeEnv)
+      if (active.preScript?.trim()) {
+        const pre = runScript(active.preScript, { vars: baseVars })
+        if (pre.error) toast(`Pre-request script error: ${pre.error}`)
+        const delta = scriptVarDelta(baseVars, pre.vars)
+        if (delta.length) {
+          envForSend = {
+            name: activeEnv?.name ?? 'env',
+            variables: Object.entries(pre.vars).map(([name, value]) => ({
+              name,
+              value,
+              enabled: true
+            }))
+          }
+          applyCaptures(delta)
+        }
+      }
+
+      const effective = activeEffective ?? active
+      const data = await runRequest(effective, envForSend, settings.timeoutMs, id)
       if (!deletedIds.current.has(id)) {
-        setResponses((prev) => ({ ...prev, [id]: { loading: false, data } }))
+        let tests: ScriptTestResult[] | undefined
+        let logs: string[] | undefined
+        // Capture blocks first, then the post-response script.
         if (active.captures?.length) {
           applyCaptures(
             extractCaptures(active.captures, {
@@ -556,6 +593,32 @@ export default function App() {
             })
           )
         }
+        if (active.postScript?.trim()) {
+          const post = runScript(active.postScript, {
+            vars: envToVars(envForSend),
+            response: {
+              status: data.status,
+              headers: data.headers,
+              body: data.raw,
+              timeMs: data.timeMs
+            }
+          })
+          if (post.error) toast(`Post-response script error: ${post.error}`)
+          const delta = scriptVarDelta(envToVars(envForSend), post.vars)
+          if (delta.length) applyCaptures(delta)
+          tests = post.tests.length ? post.tests : undefined
+          logs = post.logs.length ? post.logs : undefined
+          if (post.tests.length) {
+            const passed = post.tests.filter((t) => t.passed).length
+            const failed = post.tests.length - passed
+            toast(
+              failed
+                ? `Tests: ${passed} passed, ${failed} failed`
+                : `Tests: ${passed} passed`
+            )
+          }
+        }
+        setResponses((prev) => ({ ...prev, [id]: { loading: false, data, tests, logs } }))
       }
       trackEvent(events.requestSent(active.method, data.status, data.ok))
     } catch (e) {
@@ -569,7 +632,7 @@ export default function App() {
         return next
       })
     }
-  }, [activeId, active, activeEnv, settings.timeoutMs, sendingIds, applyCaptures])
+  }, [activeId, active, activeEffective, activeEnv, settings.timeoutMs, sendingIds, applyCaptures, toast])
 
   const save = useCallback(async () => {
     if (!activeId || !active) return
@@ -1609,6 +1672,20 @@ export default function App() {
         />
       )}
 
+      {downloadedUpdate && (
+        <div className="update-ready">
+          <CheckIcon size={15} />
+          <span>
+            Tiger {downloadedUpdate} is ready to install.
+          </span>
+          <button className="btn accent" onClick={() => window.tiger?.installUpdate?.()}>
+            Restart &amp; update
+          </button>
+          <button className="icon-btn" title="Dismiss" onClick={() => setDownloadedUpdate(null)}>
+            <CloseIcon size={14} />
+          </button>
+        </div>
+      )}
       {toasts.length > 0 && (
         <div className="toasts">
           {toasts.map((t) => (

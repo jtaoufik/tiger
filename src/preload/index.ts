@@ -68,6 +68,10 @@ const api = {
       ipcRenderer.invoke('tiger:git:clone', url)
   },
   checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke('tiger:installUpdate'),
+  onUpdateDownloaded: (cb: (info: { version: string }) => void): void => {
+    ipcRenderer.on('tiger:update:downloaded', (_e, info) => cb(info))
+  },
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),
   reveal: (path: string): Promise<void> => ipcRenderer.invoke('tiger:reveal', path),
   pickFile: (filters: { name: string; extensions: string[] }[]): Promise<string | null> =>

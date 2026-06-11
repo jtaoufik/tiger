@@ -183,6 +183,8 @@ export function parseRequest(input: string): TigerRequest {
   let graphqlVars: string | undefined
   let captures: KeyValue[] | undefined
   let docs: string | undefined
+  let preScript: string | undefined
+  let postScript: string | undefined
 
   for (const block of blocks) {
     if (block.name === 'meta') {
@@ -208,6 +210,9 @@ export function parseRequest(input: string): TigerRequest {
       captures = parseKeyValues(block.content)
     } else if (block.name === 'docs') {
       docs = dedent(block.content)
+    } else if (block.name === 'script') {
+      if (block.subtype === 'pre') preScript = dedent(block.content)
+      else if (block.subtype === 'post') postScript = dedent(block.content)
     } else if (block.name === 'auth') {
       auth = parseAuth(block.subtype, block.content)
     }
@@ -223,6 +228,8 @@ export function parseRequest(input: string): TigerRequest {
   if (auth) request.auth = auth
   if (captures) request.captures = captures
   if (docs !== undefined) request.docs = docs
+  if (preScript !== undefined) request.preScript = preScript
+  if (postScript !== undefined) request.postScript = postScript
   return request
 }
 
@@ -263,6 +270,8 @@ export function serializeRequest(req: TigerRequest): string {
 
   if (req.auth) parts.push(renderAuth(req.auth))
   if (req.captures?.length) parts.push(renderKeyValues('capture', req.captures))
+  if (req.preScript?.trim()) parts.push(renderTextBlock('script:pre', req.preScript))
+  if (req.postScript?.trim()) parts.push(renderTextBlock('script:post', req.postScript))
   if (req.docs?.trim()) parts.push(renderTextBlock('docs', req.docs))
 
   return `${parts.join('\n\n')}\n`

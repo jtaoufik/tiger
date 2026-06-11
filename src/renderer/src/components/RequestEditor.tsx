@@ -20,7 +20,7 @@ interface Props {
   onPerf: () => void
 }
 
-type Tab = 'params' | 'headers' | 'auth' | 'body' | 'capture' | 'docs'
+type Tab = 'params' | 'headers' | 'auth' | 'body' | 'capture' | 'scripts' | 'docs'
 
 const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form', 'graphql']
 
@@ -156,6 +156,15 @@ export function RequestEditor({
             <span className="count">{enabledCount(request.captures ?? [])}</span>
           )}
         </button>
+        <button
+          className={`tab ${tab === 'scripts' ? 'active' : ''}`}
+          onClick={() => setTab('scripts')}
+        >
+          Scripts{' '}
+          {(!!request.preScript?.trim() || !!request.postScript?.trim()) && (
+            <span className="dot" />
+          )}
+        </button>
         <button className={`tab ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>
           Docs {!!request.docs?.trim() && <span className="dot" />}
         </button>
@@ -279,6 +288,42 @@ export function RequestEditor({
             placeholder={['Variable', 'body.path.to.value']}
             onChange={(captures) => set({ captures })}
           />
+        )}
+        {tab === 'scripts' && (
+          <div className="scripts-tab">
+            <div className="script-block">
+              <div className="script-label">
+                Pre-request script
+                <span className="cv-dim"> runs before the request is sent</span>
+              </div>
+              <textarea
+                className="code-area"
+                spellCheck={false}
+                value={request.preScript ?? ''}
+                placeholder={'// tiger.setVar("nonce", tiger.getVar("seed") + Date.now())'}
+                onChange={(e) => set({ preScript: e.target.value })}
+              />
+            </div>
+            <div className="script-block">
+              <div className="script-label">
+                Post-response script
+                <span className="cv-dim"> runs after the response, for captures and tests</span>
+              </div>
+              <textarea
+                className="code-area"
+                spellCheck={false}
+                value={request.postScript ?? ''}
+                placeholder={
+                  '// tiger.test("ok", () => tiger.expect(tiger.response.status === 200))\n// tiger.setVar("id", tiger.response.json.id)'
+                }
+                onChange={(e) => set({ postScript: e.target.value })}
+              />
+            </div>
+            <div className="cv-dim script-help">
+              API: tiger.getVar(name), tiger.setVar(name, value), tiger.response (status, headers,
+              body, json), tiger.test(name, fn), tiger.expect(cond, message), tiger.log(...)
+            </div>
+          </div>
         )}
         {tab === 'docs' && (
           <textarea

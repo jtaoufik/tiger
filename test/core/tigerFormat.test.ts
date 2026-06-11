@@ -173,3 +173,24 @@ describe('serializeRequest', () => {
     expect(reparsed).toEqual(withBraces)
   })
 })
+
+describe('pre/post request scripts', () => {
+  it('round-trips script:pre and script:post blocks', () => {
+    const req = {
+      name: 'Login',
+      method: 'post' as const,
+      url: 'https://api.test/login',
+      query: [],
+      headers: [],
+      body: { type: 'none' as const, content: '' },
+      preScript: 'tiger.setVar("nonce", "x")',
+      postScript: 'tiger.test("ok", () => tiger.expect(tiger.response.status === 200))'
+    }
+    const out = serializeRequest(req)
+    expect(out).toContain('script:pre {')
+    expect(out).toContain('script:post {')
+    const back = parseRequest(out)
+    expect(back.preScript).toBe(req.preScript)
+    expect(back.postScript).toBe(req.postScript)
+  })
+})

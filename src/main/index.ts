@@ -15,6 +15,7 @@ import {
 import { importFromDisk, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
 import { clearCookies } from './cookieJar'
+import { initAutoUpdate, quitAndInstall } from './autoUpdate'
 import {
   gitAvailable,
   gitBranches,
@@ -163,6 +164,7 @@ function registerIpc(): void {
 
   ipcMain.handle('tiger:version', () => app.getVersion())
   ipcMain.handle('tiger:checkUpdate', () => checkForUpdate(app.getVersion()))
+  ipcMain.handle('tiger:installUpdate', () => quitAndInstall())
 
   ipcMain.handle('tiger:git:check', () => gitAvailable())
   ipcMain.handle('tiger:git:status', (_e, root: string) => gitStatus(root))
@@ -267,6 +269,7 @@ app.whenReady().then(() => {
   registerIpc()
   applyNetworkSettings()
   createWindow()
+  initAutoUpdate()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

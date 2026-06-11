@@ -70,6 +70,10 @@ export interface TigerRequest {
   captures?: KeyValue[]
   /** Free-form markdown documentation for this request. */
   docs?: string
+  /** JavaScript run before the request is sent (can set variables). */
+  preScript?: string
+  /** JavaScript run after the response arrives (variables, assertions). */
+  postScript?: string
 }
 
 /** A named set of `{{variable}}` values. */

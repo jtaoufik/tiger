@@ -5,8 +5,21 @@ import { Logo } from '../Logo'
 import { CheckIcon, CopyIcon, SaveIcon, WrapIcon } from './Icons'
 import { JsonView } from './JsonView'
 
+interface ScriptTest {
+  name: string
+  passed: boolean
+  error?: string
+}
 interface Props {
-  state: { loading: boolean; error?: string; data?: FormattedResponse } | undefined
+  state:
+    | {
+        loading: boolean
+        error?: string
+        data?: FormattedResponse
+        tests?: ScriptTest[]
+        logs?: string[]
+      }
+    | undefined
 }
 
 /** Browser-preview fallback when the Electron save dialog is unavailable. */
@@ -21,7 +34,7 @@ function downloadText(filename: string, text: string): boolean {
 }
 
 export function ResponsePanel({ state }: Props) {
-  const [tab, setTab] = useState<'body' | 'headers' | 'cookies'>('body')
+  const [tab, setTab] = useState<'body' | 'headers' | 'cookies' | 'tests'>('body')
   const [pretty, setPretty] = useState(true)
   const [wrap, setWrap] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -138,6 +151,11 @@ export function ResponsePanel({ state }: Props) {
           <button className={tab === 'cookies' ? 'on' : ''} onClick={() => setTab('cookies')}>
             Cookies ({cookies.length})
           </button>
+          {!!state?.tests?.length && (
+            <button className={tab === 'tests' ? 'on' : ''} onClick={() => setTab('tests')}>
+              Tests ({state.tests.filter((t) => t.passed).length}/{state.tests.length})
+            </button>
+          )}
         </div>
       </div>
 
@@ -157,7 +175,7 @@ export function ResponsePanel({ state }: Props) {
             </div>
           ))}
         </div>
-      ) : (
+      ) : tab === 'cookies' ? (
         <div className="response-body" style={{ whiteSpace: 'normal' }}>
           {cookies.length === 0
             ? '(no cookies)'
@@ -169,6 +187,23 @@ export function ResponsePanel({ state }: Props) {
                   )}
                 </div>
               ))}
+        </div>
+      ) : (
+        <div className="response-body" style={{ whiteSpace: 'normal' }}>
+          {(state?.tests ?? []).map((t, i) => (
+            <div key={i} className={`test-row ${t.passed ? 'pass' : 'fail'}`}>
+              <span className="test-badge">{t.passed ? 'PASS' : 'FAIL'}</span>
+              <span>{t.name}</span>
+              {t.error && <span className="test-err">{t.error}</span>}
+            </div>
+          ))}
+          {!!state?.logs?.length && (
+            <div className="script-logs">
+              {state.logs.map((l, i) => (
+                <div key={i}>{l}</div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
