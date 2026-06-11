@@ -22,6 +22,13 @@ interface Props {
     colId: string,
     environments: Array<{ name: string; path?: string; data?: TigerEnvironment }>
   ) => void
+  /**
+   * Fired whenever this modal writes the environment that is currently active
+   * (same colId + name as activeEnvKey), so App can refresh its activeEnv copy.
+   * Without this, editing the active disk-backed env never reaches the next
+   * send, which keeps interpolating the old variable values.
+   */
+  onActiveEnvMaybeChanged?: (colId: string, name: string, data: TigerEnvironment) => void
   onToast: (text: string) => void
   onClose: () => void
 }
@@ -35,6 +42,7 @@ export function EnvironmentsModal({
   envKeySep,
   onActivate,
   onCollectionsChanged,
+  onActiveEnvMaybeChanged,
   onToast,
   onClose
 }: Props) {
@@ -80,8 +88,13 @@ export function EnvironmentsModal({
           col.environments.map((e) => (e.name === refName ? { ...e, data: next } : e))
         )
       }
+      // If we just rewrote the active environment, App must pick up the new
+      // values or the next send will still interpolate the stale ones.
+      if (activeEnvKey === `${col.id}${envKeySep}${refName}`) {
+        onActiveEnvMaybeChanged?.(col.id, refName, next)
+      }
     },
-    [col, onCollectionsChanged]
+    [col, activeEnvKey, envKeySep, onActiveEnvMaybeChanged, onCollectionsChanged]
   )
 
   const envFilePath = (name: string) =>

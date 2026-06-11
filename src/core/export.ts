@@ -26,18 +26,30 @@ function toPostmanUrl(req: TigerRequest): unknown {
     .filter((q) => q.enabled !== false)
     .map((q) => `${q.name}=${q.value}`)
     .join('&')
+  // The URL may already carry a `?query`; merge our params onto it with the
+  // correct separator instead of blindly appending a second `?`.
+  const sep = req.url.includes('?') ? '&' : '?'
   return {
-    raw: qs ? `${req.url}?${qs}` : req.url,
+    raw: qs ? `${req.url}${sep}${qs}` : req.url,
     query: enabledQuery.length ? mapKeyValues(enabledQuery) : undefined
   }
 }
 
 function toPostmanBody(req: TigerRequest): unknown {
-  if (req.body.type === 'json' || req.body.type === 'text') {
+  if (req.body.type === 'json' || req.body.type === 'text' || req.body.type === 'xml') {
     return {
       mode: 'raw',
       raw: req.body.content,
-      options: { raw: { language: req.body.type === 'json' ? 'json' : 'text' } }
+      options: { raw: { language: req.body.type } }
+    }
+  }
+  if (req.body.type === 'graphql') {
+    return {
+      mode: 'graphql',
+      graphql: {
+        query: req.body.content,
+        ...(req.body.variables?.trim() ? { variables: req.body.variables } : {})
+      }
     }
   }
   if (req.body.type === 'form') {

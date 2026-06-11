@@ -29,6 +29,23 @@ describe('tokenizeBlocks', () => {
   it('throws on unbalanced braces', () => {
     expect(() => tokenizeBlocks('get {\n url: x')).toThrow(TigerParseError)
   })
+
+  it('does not close a block on a } that sits inside a JSON string literal', () => {
+    const [block] = tokenizeBlocks('body:json {\n {"a":"}"}\n}')
+    expect(block.name).toBe('body')
+    expect(block.content).toContain('{"a":"}"}')
+  })
+
+  it('honors backslash escapes inside string literals', () => {
+    const [block] = tokenizeBlocks('body:json {\n {"a":"a\\"}b{"}\n}')
+    expect(block.content).toContain('{"a":"a\\"}b{"}')
+  })
+
+  it('keeps a multi-segment subtype (body:graphql:vars) intact', () => {
+    const [block] = tokenizeBlocks('body:graphql:vars {\n {"id":1}\n}')
+    expect(block.name).toBe('body')
+    expect(block.subtype).toBe('graphql:vars')
+  })
 })
 
 describe('parseKeyValues', () => {
@@ -142,5 +159,17 @@ describe('serializeRequest', () => {
       headers: [{ name: 'X-Off', value: '1', enabled: false }]
     })
     expect(out).toContain('~X-Off: 1')
+  })
+
+  it('round-trips a json body whose string values contain braces', () => {
+    const withBraces: TigerRequest = {
+      ...sample,
+      body: { type: 'json', content: '{ "a": "}", "b": "{x}", "c": "a\\"}b" }' }
+    }
+    const serialized = serializeRequest(withBraces)
+    // The serialize→parse cycle must not throw and must preserve the body.
+    const reparsed = parseRequest(serialized)
+    expect(reparsed.body).toEqual(withBraces.body)
+    expect(reparsed).toEqual(withBraces)
   })
 })

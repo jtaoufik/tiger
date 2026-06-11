@@ -63,6 +63,54 @@ function hostExcepted(s: ReturnType<typeof loadSettings>, hostname: string): boo
     .includes(hostname.toLowerCase())
 }
 
+/** Origin = scheme + host + port; cross-origin redirects must shed credentials. */
+export function sameOrigin(a: string, b: string): boolean {
+  try {
+    const ua = new URL(a)
+    const ub = new URL(b)
+    return ua.protocol === ub.protocol && ua.host === ub.host
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Compute the headers to send on a redirect hop. When the target is a different
+ * origin, drop Authorization and Cookie so credentials never leak across hosts
+ * (matches fetch/curl behaviour). Header name casing is preserved otherwise.
+ */
+export function redirectHeaders(
+  headers: Record<string, string>,
+  fromUrl: string,
+  toUrl: string
+): Record<string, string> {
+  if (sameOrigin(fromUrl, toUrl)) return { ...headers }
+  const out: Record<string, string> = {}
+  for (const [name, value] of Object.entries(headers)) {
+    const lower = name.toLowerCase()
+    if (lower === 'authorization' || lower === 'cookie') continue
+    out[name] = value
+  }
+  return out
+}
+
+/**
+ * Redirect method/body semantics matching fetch: 303 always becomes GET and
+ * drops the body; 301/302 turn a POST into GET and drop the body; otherwise the
+ * method and body are preserved.
+ */
+export function redirectMethodBody(
+  status: number,
+  method: string,
+  body: string | undefined
+): { method: string; body: string | undefined } {
+  if (status === 303) return { method: 'GET', body: undefined }
+  if ((status === 301 || status === 302) && method.toUpperCase() === 'POST') {
+    return { method: 'GET', body: undefined }
+  }
+  return { method, body }
+}
+
 /**
  * Send via node:https so imported certificates work: custom CA bundles and
  * client certificates (PEM pair or PFX). Follows redirects manually. Note:
@@ -87,14 +135,20 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
     return Promise.reject(new Error(`Could not read certificate file: ${(e as Error).message}`))
   }
 
-  const follow = (url: string, method: string, body: string | undefined, hops: number): Promise<RawResponse> =>
+  const follow = (
+    url: string,
+    method: string,
+    body: string | undefined,
+    sendHeaders: Record<string, string>,
+    hops: number
+  ): Promise<RawResponse> =>
     new Promise((resolve, reject) => {
       const parsed = new URL(url)
       const isHttps = parsed.protocol === 'https:'
       const requester = isHttps ? httpsRequest : httpRequest
       const options: RequestOptions = {
         method,
-        headers: built.headers,
+        headers: sendHeaders,
         signal: controller.signal as never,
         ...(isHttps
           ? { ...tls, rejectUnauthorized: s.sslVerify && !hostExcepted(s, parsed.hostname) }
@@ -103,27 +157,40 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
       const req = requester(url, options, (res) => {
         const status = res.statusCode ?? 0
         const location = res.headers.location
+        // Persist Set-Cookie on EVERY hop, not just the final response, so the
+        // jar reflects cookies set by intermediate redirecting responses.
+        const cookieJarOn = loadSettings().cookieJarEnabled
+        const setCookies: string[] = []
+        const sc = res.headers['set-cookie']
+        if (Array.isArray(sc)) setCookies.push(...sc)
+        else if (typeof sc === 'string') setCookies.push(sc)
+        if (cookieJarOn && setCookies.length) storeCookies(url, setCookies)
+
         if (s.followRedirects && location && status >= 300 && status < 400 && hops < s.maxRedirects) {
           res.resume()
           const nextUrl = new URL(location, url).toString()
-          const nextMethod = status === 303 ? 'GET' : method
-          resolve(follow(nextUrl, nextMethod, status === 303 ? undefined : body, hops + 1))
+          const sem = redirectMethodBody(status, method, body)
+          // Strip Authorization/Cookie on cross-origin hops, then recompute the
+          // jar Cookie for the new URL when the jar is enabled.
+          const nextHeaders = redirectHeaders(sendHeaders, url, nextUrl)
+          if (cookieJarOn && !sameOrigin(url, nextUrl)) {
+            const cookie = cookieHeaderFor(nextUrl)
+            if (cookie) nextHeaders.Cookie = cookie
+          }
+          resolve(follow(nextUrl, sem.method, sem.body, nextHeaders, hops + 1))
           return
         }
         const chunks: Buffer[] = []
         res.on('data', (c: Buffer) => chunks.push(c))
         res.on('end', () => {
           const headers: Record<string, string> = {}
-          const setCookies: string[] = []
           for (const [name, value] of Object.entries(res.headers)) {
             if (name.toLowerCase() === 'set-cookie' && Array.isArray(value)) {
-              setCookies.push(...value)
               headers[name] = value.join(', ')
             } else if (value !== undefined) {
               headers[name] = Array.isArray(value) ? value.join(', ') : String(value)
             }
           }
-          if (loadSettings().cookieJarEnabled) storeCookies(url, setCookies)
           resolve({
             status,
             statusText: res.statusMessage ?? '',
@@ -138,7 +205,7 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
       req.end()
     })
 
-  return follow(built.url, built.method, built.body, 0)
+  return follow(built.url, built.method, built.body, built.headers, 0)
 }
 
 export async function sendHttp(

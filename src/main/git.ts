@@ -78,9 +78,10 @@ export async function gitStatus(root: string): Promise<GitStatus> {
   const remotes = await run(['remote'], root)
   const hasRemote = remotes.ok && remotes.stdout.trim().length > 0
 
-  // Quietly refresh remote refs so "behind" reflects reality; never block long
-  // and never fail the status because the network or credentials are absent.
-  if (hasRemote) await run(['fetch', '--quiet'], root, 8000)
+  // NOTE: gitStatus must never run `git fetch`. The sidebar polls status every
+  // 60s for every collection; fetching here would spawn a network call per
+  // collection on every tick. ahead/behind is computed from refs already on
+  // disk; call the separate gitFetch() from explicit refresh/sync only.
 
   let ahead = 0
   let behind = 0
@@ -103,6 +104,23 @@ export async function gitStatus(root: string): Promise<GitStatus> {
     hasUpstream,
     hasRemote
   }
+}
+
+/**
+ * Refresh remote-tracking refs so a subsequent gitStatus reports accurate
+ * ahead/behind. Network-touching by design, so call it ONLY from explicit
+ * user actions (refresh button, sync) — never from the status poll. Degrades
+ * gracefully when offline or no remote is configured.
+ */
+export async function gitFetch(root: string): Promise<GitActionResult> {
+  const remotes = await run(['remote'], root)
+  if (!remotes.ok || remotes.stdout.trim().length === 0) {
+    return { ok: true, message: 'No remote configured' }
+  }
+  const result = await run(['fetch', '--quiet'], root, 30000)
+  return result.ok
+    ? { ok: true, message: 'Refreshed from remote' }
+    : { ok: false, message: result.stderr.trim().split('\n').pop() || 'Fetch failed' }
 }
 
 export async function gitDiff(root: string): Promise<string> {
@@ -150,7 +168,10 @@ export async function gitInit(root: string): Promise<GitActionResult> {
 
 /**
  * One-button sync for non-developers: share local changes and fetch the
- * team's, in plain language. Commit (if needed) then pull --ff-only then push.
+ * team's, in plain language. Commit (if needed), refresh remote refs, then do a
+ * MERGE pull (not --ff-only, which fails the moment both sides changed) and
+ * push. A merge that hits conflicts is aborted so the folder is never left in a
+ * silent half-merged state — the user gets a clear "resolve conflicts" message.
  */
 export async function gitSync(root: string, message: string): Promise<GitActionResult> {
   const status = await gitStatus(root)
@@ -160,8 +181,23 @@ export async function gitSync(root: string, message: string): Promise<GitActionR
     if (!commit.ok) return { ok: false, message: `Could not package your changes: ${commit.message}` }
   }
   if (status.hasUpstream) {
-    const pull = await gitPull(root)
-    if (!pull.ok) return { ok: false, message: `Could not fetch team updates: ${pull.message}` }
+    // Explicit sync is the right place to touch the network.
+    await gitFetch(root)
+    // Merge pull tolerates both sides having changed; --no-rebase keeps the
+    // simple merge model rather than rebasing local commits.
+    const pull = await run(['pull', '--no-rebase'], root, 30000)
+    if (!pull.ok) {
+      // Leave nothing half-merged: abort the in-progress merge if there is one.
+      await run(['merge', '--abort'], root)
+      const detail = pull.stderr.trim().split('\n').pop() || pull.stdout.trim().split('\n').pop() || ''
+      const conflicting = /conflict|merge|diverg/i.test(`${pull.stdout} ${pull.stderr}`)
+      return {
+        ok: false,
+        message: conflicting
+          ? 'Your changes and the team changes overlap. Open the folder in your editor to resolve the conflicts, then sync again.'
+          : `Could not fetch team updates: ${detail || 'pull failed'}`
+      }
+    }
     const push = await gitPush(root)
     if (!push.ok) return { ok: false, message: `Could not share your changes: ${push.message}` }
     return { ok: true, message: 'Everything is in sync with your team' }

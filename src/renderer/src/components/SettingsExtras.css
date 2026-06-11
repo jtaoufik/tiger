@@ -38,14 +38,14 @@
   padding: 3px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--btn-bg, transparent);
+  background: var(--glass-strong);
   color: var(--text);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .cert-pick-btn:hover {
-  background: var(--hover-bg, rgba(128,128,128,0.1));
+  background: var(--glass-hover);
 }
 
 .cert-clear-btn {
@@ -64,7 +64,7 @@
 }
 
 .cert-clear-btn:hover {
-  background: var(--hover-bg, rgba(128,128,128,0.12));
+  background: var(--glass-hover);
   color: var(--text);
 }
 
@@ -83,7 +83,7 @@
   padding: 3px 12px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--btn-bg, transparent);
+  background: var(--glass-strong);
   color: var(--text);
   cursor: pointer;
   white-space: nowrap;
@@ -91,7 +91,7 @@
 }
 
 .cookie-clear-btn:hover {
-  background: var(--hover-bg, rgba(128,128,128,0.1));
+  background: var(--glass-hover);
 }
 
 /* MCP tab */
@@ -107,9 +107,9 @@
 }
 
 .mcp-code-block {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--mono);
   font-size: 12px;
-  background: var(--code-bg, rgba(0,0,0,0.08));
+  background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px 16px;
@@ -130,7 +130,7 @@
   padding: 3px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--surface, var(--btn-bg, transparent));
+  background: var(--glass-strong);
   color: var(--text-dim);
   cursor: pointer;
   white-space: nowrap;
@@ -139,7 +139,7 @@
 
 .mcp-copy-btn:hover {
   color: var(--text);
-  background: var(--hover-bg, rgba(128,128,128,0.12));
+  background: var(--glass-hover);
 }
 
 .mcp-note {

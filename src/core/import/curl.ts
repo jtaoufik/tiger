@@ -5,6 +5,40 @@
 
 import { emptyBody, isHttpMethod, type KeyValue, type TigerRequest } from '../types'
 
+/**
+ * Flags that take a following value we don't model but must consume, so the
+ * value can never be mistaken for the URL.
+ */
+const VALUE_FLAGS = new Set([
+  '-o',
+  '--output',
+  '-A',
+  '--user-agent',
+  '-e',
+  '--referer',
+  '--connect-timeout',
+  '-m',
+  '--max-time',
+  '-b',
+  '--cookie',
+  '-c',
+  '--cookie-jar',
+  '-w',
+  '--write-out',
+  '-T',
+  '--upload-file',
+  '--retry',
+  '--max-redirs',
+  '-x',
+  '--proxy',
+  '-E',
+  '--cert',
+  '--key',
+  '--cacert',
+  '--header-file',
+  '--resolve'
+])
+
 /** Split respecting single/double quotes and line continuations. */
 function tokens(input: string): string[] {
   const out: string[] = []
@@ -38,18 +72,22 @@ export function importCurl(command: string): TigerRequest | null {
       arg === '--data' ||
       arg === '--data-raw' ||
       arg === '--data-binary' ||
-      arg === '--data-ascii'
+      arg === '--data-ascii' ||
+      arg === '--data-urlencode'
     ) {
+      // --data-urlencode is a body source too; we keep the raw value (already
+      // urlencoded by the author, or a literal we send as-is).
       body = parts[++i] ?? ''
     } else if (arg === '-u' || arg === '--user') basic = parts[++i] ?? ''
     else if (arg === '--url') url = parts[++i] ?? ''
     else if (arg === '-F' || arg === '--form') i++ // unsupported, skip value
     else if (arg.startsWith('-')) {
-      // Flags with values we ignore entirely.
-      if (['-o', '--output', '-A', '--user-agent', '-e', '--referer', '--connect-timeout', '-m', '--max-time'].includes(arg)) i++
-    } else if (!url)
-
+      // Other flags that take a value: consume it so the value never becomes
+      // the URL. (Bare flags fall through and are simply ignored.)
+      if (VALUE_FLAGS.has(arg)) i++
+    } else if (!url) {
       url = arg
+    }
   }
 
   if (!url) return null

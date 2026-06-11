@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HTTP_METHODS, type BodyType, type KeyValue, type TigerRequest } from '@core/types'
 import { formatJsonText, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
@@ -44,6 +44,17 @@ export function RequestEditor({
   // so this state never leaks across requests.
   const [formRows, setFormRows] = useState<KeyValue[]>(() => formToKv(request.body.content))
   const [copiedBody, setCopiedBody] = useState(false)
+  // Re-seed the form rows whenever the body type transitions INTO 'form'.
+  // Without this, switching form -> json -> form keeps the stale rows from the
+  // first form pass and silently discards JSON the user typed in between (the
+  // text is in request.body.content but the form UI never reads it back).
+  const prevBodyType = useRef<BodyType>(request.body.type)
+  useEffect(() => {
+    if (request.body.type === 'form' && prevBodyType.current !== 'form') {
+      setFormRows(formToKv(request.body.content))
+    }
+    prevBodyType.current = request.body.type
+  }, [request.body.type, request.body.content])
 
   const set = (patch: Partial<TigerRequest>) => onChange({ ...request, ...patch })
   const enabledCount = (kv: KeyValue[]) => kv.filter((k) => k.enabled !== false && k.name).length

@@ -25,7 +25,10 @@ const firebaseConfig = {
 }
 
 let analytics: Analytics | null = null
-let enabled = true
+// Default to disabled until the persisted setting resolves, so the opt-out is
+// honored even on the very first event (no race where app_opened fires before
+// getSettings() reports the user disabled analytics).
+let enabled = false
 
 export async function initAnalytics(): Promise<void> {
   try {

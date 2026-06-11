@@ -211,6 +211,19 @@ export default function App() {
 
   const [activeEnvKey, setActiveEnvKey] = useState<string | null>(`demo${SEP}Demo`)
   const [activeEnv, setActiveEnv] = useState<TigerEnvironment | null>(sampleEnvironment)
+  /**
+   * Always-current mirror of activeEnv + its key. applyCaptures runs after an
+   * async send and must merge into the LATEST environment, not the snapshot it
+   * closed over when send started — otherwise a concurrent edit (or a second
+   * capture) is silently overwritten in state and on disk.
+   */
+  const activeEnvRef = useRef<{ key: string | null; env: TigerEnvironment | null }>({
+    key: `demo${SEP}Demo`,
+    env: sampleEnvironment
+  })
+  useEffect(() => {
+    activeEnvRef.current = { key: activeEnvKey, env: activeEnv }
+  }, [activeEnvKey, activeEnv])
 
   const [responses, setResponses] = useState<Record<string, ResponseState>>({})
   const [sendingIds, setSendingIds] = useState<Set<string>>(new Set())
@@ -248,6 +261,16 @@ export default function App() {
   /** Monotonic token so a stale environment file read can't win a race. */
   const envSeq = useRef(0)
 
+  /**
+   * Un-tombstone ids as they are (re)registered. Without this, reopening,
+   * cloning, importing, or re-creating a request that reuses a previously
+   * deleted id would leave it tombstoned: its send stays stuck on "loading"
+   * (the response/capture setters bail on deletedIds) forever.
+   */
+  const reviveIds = useCallback((ids: Iterable<string>) => {
+    for (const id of ids) deletedIds.current.delete(id)
+  }, [])
+
   const toast = useCallback((text: string) => {
     const id = ++toastSeq
     setToasts((prev) => [...prev, { id, text }])
@@ -255,12 +278,23 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    window.tiger?.getSettings().then((s) => {
-      setSettings(s)
-      setAnalyticsEnabled(s.analyticsEnabled)
+    // Analytics must wait for the persisted opt-out to resolve. analytics.ts
+    // defaults to disabled, so initializing + firing app_opened before settings
+    // load would either be dropped or (worse) race ahead of a user opt-out.
+    // Resolve settings first, set the flag, THEN init and emit app_opened.
+    const settingsLoaded = window.tiger?.getSettings
+      ? window.tiger.getSettings().then((s) => {
+          setSettings(s)
+          setAnalyticsEnabled(s.analyticsEnabled)
+          return s.analyticsEnabled
+        })
+      : Promise.resolve(FALLBACK_SETTINGS.analyticsEnabled)
+    settingsLoaded.then(async (analyticsOn) => {
+      if (!analyticsOn) return
+      await initAnalytics()
+      trackEvent(events.appOpened())
     })
     window.tiger?.version?.().then(setAppVersion)
-    initAnalytics().then(() => trackEvent(events.appOpened()))
     window.tiger?.checkUpdate?.().then((info) => {
       if (info) {
         setUpdate(info)
@@ -308,6 +342,37 @@ export default function App() {
     const timer = setInterval(refreshGitStates, 60000)
     return () => clearInterval(timer)
   }, [refreshGitStates])
+
+  /**
+   * A git op (pull / checkout / discard / sync) just rewrote this collection's
+   * .tiger files on disk. Drop the in-memory copies and their saved-text
+   * baselines so they reload from disk. Otherwise the stale in-memory request
+   * stays "clean" and a later Cmd+S overwrites whatever the teammate just
+   * pulled in. The active request is re-read immediately so the editor reflects
+   * the new content without the user clicking away and back.
+   */
+  const invalidateCollectionCache = useCallback(
+    async (colId: string) => {
+      const col = collections.find((c) => c.id === colId)
+      if (!col) return
+      const ids = new Set(col.entries.map((e) => e.id))
+      setRequestsById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
+      for (const id of ids) delete savedText.current[id]
+      // Re-read the open request straight from disk so the editor reflects the
+      // pulled content immediately (loadRequest would short-circuit on the
+      // still-cached copy, so read + commit directly here).
+      if (activeId && ids.has(activeId) && pathById[activeId] && window.tiger) {
+        try {
+          const parsed = parseRequest(await window.tiger.readFile(pathById[activeId]))
+          savedText.current[activeId] = serializeRequest(parsed)
+          setRequestsById((prev) => ({ ...prev, [activeId]: parsed }))
+        } catch {
+          /* file removed by the git op; leave it dropped */
+        }
+      }
+    },
+    [collections, activeId, pathById]
+  )
 
   const active = activeId ? requestsById[activeId] : undefined
   const activeCollection = activeId
@@ -369,15 +434,20 @@ export default function App() {
     (request: TigerRequest) => {
       if (!activeId) return
       setRequestsById((prev) => ({ ...prev, [activeId]: request }))
-      // Keep the sidebar entry's name and method in sync with the editor.
-      setCollections((prev) =>
-        prev.map((col) => ({
+      // Keep the sidebar entry's name and method in sync with the editor, but
+      // only rebuild collections when one of those actually changed. Otherwise
+      // every keystroke in the URL/body produces a new collections array, which
+      // needlessly re-runs effects keyed on it (e.g. refreshGitStates).
+      setCollections((prev) => {
+        const entry = prev.flatMap((c) => c.entries).find((e) => e.id === activeId)
+        if (entry && entry.name === request.name && entry.method === request.method) return prev
+        return prev.map((col) => ({
           ...col,
           entries: col.entries.map((e) =>
             e.id === activeId ? { ...e, name: request.name, method: request.method } : e
           )
         }))
-      )
+      })
     },
     [activeId]
   )
@@ -403,25 +473,37 @@ export default function App() {
    * Merge captured variables into the active environment (update by name or
    * append enabled) and persist: write the env file when disk-backed, else
    * update the in-memory ref via setCollectionEnvironments.
+   *
+   * Reads the latest env from activeEnvRef and updates state functionally, so
+   * captures from a slow send never clobber an env the user (or a second send)
+   * changed in the meantime; the disk write uses that same merged result so
+   * state and file stay consistent.
    */
   const applyCaptures = useCallback(
     (captured: Array<{ name: string; value: string }>) => {
       if (!captured.length) return
-      if (!activeEnv || !activeEnvKey) {
+      const { key, env } = activeEnvRef.current
+      if (!env || !key) {
         toast('Captured values need an active environment')
         return
       }
-      const variables = [...activeEnv.variables]
-      for (const { name, value } of captured) {
-        const idx = variables.findIndex((v) => v.name === name)
-        if (idx !== -1) variables[idx] = { ...variables[idx], value }
-        else variables.push({ name, value, enabled: true })
+      const merge = (base: TigerEnvironment): TigerEnvironment => {
+        const variables = [...base.variables]
+        for (const { name, value } of captured) {
+          const idx = variables.findIndex((v) => v.name === name)
+          if (idx !== -1) variables[idx] = { ...variables[idx], value }
+          else variables.push({ name, value, enabled: true })
+        }
+        return { ...base, variables }
       }
-      const next = { ...activeEnv, variables }
-      setActiveEnv(next)
-      const sep = activeEnvKey.indexOf(SEP)
-      const colId = activeEnvKey.slice(0, sep)
-      const envName = activeEnvKey.slice(sep + SEP.length)
+      // Compute the persisted value off the latest snapshot, then commit the
+      // same merge to state functionally so nothing in between is lost.
+      const next = merge(env)
+      activeEnvRef.current = { key, env: next }
+      setActiveEnv((cur) => (cur ? merge(cur) : next))
+      const sep = key.indexOf(SEP)
+      const colId = key.slice(0, sep)
+      const envName = key.slice(sep + SEP.length)
       const col = collections.find((c) => c.id === colId)
       const ref = col?.environments.find((e) => e.name === envName)
       if (ref?.path && window.tiger) {
@@ -434,7 +516,7 @@ export default function App() {
       }
       toast(`Captured: ${captured.map((c) => c.name).join(', ')}`)
     },
-    [activeEnv, activeEnvKey, collections, setCollectionEnvironments, toast]
+    [collections, setCollectionEnvironments, toast]
   )
 
   const send = useCallback(async () => {
@@ -515,6 +597,7 @@ export default function App() {
       method: r.method,
       folderPath: r.folder
     }))
+    reviveIds(entries.map((e) => e.id))
     const next: CollectionState = {
       id: opened.root,
       name: opened.settings?.name || opened.name,
@@ -537,21 +620,38 @@ export default function App() {
       ...Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
     }))
     if (entries[0]) selectRequest(entries[0].id)
-  }, [selectRequest])
+  }, [selectRequest, reviveIds])
 
   const importFromCurl = useCallback(
-    (command: string) => {
+    async (command: string) => {
       const req = importCurl(command)
       if (!req) {
         toast('Could not parse that as a curl command')
         return
       }
-      const colId = collections[0]?.id ?? 'demo'
-      const id = `${colId}${SEP}curl-${Date.now()}`
+      const target = collections[0]
+      if (!target) {
+        toast('Open or create a collection first, then import')
+        return
+      }
+      let id: string
+      // Persist to disk like newRequest does when the target lives on disk, so
+      // the imported request survives a reload and shows up in Git.
+      if (target.root && window.tiger) {
+        const path = `${target.root}/curl-${Date.now()}.tiger`
+        id = `${target.id}${SEP}${path}`
+        const text = serializeRequest(req)
+        await window.tiger.writeFile(path, text)
+        savedText.current[id] = text
+        setPathById((prev) => ({ ...prev, [id]: path }))
+      } else {
+        id = `${target.id}${SEP}curl-${Date.now()}`
+      }
+      reviveIds([id])
       setRequestsById((prev) => ({ ...prev, [id]: req }))
       setCollections((prev) =>
         prev.map((c) =>
-          c.id === colId
+          c.id === target.id
             ? { ...c, entries: [...c.entries, { id, name: req.name, method: req.method, folderPath: [] }] }
             : c
         )
@@ -562,7 +662,7 @@ export default function App() {
       setView('workspace')
       toast('Request imported from curl')
     },
-    [collections, openTab, toast]
+    [collections, openTab, reviveIds, toast]
   )
 
   const cloneCollection = useCallback(() => setCloneOpen(true), [])
@@ -586,6 +686,7 @@ export default function App() {
       method: r.method,
       folderPath: r.folder
     }))
+    reviveIds(entries.map((e) => e.id))
     setCollections((prev) => [
       ...prev.filter((c) => c.id !== opened.root),
       {
@@ -603,7 +704,7 @@ export default function App() {
     }))
     if (entries[0]) selectRequest(entries[0].id)
     toast(`Cloned ${opened.name}`)
-  }, [selectRequest, toast])
+  }, [selectRequest, reviveIds, toast])
 
   const loadImport = useCallback(
     (kind: ImportKind) => {
@@ -616,6 +717,7 @@ export default function App() {
           method: r.request.method,
           folderPath: r.path
         }))
+        reviveIds(entries.map((e) => e.id))
         setCollections((prev) => [
           ...prev,
           { id: colId, name: result.name, entries, environments: [] }
@@ -633,7 +735,7 @@ export default function App() {
         trackEvent(events.collectionImported(result.source, result.requests.length))
       })
     },
-    [openTab, toast]
+    [openTab, reviveIds, toast]
   )
 
   const doExport = useCallback(
@@ -717,6 +819,7 @@ export default function App() {
       } else {
         id = `${col.id}${SEP}new-${Date.now()}`
       }
+      reviveIds([id])
       setRequestsById((prev) => ({ ...prev, [id]: request }))
       setCollections((prev) =>
         prev.map((c) =>
@@ -736,7 +839,7 @@ export default function App() {
       setView('workspace')
       setInspect(null)
     },
-    [collections, openTab]
+    [collections, openTab, reviveIds]
   )
 
   const duplicateRequest = useCallback(
@@ -763,6 +866,7 @@ export default function App() {
       } else {
         id = `${col.id}${SEP}dup-${Date.now()}`
       }
+      reviveIds([id])
       setRequestsById((prev) => ({ ...prev, [id]: clone }))
       setCollections((prev) =>
         prev.map((c) =>
@@ -782,7 +886,7 @@ export default function App() {
       setView('workspace')
       toast('Request duplicated')
     },
-    [requestsById, loadRequest, collections, pathById, openTab, toast]
+    [requestsById, loadRequest, collections, pathById, openTab, reviveIds, toast]
   )
 
   const deleteRequest = useCallback(
@@ -862,6 +966,32 @@ export default function App() {
       }
     },
     [collections, toast]
+  )
+
+  /**
+   * The environments modal edited an env that happens to be the active one.
+   * Refresh activeEnv (prefer the data the modal already computed; fall back to
+   * re-reading the file) so the next send interpolates the new values instead
+   * of the stale snapshot we loaded when the env was first activated.
+   */
+  const reloadActiveEnv = useCallback(
+    async (colId: string, name: string, data?: TigerEnvironment) => {
+      if (activeEnvKey !== `${colId}${SEP}${name}`) return
+      if (data) {
+        setActiveEnv(data)
+        return
+      }
+      const ref = collections.find((c) => c.id === colId)?.environments.find((e) => e.name === name)
+      if (ref?.data) setActiveEnv(ref.data)
+      else if (ref?.path && window.tiger) {
+        try {
+          setActiveEnv(parseEnvironment(await window.tiger.readFile(ref.path)))
+        } catch {
+          /* leave the current env in place */
+        }
+      }
+    },
+    [activeEnvKey, collections]
   )
 
   const requestCloseCollection = useCallback((colId: string) => setConfirmCloseId(colId), [])
@@ -976,7 +1106,10 @@ export default function App() {
         label: 'Close collection',
         icon: <TrashIcon size={14} />,
         danger: true,
-        onClick: () => closeCollection(colId)
+        // Route through the confirm path (like every other close button) so it
+        // gets the confirmation dialog and inspect-view cleanup, not a raw
+        // closeCollection on a possibly-stale closure.
+        onClick: () => requestCloseCollection(colId)
       })
       setCtxMenu({ x, y, items })
     },
@@ -1299,6 +1432,7 @@ export default function App() {
           envKeySep={SEP}
           onActivate={(key) => changeEnv(key)}
           onCollectionsChanged={setCollectionEnvironments}
+          onActiveEnvMaybeChanged={(colId, name, data) => reloadActiveEnv(colId, name, data)}
           onToast={toast}
           onClose={() => setModal('none')}
         />
@@ -1341,6 +1475,7 @@ export default function App() {
               collectionName={col.name}
               root={col.root ?? ''}
               onToast={toast}
+              onWorkingTreeChanged={() => invalidateCollectionCache(col.id)}
               onClose={() => {
                 setGitColId(null)
                 refreshGitStates()

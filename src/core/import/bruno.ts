@@ -53,6 +53,17 @@ export function importBrunoRequest(text: string, path: string[] = []): ImportedR
       request.headers = parseKeyValues(block.content)
     } else if (block.name === 'query' || block.name === 'params') {
       request.query = parseKeyValues(block.content)
+    } else if (block.name === 'body' && block.subtype === 'graphql') {
+      // Bruno keeps the GraphQL query in `body:graphql` and (optionally) the
+      // variables JSON in a following `body:graphql:vars` block.
+      request.body = { type: 'graphql', content: dedent(block.content) }
+    } else if (block.name === 'body' && block.subtype === 'graphql:vars') {
+      const vars = dedent(block.content)
+      // Attach to the query body if we have one, else stash for ordering safety.
+      request.body =
+        request.body.type === 'graphql'
+          ? { ...request.body, variables: vars }
+          : { type: 'graphql', content: '', variables: vars }
     } else if (block.name === 'body') {
       const type = brunoBodyType(block.subtype)
       const content =

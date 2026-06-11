@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Settings, ThemeChoice } from '../../../main/settings'
 import { Logo } from '../Logo'
 import { CheckIcon, CloseIcon, CopyIcon } from './Icons'
@@ -69,6 +69,21 @@ export function SettingsView({ settings, onChange }: Props) {
   const [clearLabel, setClearLabel] = useState('Clear cookies')
   const [mcpServerPath, setMcpServerPath] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Local mirrors for password inputs so they only commit on blur/Enter
+  const [localPassphrase, setLocalPassphrase] = useState(settings.certPassphrase)
+  const [localProxyPassword, setLocalProxyPassword] = useState(settings.proxyPassword)
+  const passphraseRef = useRef<HTMLInputElement>(null)
+  const proxyPasswordRef = useRef<HTMLInputElement>(null)
+
+  // Sync local mirrors when settings change externally
+  useEffect(() => {
+    setLocalPassphrase(settings.certPassphrase)
+  }, [settings.certPassphrase])
+
+  useEffect(() => {
+    setLocalProxyPassword(settings.proxyPassword)
+  }, [settings.proxyPassword])
 
   useEffect(() => {
     window.tiger?.version?.().then(setVersion)
@@ -185,6 +200,9 @@ export function SettingsView({ settings, onChange }: Props) {
             </div>
             <button
               className={`switch ${settings.followRedirects ? 'on' : ''}`}
+              role="switch"
+              aria-checked={settings.followRedirects}
+              aria-label="Follow redirects"
               onClick={() => onChange({ followRedirects: !settings.followRedirects })}
             >
               <span className="knob" />
@@ -198,6 +216,9 @@ export function SettingsView({ settings, onChange }: Props) {
             </div>
             <button
               className={`switch ${settings.sslVerify ? 'on' : ''}`}
+              role="switch"
+              aria-checked={settings.sslVerify}
+              aria-label="Verify SSL certificates"
               onClick={() => onChange({ sslVerify: !settings.sslVerify })}
             >
               <span className="knob" />
@@ -211,6 +232,9 @@ export function SettingsView({ settings, onChange }: Props) {
             </div>
             <button
               className={`switch ${settings.proxyEnabled ? 'on' : ''}`}
+              role="switch"
+              aria-checked={settings.proxyEnabled}
+              aria-label="Use a proxy"
               onClick={() => onChange({ proxyEnabled: !settings.proxyEnabled })}
             >
               <span className="knob" />
@@ -256,12 +280,20 @@ export function SettingsView({ settings, onChange }: Props) {
                   <div className="desc">Stored locally on this machine, never synced.</div>
                 </div>
                 <input
+                  ref={proxyPasswordRef}
                   className="num-input"
                   style={{ width: 240 }}
                   type="password"
-                  value={settings.proxyPassword}
+                  value={localProxyPassword}
                   placeholder="password"
-                  onChange={(e) => onChange({ proxyPassword: e.target.value })}
+                  onChange={(e) => setLocalProxyPassword(e.target.value)}
+                  onBlur={() => onChange({ proxyPassword: localProxyPassword })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onChange({ proxyPassword: localProxyPassword })
+                      proxyPasswordRef.current?.blur()
+                    }
+                  }}
                 />
               </div>
             </>
@@ -278,6 +310,9 @@ export function SettingsView({ settings, onChange }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
                 className={`switch ${settings.cookieJarEnabled ? 'on' : ''}`}
+                role="switch"
+                aria-checked={settings.cookieJarEnabled}
+                aria-label="Persistent cookie jar"
                 onClick={() => onChange({ cookieJarEnabled: !settings.cookieJarEnabled })}
               >
                 <span className="knob" />
@@ -378,12 +413,20 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="label">Certificate passphrase</div>
             </div>
             <input
+              ref={passphraseRef}
               className="num-input"
               style={{ width: 240 }}
               type="password"
-              value={settings.certPassphrase}
+              value={localPassphrase}
               placeholder="passphrase"
-              onChange={(e) => onChange({ certPassphrase: e.target.value })}
+              onChange={(e) => setLocalPassphrase(e.target.value)}
+              onBlur={() => onChange({ certPassphrase: localPassphrase })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  onChange({ certPassphrase: localPassphrase })
+                  passphraseRef.current?.blur()
+                }
+              }}
             />
           </div>
 
@@ -433,6 +476,9 @@ export function SettingsView({ settings, onChange }: Props) {
           </div>
           <button
             className={`switch ${settings.analyticsEnabled ? 'on' : ''}`}
+            role="switch"
+            aria-checked={settings.analyticsEnabled}
+            aria-label="Analytics"
             onClick={() => onChange({ analyticsEnabled: !settings.analyticsEnabled })}
           >
             <span className="knob" />

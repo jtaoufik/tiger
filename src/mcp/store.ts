@@ -2,7 +2,10 @@ import { readdir, readFile } from 'node:fs/promises'
 import { basename, join, relative } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
 import { parseEnvironment } from '../core/environment'
+import { parseCollectionSettings } from '../core/collectionSettings'
+import { interpolate, type VarMap } from '../core/interpolate'
 import type { RawResponse } from '../core/response'
+import type { TigerAuth } from '../core/types'
 import type {
   CollectionStore,
   EnvironmentRef,
@@ -11,6 +14,7 @@ import type {
 } from './handlers'
 
 const ENVIRONMENTS_DIR = 'environments'
+const COLLECTION_FILE = 'collection.tiger'
 
 export function createFsStore(root: string): CollectionStore {
   async function walk(dir: string, acc: RequestRef[]): Promise<void> {
@@ -46,6 +50,16 @@ export function createFsStore(root: string): CollectionStore {
     }
   }
 
+  async function readCollectionAuth(): Promise<TigerAuth | undefined> {
+    try {
+      const text = await readFile(join(root, COLLECTION_FILE), 'utf8')
+      return parseCollectionSettings(text).auth
+    } catch {
+      // No collection.tiger (or unreadable): the collection has no default auth.
+      return undefined
+    }
+  }
+
   return {
     async listRequests() {
       const acc: RequestRef[] = []
@@ -53,6 +67,7 @@ export function createFsStore(root: string): CollectionStore {
       return acc
     },
     readRequest: (path) => readFile(join(root, path), 'utf8'),
+    readCollectionAuth,
     listEnvironments,
     async readEnvironment(name) {
       const ref = (await listEnvironments()).find((e) => e.name === name)
@@ -62,8 +77,32 @@ export function createFsStore(root: string): CollectionStore {
   }
 }
 
+/** Client-credentials token exchange, run with the global fetch in the runner. */
+async function exchangeOAuthToken(
+  auth: Extract<TigerAuth, { type: 'oauth2' }>,
+  vars: VarMap
+): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: auth.grantType,
+    client_id: interpolate(auth.clientId, vars),
+    client_secret: interpolate(auth.clientSecret, vars)
+  })
+  if (auth.scope) body.append('scope', interpolate(auth.scope, vars))
+
+  const res = await fetch(interpolate(auth.tokenUrl, vars), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
+  })
+  if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`)
+  const json = (await res.json()) as { access_token?: string }
+  if (!json.access_token) throw new Error('Token response had no access_token')
+  return json.access_token
+}
+
 export function createNodeRunner(): HttpRunner {
   return {
+    oauthToken: exchangeOAuthToken,
     async send(built, timeoutMs = 30000): Promise<RawResponse> {
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), timeoutMs)

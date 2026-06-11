@@ -45,3 +45,51 @@ describe('importInsomnia', () => {
     expect(ping.path).toEqual([])
   })
 })
+
+describe('importInsomnia – graphql and xml bodies', () => {
+  function single(body: unknown) {
+    const result = importInsomnia({
+      _type: 'export',
+      resources: [
+        { _type: 'request', _id: 'r', parentId: 'wrk', name: 'R', method: 'POST', url: 'https://api.test/g', body }
+      ]
+    })
+    return result.requests[0].request.body
+  }
+
+  it('maps application/graphql with a {query,variables} envelope', () => {
+    const body = single({
+      mimeType: 'application/graphql',
+      text: JSON.stringify({ query: 'query { me { id } }', variables: { id: 1 } })
+    })
+    expect(body.type).toBe('graphql')
+    expect(body.content).toBe('query { me { id } }')
+    expect(body.variables).toBe('{"id":1}')
+  })
+
+  it('maps application/graphql with no variables', () => {
+    const body = single({
+      mimeType: 'application/graphql',
+      text: JSON.stringify({ query: '{ ping }' })
+    })
+    expect(body.type).toBe('graphql')
+    expect(body.content).toBe('{ ping }')
+    expect(body.variables).toBeUndefined()
+  })
+
+  it('falls back to raw query text when the graphql body is not a JSON envelope', () => {
+    const body = single({ mimeType: 'application/graphql', text: '{ ping }' })
+    expect(body.type).toBe('graphql')
+    expect(body.content).toBe('{ ping }')
+  })
+
+  it('maps application/xml to an xml body', () => {
+    const body = single({ mimeType: 'application/xml', text: '<a/>' })
+    expect(body).toEqual({ type: 'xml', content: '<a/>' })
+  })
+
+  it('maps text/xml to an xml body (not a plain text body)', () => {
+    const body = single({ mimeType: 'text/xml', text: '<soap:Envelope/>' })
+    expect(body).toEqual({ type: 'xml', content: '<soap:Envelope/>' })
+  })
+})

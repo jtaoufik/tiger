@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildRequest } from '../../src/core/request'
-import type { TigerRequest } from '../../src/core/types'
+import type { TigerAuth, TigerRequest } from '../../src/core/types'
 
 function req(partial: Partial<TigerRequest>): TigerRequest {
   return {
@@ -90,5 +90,36 @@ describe('buildRequest', () => {
     )
     expect(built.headers['Content-Type']).toBe('application/x-www-form-urlencoded')
     expect(built.body).toBe('name=Ada+Lovelace&role=pioneer')
+  })
+
+  it('a request header overrides an auth header case-insensitively (single value)', () => {
+    const auth: TigerAuth = { type: 'bearer', token: 'auth-token' }
+    const built = buildRequest(
+      req({
+        auth,
+        // lowercase 'authorization' must replace the auth block's 'Authorization'.
+        headers: [{ name: 'authorization', value: 'Bearer override', enabled: true }]
+      })
+    )
+    const authKeys = Object.keys(built.headers).filter(
+      (k) => k.toLowerCase() === 'authorization'
+    )
+    expect(authKeys).toEqual(['authorization'])
+    expect(built.headers.authorization).toBe('Bearer override')
+    expect(built.headers.Authorization).toBeUndefined()
+  })
+
+  it('appends query params before a #fragment, keeping the fragment last', () => {
+    const built = buildRequest(
+      req({ url: 'https://x.com/p#frag', query: [{ name: 'a', value: '1', enabled: true }] })
+    )
+    expect(built.url).toBe('https://x.com/p?a=1#frag')
+  })
+
+  it('merges into an existing query and preserves the fragment', () => {
+    const built = buildRequest(
+      req({ url: 'https://x.com/p?x=1#frag', query: [{ name: 'a', value: '2', enabled: true }] })
+    )
+    expect(built.url).toBe('https://x.com/p?x=1&a=2#frag')
   })
 })

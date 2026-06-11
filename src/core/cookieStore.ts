@@ -13,6 +13,34 @@ export interface StoredCookie {
   value: string
   /** Epoch ms; undefined = session cookie (kept until cleared). */
   expires?: number
+  /**
+   * True when the Set-Cookie carried no (accepted) Domain attribute. Host-only
+   * cookies are sent ONLY to the exact host that set them, never subdomains.
+   */
+  hostOnly?: boolean
+  /** From the `Secure` attribute: only send over https: URLs. */
+  secure?: boolean
+}
+
+/**
+ * RFC 6265 §5.1.3 domain-match: `host` domain-matches `domain` when they are
+ * identical or when `host` is a subdomain of `domain` (host ends with
+ * `.<domain>` and the char before is a dot).
+ */
+function domainMatches(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`)
+}
+
+/**
+ * RFC 6265 §5.1.4 path-match: request path equals cookie path, or cookie path
+ * is a prefix ending in '/', or it is a prefix and the next char of the request
+ * path is '/'. This makes /api match /api/v2 but NOT /apiv2.
+ */
+function pathMatches(requestPath: string, cookiePath: string): boolean {
+  if (requestPath === cookiePath) return true
+  if (!requestPath.startsWith(cookiePath)) return false
+  if (cookiePath.endsWith('/')) return true
+  return requestPath[cookiePath.length] === '/'
 }
 
 /**
@@ -61,13 +89,39 @@ export function upsertCookies(
         if (!Number.isNaN(t)) expires = t
       }
 
-      const domain = (attrs.domain ?? host).replace(/^\./, '').toLowerCase()
+      // Resolve the cookie's domain. A Set-Cookie may only widen its scope to a
+      // domain that domain-matches the request host (and that has a dot, to
+      // reject bare public-suffix-less labels like `com`). Anything else — an
+      // evil.com trying to set Domain=victim.com — is rejected and we fall back
+      // to a host-only cookie scoped to the request host.
+      let domain = host
+      let hostOnly = true
+      const rawDomain = attrs.domain?.replace(/^\./, '').toLowerCase()
+      if (rawDomain) {
+        const acceptable =
+          (rawDomain.includes('.') || rawDomain === host) && domainMatches(host, rawDomain)
+        if (acceptable) {
+          domain = rawDomain
+          hostOnly = false
+        }
+        // else: rejected → keep host-only on the request host.
+      }
+
       const path = attrs.path ?? '/'
+      const secure = attrs.secure !== undefined
 
       const existing = jar.findIndex(
         (c) => c.domain === domain && c.path === path && c.name === cookie.name
       )
-      const next: StoredCookie = { domain, path, name: cookie.name, value: cookie.value, expires }
+      const next: StoredCookie = {
+        domain,
+        path,
+        name: cookie.name,
+        value: cookie.value,
+        expires,
+        hostOnly,
+        secure
+      }
 
       if (expires !== undefined && expires <= now) {
         // expired = delete
@@ -95,11 +149,21 @@ export function matchCookies(jar: StoredCookie[], url: string, now: number): str
     return ''
   }
   const host = parsed.hostname.toLowerCase()
+  const isSecure = parsed.protocol === 'https:'
+  const requestPath = parsed.pathname || '/'
   return jar
     .filter((c) => {
       if (c.expires !== undefined && c.expires <= now) return false
-      if (host !== c.domain && !host.endsWith(`.${c.domain}`)) return false
-      return parsed.pathname.startsWith(c.path)
+      // Secure cookies are never sent over an insecure (http:) connection.
+      if (c.secure && !isSecure) return false
+      // Host-only cookies match the exact host only; domain cookies match the
+      // host or any subdomain of it.
+      if (c.hostOnly) {
+        if (host !== c.domain) return false
+      } else if (!domainMatches(host, c.domain)) {
+        return false
+      }
+      return pathMatches(requestPath, c.path)
     })
     .map((c) => `${c.name}=${c.value}`)
     .join('; ')

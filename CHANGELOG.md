@@ -3,6 +3,13 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## Unreleased
+
+- Fix: `package.json` license field corrected from "MIT" to "SEE LICENSE IN LICENSE" to match the proprietary LICENSE file
+- Fix: `package` script now runs `build:mcp` before `electron-builder` so the MCP server is compiled into shipped builds
+- Fix: Added `asarUnpack` for `out/mcp/**` so the MCP server binary is extractable at runtime; added `bin.tiger-mcp` entry
+- Fix: Website operatingSystem JSON-LD and stat strip corrected from 3 platforms to 2 (macOS, Windows); FAQ deploy answer updated to reflect only the macOS DMG and Windows installer/portable that are published, with Linux/ZIP noted as available on request
+
 ## 0.2.0 · 2026-06-11
 
 - New tiger mascot across app icon, dock and logo

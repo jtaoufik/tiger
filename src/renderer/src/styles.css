@@ -590,6 +590,7 @@ button {
 .env-combo {
   display: inline-flex;
   align-items: stretch;
+  height: 30px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   overflow: hidden;
@@ -600,17 +601,22 @@ button {
   border: none;
   border-radius: 0;
   background: transparent;
+  padding: 0 8px 0 11px;
+  height: 100%;
 }
 .env-combo .env-select:focus { outline: none; }
 .env-combo .env-edit {
   display: inline-flex;
   align-items: center;
-  padding: 0 9px;
+  justify-content: center;
+  width: 30px;
+  padding: 0;
   border: none;
   border-left: 1px solid var(--border);
   background: transparent;
   color: var(--text-dim);
 }
+.env-combo .env-edit svg { display: block; }
 .env-combo .env-edit:hover { background: var(--accent-weak); color: var(--text); }
 
 .token { color: var(--accent); font-weight: 600; }

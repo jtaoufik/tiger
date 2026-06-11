@@ -3,9 +3,12 @@
   "version": "0.2.0",
   "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
   "author": "jtaoufik",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "main": "./out/main/index.js",
+  "bin": {
+    "tiger-mcp": "out/mcp/server.mjs"
+  },
   "homepage": "https://github.com/jtaoufik/tiger",
   "repository": {
     "type": "git",
@@ -31,7 +34,7 @@
     "mcp": "node out/mcp/server.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "npm run build && electron-builder",
+    "package": "npm run build && npm run build:mcp && electron-builder",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "devDependencies": {
@@ -69,6 +72,9 @@
     "files": [
       "out/**",
       "package.json"
+    ],
+    "asarUnpack": [
+      "out/mcp/**"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

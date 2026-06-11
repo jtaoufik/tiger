@@ -24,6 +24,25 @@ function toBody(raw: unknown): TigerBody {
   const body = (raw ?? {}) as Json
   const mime = str(body.mimeType)
   if (mime === 'application/json') return { type: 'json', content: str(body.text) }
+  if (mime === 'application/graphql') {
+    // Insomnia stores GraphQL as a JSON envelope { query, variables } in `text`.
+    const text = str(body.text)
+    try {
+      const parsed = JSON.parse(text) as { query?: unknown; variables?: unknown }
+      const content = typeof parsed.query === 'string' ? parsed.query : ''
+      const variables =
+        parsed.variables === undefined ? undefined : JSON.stringify(parsed.variables)
+      return variables !== undefined
+        ? { type: 'graphql', content, variables }
+        : { type: 'graphql', content }
+    } catch {
+      // Not a JSON envelope — treat the raw text as the query document.
+      return { type: 'graphql', content: text }
+    }
+  }
+  if (mime === 'application/xml' || mime === 'text/xml') {
+    return { type: 'xml', content: str(body.text) }
+  }
   if (mime === 'application/x-www-form-urlencoded') {
     const content = (Array.isArray(body.params) ? body.params : [])
       .map((p) => p as Json)

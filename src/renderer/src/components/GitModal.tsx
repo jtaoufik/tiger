@@ -15,12 +15,19 @@ interface Props {
   collectionName: string
   root: string
   onToast: (text: string) => void
+  /**
+   * Fired after a git op that can rewrite the working tree (pull, checkout,
+   * discard) succeeds, so App can drop its in-memory request cache for this
+   * collection and reload from disk — otherwise a later Cmd+S overwrites
+   * teammates' freshly pulled changes with stale in-memory copies.
+   */
+  onWorkingTreeChanged?: () => void
   onClose: () => void
 }
 
 type Screen = 'loading' | 'no-electron' | 'no-git' | 'no-repo' | 'repo'
 
-export function GitModal({ collectionName, root, onToast, onClose }: Props) {
+export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, onClose }: Props) {
   const [screen, setScreen] = useState<Screen>('loading')
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [diff, setDiff] = useState('')
@@ -60,17 +67,24 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
   }, [refresh])
 
   const act = useCallback(
-    async (label: string, run: () => Promise<{ ok: boolean; message: string }>) => {
+    async (
+      label: string,
+      run: () => Promise<{ ok: boolean; message: string }>,
+      mutatesWorkingTree = false
+    ) => {
       setBusy(label)
       try {
         const result = await run()
         onToast(result.message || (result.ok ? 'Done' : `${label} failed`))
+        // Pull/checkout/discard can rewrite the .tiger files on disk; tell App to
+        // invalidate its cache so the next read picks up the new content.
+        if (mutatesWorkingTree && result.ok) onWorkingTreeChanged?.()
         await refresh()
       } finally {
         setBusy(null)
       }
     },
-    [onToast, refresh]
+    [onToast, onWorkingTreeChanged, refresh]
   )
 
   return (
@@ -168,7 +182,7 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
               className="btn accent"
               disabled={busy !== null}
               onClick={() => {
-                act('Sync', () => window.tiger!.git.sync(root, message.trim()))
+                act('Sync', () => window.tiger!.git.sync(root, message.trim()), true)
                 setMessage('')
               }}
             >
@@ -202,7 +216,7 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
               className="btn"
               disabled={busy !== null || !status.hasUpstream}
               title={status.hasUpstream ? 'git pull --ff-only' : 'No upstream configured'}
-              onClick={() => act('Pull', () => window.tiger!.git.pull(root))}
+              onClick={() => act('Pull', () => window.tiger!.git.pull(root), true)}
             >
               {busy === 'Pull' ? 'Pulling…' : 'Pull'}
             </button>
@@ -223,7 +237,7 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
                 value={branches?.current ?? ''}
                 disabled={busy !== null}
                 onChange={(e) =>
-                  act('Switch', () => window.tiger!.git.checkout(root, e.target.value, false))
+                  act('Switch', () => window.tiger!.git.checkout(root, e.target.value, false), true)
                 }
               >
                 {(branches?.all ?? []).map((b) => (
@@ -263,7 +277,7 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
                     disabled={busy !== null}
                     onClick={() => {
                       setConfirmDiscard(false)
-                      act('Discard', () => window.tiger!.git.discard(root))
+                      act('Discard', () => window.tiger!.git.discard(root), true)
                     }}
                   >
                     Yes, discard

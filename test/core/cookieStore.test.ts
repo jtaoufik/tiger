@@ -229,15 +229,21 @@ describe('matchCookies – path prefix', () => {
     expect(matchCookies(j, 'https://example.com/api/v2', NOW)).toBe('tok=1')
   })
 
-  it('does NOT send a /api cookie to /apiv2 (must be a real prefix)', () => {
+  it('does NOT send a /api cookie to /apiv2 (RFC 6265 path-match, not raw prefix)', () => {
     const j = jar(cookie({ name: 'tok', value: '1', path: '/api' }))
-    // /apiv2 starts with /api, so path prefix check passes; this is consistent
-    // with the RFC (Path= is a prefix match, not a segment match). Documenting.
-    // If the implementation uses startsWith, /api will match /apiv2.
-    // We verify the current implementation is consistent:
-    const result = matchCookies(j, 'https://example.com/apiv2', NOW)
-    // startsWith('/api') is true for /apiv2 — this is what the code does
-    expect(result).toBe('tok=1')
+    // /apiv2 raw-starts-with /api, but RFC 6265 §5.1.4 requires the next char to
+    // be a '/' (or the cookie path to end in '/'). /apiv2 fails both.
+    expect(matchCookies(j, 'https://example.com/apiv2', NOW)).toBe('')
+  })
+
+  it('sends a /api cookie to exactly /api', () => {
+    const j = jar(cookie({ name: 'tok', value: '1', path: '/api' }))
+    expect(matchCookies(j, 'https://example.com/api', NOW)).toBe('tok=1')
+  })
+
+  it('sends a /api/ cookie to /api/anything (cookie path ends in /)', () => {
+    const j = jar(cookie({ name: 'tok', value: '1', path: '/api/' }))
+    expect(matchCookies(j, 'https://example.com/api/v2', NOW)).toBe('tok=1')
   })
 
   it('does NOT send a /admin cookie to /path', () => {
@@ -333,5 +339,74 @@ describe('round-trip: upsert then match', () => {
     j = upsertCookies(j, 'https://example.com/', ['tok=v2'], NOW + 1)
     expect(matchCookies(j, 'https://example.com/', NOW + 2)).toBe('tok=v2')
     expect(j).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Cross-domain injection + scoping security
+// ---------------------------------------------------------------------------
+
+describe('upsertCookies – cross-domain Domain rejection', () => {
+  it('evil.com setting Domain=victim.com is NOT stored for victim (falls back to host-only)', () => {
+    const j = upsertCookies([], 'https://evil.com/', ['tok=pwn; Domain=victim.com'], NOW)
+    // The rejected Domain falls back to a host-only cookie on evil.com.
+    expect(j).toHaveLength(1)
+    expect(j[0].domain).toBe('evil.com')
+    expect(j[0].hostOnly).toBe(true)
+    // It is therefore never sent to the victim.
+    expect(matchCookies(j, 'https://victim.com/', NOW)).toBe('')
+    expect(matchCookies(j, 'https://www.victim.com/', NOW)).toBe('')
+  })
+
+  it('rejects a bare public-suffix-less single-label Domain like "com"', () => {
+    const j = upsertCookies([], 'https://api.example.com/', ['tok=1; Domain=com'], NOW)
+    expect(j[0].hostOnly).toBe(true)
+    expect(j[0].domain).toBe('api.example.com')
+    // Must not leak to an unrelated .com host.
+    expect(matchCookies(j, 'https://evil.com/', NOW)).toBe('')
+  })
+
+  it('accepts a parent Domain that the host domain-matches', () => {
+    const j = upsertCookies([], 'https://api.example.com/', ['tok=1; Domain=example.com'], NOW)
+    expect(j[0].domain).toBe('example.com')
+    expect(j[0].hostOnly).toBe(false)
+  })
+
+  it('marks a cookie with no Domain attribute as host-only', () => {
+    const j = upsertCookies([], 'https://api.example.com/', ['tok=1'], NOW)
+    expect(j[0].hostOnly).toBe(true)
+    expect(j[0].domain).toBe('api.example.com')
+  })
+})
+
+describe('matchCookies – host-only scoping', () => {
+  it('a host-only cookie is NOT sent to a subdomain', () => {
+    const j = upsertCookies([], 'https://example.com/', ['tok=1'], NOW)
+    expect(matchCookies(j, 'https://example.com/', NOW)).toBe('tok=1')
+    expect(matchCookies(j, 'https://api.example.com/', NOW)).toBe('')
+  })
+
+  it('a domain cookie IS sent to a subdomain', () => {
+    const j = upsertCookies([], 'https://example.com/', ['tok=1; Domain=example.com'], NOW)
+    expect(matchCookies(j, 'https://api.example.com/', NOW)).toBe('tok=1')
+  })
+})
+
+describe('cookies – Secure attribute', () => {
+  it('records the secure flag from the Secure attribute', () => {
+    const j = upsertCookies([], 'https://example.com/', ['tok=1; Secure'], NOW)
+    expect(j[0].secure).toBe(true)
+  })
+
+  it('a secure cookie is NOT sent over an http: URL', () => {
+    const j = upsertCookies([], 'https://example.com/', ['tok=1; Secure'], NOW)
+    expect(matchCookies(j, 'http://example.com/', NOW)).toBe('')
+    expect(matchCookies(j, 'https://example.com/', NOW)).toBe('tok=1')
+  })
+
+  it('a non-secure cookie is sent over both http: and https:', () => {
+    const j = upsertCookies([], 'https://example.com/', ['tok=1'], NOW)
+    expect(matchCookies(j, 'http://example.com/', NOW)).toBe('tok=1')
+    expect(matchCookies(j, 'https://example.com/', NOW)).toBe('tok=1')
   })
 })

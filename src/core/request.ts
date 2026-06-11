@@ -28,7 +28,12 @@ function applyQuery(url: string, resolved: Array<{ name: string; value: string }
   const qs = resolved
     .map((q) => `${encodeURIComponent(q.name)}=${encodeURIComponent(q.value)}`)
     .join('&')
-  return url + (url.includes('?') ? '&' : '?') + qs
+  // A trailing #fragment must stay at the very end of the URL, so split it off
+  // before appending the query string and reattach it afterwards.
+  const hashIdx = url.indexOf('#')
+  const base = hashIdx === -1 ? url : url.slice(0, hashIdx)
+  const fragment = hashIdx === -1 ? '' : url.slice(hashIdx)
+  return base + (base.includes('?') ? '&' : '?') + qs + fragment
 }
 
 export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest {
@@ -47,7 +52,15 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
   const headers: Record<string, string> = { ...auth.headers }
   for (const h of req.headers) {
     if (h.enabled === false) continue
-    headers[interpolate(h.name, vars)] = interpolate(h.value, vars)
+    const name = interpolate(h.name, vars)
+    // Drop any existing header with the same name (case-insensitively) first, so
+    // a request header like 'authorization' overrides an auth-block
+    // 'Authorization' and only a single value is sent.
+    const lower = name.toLowerCase()
+    for (const key of Object.keys(headers)) {
+      if (key !== name && key.toLowerCase() === lower) delete headers[key]
+    }
+    headers[name] = interpolate(h.value, vars)
   }
 
   let body: string | undefined

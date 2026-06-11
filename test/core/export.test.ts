@@ -46,6 +46,88 @@ describe('exportPostman', () => {
     expect(reimported.requests[0].request.url).toBe('https://api.test/users/1')
     expect(reimported.requests[1].request.body).toEqual({ type: 'json', content: '{"name":"Ada"}' })
   })
+
+  it('merges query params into a URL that already has a "?" (no double ?)', () => {
+    const collection = exportPostman('Q', [
+      {
+        path: [],
+        request: {
+          name: 'Search',
+          method: 'get',
+          url: 'https://api.test/s?x=1',
+          query: [{ name: 'q', value: 'a', enabled: true }],
+          headers: [],
+          body: { type: 'none', content: '' }
+        }
+      }
+    ]) as any
+    const raw = collection.item[0].request.url.raw
+    expect(raw).toBe('https://api.test/s?x=1&q=a')
+    expect(raw.split('?')).toHaveLength(2)
+  })
+
+  it('exports an xml body as raw with language xml', () => {
+    const collection = exportPostman('X', [
+      {
+        path: [],
+        request: {
+          name: 'Soap',
+          method: 'post',
+          url: 'https://api.test/soap',
+          query: [],
+          headers: [],
+          body: { type: 'xml', content: '<a/>' }
+        }
+      }
+    ]) as any
+    expect(collection.item[0].request.body).toEqual({
+      mode: 'raw',
+      raw: '<a/>',
+      options: { raw: { language: 'xml' } }
+    })
+  })
+
+  it('exports a graphql body as mode graphql with query and variables', () => {
+    const collection = exportPostman('G', [
+      {
+        path: [],
+        request: {
+          name: 'Gql',
+          method: 'post',
+          url: 'https://api.test/graphql',
+          query: [],
+          headers: [],
+          body: { type: 'graphql', content: '{ me { id } }', variables: '{"id":1}' }
+        }
+      }
+    ]) as any
+    expect(collection.item[0].request.body).toEqual({
+      mode: 'graphql',
+      graphql: { query: '{ me { id } }', variables: '{"id":1}' }
+    })
+  })
+
+  it('round-trips a graphql body back through the Postman importer', () => {
+    const reqs: ImportedRequest[] = [
+      {
+        path: [],
+        request: {
+          name: 'Gql',
+          method: 'post',
+          url: 'https://api.test/graphql',
+          query: [],
+          headers: [],
+          body: { type: 'graphql', content: '{ me { id } }', variables: '{"id":1}' }
+        }
+      }
+    ]
+    const reimported = importPostman(exportPostman('G', reqs))
+    expect(reimported.requests[0].request.body).toEqual({
+      type: 'graphql',
+      content: '{ me { id } }',
+      variables: '{"id":1}'
+    })
+  })
 })
 
 import { exportPostmanEnvironment } from '../../src/core/export'

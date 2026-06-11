@@ -113,4 +113,96 @@ describe('SettingsView extras', () => {
 
     Object.defineProperty(window, 'tiger', { value: undefined, writable: true, configurable: true })
   })
+
+  describe('switch aria attributes', () => {
+    it('Follow redirects switch has role=switch and aria-checked reflecting the setting', () => {
+      render(
+        <SettingsView
+          settings={{ ...fallbackSettings, followRedirects: true }}
+          onChange={vi.fn()}
+        />
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+      const sw = screen.getByRole('switch', { name: 'Follow redirects' })
+      expect(sw).toBeInTheDocument()
+      expect(sw).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('Follow redirects switch has aria-checked=false when disabled', () => {
+      render(
+        <SettingsView
+          settings={{ ...fallbackSettings, followRedirects: false }}
+          onChange={vi.fn()}
+        />
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+      const sw = screen.getByRole('switch', { name: 'Follow redirects' })
+      expect(sw).toHaveAttribute('aria-checked', 'false')
+    })
+
+    it('Analytics switch has role=switch and aria-checked', () => {
+      render(
+        <SettingsView
+          settings={{ ...fallbackSettings, analyticsEnabled: false }}
+          onChange={vi.fn()}
+        />
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Privacy' }))
+      const sw = screen.getByRole('switch', { name: 'Analytics' })
+      expect(sw).toBeInTheDocument()
+      expect(sw).toHaveAttribute('aria-checked', 'false')
+    })
+  })
+
+  describe('passphrase commits on blur, not on every keystroke', () => {
+    it('does not call onChange while typing in certPassphrase', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+
+      const input = screen.getByPlaceholderText('passphrase')
+      fireEvent.change(input, { target: { value: 'secret' } })
+      // onChange should NOT have been called yet for certPassphrase
+      expect(onChange).not.toHaveBeenCalledWith(expect.objectContaining({ certPassphrase: 'secret' }))
+    })
+
+    it('calls onChange with certPassphrase when the input blurs', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+
+      const input = screen.getByPlaceholderText('passphrase')
+      fireEvent.change(input, { target: { value: 'mysecret' } })
+      fireEvent.blur(input)
+      expect(onChange).toHaveBeenCalledWith({ certPassphrase: 'mysecret' })
+    })
+
+    it('calls onChange with certPassphrase when Enter is pressed', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+
+      const input = screen.getByPlaceholderText('passphrase')
+      fireEvent.change(input, { target: { value: 'enterkey' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+      expect(onChange).toHaveBeenCalledWith({ certPassphrase: 'enterkey' })
+    })
+
+    it('syncs local mirror when settings.certPassphrase changes externally', () => {
+      const onChange = vi.fn()
+      const { rerender } = render(
+        <SettingsView settings={fallbackSettings} onChange={onChange} />
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+
+      rerender(
+        <SettingsView
+          settings={{ ...fallbackSettings, certPassphrase: 'external' }}
+          onChange={onChange}
+        />
+      )
+      const input = screen.getByPlaceholderText('passphrase') as HTMLInputElement
+      expect(input.value).toBe('external')
+    })
+  })
 })

@@ -8,10 +8,14 @@ interface Props {
   onClose: () => void
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 export function PaletteModal({ items, onPick, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   const results = useMemo(() => searchItems(items, query, 8), [items, query])
   const clamped = Math.min(index, Math.max(0, results.length - 1))
@@ -22,8 +26,9 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      else if (e.key === 'ArrowDown') {
+      if (e.key === 'Escape') {
+        onClose()
+      } else if (e.key === 'ArrowDown') {
         e.preventDefault()
         setIndex((i) => Math.min(i + 1, results.length - 1))
       } else if (e.key === 'ArrowUp') {
@@ -31,6 +36,27 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
         setIndex((i) => Math.max(i - 1, 0))
       } else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && results[clamped]) {
         onPick(results[clamped].id)
+      } else if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)
+        ).filter((el) => el.offsetParent !== null)
+        if (focusable.length === 0) {
+          e.preventDefault()
+          return
+        }
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault()
+            first.focus()
+          }
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -45,7 +71,13 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="modal palette" role="dialog" aria-label="Go to request">
+      <div
+        ref={dialogRef}
+        className="modal palette"
+        role="dialog"
+        aria-label="Go to request"
+        aria-modal="true"
+      >
         <div className="palette-input">
           <SearchIcon size={15} />
           <input

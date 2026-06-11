@@ -66,7 +66,11 @@ export function tokenizeBlocks(input: string): RawBlock[] {
     }
 
     const header = input.slice(headerStart, i).trim()
-    const [name, subtype] = header.split(':').map((s) => s.trim())
+    // Split only on the FIRST colon so multi-segment subtypes (e.g. Bruno's
+    // `body:graphql:vars`) survive as a single `subtype` of `graphql:vars`.
+    const colon = header.indexOf(':')
+    const name = (colon === -1 ? header : header.slice(0, colon)).trim()
+    const subtype = colon === -1 ? undefined : header.slice(colon + 1).trim() || undefined
     if (!name || !/^[A-Za-z][\w-]*$/.test(name)) {
       throw new TigerParseError(`Invalid block name "${header}"`)
     }
@@ -74,9 +78,16 @@ export function tokenizeBlocks(input: string): RawBlock[] {
     i++ // consume '{'
     const contentStart = i
     let depth = 1
+    let inString = false // inside a "..." JSON string literal
     while (i < n) {
       const c = input[i]
-      if (c === '{') depth++
+      if (inString) {
+        // Honor backslash escapes so an escaped quote does not end the string.
+        if (c === '\\') i++
+        else if (c === '"') inString = false
+      } else if (c === '"') {
+        inString = true
+      } else if (c === '{') depth++
       else if (c === '}') {
         depth--
         if (depth === 0) break
