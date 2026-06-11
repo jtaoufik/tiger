@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "url": "https://tiger.62-238-17-135.sslip.io/#download",
+  "notes": [
+    "New tiger mascot across the app",
+    "JSON syntax highlighting with Pretty/Raw and word wrap",
+    "Command palette: Cmd/Ctrl+K jumps to any request",
+    "Duplicate requests, cancel in-flight sends",
+    "Unresolved variable warnings and a JSON format button",
+    "Resizable panes, remembered between sessions",
+    "Built-in update checker with changelog"
+  ]
+}

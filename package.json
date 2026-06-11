@@ -1,6 +1,6 @@
 {
   "name": "tiger-api-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
   "author": "jtaoufik",
   "license": "MIT",
@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.0",
+    "firebase": "^12.14.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "yaml": "^2.6.1",
@@ -64,34 +65,62 @@
       "buildResources": "build",
       "output": "release"
     },
-    "files": ["out/**", "package.json"],
+    "files": [
+      "out/**",
+      "package.json"
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
       "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] },
-        { "target": "zip", "arch": ["arm64", "x64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ]
     },
     "win": {
       "icon": "build/icon.png",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
-      "artifactName": "Tiger-Setup-${version}-${arch}.${ext}",
+      "artifactName": "Tiger-Setup-${version}-windows-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
     "portable": {
-      "artifactName": "Tiger-Portable-${version}-${arch}.${ext}"
+      "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}"
     },
     "linux": {
       "icon": "build/icon.png",
       "category": "Development",
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     }
   }
 }

@@ -145,6 +145,40 @@ export const UploadIcon = (p: IconProps) => (
   </Base>
 )
 
+export const GitBranchIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="6.5" cy="6" r="2.6" />
+    <circle cx="6.5" cy="18" r="2.6" />
+    <circle cx="17.5" cy="8" r="2.6" />
+    <path d="M6.5 8.6v6.8M17.5 10.6c0 3.2-3 4.4-8.2 4.7" />
+  </Base>
+)
+
+export const RefreshIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M20 12a8 8 0 1 1-2.4-5.7M20 3.5V8h-4.5" />
+  </Base>
+)
+
+export const ArrowUpIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 20V4M5.5 10.5L12 4l6.5 6.5" />
+  </Base>
+)
+
+export const ArrowDownIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 4v16M5.5 13.5L12 20l6.5-6.5" />
+  </Base>
+)
+
+export const WrapIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 5.5h16M4 11h12.5a3.25 3.25 0 0 1 0 6.5h-3M4 17.5h5" />
+    <path d="M16 14.5l-2.5 2.5 2.5 2.5" />
+  </Base>
+)
+
 export const SaveIcon = (p: IconProps) => (
   <Base {...p}>
     <path d="M5 3.5h11l3.5 3.5v11a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18V5A1.5 1.5 0 0 1 5 3.5z" />

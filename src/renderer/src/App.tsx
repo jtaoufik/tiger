@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { parseRequest, serializeRequest } from '@core/tigerFormat'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
 import { buildRequest, type BuiltRequest } from '@core/request'
-import { envToVars } from '@core/interpolate'
+import { envToVars, findMissingVars } from '@core/interpolate'
+import type { SearchItem } from '@core/search'
 import { exportPostman } from '@core/export'
 import { toCurl } from '@core/codegen'
 import { events } from '@core/analytics'
@@ -13,7 +14,8 @@ import type { Settings } from '../../main/settings'
 import type { HistoryEntry } from '../../main/history'
 import type { ImportKind } from '../../main/importers'
 import { Logo } from './Logo'
-import { Sidebar, type SidebarEntry } from './components/Sidebar'
+import { Sidebar, type SidebarEntry, type SyncState } from './components/Sidebar'
+import { GitModal } from './components/GitModal'
 import { RequestEditor } from './components/RequestEditor'
 import { ResponsePanel } from './components/ResponsePanel'
 import { SettingsView } from './components/SettingsView'
@@ -22,8 +24,27 @@ import { CodeModal } from './components/CodeModal'
 import { HistoryModal } from './components/HistoryModal'
 import { EnvironmentModal } from './components/EnvironmentModal'
 import { ConfirmModal } from './components/ConfirmModal'
-import { CheckIcon, ClockIcon, GearIcon, PencilIcon } from './components/Icons'
-import { runRequest } from './runRequest'
+import { ContextMenu, type MenuItem } from './components/ContextMenu'
+import { PaletteModal } from './components/PaletteModal'
+import { Resizer } from './components/Resizer'
+import { UpdateModal } from './components/UpdateModal'
+import type { UpdateInfo } from '@core/version'
+import {
+  CheckIcon,
+  ClockIcon,
+  CodeIcon,
+  CopyIcon,
+  FileIcon,
+  FolderOpenIcon,
+  GearIcon,
+  GitBranchIcon,
+  PencilIcon,
+  PlusIcon,
+  SwapIcon,
+  TrashIcon
+} from './components/Icons'
+import { cancelRequest, runRequest } from './runRequest'
+import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
 import { sampleEnvironment, sampleRequests } from './sample'
 
 interface ResponseState {
@@ -85,10 +106,52 @@ const DEMO_COLLECTION: CollectionState = {
   environments: [{ name: 'Demo' }]
 }
 
+/** localStorage is unavailable in some test environments; never throw. */
+function readStored(key: string): string | null {
+  try {
+    return window.localStorage?.getItem(key) ?? null
+  } catch {
+    return null
+  }
+}
+
+function writeStored(key: string, value: string): void {
+  try {
+    window.localStorage?.setItem(key, value)
+  } catch {
+    /* unavailable */
+  }
+}
+
 function resolveDark(theme: Settings['theme']): boolean {
   if (theme === 'dark') return true
   if (theme === 'light') return false
   return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/**
+ * The text that will actually be interpolated and sent: enabled rows only, no
+ * request name, body only for methods that send one. Used for the unresolved
+ * variable warning so disabled rows don't false-positive.
+ */
+function sentSurface(req: TigerRequest): string {
+  const parts = [req.url]
+  for (const h of req.headers) if (h.enabled !== false) parts.push(h.name, h.value)
+  for (const q of req.query) if (q.enabled !== false) parts.push(q.name, q.value)
+  if (req.body.type !== 'none' && !['get', 'head'].includes(req.method)) {
+    if (req.body.type === 'form') {
+      parts.push(
+        req.body.content
+          .split('\n')
+          .filter((l) => !l.trim().startsWith('~'))
+          .join('\n')
+      )
+    } else {
+      parts.push(req.body.content)
+    }
+  }
+  if (req.auth && req.auth.type !== 'none') parts.push(JSON.stringify(req.auth))
+  return parts.join('\n')
 }
 
 /** Browser-preview fallback when the Electron save dialog is unavailable. */
@@ -125,7 +188,24 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [codeBuilt, setCodeBuilt] = useState<BuiltRequest | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [appVersion, setAppVersion] = useState('dev')
+  const [update, setUpdate] = useState<UpdateInfo | null>(null)
+  const [updateModalOpen, setUpdateModalOpen] = useState(false)
+  const [gitStates, setGitStates] = useState<Record<string, SyncState>>({})
+  const [gitColId, setGitColId] = useState<string | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
+  const [sidebarW, setSidebarW] = useState(() => Number(readStored('tiger.sidebarW')) || 264)
+  const [editorH, setEditorH] = useState<number | null>(() => {
+    const stored = Number(readStored('tiger.editorH'))
+    return stored > 0 ? stored : null
+  })
+  const sidebarBase = useRef(sidebarW)
+  const editorBase = useRef<number | null>(null)
+  const mainRef = useRef<HTMLDivElement>(null)
   const importCount = useRef(0)
+  /** Last-saved serialization per disk request, for the dirty indicator. */
+  const savedText = useRef<Record<string, string>>({})
   /** Guards async continuations against requests deleted mid-flight. */
   const deletedIds = useRef(new Set<string>())
   /** Monotonic token so a stale environment file read can't win a race. */
@@ -138,8 +218,18 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    window.tiger?.getSettings().then(setSettings)
-    window.tiger?.track?.(events.appOpened())
+    window.tiger?.getSettings().then((s) => {
+      setSettings(s)
+      setAnalyticsEnabled(s.analyticsEnabled)
+    })
+    window.tiger?.version?.().then(setAppVersion)
+    initAnalytics().then(() => trackEvent(events.appOpened()))
+    window.tiger?.checkUpdate?.().then((info) => {
+      if (info) {
+        setUpdate(info)
+        setUpdateModalOpen(true)
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -157,8 +247,30 @@ export default function App() {
 
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => ({ ...prev, ...patch }))
+    if (patch.analyticsEnabled !== undefined) setAnalyticsEnabled(patch.analyticsEnabled)
     window.tiger?.setSettings(patch).then(setSettings)
   }, [])
+
+  const refreshGitStates = useCallback(async () => {
+    if (!window.tiger?.git) return
+    const available = await window.tiger.git.check()
+    if (!available.ok) return
+    const diskCollections = collections.filter((c) => c.root)
+    const states = await Promise.all(
+      diskCollections.map(async (c) => {
+        const s = await window.tiger!.git.status(c.root!)
+        return [c.id, { isRepo: s.isRepo, dirtyCount: s.dirtyCount, ahead: s.ahead, behind: s.behind }] as const
+      })
+    )
+    setGitStates(Object.fromEntries(states))
+  }, [collections])
+
+  // Sync indicators: refresh when collections change and on a slow heartbeat.
+  useEffect(() => {
+    refreshGitStates()
+    const timer = setInterval(refreshGitStates, 60000)
+    return () => clearInterval(timer)
+  }, [refreshGitStates])
 
   const active = activeId ? requestsById[activeId] : undefined
   const activeCollection = activeId
@@ -171,6 +283,7 @@ export default function App() {
       if (pathById[id] && window.tiger) {
         try {
           const parsed = parseRequest(await window.tiger.readFile(pathById[id]))
+          savedText.current[id] = serializeRequest(parsed)
           setRequestsById((prev) => ({ ...prev, [id]: parsed }))
           return parsed
         } catch {
@@ -215,11 +328,11 @@ export default function App() {
     setSendingIds((prev) => new Set(prev).add(id))
     setResponses((prev) => ({ ...prev, [id]: { loading: true } }))
     try {
-      const data = await runRequest(active, activeEnv, settings.timeoutMs)
+      const data = await runRequest(active, activeEnv, settings.timeoutMs, id)
       if (!deletedIds.current.has(id)) {
         setResponses((prev) => ({ ...prev, [id]: { loading: false, data } }))
       }
-      window.tiger?.track?.(events.requestSent(active.method, data.status, data.ok))
+      trackEvent(events.requestSent(active.method, data.status, data.ok))
     } catch (e) {
       if (!deletedIds.current.has(id)) {
         setResponses((prev) => ({ ...prev, [id]: { loading: false, error: (e as Error).message } }))
@@ -237,25 +350,36 @@ export default function App() {
     if (!activeId || !active) return
     const path = pathById[activeId]
     if (path && window.tiger) {
-      await window.tiger.writeFile(path, serializeRequest(active))
+      const text = serializeRequest(active)
+      await window.tiger.writeFile(path, text)
+      savedText.current[activeId] = text
       toast('Saved')
     }
   }, [activeId, active, pathById, toast])
 
+  const cancelActive = useCallback(() => {
+    if (activeId) cancelRequest(activeId)
+  }, [activeId])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
+      // While the palette is open it owns the keyboard, except the toggle.
+      if (paletteOpen && e.key.toLowerCase() !== 'k') return
       if (e.key.toLowerCase() === 's') {
         e.preventDefault()
         save()
       } else if (e.key === 'Enter') {
         e.preventDefault()
         send()
+      } else if (e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((open) => !open)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [save, send])
+  }, [save, send, paletteOpen])
 
   const openCollection = useCallback(async () => {
     const opened = await window.tiger?.openCollection()
@@ -311,7 +435,7 @@ export default function App() {
         setModal('none')
         if (entries[0]) setActiveId(entries[0].id)
         toast(`Imported ${entries.length} requests from ${result.name}`)
-        window.tiger?.track?.(events.collectionImported(result.source, result.requests.length))
+        trackEvent(events.collectionImported(result.source, result.requests.length))
       })
     },
     [toast]
@@ -378,7 +502,9 @@ export default function App() {
       if (col.root && window.tiger) {
         const path = `${col.root}/new-request-${Date.now()}.tiger`
         id = `${col.id}${SEP}${path}`
-        await window.tiger.writeFile(path, serializeRequest(request))
+        const text = serializeRequest(request)
+        await window.tiger.writeFile(path, text)
+        savedText.current[id] = text
         setPathById((prev) => ({ ...prev, [id]: path }))
       } else {
         id = `${col.id}${SEP}new-${Date.now()}`
@@ -401,6 +527,51 @@ export default function App() {
       setView('workspace')
     },
     [collections]
+  )
+
+  const duplicateRequest = useCallback(
+    async (entryId: string) => {
+      const source = requestsById[entryId] ?? (await loadRequest(entryId))
+      const col = collections.find((c) => c.entries.some((e) => e.id === entryId))
+      const entry = col?.entries.find((e) => e.id === entryId)
+      if (!source || !col || !entry) return
+
+      const clone: TigerRequest = JSON.parse(JSON.stringify({ ...source, seq: undefined }))
+      clone.name = `${source.name} copy`
+
+      let id: string
+      const sourcePath = pathById[entryId]
+      if (col.root && window.tiger && sourcePath) {
+        const cut = Math.max(sourcePath.lastIndexOf('/'), sourcePath.lastIndexOf('\\'))
+        const dir = sourcePath.slice(0, cut)
+        const path = `${dir}/copy-${Date.now()}.tiger`
+        id = `${col.id}${SEP}${path}`
+        const text = serializeRequest(clone)
+        await window.tiger.writeFile(path, text)
+        savedText.current[id] = text
+        setPathById((prev) => ({ ...prev, [id]: path }))
+      } else {
+        id = `${col.id}${SEP}dup-${Date.now()}`
+      }
+      setRequestsById((prev) => ({ ...prev, [id]: clone }))
+      setCollections((prev) =>
+        prev.map((c) =>
+          c.id === col.id
+            ? {
+                ...c,
+                entries: [
+                  ...c.entries,
+                  { id, name: clone.name, method: clone.method, folderPath: entry.folderPath }
+                ]
+              }
+            : c
+        )
+      )
+      setActiveId(id)
+      setView('workspace')
+      toast('Request duplicated')
+    },
+    [requestsById, loadRequest, collections, pathById, toast]
   )
 
   const deleteRequest = useCallback(
@@ -504,7 +675,96 @@ export default function App() {
     setHistory([])
   }, [])
 
+  const copyAsCurl = useCallback(
+    async (entryId: string) => {
+      const req = requestsById[entryId] ?? (await loadRequest(entryId))
+      if (!req) return
+      try {
+        await navigator.clipboard.writeText(toCurl(buildRequest(req, envToVars(activeEnv))))
+        toast('curl command copied')
+      } catch {
+        toast('Copy failed')
+      }
+    },
+    [requestsById, loadRequest, activeEnv, toast]
+  )
+
+  const openRequestMenu = useCallback(
+    (entryId: string, x: number, y: number) => {
+      const items: MenuItem[] = [
+        { label: 'Open', icon: <FileIcon size={14} />, onClick: () => selectRequest(entryId) },
+        {
+          label: 'Duplicate',
+          icon: <CopyIcon size={14} />,
+          onClick: () => duplicateRequest(entryId)
+        },
+        { label: 'Copy as cURL', icon: <CodeIcon size={14} />, onClick: () => copyAsCurl(entryId) },
+        'sep',
+        {
+          label: 'Delete…',
+          icon: <TrashIcon size={14} />,
+          danger: true,
+          onClick: () => setConfirmDeleteId(entryId)
+        }
+      ]
+      if (pathById[entryId] && window.tiger?.reveal) {
+        items.splice(3, 0, {
+          label: 'Reveal in file manager',
+          icon: <FolderOpenIcon size={14} />,
+          onClick: () => window.tiger!.reveal(pathById[entryId])
+        })
+      }
+      setCtxMenu({ x, y, items })
+    },
+    [selectRequest, duplicateRequest, copyAsCurl, pathById]
+  )
+
+  const openCollectionMenu = useCallback(
+    (colId: string, x: number, y: number) => {
+      const col = collections.find((c) => c.id === colId)
+      if (!col) return
+      const items: MenuItem[] = [
+        { label: 'New request', icon: <PlusIcon size={14} />, onClick: () => newRequest(colId) },
+        {
+          label: 'Import / Export…',
+          icon: <SwapIcon size={14} />,
+          onClick: () => setModal('io')
+        }
+      ]
+      if (col.root) {
+        items.push(
+          {
+            label: 'Git sync…',
+            icon: <GitBranchIcon size={14} />,
+            onClick: () => setGitColId(colId)
+          },
+          {
+            label: 'Reveal in file manager',
+            icon: <FolderOpenIcon size={14} />,
+            onClick: () => window.tiger?.reveal?.(col.root!)
+          }
+        )
+      }
+      items.push('sep', {
+        label: 'Close collection',
+        icon: <TrashIcon size={14} />,
+        danger: true,
+        onClick: () => closeCollection(colId)
+      })
+      setCtxMenu({ x, y, items })
+    },
+    [collections, newRequest, closeCollection]
+  )
+
   const envCollections = collections.filter((c) => c.environments.length > 0)
+
+  const activeSerialized = active ? serializeRequest(active) : ''
+  const dirty = !!(activeId && pathById[activeId] && savedText.current[activeId] !== activeSerialized)
+  const missingVars = active ? findMissingVars(sentSurface(active), envToVars(activeEnv)) : []
+
+  const paletteItems: SearchItem[] = collections.flatMap((c) =>
+    c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
+  )
 
   return (
     <div className="app">
@@ -514,6 +774,15 @@ export default function App() {
           Tiger
         </span>
         <span className="spacer" />
+        {update && (
+          <button
+            className="btn ghost update-chip"
+            title={`Update to v${update.latest}`}
+            onClick={() => setUpdateModalOpen(true)}
+          >
+            Update v{update.latest}
+          </button>
+        )}
         <select
           className="env-select"
           value={activeEnvKey ?? ''}
@@ -555,30 +824,62 @@ export default function App() {
         </button>
       </div>
 
-      <div className="body">
+      <div
+        className="body"
+        style={{ gridTemplateColumns: `${sidebarW}px 6px minmax(0, 1fr)`, gap: 0 }}
+      >
         <Sidebar
           collections={collections}
           activeId={activeId}
+          syncStates={gitStates}
           onSelect={selectRequest}
           onOpenCollection={openCollection}
           onImportExport={() => setModal('io')}
           onNewRequest={newRequest}
           onCloseCollection={closeCollection}
           onDeleteRequest={setConfirmDeleteId}
+          onDuplicateRequest={duplicateRequest}
+          onGit={setGitColId}
+          onRequestMenu={openRequestMenu}
+          onCollectionMenu={openCollectionMenu}
+        />
+
+        <Resizer
+          direction="col"
+          onDrag={(delta) =>
+            setSidebarW(Math.min(440, Math.max(200, sidebarBase.current + delta)))
+          }
+          onEnd={() =>
+            setSidebarW((w) => {
+              sidebarBase.current = w
+              writeStored('tiger.sidebarW', String(w))
+              return w
+            })
+          }
         />
 
         {view === 'settings' ? (
           <SettingsView settings={settings} onChange={updateSettings} />
         ) : (
-          <div className="main">
+          <div
+            className="main"
+            ref={mainRef}
+            style={{
+              gridTemplateRows: editorH ? `${editorH}px 6px minmax(120px, 1fr)` : '1fr 6px 1fr',
+              gap: 0
+            }}
+          >
             {active ? (
               <RequestEditor
                 key={activeId}
                 request={active}
                 sending={!!activeId && sendingIds.has(activeId)}
                 diskBacked={!!(activeId && pathById[activeId])}
+                dirty={dirty}
+                missingVars={missingVars}
                 onChange={updateActive}
                 onSend={send}
+                onCancel={cancelActive}
                 onCode={openCode}
                 onSave={save}
               />
@@ -591,6 +892,24 @@ export default function App() {
                 </div>
               </section>
             )}
+            <Resizer
+              direction="row"
+              onDrag={(delta) => {
+                if (editorBase.current === null) {
+                  editorBase.current =
+                    mainRef.current?.firstElementChild?.getBoundingClientRect().height ?? 300
+                }
+                const max = (mainRef.current?.getBoundingClientRect().height ?? 800) - 160
+                setEditorH(Math.min(max, Math.max(140, editorBase.current + delta)))
+              }}
+              onEnd={() =>
+                setEditorH((h) => {
+                  editorBase.current = h
+                  if (h) writeStored('tiger.editorH', String(h))
+                  return h
+                })
+              }
+            />
             <ResponsePanel state={activeId ? responses[activeId] : undefined} />
           </div>
         )}
@@ -611,6 +930,46 @@ export default function App() {
       )}
       {modal === 'env' && (
         <EnvironmentModal env={activeEnv} onChange={updateEnvVars} onClose={() => setModal('none')} />
+      )}
+      {gitColId &&
+        (() => {
+          const col = collections.find((c) => c.id === gitColId)
+          if (!col) return null
+          return (
+            <GitModal
+              collectionName={col.name}
+              root={col.root ?? ''}
+              onToast={toast}
+              onClose={() => {
+                setGitColId(null)
+                refreshGitStates()
+              }}
+            />
+          )
+        })()}
+      {ctxMenu && (
+        <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(null)} />
+      )}
+      {paletteOpen && (
+        <PaletteModal
+          items={paletteItems}
+          onPick={(id) => {
+            selectRequest(id)
+            setPaletteOpen(false)
+          }}
+          onClose={() => setPaletteOpen(false)}
+        />
+      )}
+      {updateModalOpen && update && (
+        <UpdateModal
+          info={update}
+          currentVersion={appVersion}
+          onDownload={() => {
+            window.tiger?.openExternal?.(update.url)
+            setUpdateModalOpen(false)
+          }}
+          onClose={() => setUpdateModalOpen(false)}
+        />
       )}
       {confirmDeleteId && (
         <ConfirmModal

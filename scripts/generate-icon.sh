@@ -6,10 +6,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build
 
-CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-"$CHROME" --headless=new --screenshot="build/icon.png" \
-  --window-size=1024,1024 --default-background-color=00000000 \
-  --hide-scrollbars "file://$PWD/scripts/icon.html" 2>/dev/null
+if [[ -f scripts/icon-source.png ]]; then
+  # Raster artwork is the source of truth when present.
+  cp scripts/icon-source.png build/icon.png
+else
+  CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  "$CHROME" --headless=new --screenshot="build/icon.png" \
+    --window-size=1024,1024 --default-background-color=00000000 \
+    --hide-scrollbars "file://$PWD/scripts/icon.html" 2>/dev/null
+fi
 
 if [[ "$(uname)" == "Darwin" ]]; then
   rm -rf build/icon.iconset

@@ -181,4 +181,44 @@ describe('App (browser preview, no Electron bridge)', () => {
     const sidebar = document.querySelector('.sidebar')!
     expect(within(sidebar as HTMLElement).getByText('All posts')).toBeInTheDocument()
   })
+
+  it('opens the command palette with cmd+k and jumps to a request', () => {
+    render(<App />)
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    const input = screen.getByPlaceholderText('Go to request…')
+    fireEvent.change(input, { target: { value: 'users' } })
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(screen.queryByPlaceholderText('Go to request…')).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('List users')).toBeInTheDocument()
+  })
+
+  it('duplicates a request from the sidebar', async () => {
+    render(<App />)
+    const row = screen.getByText('Get post').closest('.tree-row')!
+    fireEvent.click(within(row as HTMLElement).getByTitle('Duplicate request'))
+    expect(await screen.findByText('Get post copy')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Get post copy')).toBeInTheDocument()
+  })
+
+  it('warns about unresolved variables in the active request', () => {
+    render(<App />)
+    const url = document.querySelector('.url-input') as HTMLInputElement
+    fireEvent.change(url, { target: { value: '{{nope}}/x' } })
+    expect(screen.getByText(/Unresolved variables/)).toBeInTheDocument()
+    expect(screen.getByText(/\{\{nope\}\}/)).toBeInTheDocument()
+  })
+
+  it('formats a JSON body and flags invalid JSON', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText(/^Body/))
+    fireEvent.click(screen.getByRole('button', { name: 'json' }))
+    const area = document.querySelector('.code-area') as HTMLTextAreaElement
+    fireEvent.change(area, { target: { value: '{"a":1' } })
+    expect(screen.getByText('Invalid JSON')).toBeInTheDocument()
+    fireEvent.change(area, { target: { value: '{"a":1}' } })
+    fireEvent.click(screen.getByText('Format'))
+    expect((document.querySelector('.code-area') as HTMLTextAreaElement).value).toBe(
+      '{\n  "a": 1\n}'
+    )
+  })
 })

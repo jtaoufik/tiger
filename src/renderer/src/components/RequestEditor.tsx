@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HTTP_METHODS, type BodyType, type KeyValue, type TigerRequest } from '@core/types'
+import { formatJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
 import { AuthEditor } from './AuthEditor'
 import { CodeIcon, SaveIcon } from './Icons'
@@ -8,8 +9,11 @@ interface Props {
   request: TigerRequest
   sending: boolean
   diskBacked: boolean
+  dirty: boolean
+  missingVars: string[]
   onChange: (request: TigerRequest) => void
   onSend: () => void
+  onCancel: () => void
   onCode: () => void
   onSave: () => void
 }
@@ -22,8 +26,11 @@ export function RequestEditor({
   request,
   sending,
   diskBacked,
+  dirty,
+  missingVars,
   onChange,
   onSend,
+  onCancel,
   onCode,
   onSave
 }: Props) {
@@ -48,8 +55,13 @@ export function RequestEditor({
           onChange={(e) => set({ name: e.target.value })}
         />
         {diskBacked && (
-          <button className="icon-btn" title="Save (⌘S)" onClick={onSave}>
+          <button
+            className="icon-btn save-btn"
+            title={dirty ? 'Unsaved changes — Save (⌘S)' : 'Save (⌘S)'}
+            onClick={onSave}
+          >
             <SaveIcon />
+            {dirty && <span className="dirty-dot" />}
           </button>
         )}
         <button className="icon-btn" title="Generate code" onClick={onCode}>
@@ -80,10 +92,22 @@ export function RequestEditor({
             if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) onSend()
           }}
         />
-        <button className="btn accent" disabled={sending} onClick={onSend} title="Send (⌘↵)">
-          {sending ? 'Sending…' : 'Send'}
-        </button>
+        {sending ? (
+          <button className="btn danger" onClick={onCancel} title="Cancel request">
+            Cancel
+          </button>
+        ) : (
+          <button className="btn accent" onClick={onSend} title="Send (⌘↵)">
+            Send
+          </button>
+        )}
       </div>
+      {missingVars.length > 0 && (
+        <div className="warn-row" role="status">
+          Unresolved variables: {missingVars.map((v) => `{{${v}}}`).join(' ')}
+          <span className="warn-hint">define them in the active environment</span>
+        </div>
+      )}
 
       <div className="tabs">
         <button className={`tab ${tab === 'params' ? 'active' : ''}`} onClick={() => setTab('params')}>
@@ -120,16 +144,36 @@ export function RequestEditor({
         )}
         {tab === 'body' && (
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div className="seg" style={{ alignSelf: 'flex-start' }}>
-              {BODY_TYPES.map((t) => (
-                <button
-                  key={t}
-                  className={request.body.type === t ? 'on' : ''}
-                  onClick={() => set({ body: { ...request.body, type: t } })}
-                >
-                  {t}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="seg">
+                {BODY_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    className={request.body.type === t ? 'on' : ''}
+                    onClick={() => set({ body: { ...request.body, type: t } })}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              {request.body.type === 'json' && request.body.content.trim() && (
+                <>
+                  {!formatJsonText(request.body.content).ok &&
+                    !request.body.content.includes('{{') && (
+                      <span className="json-bad">Invalid JSON</span>
+                    )}
+                  <button
+                    className="btn ghost"
+                    style={{ marginLeft: 'auto', padding: '5px 11px', fontSize: 12.5 }}
+                    onClick={() => {
+                      const result = formatJsonText(request.body.content)
+                      if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
+                    }}
+                  >
+                    Format
+                  </button>
+                </>
+              )}
             </div>
             {request.body.type === 'none' && (
               <div style={{ color: 'var(--text-dim)' }}>This request has no body.</div>

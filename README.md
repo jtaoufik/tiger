@@ -5,7 +5,7 @@
 <h1 align="center">Tiger</h1>
 
 <p align="center">
-  A free, local-first API client with a frosted glass interface.<br/>
+  A local-first API client with a frosted glass interface.<br/>
   Your collections are plain text files on disk. No cloud, no account, no lock-in.
 </p>
 
@@ -26,7 +26,7 @@ Tiger is an offline API client in the spirit of [Bruno](https://www.usebruno.com
 - **Company-grade network options.** Proxy (HTTP/HTTPS/SOCKS), SSL verification toggle, redirect policy, configurable timeout.
 - **MCP server.** Expose a collection to Claude or any MCP client: list, read and run requests over the Model Context Protocol.
 - **Cross-platform.** macOS and Windows (Linux builds too) from one Electron codebase.
-- **Free.** MIT licensed.
+- **Free to start.** Paid team features may come later.
 
 ## The `.tiger` format
 
@@ -126,4 +126,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: tests first, keep cor
 
 ## License
 
-[MIT](LICENSE)
+Proprietary. Free to download and use during the preview; see [LICENSE](LICENSE).

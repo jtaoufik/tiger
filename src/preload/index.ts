@@ -7,6 +7,8 @@ import type { HistoryEntry } from '../main/history'
 import type { ImportKind } from '../main/importers'
 import type { ImportResult } from '../core/import'
 import type { AnalyticsEvent } from '../core/analytics'
+import type { UpdateInfo } from '../core/version'
+import type { GitActionResult, GitAvailability, GitStatus } from '../main/git'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
@@ -26,8 +28,9 @@ const api = {
   deleteFile: (path: string): Promise<boolean> => ipcRenderer.invoke('tiger:deleteFile', path),
   listEnvironments: (root: string): Promise<EnvironmentRef[]> =>
     ipcRenderer.invoke('tiger:listEnvironments', root),
-  send: (built: BuiltRequest, timeoutMs: number): Promise<RawResponse> =>
-    ipcRenderer.invoke('tiger:send', built, timeoutMs),
+  send: (built: BuiltRequest, timeoutMs: number, cancelKey?: string): Promise<RawResponse> =>
+    ipcRenderer.invoke('tiger:send', built, timeoutMs, cancelKey),
+  cancelSend: (key: string): Promise<boolean> => ipcRenderer.invoke('tiger:cancelSend', key),
   oauthToken: (auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap): Promise<string> =>
     ipcRenderer.invoke('tiger:oauthToken', auth, vars),
   importCollection: (kind: ImportKind): Promise<ImportResult | null> =>
@@ -39,7 +42,21 @@ const api = {
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('tiger:getSettings'),
   setSettings: (patch: Partial<Settings>): Promise<Settings> =>
     ipcRenderer.invoke('tiger:setSettings', patch),
-  track: (event: AnalyticsEvent): Promise<void> => ipcRenderer.invoke('tiger:track', event)
+  track: (event: AnalyticsEvent): Promise<void> => ipcRenderer.invoke('tiger:track', event),
+  version: (): Promise<string> => ipcRenderer.invoke('tiger:version'),
+  git: {
+    check: (): Promise<GitAvailability> => ipcRenderer.invoke('tiger:git:check'),
+    status: (root: string): Promise<GitStatus> => ipcRenderer.invoke('tiger:git:status', root),
+    diff: (root: string): Promise<string> => ipcRenderer.invoke('tiger:git:diff', root),
+    commit: (root: string, message: string): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:commit', root, message),
+    pull: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:pull', root),
+    push: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:push', root),
+    init: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:init', root)
+  },
+  checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),
+  reveal: (path: string): Promise<void> => ipcRenderer.invoke('tiger:reveal', path)
 }
 
 contextBridge.exposeInMainWorld('tiger', api)

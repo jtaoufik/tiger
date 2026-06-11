@@ -142,36 +142,6 @@ export function SettingsView({ settings, onChange }: Props) {
         </button>
       </div>
 
-      {settings.analyticsEnabled && (
-        <>
-          <div className="setting-row">
-            <div>
-              <div className="label">GA4 Measurement ID</div>
-              <div className="desc">Your own GA4 stream (e.g. G-XXXXXXX). Leave blank to disable.</div>
-            </div>
-            <input
-              className="num-input"
-              style={{ width: 160 }}
-              value={settings.measurementId ?? ''}
-              onChange={(e) => onChange({ measurementId: e.target.value })}
-            />
-          </div>
-          <div className="setting-row">
-            <div>
-              <div className="label">GA4 API secret</div>
-              <div className="desc">Measurement Protocol API secret for the stream above.</div>
-            </div>
-            <input
-              className="num-input"
-              style={{ width: 160 }}
-              type="password"
-              value={settings.apiSecret ?? ''}
-              onChange={(e) => onChange({ apiSecret: e.target.value })}
-            />
-          </div>
-        </>
-      )}
-
       <div
         style={{
           display: 'flex',
@@ -184,7 +154,7 @@ export function SettingsView({ settings, onChange }: Props) {
         <Logo size={34} rounded />
         <div>
           <div style={{ fontWeight: 600, color: 'var(--text)' }}>Tiger</div>
-          <div style={{ fontSize: 12 }}>A free, local-first, open API client.</div>
+          <div style={{ fontSize: 12 }}>A local-first API client for teams.</div>
         </div>
       </div>
       </div>

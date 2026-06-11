@@ -3,9 +3,17 @@ import { randomUUID } from 'node:crypto'
 import { basename, join } from 'node:path'
 import { readCollection, readEnvironments } from './collection'
 import { loadSettings, saveSettings, type Settings } from './settings'
-import { applyNetworkSettings, getOAuthToken, sendHttp, track } from './http'
+import {
+  applyNetworkSettings,
+  cancelSend,
+  checkForUpdate,
+  getOAuthToken,
+  sendHttp,
+  track
+} from './http'
 import { importFromDisk, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
+import { gitAvailable, gitCommitAll, gitDiff, gitInit, gitPull, gitPush, gitStatus } from './git'
 import type { BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
@@ -37,7 +45,7 @@ function createWindow(): void {
   win.once('ready-to-show', () => win.show())
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    if (/^https?:\/\//.test(url)) shell.openExternal(url)
     return { action: 'deny' }
   })
 
@@ -87,8 +95,10 @@ function registerIpc(): void {
 
   ipcMain.handle('tiger:listEnvironments', async (_e, root: string) => readEnvironments(root))
 
-  ipcMain.handle('tiger:send', async (_e, built: BuiltRequest, timeoutMs: number) => {
-    const res = await sendHttp(built, timeoutMs)
+  ipcMain.handle('tiger:cancelSend', (_e, key: string) => cancelSend(key))
+
+  ipcMain.handle('tiger:send', async (_e, built: BuiltRequest, timeoutMs: number, key?: string) => {
+    const res = await sendHttp(built, timeoutMs, key)
     appendHistory({
       id: randomUUID(),
       at: Date.now(),
@@ -123,6 +133,23 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('tiger:track', (_e, event: AnalyticsEvent) => track(event))
+
+  ipcMain.handle('tiger:version', () => app.getVersion())
+  ipcMain.handle('tiger:checkUpdate', () => checkForUpdate(app.getVersion()))
+
+  ipcMain.handle('tiger:git:check', () => gitAvailable())
+  ipcMain.handle('tiger:git:status', (_e, root: string) => gitStatus(root))
+  ipcMain.handle('tiger:git:diff', (_e, root: string) => gitDiff(root))
+  ipcMain.handle('tiger:git:commit', (_e, root: string, message: string) =>
+    gitCommitAll(root, message)
+  )
+  ipcMain.handle('tiger:git:pull', (_e, root: string) => gitPull(root))
+  ipcMain.handle('tiger:git:push', (_e, root: string) => gitPush(root))
+  ipcMain.handle('tiger:git:init', (_e, root: string) => gitInit(root))
+  ipcMain.handle('tiger:openExternal', (_e, url: string) => {
+    if (/^https?:\/\//.test(url)) shell.openExternal(url)
+  })
+  ipcMain.handle('tiger:reveal', (_e, path: string) => shell.showItemInFolder(path))
 }
 
 app.whenReady().then(() => {

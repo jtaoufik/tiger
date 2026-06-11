@@ -2,15 +2,27 @@ import { useMemo, useState } from 'react'
 import type { HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
   ChevronIcon,
   CloseIcon,
+  CopyIcon,
   FolderIcon,
   FolderOpenIcon,
+  GitBranchIcon,
   PlusIcon,
   SearchIcon,
   SwapIcon,
   TrashIcon
 } from './Icons'
+
+export interface SyncState {
+  isRepo: boolean
+  dirtyCount: number
+  ahead: number
+  behind: number
+}
 
 export interface SidebarEntry {
   id: string
@@ -22,18 +34,24 @@ export interface SidebarEntry {
 export interface SidebarCollection {
   id: string
   name: string
+  root?: string
   entries: SidebarEntry[]
 }
 
 interface Props {
   collections: SidebarCollection[]
   activeId: string | null
+  syncStates: Record<string, SyncState>
   onSelect: (id: string) => void
   onOpenCollection: () => void
   onImportExport: () => void
   onNewRequest: (collectionId: string) => void
   onCloseCollection: (collectionId: string) => void
   onDeleteRequest: (entryId: string) => void
+  onDuplicateRequest: (entryId: string) => void
+  onGit: (collectionId: string) => void
+  onRequestMenu: (entryId: string, x: number, y: number) => void
+  onCollectionMenu: (collectionId: string, x: number, y: number) => void
 }
 
 interface TreeFolder {
@@ -80,9 +98,14 @@ export function Sidebar({
   onSelect,
   onOpenCollection,
   onImportExport,
+  syncStates,
   onNewRequest,
   onCloseCollection,
-  onDeleteRequest
+  onDeleteRequest,
+  onDuplicateRequest,
+  onGit,
+  onRequestMenu,
+  onCollectionMenu
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
@@ -109,10 +132,24 @@ export function Sidebar({
         className={`tree-row ${entry.id === activeId ? 'active' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => onSelect(entry.id)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          onRequestMenu(entry.id, e.clientX, e.clientY)
+        }}
       >
         <span className={`method-pill m-${entry.method}`}>{entry.method.toUpperCase()}</span>
         <span className="row-label">{entry.name}</span>
         <span className="row-actions">
+          <button
+            className="icon-btn"
+            title="Duplicate request"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDuplicateRequest(entry.id)
+            }}
+          >
+            <CopyIcon size={13} />
+          </button>
           <button
             className="icon-btn danger"
             title="Delete request"
@@ -201,10 +238,60 @@ export function Sidebar({
               const open = !collapsed.has(colKey)
               return (
                 <div key={col.id}>
-                  <div className="col-head" onClick={() => toggle(colKey)}>
+                  <div
+                    className="col-head"
+                    onClick={() => toggle(colKey)}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      onCollectionMenu(col.id, e.clientX, e.clientY)
+                    }}
+                  >
                     <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
                     <span className="row-label">{col.name}</span>
+                    {(() => {
+                      const sync = syncStates[col.id]
+                      if (!sync?.isRepo) return null
+                      const clean = sync.dirtyCount === 0 && sync.ahead === 0 && sync.behind === 0
+                      return (
+                        <span
+                          className="sync-chips"
+                          title="Git status — click to open"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onGit(col.id)
+                          }}
+                        >
+                          {sync.dirtyCount > 0 && (
+                            <span className="git-chip dirty" title={`${sync.dirtyCount} uncommitted change(s)`}>
+                              {sync.dirtyCount}
+                            </span>
+                          )}
+                          {sync.ahead > 0 && (
+                            <span className="git-chip ahead" title={`${sync.ahead} commit(s) to push`}>
+                              <ArrowUpIcon size={10} />
+                              {sync.ahead}
+                            </span>
+                          )}
+                          {sync.behind > 0 && (
+                            <span className="git-chip behind" title={`${sync.behind} commit(s) to pull`}>
+                              <ArrowDownIcon size={10} />
+                              {sync.behind}
+                            </span>
+                          )}
+                          {clean && (
+                            <span className="git-chip synced" title="Synced with remote">
+                              <CheckIcon size={10} />
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })()}
                     <span className="row-actions" onClick={(e) => e.stopPropagation()}>
+                      {col.root && (
+                        <button className="icon-btn" title="Git" onClick={() => onGit(col.id)}>
+                          <GitBranchIcon size={13} />
+                        </button>
+                      )}
                       <button
                         className="icon-btn"
                         title="New request"

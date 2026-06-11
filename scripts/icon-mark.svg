@@ -1,12 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Orange tiger cat head mascot">
-  <path fill="#ff7a18" stroke="#171717" stroke-width="14" stroke-linejoin="round" d="M43 112 28 35l57 30c13-8 28-12 43-12s30 4 43 12l57-30-15 77c10 16 15 35 15 55 0 51-41 79-100 79s-100-28-100-79c0-20 5-39 15-55Z"/>
-  <path fill="#ff9a2f" d="M72 96c14-16 34-25 56-25s42 9 56 25c14 16 21 39 21 70 0 42-31 62-77 62s-77-20-77-62c0-31 7-54 21-70Z"/>
-  <path fill="#171717" d="M42 55 77 76 50 94Zm172 0-35 21 27 18ZM119 58h18l-9 35Zm-33 9 16 7-25 31Zm84 0 9 38-25-31Z"/>
-  <path fill="#c94f0b" d="M120 89h16l-8 44Zm-37 22 14-7 18 34-17 5Zm90 0-15-7-17 34 17 5ZM54 151l39 7-7 16-33-6Zm148 0-39 7 7 16 33-6ZM64 190l32-9 3 16-28 11Zm128 0-32-9-3 16 28 11Z"/>
-  <path fill="#ffe1b8" stroke="#171717" stroke-width="9" stroke-linejoin="round" d="M128 149c31 0 55 18 55 43 0 30-24 45-55 45s-55-15-55-45c0-25 24-43 55-43Z"/>
-  <path fill="#fff0d2" d="M97 163c12 0 23 9 25 23-18 2-36-4-43-16 4-4 10-7 18-7Zm62 0c-12 0-23 9-25 23 18 2 36-4 43-16-4-4-10-7-18-7Z"/>
-  <path fill="#171717" d="M88 128c8-9 22-9 31 0-7 7-23 7-31 0Zm49 0c9-9 23-9 31 0-8 7-24 7-31 0Z"/>
-  <path fill="#171717" d="M101 123a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm54 0a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/>
-  <path fill="#ff7aa2" stroke="#171717" stroke-width="7" stroke-linejoin="round" d="M128 176 112 164h32Z"/>
-  <path fill="none" stroke="#171717" stroke-width="7" stroke-linecap="round" d="M128 176v17m0 0c-9 9-23 9-32 0m32 0c9 9 23 9 32 0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Tiger head mascot logo">
+  <path fill="#ff7a18" stroke="#101010" stroke-width="15" stroke-linejoin="round" d="M128 21c20 0 39 5 55 15l51-15-18 56c14 18 22 41 22 66 0 59-45 94-110 94S18 202 18 143c0-25 8-48 22-66L22 21l51 15c16-10 35-15 55-15Z"/>
+  <path fill="#3a1b17" stroke="#101010" stroke-width="8" stroke-linejoin="round" d="M50 46 78 59 49 87Zm156 0-28 13 29 28Z"/>
+  <path fill="#ff9a2f" d="M128 40c52 0 88 40 88 101 0 48-36 76-88 76s-88-28-88-76c0-61 36-101 88-101Z"/>
+  <path fill="#101010" d="M118 39h20l-10 46Zm-37 12 18 8-25 41Zm94 0 7 49-25-41ZM44 98l41 10-12 19-35-10Zm168 0 6 19-35 10-12-19ZM35 139l43 3-8 20-38-6Zm186 0 3 17-38 6-8-20ZM54 183l35-11 6 19-31 14Zm148 0-10 22-31-14 6-19Z"/>
+  <path fill="#fff4dc" stroke="#101010" stroke-width="10" stroke-linejoin="round" d="M73 141c21 4 37 20 42 44-22 12-50 5-64-15-10-14 1-34 22-29Zm110 0c21-5 32 15 22 29-14 20-42 27-64 15 5-24 21-40 42-44Z"/>
+  <path fill="#ffe6bd" stroke="#101010" stroke-width="10" stroke-linejoin="round" d="M128 151c29 0 52 18 52 42 0 28-23 43-52 43s-52-15-52-43c0-24 23-42 52-42Z"/>
+  <path fill="#101010" d="M83 121c10-13 29-13 39 0-9 8-30 8-39 0Zm51 0c10-13 29-13 39 0-9 8-30 8-39 0Z"/>
+  <circle cx="102" cy="124" r="8" fill="#fff7e8"/>
+  <circle cx="154" cy="124" r="8" fill="#fff7e8"/>
+  <path fill="#2a1412" stroke="#101010" stroke-width="7" stroke-linejoin="round" d="M128 174 109 161h38Z"/>
+  <path fill="none" stroke="#101010" stroke-width="7" stroke-linecap="round" d="M128 174v18m0 0c-8 8-22 8-30 0m30 0c8 8 22 8 30 0"/>
 </svg>
