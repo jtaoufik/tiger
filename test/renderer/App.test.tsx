@@ -189,7 +189,7 @@ describe('App (browser preview, no Electron bridge)', () => {
 
   it('opens the environments manager with the demo variables and secret toggle', () => {
     render(<App />)
-    fireEvent.click(screen.getByTitle('Manage environment'))
+    fireEvent.click(screen.getByTitle('Manage environments'))
     expect(screen.getByText('Environments')).toBeInTheDocument()
     expect(screen.getByDisplayValue('baseUrl')).toBeInTheDocument()
     expect(screen.getByText('New environment')).toBeInTheDocument()

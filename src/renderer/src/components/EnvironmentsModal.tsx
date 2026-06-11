@@ -14,6 +14,7 @@ export interface EnvCollectionRef {
 interface Props {
   collections: EnvCollectionRef[]
   initialColId?: string
+  initialEnvName?: string
   activeEnvKey: string | null
   envKeySep: string
   onActivate: (key: string) => void
@@ -29,6 +30,7 @@ interface Props {
 export function EnvironmentsModal({
   collections,
   initialColId,
+  initialEnvName,
   activeEnvKey,
   envKeySep,
   onActivate,
@@ -38,7 +40,7 @@ export function EnvironmentsModal({
 }: Props) {
   const [colId, setColId] = useState(initialColId ?? collections[0]?.id ?? '')
   const col = collections.find((c) => c.id === colId)
-  const [selected, setSelected] = useState<string | null>(col?.environments[0]?.name ?? null)
+  const [selected, setSelected] = useState<string | null>(initialEnvName ?? col?.environments[0]?.name ?? null)
   const [env, setEnv] = useState<TigerEnvironment | null>(null)
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
 

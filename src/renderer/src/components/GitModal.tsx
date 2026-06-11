@@ -25,6 +25,7 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [diff, setDiff] = useState('')
   const [message, setMessage] = useState('')
+  const [remoteUrl, setRemoteUrl] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [branches, setBranches] = useState<GitBranches | null>(null)
   const [log, setLog] = useState<GitCommit[]>([])
@@ -124,6 +125,30 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
           >
             <GitBranchIcon size={14} /> Initialize repository
           </button>
+        </div>
+      )}
+
+      {screen === 'repo' && status && !status.hasRemote && (
+        <div className="cv-card" style={{ marginBottom: 14 }}>
+          <b>Connect a shared repository to sync with your team.</b>
+          <div className="cv-dim" style={{ margin: '4px 0 10px' }}>
+            Create an empty repository on GitHub, GitLab or your company server, then paste its URL.
+          </div>
+          <div className="cv-remote-row">
+            <input
+              placeholder="https://github.com/your-team/payments-api.git"
+              value={remoteUrl}
+              spellCheck={false}
+              onChange={(e) => setRemoteUrl(e.target.value)}
+            />
+            <button
+              className="btn accent"
+              disabled={busy !== null || !remoteUrl.trim()}
+              onClick={() => act('Connect', () => window.tiger!.git.setRemote(root, remoteUrl.trim()))}
+            >
+              {busy === 'Connect' ? 'Connecting…' : 'Connect'}
+            </button>
+          </div>
         </div>
       )}
 

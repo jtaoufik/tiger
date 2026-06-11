@@ -953,34 +953,39 @@ export default function App() {
             Update v{update.latest}
           </button>
         )}
-        <select
-          className="env-select"
-          value={activeEnvKey ?? ''}
-          onChange={(e) => changeEnv(e.target.value)}
-          title="Active environment"
-        >
-          <option value="">No environment</option>
-          {envCollections.map((col) =>
-            envCollections.length > 1 ? (
-              <optgroup key={col.id} label={col.name}>
-                {col.environments.map((e) => (
-                  <option key={e.name} value={`${col.id}${SEP}${e.name}`}>
+        <div className="env-combo" title="Active environment">
+          <select
+            className="env-select"
+            value={activeEnvKey ?? ''}
+            onChange={(e) => changeEnv(e.target.value)}
+          >
+            <option value="">No environment</option>
+            {envCollections.map((col) =>
+              envCollections.length > 1 ? (
+                <optgroup key={col.id} label={col.name}>
+                  {col.environments.map((e) => (
+                    <option key={e.name} value={`${col.id}${SEP}${e.name}`}>
+                      {e.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                col.environments.map((e) => (
+                  <option key={`${col.id}${SEP}${e.name}`} value={`${col.id}${SEP}${e.name}`}>
                     {e.name}
                   </option>
-                ))}
-              </optgroup>
-            ) : (
-              col.environments.map((e) => (
-                <option key={`${col.id}${SEP}${e.name}`} value={`${col.id}${SEP}${e.name}`}>
-                  {e.name}
-                </option>
-              ))
-            )
-          )}
-        </select>
-        <button className="icon-btn" title="Manage environment" onClick={() => setModal('env')}>
-          <PencilIcon />
-        </button>
+                ))
+              )
+            )}
+          </select>
+          <button
+            className="env-edit"
+            title="Manage environments"
+            onClick={() => setModal('env')}
+          >
+            <PencilIcon size={14} />
+          </button>
+        </div>
         <button className="btn ghost" title="History" onClick={openHistory}>
           <ClockIcon size={15} /> History
         </button>
@@ -1177,6 +1182,10 @@ export default function App() {
             root: c.root,
             environments: c.environments
           }))}
+          initialColId={activeEnvKey ? activeEnvKey.slice(0, activeEnvKey.indexOf(SEP)) : undefined}
+          initialEnvName={
+            activeEnvKey ? activeEnvKey.slice(activeEnvKey.indexOf(SEP) + SEP.length) : undefined
+          }
           activeEnvKey={activeEnvKey}
           envKeySep={SEP}
           onActivate={(key) => changeEnv(key)}

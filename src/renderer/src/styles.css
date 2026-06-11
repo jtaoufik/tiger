@@ -587,6 +587,31 @@ button {
   background: var(--glass-strong);
   color: var(--text);
 }
+.env-combo {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--glass-strong);
+  -webkit-app-region: no-drag;
+}
+.env-combo .env-select {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+.env-combo .env-select:focus { outline: none; }
+.env-combo .env-edit {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+}
+.env-combo .env-edit:hover { background: var(--accent-weak); color: var(--text); }
 
 .token { color: var(--accent); font-weight: 600; }
 
