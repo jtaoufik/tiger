@@ -12,6 +12,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey" alt="macOS and Windows" />
   <img src="https://img.shields.io/badge/version-0.2.0-orange" alt="v0.2.0" />
+  <a href="https://buymeacoffee.com/tigerapi"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00.svg?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
 </p>
 
 ---
@@ -154,6 +155,10 @@ The core is dependency-free and fully unit-tested. The UI and the MCP server are
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: tests first, keep core pure, match the existing style.
+
+## Support
+
+Tiger is free and open source, built and maintained on personal time. If it saves you from a paid plan or just makes your day a little easier, you can [buy me a coffee](https://buymeacoffee.com/tigerapi). It funds new features and keeps the project independent. Thank you.
 
 ## License
 
