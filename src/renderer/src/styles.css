@@ -1030,6 +1030,18 @@ button {
 }
 .sync-chips .git-chip { padding: 1px 6px; font-size: 10px; }
 
+.git-simple {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: var(--accent-weak);
+  border: 1px solid var(--border-strong);
+  margin-bottom: 14px;
+}
+.git-summary { flex: 1; font-weight: 600; font-size: 13.5px; }
+
 /* ---------- context menu ---------- */
 .ctx-menu {
   position: fixed;

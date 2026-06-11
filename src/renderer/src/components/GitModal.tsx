@@ -122,6 +122,27 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
 
       {screen === 'repo' && status && (
         <>
+          <div className="git-simple">
+            <div className="git-summary">
+              {status.dirtyCount > 0
+                ? `You have ${status.dirtyCount} change${status.dirtyCount > 1 ? 's' : ''} not yet shared with the team.`
+                : status.behind > 0
+                  ? `Your team made ${status.behind} update${status.behind > 1 ? 's' : ''} you don't have yet.`
+                  : status.ahead > 0
+                    ? `${status.ahead} of your update${status.ahead > 1 ? 's are' : ' is'} ready to share.`
+                    : 'Everything is in sync with your team.'}
+            </div>
+            <button
+              className="btn accent"
+              disabled={busy !== null}
+              onClick={() => {
+                act('Sync', () => window.tiger!.git.sync(root, message.trim()))
+                setMessage('')
+              }}
+            >
+              {busy === 'Sync' ? 'Syncing…' : 'Sync now'}
+            </button>
+          </div>
           <div className="git-head">
             <span className="git-branch">
               <GitBranchIcon size={14} /> {status.branch ?? 'detached'}

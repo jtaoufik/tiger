@@ -52,7 +52,9 @@ const api = {
       ipcRenderer.invoke('tiger:git:commit', root, message),
     pull: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:pull', root),
     push: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:push', root),
-    init: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:init', root)
+    init: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:init', root),
+    sync: (root: string, message: string): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:sync', root, message)
   },
   checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),

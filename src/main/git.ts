@@ -140,3 +140,24 @@ export async function gitInit(root: string): Promise<GitActionResult> {
     ? { ok: true, message: 'Repository initialized' }
     : { ok: false, message: result.stderr.trim() || 'git init failed' }
 }
+
+/**
+ * One-button sync for non-developers: share local changes and fetch the
+ * team's, in plain language. Commit (if needed) then pull --ff-only then push.
+ */
+export async function gitSync(root: string, message: string): Promise<GitActionResult> {
+  const status = await gitStatus(root)
+  if (!status.isRepo) return { ok: false, message: 'This folder is not set up for syncing yet' }
+  if (status.dirtyCount > 0) {
+    const commit = await gitCommitAll(root, message || 'Update collection')
+    if (!commit.ok) return { ok: false, message: `Could not package your changes: ${commit.message}` }
+  }
+  if (status.hasUpstream) {
+    const pull = await gitPull(root)
+    if (!pull.ok) return { ok: false, message: `Could not fetch team updates: ${pull.message}` }
+    const push = await gitPush(root)
+    if (!push.ok) return { ok: false, message: `Could not share your changes: ${push.message}` }
+    return { ok: true, message: 'Everything is in sync with your team' }
+  }
+  return { ok: true, message: 'Changes saved locally (no team remote configured)' }
+}
