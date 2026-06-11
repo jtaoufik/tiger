@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { splitDiff } from '@core/diffView'
-import type { GitStatus } from '../../../main/git'
+import type { GitBranches, GitCommit, GitStatus } from '../../../main/git'
 import { Modal } from './Modal'
 import {
   ArrowDownIcon,
@@ -26,6 +26,10 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
   const [diff, setDiff] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [branches, setBranches] = useState<GitBranches | null>(null)
+  const [log, setLog] = useState<GitCommit[]>([])
+  const [newBranch, setNewBranch] = useState('')
+  const [showHistory, setShowHistory] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!window.tiger?.git) {
@@ -44,6 +48,8 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
       return
     }
     setDiff(await window.tiger.git.diff(root))
+    setBranches(await window.tiger.git.branches(root))
+    setLog(await window.tiger.git.log(root))
     setScreen('repo')
   }, [root])
 
@@ -183,6 +189,76 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
               {busy === 'Push' ? 'Pushing…' : 'Push'}
             </button>
           </div>
+
+          <div className="git-toolbar">
+            <label className="git-branch-pick">
+              <span className="cv-dim">Branch</span>
+              <select
+                value={branches?.current ?? ''}
+                disabled={busy !== null}
+                onChange={(e) =>
+                  act('Switch', () => window.tiger!.git.checkout(root, e.target.value, false))
+                }
+              >
+                {(branches?.all ?? []).map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <input
+              className="git-newbranch"
+              placeholder="new branch name"
+              value={newBranch}
+              spellCheck={false}
+              onChange={(e) => setNewBranch(e.target.value)}
+            />
+            <button
+              className="btn"
+              disabled={busy !== null || !newBranch.trim()}
+              onClick={() => {
+                act('Create', () => window.tiger!.git.checkout(root, newBranch.trim(), true))
+                setNewBranch('')
+              }}
+            >
+              Create
+            </button>
+            <span style={{ flex: 1 }} />
+            <button className="btn ghost" onClick={() => setShowHistory((h) => !h)}>
+              {showHistory ? 'Hide history' : 'History'}
+            </button>
+            {status.dirtyCount > 0 && (
+              <button
+                className="btn ghost"
+                disabled={busy !== null}
+                title="Discard all uncommitted changes"
+                onClick={() => {
+                  if (window.confirm('Discard all uncommitted changes? This cannot be undone.')) {
+                    act('Discard', () => window.tiger!.git.discard(root))
+                  }
+                }}
+              >
+                Discard
+              </button>
+            )}
+          </div>
+
+          {showHistory && (
+            <div className="git-history">
+              {log.length === 0 ? (
+                <div className="cv-dim">No commits yet.</div>
+              ) : (
+                log.map((c) => (
+                  <div className="git-commit-row" key={c.hash}>
+                    <span className="git-hash">{c.hash}</span>
+                    <span className="row-label">{c.subject}</span>
+                    <span className="cv-dim">{c.author} · {c.at}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
           {status.dirtyCount > 0 ? (
             <>

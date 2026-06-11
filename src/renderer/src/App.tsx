@@ -467,6 +467,41 @@ export default function App() {
     [collections, toast]
   )
 
+  const cloneCollection = useCallback(async () => {
+    const url = window.prompt('Repository URL to clone (GitHub, GitLab, …):')
+    if (!url?.trim() || !window.tiger?.git) return
+    toast('Cloning…')
+    const opened = await window.tiger.git.clone(url.trim())
+    if (!opened) return
+    if ('error' in opened) {
+      toast(`Clone failed: ${opened.error}`)
+      return
+    }
+    const entries: SidebarEntry[] = opened.requests.map((r) => ({
+      id: `${opened.root}${SEP}${r.path}`,
+      name: r.name,
+      method: r.method,
+      folderPath: r.folder
+    }))
+    setCollections((prev) => [
+      ...prev.filter((c) => c.id !== opened.root),
+      {
+        id: opened.root,
+        name: opened.settings?.name || opened.name,
+        root: opened.root,
+        entries,
+        environments: opened.environments.map((e) => ({ name: e.name, path: e.path })),
+        auth: opened.settings?.auth
+      }
+    ])
+    setPathById((prev) => ({
+      ...prev,
+      ...Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
+    }))
+    if (entries[0]) selectRequest(entries[0].id)
+    toast(`Cloned ${opened.name}`)
+  }, [selectRequest, toast])
+
   const loadImport = useCallback(
     (kind: ImportKind) => {
       window.tiger?.importCollection(kind).then((result) => {
@@ -962,6 +997,7 @@ export default function App() {
           syncStates={gitStates}
           onSelect={selectRequest}
           onOpenCollection={openCollection}
+          onClone={cloneCollection}
           onImportExport={() => setModal('io')}
           onNewRequest={newRequest}
           onCloseCollection={requestCloseCollection}
@@ -993,6 +1029,7 @@ export default function App() {
           <WelcomeView
             version={appVersion}
             onOpenCollection={openCollection}
+            onClone={cloneCollection}
             onImportExport={() => setModal('io')}
             onNewRequest={() => {
               if (collections[0]) newRequest(collections[0].id)
@@ -1216,6 +1253,7 @@ export default function App() {
           y={emptyMenu.y}
           items={[
             { label: 'Open collection folder…', icon: <FolderOpenIcon size={14} />, onClick: openCollection },
+            { label: 'Clone from Git…', icon: <GitBranchIcon size={14} />, onClick: cloneCollection },
             { label: 'Import / Export…', icon: <SwapIcon size={14} />, onClick: () => setModal('io') },
             {
               label: 'New request',

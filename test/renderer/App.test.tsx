@@ -204,11 +204,17 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByText('Concurrency')).toBeInTheDocument()
   })
 
-  it('offers create actions on empty-space right click in the sidebar', () => {
+  it('offers create actions including clone on empty-space right click', () => {
     render(<App />)
     fireEvent.contextMenu(document.querySelector('.tree')!)
     expect(screen.getByText('Open collection folder…')).toBeInTheDocument()
+    expect(screen.getByText('Clone from Git…')).toBeInTheDocument()
     expect(screen.getByText('Manage environments…')).toBeInTheDocument()
+  })
+
+  it('exposes a Clone from Git action in the sidebar header', () => {
+    render(<App />)
+    expect(screen.getByTitle('Clone from Git')).toBeInTheDocument()
   })
 
   it('opens the code generation modal with a curl command for the active request', () => {

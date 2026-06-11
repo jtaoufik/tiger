@@ -194,3 +194,73 @@ export async function gitSetRemote(root: string, url: string): Promise<GitAction
           'Connected the remote, but publishing failed (check access rights)'
       }
 }
+
+export interface GitBranches {
+  current: string
+  all: string[]
+}
+
+export async function gitBranches(root: string): Promise<GitBranches> {
+  const current = (await run(['rev-parse', '--abbrev-ref', 'HEAD'], root)).stdout.trim()
+  const list = await run(['branch', '--format=%(refname:short)'], root)
+  return {
+    current,
+    all: list.stdout.split('\n').map((b) => b.trim()).filter(Boolean)
+  }
+}
+
+export async function gitCheckout(
+  root: string,
+  branch: string,
+  create: boolean
+): Promise<GitActionResult> {
+  const result = await run(create ? ['checkout', '-b', branch] : ['checkout', branch], root)
+  return result.ok
+    ? { ok: true, message: create ? `Created and switched to ${branch}` : `Switched to ${branch}` }
+    : { ok: false, message: result.stderr.trim().split('\n').pop() || 'Checkout failed' }
+}
+
+export interface GitCommit {
+  hash: string
+  subject: string
+  author: string
+  at: string
+}
+
+export async function gitLog(root: string, limit = 20): Promise<GitCommit[]> {
+  const fmt = '%h%x1f%s%x1f%an%x1f%ar'
+  const result = await run(['log', `-${limit}`, `--pretty=format:${fmt}`], root)
+  if (!result.ok) return []
+  return result.stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [hash, subject, author, at] = line.split('\x1f')
+      return { hash, subject, author, at }
+    })
+}
+
+/** Discard all uncommitted changes to tracked files (keeps untracked files). */
+export async function gitDiscardAll(root: string): Promise<GitActionResult> {
+  const reset = await run(['reset', '--', '.'], root)
+  const restore = await run(['checkout', '--', '.'], root)
+  return reset.ok && restore.ok
+    ? { ok: true, message: 'Discarded uncommitted changes' }
+    : { ok: false, message: restore.stderr.trim() || 'Could not discard changes' }
+}
+
+/** Clone a remote repository into `targetDir` (which must not yet exist). */
+export async function gitClone(url: string, targetDir: string): Promise<GitActionResult> {
+  if (!/^(https?:\/\/|git@|ssh:\/\/)/.test(url.trim())) {
+    return { ok: false, message: 'That does not look like a repository URL' }
+  }
+  const result = await run(['clone', url.trim(), targetDir], undefined, 60000)
+  return result.ok
+    ? { ok: true, message: `Cloned into ${targetDir}` }
+    : { ok: false, message: result.stderr.trim().split('\n').pop() || 'Clone failed' }
+}
+
+export function repoNameFromUrl(url: string): string {
+  const last = url.trim().replace(/\/+$/, '').split(/[/:]/).pop() ?? 'collection'
+  return last.replace(/\.git$/, '') || 'collection'
+}

@@ -1140,6 +1140,24 @@ button {
 .perf-buckets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .hist-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
 
+.git-toolbar { display: flex; align-items: center; gap: 8px; margin: 4px 0 12px; flex-wrap: wrap; }
+.git-branch-pick { display: inline-flex; align-items: center; gap: 6px; }
+.git-branch-pick select {
+  font-family: var(--mono); font-size: 12.5px; padding: 5px 8px; border-radius: 8px;
+  border: 1px solid var(--border-strong); background: var(--glass-strong); color: var(--text);
+}
+.git-newbranch {
+  font-family: var(--mono); font-size: 12.5px; padding: 6px 9px; border-radius: 8px; width: 150px;
+  border: 1px solid var(--border-strong); background: var(--glass-strong); color: var(--text);
+}
+.git-newbranch:focus { outline: none; border-color: var(--accent); }
+.git-history {
+  max-height: 180px; overflow-y: auto; margin-bottom: 12px;
+  border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px;
+}
+.git-commit-row { display: flex; align-items: baseline; gap: 9px; padding: 4px 0; font-size: 12.5px; }
+.git-hash { font-family: var(--mono); color: var(--accent); flex-shrink: 0; }
+
 /* ---------- context menu ---------- */
 .ctx-menu {
   position: fixed;

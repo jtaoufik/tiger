@@ -14,6 +14,7 @@ import {
 interface Props {
   version: string
   onOpenCollection: () => void
+  onClone: () => void
   onImportExport: () => void
   onNewRequest: () => void
   onPalette: () => void
@@ -27,6 +28,7 @@ interface Props {
 export function WelcomeView({
   version,
   onOpenCollection,
+  onClone,
   onImportExport,
   onNewRequest,
   onPalette,
@@ -41,6 +43,12 @@ export function WelcomeView({
       title: 'Open a collection',
       desc: 'Any folder of .tiger files, straight from disk.',
       onClick: onOpenCollection
+    },
+    {
+      icon: <GitBranchIcon size={20} />,
+      title: 'Clone from Git',
+      desc: 'Paste a repository URL to pull a team collection onto your machine.',
+      onClick: onClone
     },
     {
       icon: <SwapIcon size={20} />,

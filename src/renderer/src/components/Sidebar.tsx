@@ -44,6 +44,7 @@ interface Props {
   syncStates: Record<string, SyncState>
   onSelect: (id: string) => void
   onOpenCollection: () => void
+  onClone: () => void
   onImportExport: () => void
   onNewRequest: (collectionId: string) => void
   onCloseCollection: (collectionId: string) => void
@@ -100,6 +101,7 @@ export function Sidebar({
   activeId,
   onSelect,
   onOpenCollection,
+  onClone,
   onImportExport,
   syncStates,
   onNewRequest,
@@ -210,6 +212,9 @@ export function Sidebar({
         <span className="title">Collections</span>
         <button className="icon-btn" title="Open collection folder" onClick={onOpenCollection}>
           <FolderOpenIcon />
+        </button>
+        <button className="icon-btn" title="Clone from Git" onClick={onClone}>
+          <GitBranchIcon />
         </button>
         <button className="icon-btn" title="Import / Export" onClick={onImportExport}>
           <SwapIcon />

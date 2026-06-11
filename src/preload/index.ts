@@ -8,7 +8,7 @@ import type { ImportKind } from '../main/importers'
 import type { ImportResult } from '../core/import'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { UpdateInfo } from '../core/version'
-import type { GitActionResult, GitAvailability, GitStatus } from '../main/git'
+import type { GitActionResult, GitAvailability, GitBranches, GitCommit, GitStatus } from '../main/git'
 import type { CollectionSettings } from '../core/collectionSettings'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
@@ -58,7 +58,14 @@ const api = {
     sync: (root: string, message: string): Promise<GitActionResult> =>
       ipcRenderer.invoke('tiger:git:sync', root, message),
     setRemote: (root: string, url: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:setRemote', root, url)
+      ipcRenderer.invoke('tiger:git:setRemote', root, url),
+    branches: (root: string): Promise<GitBranches> => ipcRenderer.invoke('tiger:git:branches', root),
+    checkout: (root: string, branch: string, create: boolean): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:checkout', root, branch, create),
+    log: (root: string): Promise<GitCommit[]> => ipcRenderer.invoke('tiger:git:log', root),
+    discard: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:discard', root),
+    clone: (url: string): Promise<OpenedCollection | { error: string } | null> =>
+      ipcRenderer.invoke('tiger:git:clone', url)
   },
   checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),

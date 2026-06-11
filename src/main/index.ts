@@ -14,7 +14,23 @@ import {
 } from './http'
 import { importFromDisk, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
-import { gitAvailable, gitCommitAll, gitDiff, gitInit, gitPull, gitPush, gitSetRemote, gitStatus, gitSync } from './git'
+import {
+  gitAvailable,
+  gitBranches,
+  gitCheckout,
+  gitClone,
+  gitCommitAll,
+  gitDiff,
+  gitDiscardAll,
+  gitInit,
+  gitLog,
+  gitPull,
+  gitPush,
+  gitSetRemote,
+  gitStatus,
+  gitSync,
+  repoNameFromUrl
+} from './git'
 import type { BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
@@ -158,6 +174,37 @@ function registerIpc(): void {
   ipcMain.handle('tiger:git:init', (_e, root: string) => gitInit(root))
   ipcMain.handle('tiger:git:sync', (_e, root: string, message: string) => gitSync(root, message))
   ipcMain.handle('tiger:git:setRemote', (_e, root: string, url: string) => gitSetRemote(root, url))
+  ipcMain.handle('tiger:git:branches', (_e, root: string) => gitBranches(root))
+  ipcMain.handle('tiger:git:checkout', (_e, root: string, branch: string, create: boolean) =>
+    gitCheckout(root, branch, create)
+  )
+  ipcMain.handle('tiger:git:log', (_e, root: string) => gitLog(root))
+  ipcMain.handle('tiger:git:discard', (_e, root: string) => gitDiscardAll(root))
+  ipcMain.handle('tiger:git:clone', async (_e, url: string) => {
+    const dest = await dialog.showOpenDialog({
+      title: 'Choose where to clone the collection',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (dest.canceled || !dest.filePaths[0]) return null
+    const { join: pjoin } = await import('node:path')
+    const target = pjoin(dest.filePaths[0], repoNameFromUrl(url))
+    const result = await gitClone(url, target)
+    if (!result.ok) return { error: result.message }
+    const { readFile } = await import('node:fs/promises')
+    let settings = {}
+    try {
+      settings = parseCollectionSettings(await readFile(pjoin(target, 'collection.tiger'), 'utf8'))
+    } catch {
+      /* optional */
+    }
+    return {
+      root: target,
+      name: basename(target),
+      requests: await readCollection(target),
+      environments: await readEnvironments(target),
+      settings
+    }
+  })
   ipcMain.handle('tiger:openExternal', (_e, url: string) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
   })
