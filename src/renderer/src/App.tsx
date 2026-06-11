@@ -30,6 +30,7 @@ import { HistoryModal } from './components/HistoryModal'
 import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { PerfModal } from './components/PerfModal'
 import { ConfirmModal } from './components/ConfirmModal'
+import { PromptModal } from './components/PromptModal'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
 import { ContextMenu, type MenuItem } from './components/ContextMenu'
@@ -213,6 +214,7 @@ export default function App() {
   const [authColId, setAuthColId] = useState<string | null>(null)
   const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null)
+  const [cloneOpen, setCloneOpen] = useState(false)
   const [inspect, setInspect] = useState<
     { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
   >(null)
@@ -467,11 +469,16 @@ export default function App() {
     [collections, toast]
   )
 
-  const cloneCollection = useCallback(async () => {
-    const url = window.prompt('Repository URL to clone (GitHub, GitLab, …):')
-    if (!url?.trim() || !window.tiger?.git) return
+  const cloneCollection = useCallback(() => setCloneOpen(true), [])
+
+  const runClone = useCallback(async (url: string) => {
+    setCloneOpen(false)
+    if (!window.tiger?.git) {
+      toast('Cloning needs the desktop app')
+      return
+    }
     toast('Cloning…')
-    const opened = await window.tiger.git.clone(url.trim())
+    const opened = await window.tiger.git.clone(url)
     if (!opened) return
     if ('error' in opened) {
       toast(`Clone failed: ${opened.error}`)
@@ -1263,6 +1270,16 @@ export default function App() {
             { label: 'Manage environments…', icon: <GlobeIcon size={14} />, onClick: () => setModal('env') }
           ]}
           onClose={() => setEmptyMenu(null)}
+        />
+      )}
+      {cloneOpen && (
+        <PromptModal
+          title="Clone from Git"
+          label="Repository URL"
+          placeholder="https://github.com/your-team/payments-api.git"
+          confirmLabel="Clone"
+          onSubmit={runClone}
+          onCancel={() => setCloneOpen(false)}
         />
       )}
       {confirmCloseId && (

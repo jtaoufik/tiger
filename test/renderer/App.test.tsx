@@ -217,6 +217,15 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByTitle('Clone from Git')).toBeInTheDocument()
   })
 
+  it('opens an in-app clone prompt (not a blocked native prompt)', () => {
+    render(<App />)
+    fireEvent.click(screen.getByTitle('Clone from Git'))
+    expect(screen.getByText('Repository URL')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('https://github.com/your-team/payments-api.git')
+    ).toBeInTheDocument()
+  })
+
   it('opens the code generation modal with a curl command for the active request', () => {
     render(<App />)
     fireEvent.click(screen.getByTitle('Generate code'))

@@ -30,6 +30,7 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
   const [log, setLog] = useState<GitCommit[]>([])
   const [newBranch, setNewBranch] = useState('')
   const [showHistory, setShowHistory] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!window.tiger?.git) {
@@ -228,20 +229,34 @@ export function GitModal({ collectionName, root, onToast, onClose }: Props) {
             <button className="btn ghost" onClick={() => setShowHistory((h) => !h)}>
               {showHistory ? 'Hide history' : 'History'}
             </button>
-            {status.dirtyCount > 0 && (
-              <button
-                className="btn ghost"
-                disabled={busy !== null}
-                title="Discard all uncommitted changes"
-                onClick={() => {
-                  if (window.confirm('Discard all uncommitted changes? This cannot be undone.')) {
-                    act('Discard', () => window.tiger!.git.discard(root))
-                  }
-                }}
-              >
-                Discard
-              </button>
-            )}
+            {status.dirtyCount > 0 &&
+              (confirmDiscard ? (
+                <>
+                  <span className="cv-dim">Discard everything?</span>
+                  <button
+                    className="btn danger"
+                    disabled={busy !== null}
+                    onClick={() => {
+                      setConfirmDiscard(false)
+                      act('Discard', () => window.tiger!.git.discard(root))
+                    }}
+                  >
+                    Yes, discard
+                  </button>
+                  <button className="btn ghost" onClick={() => setConfirmDiscard(false)}>
+                    Keep
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="btn ghost"
+                  disabled={busy !== null}
+                  title="Discard all uncommitted changes"
+                  onClick={() => setConfirmDiscard(true)}
+                >
+                  Discard
+                </button>
+              ))}
           </div>
 
           {showHistory && (
