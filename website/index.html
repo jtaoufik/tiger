@@ -395,6 +395,13 @@
       *, .hero > div > *, .stage { animation: none !important; transition: none !important; }
       .reveal { opacity: 1; transform: none; }
     }
+    .install-note {
+      margin: 18px 0 4px; padding: 16px 18px; border-radius: 12px;
+      background: var(--surface-2); border: 1px solid var(--line-strong);
+      max-width: 720px;
+    }
+    .install-note b { color: var(--cream); }
+    .install-note p { margin: 8px 0 0; font-size: 14.5px; color: var(--dim); }
   </style>
 </head>
 <body>
@@ -606,8 +613,19 @@
       <h2>Get Tiger for your platform</h2>
       <p class="sub">
         Version 0.2.0, free for personal and commercial use. These are early preview builds and
-        are not yet code-signed: on macOS, right-click the app and choose Open the first time.
+        are not yet code-signed.
       </p>
+      <div class="install-note">
+        <b>First launch on a fresh machine</b>
+        <p class="m">
+          <b>macOS:</b> right-click the app and choose Open, then confirm.
+        </p>
+        <p class="m">
+          <b>Windows:</b> Defender SmartScreen may warn because the app is new and unsigned.
+          Click <b>More info</b>, then <b>Run anyway</b>. Code signing is on the roadmap so this
+          warning will go away in a future release.
+        </p>
+      </div>
       <div class="spec">
         <table>
           <thead>
@@ -709,7 +727,7 @@
     <footer>
       <p>© 2026 Tiger. Free and open source under the MIT license. &nbsp;&middot;&nbsp;
         <a href="https://buymeacoffee.com/tigerapi">Buy me a coffee</a> &nbsp;&middot;&nbsp;
-        <a href="https://www.linkedin.com/in/taoufik-jabbari">Taoufik Jabbari</a>
+        <a href="https://www.linkedin.com/in/jabbarium">Taoufik Jabbari</a>
       </p>
     </footer>
 

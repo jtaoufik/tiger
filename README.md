@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey" alt="macOS and Windows" />
   <img src="https://img.shields.io/badge/version-0.2.0-orange" alt="v0.2.0" />
   <a href="https://buymeacoffee.com/tigerapi"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00.svg?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
+  <a href="https://www.linkedin.com/in/jabbarium"><img src="https://img.shields.io/badge/LinkedIn-Taoufik%20Jabbari-0A66C2?logo=linkedin&logoColor=white" alt="Taoufik Jabbari on LinkedIn" /></a>
 </p>
 
 ---
@@ -164,7 +165,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: tests first, keep cor
 
 ## Support
 
-Tiger is free and open source, built and maintained on personal time. If it saves you from a paid plan or just makes your day a little easier, you can [buy me a coffee](https://buymeacoffee.com/tigerapi). Find me on [LinkedIn](https://www.linkedin.com/in/taoufik-jabbari) (Taoufik Jabbari). It funds new features and keeps the project independent. Thank you.
+Tiger is free and open source, built and maintained on personal time. If it saves you from a paid plan or just makes your day a little easier, you can [buy me a coffee](https://buymeacoffee.com/tigerapi). Find me on [LinkedIn](https://www.linkedin.com/in/jabbarium) (Taoufik Jabbari). It funds new features and keeps the project independent. Thank you.
 
 ## License
 
