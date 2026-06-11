@@ -11,8 +11,9 @@ function brunoBodyType(subtype: string | undefined): BodyType {
   switch (subtype) {
     case 'json':
       return 'json'
-    case 'text':
     case 'xml':
+      return 'xml'
+    case 'text':
     case 'sparql':
       return 'text'
     case 'form-urlencoded':

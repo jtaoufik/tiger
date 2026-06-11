@@ -55,6 +55,11 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
     if (req.body.type === 'json') {
       body = interpolate(req.body.content, vars)
       if (!hasHeader(headers, 'content-type')) headers['Content-Type'] = 'application/json'
+    } else if (req.body.type === 'xml') {
+      // SOAP and plain XML; SOAP 1.1 also wants a SOAPAction header, which the
+      // request sets explicitly when needed.
+      body = interpolate(req.body.content, vars)
+      if (!hasHeader(headers, 'content-type')) headers['Content-Type'] = 'text/xml'
     } else if (req.body.type === 'text') {
       body = interpolate(req.body.content, vars)
       if (!hasHeader(headers, 'content-type')) headers['Content-Type'] = 'text/plain'

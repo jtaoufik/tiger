@@ -20,7 +20,7 @@ interface Props {
 
 type Tab = 'params' | 'headers' | 'auth' | 'body'
 
-const BODY_TYPES: BodyType[] = ['none', 'json', 'text', 'form']
+const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form']
 
 export function RequestEditor({
   request,
@@ -188,7 +188,7 @@ export function RequestEditor({
                 }}
               />
             )}
-            {(request.body.type === 'json' || request.body.type === 'text') && (
+            {(request.body.type === 'json' || request.body.type === 'xml' || request.body.type === 'text') && (
               <textarea
                 className="code-area"
                 spellCheck={false}

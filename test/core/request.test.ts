@@ -73,6 +73,17 @@ describe('buildRequest', () => {
     expect(buildRequest(req({ method: 'get', body: { type: 'json', content: '{}' } })).body).toBeUndefined()
   })
 
+  it('sends xml bodies with a text/xml content type (SOAP)', () => {
+    const built = buildRequest(
+      req({
+        method: 'post',
+        body: { type: 'xml', content: '<soap:Envelope><soap:Body/></soap:Envelope>' }
+      })
+    )
+    expect(built.headers['Content-Type']).toBe('text/xml')
+    expect(built.body).toContain('soap:Envelope')
+  })
+
   it('url-encodes a form body', () => {
     const built = buildRequest(
       req({ method: 'post', body: { type: 'form', content: 'name: Ada Lovelace\nrole: pioneer' } })
