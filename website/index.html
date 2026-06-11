@@ -80,20 +80,20 @@
 
   <style>
     :root {
-      --ink: #0d0a07;
-      --ink-2: #14100a;
-      --surface: #191309;
-      --surface-2: #1f180d;
-      --line: rgba(255, 173, 96, 0.14);
-      --line-strong: rgba(255, 173, 96, 0.28);
-      --cream: #f5eddf;
-      --dim: #b3a58e;
-      --faint: #786b58;
-      --orange: #ff7a18;
-      --orange-hot: #ffa54d;
+      --ink: #faf6ee;
+      --ink-2: #f4eee2;
+      --surface: #ffffff;
+      --surface-2: #fffaf2;
+      --line: rgba(36, 24, 8, 0.09);
+      --line-strong: rgba(36, 24, 8, 0.17);
+      --cream: #241c12;
+      --dim: #6e6151;
+      --faint: #9a8c79;
+      --orange: #f26b0a;
+      --orange-hot: #ff8c33;
       --orange-deep: #c75500;
-      --good: #6fd69b;
-      --bad: #ff7e63;
+      --good: #1e9e63;
+      --bad: #d8472e;
       --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
       --disp: "Bricolage Grotesque", -apple-system, sans-serif;
       --stripe: repeating-linear-gradient(
@@ -118,17 +118,17 @@
       content: "";
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(1000px 600px at 8% -5%, rgba(255, 122, 24, 0.13), transparent 60%),
-        radial-gradient(900px 700px at 105% 15%, rgba(255, 122, 24, 0.05), transparent 55%);
+        radial-gradient(1000px 600px at 8% -5%, rgba(242, 107, 10, 0.09), transparent 60%),
+        radial-gradient(900px 700px at 105% 15%, rgba(242, 107, 10, 0.05), transparent 55%);
     }
     body::after {
       content: "";
-      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.22;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.7 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
     }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
-    ::selection { background: var(--orange); color: var(--ink); }
+    ::selection { background: var(--orange); color: #fff; }
     a { color: var(--orange-hot); }
     :focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
 
@@ -215,37 +215,42 @@
     .stage { position: relative; min-height: 480px; }
     @media (max-width: 920px) { .stage { min-height: 0; } }
     .win {
-      background: linear-gradient(180deg, var(--surface-2), var(--surface));
-      border: 1px solid var(--line); border-radius: 14px;
+      background: linear-gradient(180deg, #241b10, #1a130a);
+      border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px;
       box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0,0,0,0.4);
       overflow: hidden;
     }
     .win .bar {
       display: flex; align-items: center; gap: 8px;
-      padding: 11px 14px; border-bottom: 1px solid var(--line);
+      padding: 11px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.09);
     }
-    .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--faint); opacity: 0.5; }
+    .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: #786b58; opacity: 0.5; }
     .win .bar i:first-child { background: var(--bad); opacity: 0.9; }
     .win .bar i:nth-child(2) { background: #ffc24d; opacity: 0.9; }
     .win .bar i:nth-child(3) { background: var(--good); opacity: 0.9; }
     .win .bar .file {
-      margin-left: 10px; font-family: var(--mono); font-size: 12px; color: var(--dim);
+      margin-left: 10px; font-family: var(--mono); font-size: 12px; color: #b3a58e;
     }
     .win pre {
       margin: 0; padding: 20px 22px; font-family: var(--mono);
       font-size: 13.5px; line-height: 1.75; overflow-x: auto;
     }
-    .win-a { position: relative; z-index: 2; transform: rotate(-1.2deg); }
+    .shot {
+      display: block; width: 100%; border-radius: 14px;
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 30px 80px rgba(70, 45, 10, 0.28);
+      transform: rotate(-1.2deg); position: relative; z-index: 2;
+    }
     .win-b {
       position: absolute; right: -14px; bottom: -36px; width: 62%; z-index: 3;
       transform: rotate(1.6deg);
     }
     @media (max-width: 920px) { .win-b { position: static; width: 100%; margin-top: 16px; transform: none; } }
-    .k { color: var(--orange); font-weight: 600; }
-    .key { color: var(--cream); }
-    .v { color: var(--dim); }
-    .var { color: var(--orange-hot); }
-    .cm { color: var(--faint); }
+    .k { color: #ff8c33; font-weight: 600; }
+    .key { color: #f3ead9; }
+    .v { color: #b3a58e; }
+    .var { color: #ffb066; }
+    .cm { color: #786b58; }
 
     /* ---------- ticker strip ---------- */
     .strip {
@@ -424,27 +429,7 @@
       </div>
 
       <div class="stage" aria-hidden="true">
-        <div class="win win-a">
-          <div class="bar"><i></i><i></i><i></i><span class="file">payments / create-invoice.tiger</span></div>
-<pre><span class="k">meta</span> {
-  <span class="key">name</span>: <span class="v">Create invoice</span>
-  <span class="key">seq</span>: <span class="v">4</span>
-}
-
-<span class="k">post</span> {
-  <span class="key">url</span>: <span class="var">{{baseUrl}}</span><span class="v">/v1/invoices</span>
-}
-
-<span class="k">headers</span> {
-  <span class="key">Content-Type</span>: <span class="v">application/json</span>
-  <span class="cm">~X-Debug: 1</span>
-}
-
-<span class="k">auth:oauth2</span> {
-  <span class="key">token_url</span>: <span class="var">{{idp}}</span><span class="v">/token</span>
-  <span class="key">client_id</span>: <span class="var">{{clientId}}</span>
-}</pre>
-        </div>
+        <img class="shot" src="/screenshot.png" alt="The Tiger app: collection sidebar, request editor and response panel" />
         <div class="win win-b">
           <div class="bar"><i></i><i></i><i></i><span class="file">git log --oneline</span></div>
 <pre><span class="v">a3f81c2</span> <span class="key">fix: invoice auth moves to oauth2</span>
