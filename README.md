@@ -17,6 +17,12 @@
 
 ---
 
+## Download
+
+Get the latest macOS and Windows builds from the [**releases page**](https://github.com/jtaoufik/tiger/releases/latest), or visit [the website](https://jtaoufik.github.io/tiger/). Builds are not yet code-signed, so on macOS right-click the app and choose Open the first time.
+
+---
+
 Tiger is an open source API client where every request is a plain `.tiger` text file on disk. Commit your collections, branch them, and review API changes in pull requests the same way you review code. No account required. No cloud sync. No lock-in.
 
 On top of the git-friendly storage model, Tiger adds a glass UI with light and dark themes, a full importer suite, an MCP server so AI assistants (Claude, Cursor) can run requests directly, and a request chaining system to capture response values into variables for the next call.

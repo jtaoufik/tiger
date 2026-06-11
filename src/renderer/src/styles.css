@@ -978,8 +978,21 @@ button {
 }
 
 .collection-view { padding: 24px 28px; overflow-y: auto; }
-.cv-head { display: flex; align-items: flex-start; gap: 8px; }
+.cv-head { display: flex; align-items: center; gap: 8px; }
 .cv-head h2 { margin: 0; display: flex; align-items: center; gap: 9px; }
+.cv-head .btn,
+.cv-head .icon-btn { height: 36px; }
+.cv-head .icon-btn {
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--glass-strong);
+}
+.cv-head .icon-btn:hover { background: var(--glass-hover); }
+.cv-head .icon-btn.danger:hover { background: rgba(224, 83, 61, 0.14); color: var(--m-delete); }
 .cv-path { color: var(--text-dim); font-family: var(--mono); font-size: 11.5px; margin-top: 3px; }
 .cv-stats {
   display: flex;
