@@ -1,6 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../../src/renderer/src/App'
+
+// The real analytics module pulls in Firebase; stub it so we can assert the
+// startup ordering (init + app_opened) without a live SDK.
+const analyticsMock = vi.hoisted(() => ({
+  initAnalytics: vi.fn().mockResolvedValue(undefined),
+  setAnalyticsEnabled: vi.fn(),
+  trackEvent: vi.fn()
+}))
+vi.mock('../../src/renderer/src/analytics', () => analyticsMock)
 
 beforeAll(() => {
   window.matchMedia ??= ((query: string) => ({
@@ -17,6 +26,10 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.innerHTML = ''
+  analyticsMock.initAnalytics.mockClear()
+  analyticsMock.setAnalyticsEnabled.mockClear()
+  analyticsMock.trackEvent.mockClear()
+  delete (window as { tiger?: unknown }).tiger
 })
 
 /** The active request is also an open tab, so scope name lookups to the tree. */
@@ -323,5 +336,87 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect((document.querySelector('.code-area') as HTMLTextAreaElement).value).toBe(
       '{\n  "a": 1\n}'
     )
+  })
+
+  // #4: switching body type form -> json -> form must not strand the form rows
+  // on the stale first-form snapshot; they re-seed from the live body content.
+  it('re-seeds form rows from body content when switching back into form', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText(/^Body/))
+
+    // Enter form mode and type one field.
+    fireEvent.click(screen.getByRole('button', { name: 'form' }))
+    const formInputs = document.querySelectorAll('.tab-body input[type="text"], .tab-body input:not([type])')
+    const firstField = [...formInputs].find(
+      (i) => (i as HTMLInputElement).placeholder === 'Field'
+    ) as HTMLInputElement
+    fireEvent.change(firstField, { target: { value: 'alpha' } })
+
+    // Switch to json and type a fresh body; the form rows are now stale.
+    fireEvent.click(screen.getByRole('button', { name: 'json' }))
+    const area = document.querySelector('.code-area') as HTMLTextAreaElement
+    fireEvent.change(area, { target: { value: 'beta: 2' } })
+
+    // Switching back into form must reflect the latest content, not 'alpha'.
+    fireEvent.click(screen.getByRole('button', { name: 'form' }))
+    const fields = [...document.querySelectorAll('.tab-body input')].filter(
+      (i) => (i as HTMLInputElement).placeholder === 'Field'
+    ) as HTMLInputElement[]
+    const values = fields.map((f) => f.value)
+    expect(values).toContain('beta')
+    expect(values).not.toContain('alpha')
+  })
+
+  // #5: the collection context menu's "Close collection" must go through the
+  // confirm dialog (like the header button), not close the collection outright.
+  it('routes context-menu Close collection through the confirm dialog', () => {
+    render(<App />)
+    const head = screen.getByText('Demo collection').closest('.col-head')!
+    fireEvent.contextMenu(head)
+    fireEvent.click(screen.getByText('Close collection'))
+    // Collection still present; a confirm dialog is shown instead.
+    expect(screen.getByText(/Close "Demo collection"/)).toBeInTheDocument()
+    expect(screen.getByText('Demo collection')).toBeInTheDocument()
+  })
+
+  // #6: curl import with no collection open warns instead of throwing.
+  it('warns when importing a curl command with no collection open', async () => {
+    render(<App />)
+    // Close the only collection first.
+    const head = screen.getByText('Demo collection').closest('.col-head')!
+    fireEvent.click(within(head as HTMLElement).getByTitle('Close collection'))
+    fireEvent.click(document.querySelector('.modal .btn.danger')!)
+    expect(screen.getByText('No collections open.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTitle('Import / Export'))
+    fireEvent.click(screen.getByText('Paste a cURL command'))
+    const curlInput = screen.getByPlaceholderText('Paste a curl command…') as HTMLTextAreaElement
+    fireEvent.change(curlInput, { target: { value: 'curl https://api.example.com/x' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Import request' }))
+    expect(
+      await screen.findByText('Open or create a collection first, then import')
+    ).toBeInTheDocument()
+  })
+
+  // #8: analytics must not initialize or emit app_opened until the persisted
+  // opt-out resolves, and never when the user has it disabled.
+  it('does not init analytics or fire app_opened when settings disable it', async () => {
+    ;(window as { tiger?: unknown }).tiger = {
+      getSettings: vi.fn().mockResolvedValue({ analyticsEnabled: false })
+    }
+    render(<App />)
+    await waitFor(() => expect(analyticsMock.setAnalyticsEnabled).toHaveBeenCalledWith(false))
+    expect(analyticsMock.initAnalytics).not.toHaveBeenCalled()
+    expect(analyticsMock.trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('inits analytics and fires app_opened only after settings resolve enabled', async () => {
+    ;(window as { tiger?: unknown }).tiger = {
+      getSettings: vi.fn().mockResolvedValue({ analyticsEnabled: true })
+    }
+    render(<App />)
+    await waitFor(() => expect(analyticsMock.initAnalytics).toHaveBeenCalled())
+    await waitFor(() => expect(analyticsMock.trackEvent).toHaveBeenCalled())
+    expect(analyticsMock.setAnalyticsEnabled).toHaveBeenCalledWith(true)
   })
 })

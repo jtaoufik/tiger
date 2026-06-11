@@ -322,11 +322,17 @@ export default function App() {
     window.tiger?.setSettings(patch).then(setSettings)
   }, [])
 
+  // Ref so refreshGitStates can read the freshest collections without being
+  // re-created (and thus re-firing its effect) on every keystroke-driven
+  // collections rebuild.
+  const collectionsRef = useRef(collections)
+  collectionsRef.current = collections
+
   const refreshGitStates = useCallback(async () => {
     if (!window.tiger?.git) return
     const available = await window.tiger.git.check()
     if (!available.ok) return
-    const diskCollections = collections.filter((c) => c.root)
+    const diskCollections = collectionsRef.current.filter((c) => c.root)
     const states = await Promise.all(
       diskCollections.map(async (c) => {
         const s = await window.tiger!.git.status(c.root!)
@@ -334,14 +340,24 @@ export default function App() {
       })
     )
     setGitStates(Object.fromEntries(states))
-  }, [collections])
+  }, [])
 
-  // Sync indicators: refresh when collections change and on a slow heartbeat.
+  // Only the set of disk roots affects git status; key the effect on that
+  // stable string so renames/url edits (which rebuild collections) don't
+  // re-trigger a status sweep on every keystroke.
+  const diskRootsKey = collections
+    .filter((c) => c.root)
+    .map((c) => c.root)
+    .sort()
+    .join('\n')
+
+  // Sync indicators: refresh when the disk roots change and on a slow heartbeat.
   useEffect(() => {
     refreshGitStates()
     const timer = setInterval(refreshGitStates, 60000)
     return () => clearInterval(timer)
-  }, [refreshGitStates])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diskRootsKey, refreshGitStates])
 
   /**
    * A git op (pull / checkout / discard / sync) just rewrote this collection's
