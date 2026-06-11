@@ -5,6 +5,11 @@ All notable changes to Tiger are documented here. The update checker reads
 
 ## Unreleased
 
+- Export collections to OpenAPI 3.0 (import already supported OpenAPI and Swagger)
+- Pre-request and post-response scripts with assertions and a tests panel
+- Collection and folder pages open as tabs; folder-level docs and default auth
+- Per-request and per-collection history; background auto-update from GitHub Releases
+
 - Fix: `package.json` license field corrected from "MIT" to "SEE LICENSE IN LICENSE" to match the proprietary LICENSE file
 - Fix: `package` script now runs `build:mcp` before `electron-builder` so the MCP server is compiled into shipped builds
 - Fix: Added `asarUnpack` for `out/mcp/**` so the MCP server binary is extractable at runtime; added `bin.tiger-mcp` entry

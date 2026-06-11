@@ -55,7 +55,7 @@
           {
             "@type": "Question",
             "name": "How do we migrate off Postman or Insomnia?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too, and collections export back to Postman or OpenAPI 3.0." }
           },
           {
             "@type": "Question",
@@ -232,8 +232,9 @@
       margin-left: 10px; font-family: var(--mono); font-size: 12px; color: #b3a58e;
     }
     .win pre {
-      margin: 0; padding: 20px 22px; font-family: var(--mono);
-      font-size: 13.5px; line-height: 1.75; overflow-x: auto;
+      margin: 0; padding: 18px 20px; font-family: var(--mono);
+      font-size: 12.5px; line-height: 1.7; overflow: hidden;
+      white-space: pre; text-overflow: ellipsis;
     }
     .shot {
       display: block; width: 100%; border-radius: 14px;
@@ -433,9 +434,9 @@
         <img class="shot" src="./screenshot.png" alt="The Tiger app: collection sidebar, request editor and response panel" />
         <div class="win win-b">
           <div class="bar"><i></i><i></i><i></i><span class="file">git log --oneline</span></div>
-<pre><span class="v">a3f81c2</span> <span class="key">fix: invoice auth moves to oauth2</span>
+<pre><span class="v">a3f81c2</span> <span class="key">fix: invoice auth to oauth2</span>
 <span class="v">9b04e77</span> <span class="key">add refunds collection</span>
-<span class="v">512fd09</span> <span class="key">review: tighten timeout</span> <span class="cm">(#214)</span></pre>
+<span class="v">512fd09</span> <span class="key">review: tighten timeout</span></pre>
         </div>
       </div>
     </section>
@@ -506,7 +507,7 @@
         <div class="cell">
           <span class="num">09</span>
           <h3>Bring your whole toolkit</h3>
-          <p>Import Postman, Insomnia, Bruno, OpenAPI or paste a curl command. Export whole collections back to Postman v2.1 or single requests as curl. REST, SOAP, GraphQL and code generation for curl, fetch and Python.</p>
+          <p>Import Postman, Insomnia, Bruno, OpenAPI or Swagger, or paste a curl command. Export whole collections back to Postman v2.1 or OpenAPI 3.0, and single requests as curl. REST, SOAP, GraphQL and code generation for curl, fetch and Python.</p>
         </div>
       </div>
     </section>
@@ -545,8 +546,8 @@
             values and auth settings are entered once in Tiger, then live in files your team shares.
           </p>
           <p>
-            Exports work too: whole collections back to Postman v2.1, single requests as
-            .tiger files or curl commands. You are never locked in, not even to Tiger.
+            Exports work too: whole collections back to Postman v2.1 or OpenAPI 3.0, single
+            requests as .tiger files or curl commands. You are never locked in, not even to Tiger.
           </p>
           <div class="chips" role="list">
             <span role="listitem">Postman</span>
@@ -652,7 +653,7 @@
         </details>
         <details>
           <summary><span class="ix">03</span>How do we migrate off Postman or Insomnia?<span class="pm">+</span></summary>
-          <p>Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too.</p>
+          <p>Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too, and collections export back to Postman or OpenAPI 3.0.</p>
         </details>
         <details>
           <summary><span class="ix">04</span>Does it work behind our corporate proxy?<span class="pm">+</span></summary>
@@ -707,7 +708,8 @@
 
     <footer>
       <p>© 2026 Tiger. Free and open source under the MIT license. &nbsp;&middot;&nbsp;
-        <a href="https://buymeacoffee.com/tigerapi">Buy me a coffee</a>
+        <a href="https://buymeacoffee.com/tigerapi">Buy me a coffee</a> &nbsp;&middot;&nbsp;
+        <a href="https://www.linkedin.com/in/taoufik-jabbari">Taoufik Jabbari</a>
       </p>
     </footer>
 

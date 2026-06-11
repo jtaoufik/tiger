@@ -3,7 +3,7 @@ import type { ImportKind } from '../../../main/importers'
 import { Modal } from './Modal'
 import { CodeIcon, DownloadIcon, FileIcon, GlobeIcon, UploadIcon } from './Icons'
 
-export type ExportFormat = 'postman' | 'environment' | 'tiger' | 'curl'
+export type ExportFormat = 'postman' | 'openapi' | 'environment' | 'tiger' | 'curl'
 
 interface Props {
   collectionName: string | null
@@ -92,6 +92,22 @@ export function ImportExportModal({
           <span className="d">
             {collectionName
               ? `"${collectionName}" as a v2.1 .json file`
+              : 'Select a request first'}
+          </span>
+        </button>
+        <button
+          className="choice"
+          disabled={!collectionName}
+          onClick={() => onExport('openapi')}
+          title={collectionName ? `Export "${collectionName}" as OpenAPI` : 'No collection selected'}
+        >
+          <span className="t">
+            <DownloadIcon size={15} />
+            OpenAPI / Swagger
+          </span>
+          <span className="d">
+            {collectionName
+              ? `"${collectionName}" as an OpenAPI 3.0 .json file`
               : 'Select a request first'}
           </span>
         </button>

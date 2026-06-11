@@ -40,7 +40,7 @@ On top of the git-friendly storage model, Tiger adds a glass UI with light and d
 - **SOAP and XML.** Send raw XML bodies for SOAP/WS-* APIs the same way you would for REST.
 - **JSON prettify and minify.** Format button and syntax highlighting in the editor and response panel, with Pretty/Raw and word-wrap toggles.
 - **Performance runs.** Fire N requests with a configurable concurrency level and get back min, max, avg, p50, and p95 timings.
-- **Import from Postman, Insomnia, Bruno, OpenAPI, and curl.** Import a Postman v2.0/v2.1 export, an Insomnia v4 export, a Bruno folder, an OpenAPI 3 / Swagger 2 spec (JSON or YAML), or paste a curl command.
+- **Import and export Postman, OpenAPI, and more.** Import a Postman v2.0/v2.1 export, an Insomnia v4 export, a Bruno folder, an OpenAPI 3 / Swagger 2 spec, or a pasted curl command. Export collections back to Postman v2.1 or OpenAPI 3.0, and single requests as `.tiger` or curl.
 - **Code generation.** Turn any request into a curl command or a JavaScript fetch snippet.
 - **Cookie jar.** Persist cookies between sends and sessions, with automatic cross-origin stripping on redirects.
 
@@ -164,7 +164,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: tests first, keep cor
 
 ## Support
 
-Tiger is free and open source, built and maintained on personal time. If it saves you from a paid plan or just makes your day a little easier, you can [buy me a coffee](https://buymeacoffee.com/tigerapi). It funds new features and keeps the project independent. Thank you.
+Tiger is free and open source, built and maintained on personal time. If it saves you from a paid plan or just makes your day a little easier, you can [buy me a coffee](https://buymeacoffee.com/tigerapi). Find me on [LinkedIn](https://www.linkedin.com/in/taoufik-jabbari) (Taoufik Jabbari). It funds new features and keeps the project independent. Thank you.
 
 ## License
 

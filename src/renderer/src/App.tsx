@@ -9,7 +9,7 @@ import {
   serializeCollectionSettings
 } from '@core/collectionSettings'
 import type { SearchItem } from '@core/search'
-import { exportPostman, exportPostmanEnvironment } from '@core/export'
+import { exportOpenApi, exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
 import { importCurl } from '@core/import'
 import { extractCaptures } from '@core/capture'
@@ -918,6 +918,25 @@ export default function App() {
             .map((x) => ({ path: x.entry.folderPath, request: x.request }))
           const json = JSON.stringify(exportPostman(col.name, imported, activeEnv), null, 2)
           const filename = `${col.name}.postman_collection.json`
+          if (window.tiger) {
+            const path = await window.tiger.exportCollection(filename, json)
+            if (path) toast(`Exported to ${path}`)
+          } else {
+            downloadText(filename, json)
+              ? toast(`Downloaded ${filename}`)
+              : toast('Export needs the desktop app')
+          }
+        } else if (format === 'openapi') {
+          const col = activeCollection
+          if (!col) return
+          const loaded = await Promise.all(
+            col.entries.map(async (e) => ({ entry: e, request: await loadRequest(e.id) }))
+          )
+          const imported: ImportedRequest[] = loaded
+            .filter((x): x is { entry: SidebarEntry; request: TigerRequest } => !!x.request)
+            .map((x) => ({ path: x.entry.folderPath, request: x.request }))
+          const json = JSON.stringify(exportOpenApi(col.name, imported), null, 2)
+          const filename = `${col.name}.openapi.json`
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)
             if (path) toast(`Exported to ${path}`)

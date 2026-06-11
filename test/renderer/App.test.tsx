@@ -155,7 +155,8 @@ describe('App (browser preview, no Electron bridge)', () => {
     fireEvent.click(screen.getByTitle('Import / Export'))
     expect(screen.getByText('Postman')).toBeInTheDocument()
     expect(screen.getByText('Bruno')).toBeInTheDocument()
-    expect(screen.getByText('OpenAPI / Swagger')).toBeInTheDocument()
+    // OpenAPI / Swagger appears as both an import source and an export target.
+    expect(screen.getAllByText('OpenAPI / Swagger').length).toBe(2)
     expect(screen.getByText('Insomnia')).toBeInTheDocument()
     expect(screen.getByText('Postman collection')).toBeInTheDocument()
     expect(screen.getByText('Active environment')).toBeInTheDocument()

@@ -124,6 +124,70 @@ export function exportPostman(
   return collection
 }
 
+/** Reduce a Tiger URL to an OpenAPI path: drop a leading {{base}}, host and query. */
+function toApiPath(url: string): string {
+  let p = url.replace(/^\{\{[^}]+\}\}/, '')
+  const m = p.match(/^[a-z][a-z0-9+.-]*:\/\/[^/]+(\/.*)?$/i)
+  if (m) p = m[1] ?? '/'
+  p = p.split('?')[0].split('#')[0]
+  if (!p.startsWith('/')) p = `/${p}`
+  return p || '/'
+}
+
+const OPENAPI_CONTENT_TYPE: Record<string, string> = {
+  json: 'application/json',
+  graphql: 'application/json',
+  xml: 'application/xml',
+  text: 'text/plain',
+  form: 'application/x-www-form-urlencoded'
+}
+
+/**
+ * Export Tiger requests as an OpenAPI 3.0 document. Each request becomes an
+ * operation under its URL path, with query/header parameters and a request body
+ * for methods that carry one. Variable references are kept verbatim.
+ */
+export function exportOpenApi(name: string, requests: ImportedRequest[]): unknown {
+  const paths: Record<string, Record<string, unknown>> = {}
+
+  for (const { request } of requests) {
+    const apiPath = toApiPath(request.url)
+    const method = request.method.toLowerCase()
+    const parameters = [
+      ...request.query
+        .filter((q) => q.name && q.enabled !== false)
+        .map((q) => ({ name: q.name, in: 'query', schema: { type: 'string' }, example: q.value })),
+      ...request.headers
+        .filter((h) => h.name && h.enabled !== false)
+        .map((h) => ({ name: h.name, in: 'header', schema: { type: 'string' }, example: h.value }))
+    ]
+
+    const operation: Record<string, unknown> = {
+      summary: request.name,
+      operationId: request.name.replace(/[^\w]+/g, '_').replace(/^_|_$/g, '') || method,
+      responses: { '200': { description: 'OK' } }
+    }
+    if (parameters.length) operation.parameters = parameters
+    if (request.docs?.trim()) operation.description = request.docs
+
+    if (request.body.type !== 'none' && !['get', 'head'].includes(method) && request.body.content.trim()) {
+      const ct = OPENAPI_CONTENT_TYPE[request.body.type] ?? 'text/plain'
+      operation.requestBody = {
+        content: { [ct]: { example: request.body.content } }
+      }
+    }
+
+    paths[apiPath] = { ...(paths[apiPath] ?? {}), [method]: operation }
+  }
+
+  return {
+    openapi: '3.0.3',
+    info: { title: name, version: '1.0.0' },
+    servers: [{ url: '{{baseUrl}}' }],
+    paths
+  }
+}
+
 /** Export an environment as a Postman environment file (re-importable). */
 export function exportPostmanEnvironment(env: TigerEnvironment): unknown {
   return {
