@@ -4,7 +4,7 @@
  */
 
 import type { ImportedRequest } from './import/types'
-import type { KeyValue, TigerRequest } from './types'
+import type { KeyValue, TigerEnvironment, TigerRequest } from './types'
 
 interface PostmanItem {
   name: string
@@ -81,7 +81,11 @@ function ensureFolder(root: PostmanItem[], path: string[]): PostmanItem[] {
   return level
 }
 
-export function exportPostman(name: string, requests: ImportedRequest[]): unknown {
+export function exportPostman(
+  name: string,
+  requests: ImportedRequest[],
+  environment?: TigerEnvironment | null
+): unknown {
   const root: PostmanItem[] = []
   for (const { path, request } of requests) {
     ensureFolder(root, path).push({
@@ -89,11 +93,35 @@ export function exportPostman(name: string, requests: ImportedRequest[]): unknow
       request: toPostmanRequest(request)
     })
   }
-  return {
+  const collection: Record<string, unknown> = {
     info: {
       name,
       schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
     },
     item: root
+  }
+  // Embed the active environment as collection variables so a single exported
+  // file carries its {{variables}} too.
+  if (environment && environment.variables.length) {
+    collection.variable = environment.variables.map((v) => ({
+      key: v.name,
+      value: v.value,
+      ...(v.enabled === false ? { disabled: true } : {})
+    }))
+  }
+  return collection
+}
+
+/** Export an environment as a Postman environment file (re-importable). */
+export function exportPostmanEnvironment(env: TigerEnvironment): unknown {
+  return {
+    name: env.name,
+    values: env.variables.map((v) => ({
+      key: v.name,
+      value: v.value,
+      type: v.secret ? 'secret' : 'default',
+      enabled: v.enabled !== false
+    })),
+    _postman_variable_scope: 'environment'
   }
 }

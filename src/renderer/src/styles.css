@@ -1122,7 +1122,9 @@ button {
 .env-row.sel { background: var(--glass-strong); box-shadow: var(--shadow-sm); }
 .env-row .row-actions { display: none; gap: 1px; }
 .env-row:hover .row-actions, .env-row.sel .row-actions { display: inline-flex; }
-.env-active { color: var(--m-get); }
+.env-activate { color: var(--text-faint); opacity: 0.4; }
+.env-row:hover .env-activate { opacity: 0.7; }
+.env-activate.on { color: var(--m-get); opacity: 1; }
 .env-new { justify-content: center; margin-top: 6px; }
 .env-main { overflow-y: auto; }
 .env-kv { grid-template-columns: 22px 1fr 1.4fr auto; }

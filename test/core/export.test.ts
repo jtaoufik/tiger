@@ -47,3 +47,28 @@ describe('exportPostman', () => {
     expect(reimported.requests[1].request.body).toEqual({ type: 'json', content: '{"name":"Ada"}' })
   })
 })
+
+import { exportPostmanEnvironment } from '../../src/core/export'
+import type { TigerEnvironment } from '../../src/core/types'
+
+describe('environment export', () => {
+  const env: TigerEnvironment = {
+    name: 'staging',
+    variables: [
+      { name: 'baseUrl', value: 'https://api.test', enabled: true },
+      { name: 'token', value: 'hush', enabled: true, secret: true }
+    ]
+  }
+
+  it('exports a Postman environment file', () => {
+    const out = exportPostmanEnvironment(env) as any
+    expect(out.name).toBe('staging')
+    expect(out._postman_variable_scope).toBe('environment')
+    expect(out.values).toContainEqual({ key: 'token', value: 'hush', type: 'secret', enabled: true })
+  })
+
+  it('embeds the active environment as collection variables', () => {
+    const out = exportPostman('My API', [], env) as any
+    expect(out.variable).toContainEqual({ key: 'baseUrl', value: 'https://api.test' })
+  })
+})

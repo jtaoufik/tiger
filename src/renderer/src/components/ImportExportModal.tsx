@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import type { ImportKind } from '../../../main/importers'
 import { Modal } from './Modal'
-import { CodeIcon, DownloadIcon, FileIcon, UploadIcon } from './Icons'
+import { CodeIcon, DownloadIcon, FileIcon, GlobeIcon, UploadIcon } from './Icons'
 
-export type ExportFormat = 'postman' | 'tiger' | 'curl'
+export type ExportFormat = 'postman' | 'environment' | 'tiger' | 'curl'
 
 interface Props {
   collectionName: string | null
   requestName: string | null
+  environmentName: string | null
   onImport: (kind: ImportKind) => void
   onImportCurl: (command: string) => void
   onExport: (format: ExportFormat) => void
@@ -24,6 +25,7 @@ const IMPORTS: Array<{ kind: ImportKind; title: string; desc: string }> = [
 export function ImportExportModal({
   collectionName,
   requestName,
+  environmentName,
   onImport,
   onImportCurl,
   onExport,
@@ -91,6 +93,20 @@ export function ImportExportModal({
             {collectionName
               ? `"${collectionName}" as a v2.1 .json file`
               : 'Select a request first'}
+          </span>
+        </button>
+        <button
+          className="choice"
+          disabled={!environmentName}
+          onClick={() => onExport('environment')}
+          title={environmentName ? `Export environment "${environmentName}"` : 'No active environment'}
+        >
+          <span className="t">
+            <GlobeIcon size={15} />
+            Active environment
+          </span>
+          <span className="d">
+            {environmentName ? `"${environmentName}" as a Postman environment` : 'No active environment'}
           </span>
         </button>
         <button

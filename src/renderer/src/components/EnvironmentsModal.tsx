@@ -205,18 +205,17 @@ export function EnvironmentsModal({
                   onClick={() => setSelected(e.name)}
                 >
                   <span className="row-label">{e.name}</span>
-                  {isActive && <CheckIcon size={12} className="env-active" />}
+                  <button
+                    className={`icon-btn env-activate ${isActive ? 'on' : ''}`}
+                    title={isActive ? 'Active environment' : 'Set as active'}
+                    onClick={(ev) => {
+                      ev.stopPropagation()
+                      if (!isActive) onActivate(key)
+                    }}
+                  >
+                    <CheckIcon size={13} />
+                  </button>
                   <span className="row-actions">
-                    <button
-                      className="icon-btn"
-                      title={isActive ? 'Active environment' : 'Make active'}
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        onActivate(key)
-                      }}
-                    >
-                      <CheckIcon size={12} />
-                    </button>
                     <button
                       className="icon-btn"
                       title="Duplicate environment"

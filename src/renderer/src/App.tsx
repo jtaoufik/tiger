@@ -5,7 +5,7 @@ import { buildRequest, type BuiltRequest } from '@core/request'
 import { envToVars, findMissingVars } from '@core/interpolate'
 import { resolveAuth, serializeCollectionSettings } from '@core/collectionSettings'
 import type { SearchItem } from '@core/search'
-import { exportPostman } from '@core/export'
+import { exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
 import { importCurl } from '@core/import'
 import { events } from '@core/analytics'
@@ -507,8 +507,20 @@ export default function App() {
           const imported: ImportedRequest[] = loaded
             .filter((x): x is { entry: SidebarEntry; request: TigerRequest } => !!x.request)
             .map((x) => ({ path: x.entry.folderPath, request: x.request }))
-          const json = JSON.stringify(exportPostman(col.name, imported), null, 2)
+          const json = JSON.stringify(exportPostman(col.name, imported, activeEnv), null, 2)
           const filename = `${col.name}.postman_collection.json`
+          if (window.tiger) {
+            const path = await window.tiger.exportCollection(filename, json)
+            if (path) toast(`Exported to ${path}`)
+          } else {
+            downloadText(filename, json)
+              ? toast(`Downloaded ${filename}`)
+              : toast('Export needs the desktop app')
+          }
+        } else if (format === 'environment') {
+          if (!activeEnv) return
+          const filename = `${activeEnv.name || 'environment'}.postman_environment.json`
+          const json = JSON.stringify(exportPostmanEnvironment(activeEnv), null, 2)
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)
             if (path) toast(`Exported to ${path}`)
@@ -1102,6 +1114,7 @@ export default function App() {
         <ImportExportModal
           collectionName={activeCollection?.name ?? null}
           requestName={active?.name ?? null}
+          environmentName={activeEnv?.name ?? null}
           onImport={loadImport}
           onImportCurl={importFromCurl}
           onExport={doExport}

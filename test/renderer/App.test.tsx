@@ -142,6 +142,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByText('OpenAPI / Swagger')).toBeInTheDocument()
     expect(screen.getByText('Insomnia')).toBeInTheDocument()
     expect(screen.getByText('Postman collection')).toBeInTheDocument()
+    expect(screen.getByText('Active environment')).toBeInTheDocument()
     expect(screen.getByText('Request as .tiger')).toBeInTheDocument()
     expect(screen.getByText('Request as cURL')).toBeInTheDocument()
   })
