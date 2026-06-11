@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+echo "Running pre-commit checks..."
+
+echo "  → typecheck..."
+npm run typecheck
+
+echo "  → tests..."
+node_modules/.bin/vitest run --silent
+
+echo "✓ All checks passed"
+exit 0

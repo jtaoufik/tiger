@@ -69,7 +69,11 @@ const api = {
   },
   checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),
-  reveal: (path: string): Promise<void> => ipcRenderer.invoke('tiger:reveal', path)
+  reveal: (path: string): Promise<void> => ipcRenderer.invoke('tiger:reveal', path),
+  pickFile: (filters: { name: string; extensions: string[] }[]): Promise<string | null> =>
+    ipcRenderer.invoke('tiger:pickFile', filters),
+  clearCookies: (): Promise<void> => ipcRenderer.invoke('tiger:cookies:clear'),
+  mcpInfo: (): Promise<{ serverPath: string }> => ipcRenderer.invoke('tiger:mcpInfo')
 }
 
 contextBridge.exposeInMainWorld('tiger', api)

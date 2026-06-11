@@ -16,6 +16,15 @@ export interface Settings {
   sslVerify: boolean
   /** Comma-separated hostnames where invalid certificates are accepted. */
   certExceptions: string
+  /** Path to a PEM CA bundle used to verify servers (custom/internal CAs). */
+  caFile: string
+  /** Client certificate: PEM cert + key, or a PFX/P12 bundle. */
+  clientCertFile: string
+  clientKeyFile: string
+  clientPfxFile: string
+  certPassphrase: string
+  /** Persist cookies between sends and sessions. */
+  cookieJarEnabled: boolean
   proxyEnabled: boolean
   proxyUrl: string
   /** Credentials answered to proxy 407 challenges; blank username = no auth. */
@@ -40,6 +49,12 @@ function defaults(): Settings {
     maxRedirects: 5,
     sslVerify: true,
     certExceptions: '',
+    caFile: '',
+    clientCertFile: '',
+    clientKeyFile: '',
+    clientPfxFile: '',
+    certPassphrase: '',
+    cookieJarEnabled: true,
     proxyEnabled: false,
     proxyUrl: '',
     proxyUsername: '',

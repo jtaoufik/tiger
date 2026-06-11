@@ -29,6 +29,16 @@ npm run typecheck  # strict TS across all processes
 | `src/mcp`      | MCP server (stdio)                                     |
 | `test/`        | Vitest suites mirroring `src/`                         |
 
+## Pre-commit checks
+
+A pre-commit hook runs automatically before every commit, enforcing typecheck and test pass. The hook is set up on `npm install` via the `prepare` script. If a commit fails, fix the errors and try again.
+
+You can also run checks manually:
+```bash
+npm run typecheck  # TypeScript strict check
+npm test           # Vitest suite
+```
+
 ## Reporting bugs
 
 Open an issue with the request that reproduces it (a `.tiger` snippet is perfect), what you expected, and what happened instead.

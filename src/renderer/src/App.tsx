@@ -8,6 +8,7 @@ import type { SearchItem } from '@core/search'
 import { exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
 import { importCurl } from '@core/import'
+import { extractCaptures } from '@core/capture'
 import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
 import type { ImportedRequest } from '@core/import'
@@ -22,6 +23,7 @@ import { CollectionView } from './components/CollectionView'
 import { FolderView } from './components/FolderView'
 import { WelcomeView } from './components/WelcomeView'
 import { RequestEditor } from './components/RequestEditor'
+import { RequestTabs, type RequestTab } from './components/RequestTabs'
 import { ResponsePanel } from './components/ResponsePanel'
 import { SettingsView } from './components/SettingsView'
 import { ImportExportModal, type ExportFormat } from './components/ImportExportModal'
@@ -102,6 +104,12 @@ const FALLBACK_SETTINGS: Settings = {
   maxRedirects: 5,
   sslVerify: true,
   certExceptions: '',
+  caFile: '',
+  clientCertFile: '',
+  clientKeyFile: '',
+  clientPfxFile: '',
+  certPassphrase: '',
+  cookieJarEnabled: true,
   proxyEnabled: false,
   proxyUrl: '',
   proxyUsername: '',
@@ -196,6 +204,10 @@ export default function App() {
   )
   const [pathById, setPathById] = useState<Record<string, string>>({})
   const [activeId, setActiveId] = useState<string | null>(sampleRequests[0]?.id ?? null)
+  /** Ids of requests open as tabs, in opening order (like Postman tabs). */
+  const [openTabs, setOpenTabs] = useState<string[]>(
+    sampleRequests[0] ? [sampleRequests[0].id] : []
+  )
 
   const [activeEnvKey, setActiveEnvKey] = useState<string | null>(`demo${SEP}Demo`)
   const [activeEnv, setActiveEnv] = useState<TigerEnvironment | null>(sampleEnvironment)
@@ -324,14 +336,33 @@ export default function App() {
     [requestsById, pathById]
   )
 
+  /** Register a request as an open tab (no-op when already open). */
+  const openTab = useCallback((id: string) => {
+    setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]))
+  }, [])
+
   const selectRequest = useCallback(
     async (id: string) => {
+      openTab(id)
       setActiveId(id)
       setView('workspace')
       setInspect(null)
       await loadRequest(id)
     },
-    [loadRequest]
+    [loadRequest, openTab]
+  )
+
+  const closeTab = useCallback(
+    (id: string) => {
+      const index = openTabs.indexOf(id)
+      if (index === -1) return
+      const next = openTabs.filter((t) => t !== id)
+      setOpenTabs(next)
+      // Closing the active tab activates its neighbor (the tab that took its
+      // slot, else the new last one); the empty state shows when none remain.
+      if (activeId === id) setActiveId(next[Math.min(index, next.length - 1)] ?? null)
+    },
+    [openTabs, activeId]
   )
 
   const updateActive = useCallback(
@@ -351,6 +382,61 @@ export default function App() {
     [activeId]
   )
 
+  const setCollectionEnvironments = useCallback(
+    (colId: string, environments: EnvRef[]) => {
+      setCollections((prev) => prev.map((c) => (c.id === colId ? { ...c, environments } : c)))
+      // Keep the active environment fresh if it was edited.
+      if (activeEnvKey?.startsWith(`${colId}${SEP}`)) {
+        const name = activeEnvKey.slice(activeEnvKey.indexOf(SEP) + SEP.length)
+        const ref = environments.find((e) => e.name === name)
+        if (ref?.data) setActiveEnv(ref.data)
+        else if (!ref) {
+          setActiveEnvKey(null)
+          setActiveEnv(null)
+        }
+      }
+    },
+    [activeEnvKey]
+  )
+
+  /**
+   * Merge captured variables into the active environment (update by name or
+   * append enabled) and persist: write the env file when disk-backed, else
+   * update the in-memory ref via setCollectionEnvironments.
+   */
+  const applyCaptures = useCallback(
+    (captured: Array<{ name: string; value: string }>) => {
+      if (!captured.length) return
+      if (!activeEnv || !activeEnvKey) {
+        toast('Captured values need an active environment')
+        return
+      }
+      const variables = [...activeEnv.variables]
+      for (const { name, value } of captured) {
+        const idx = variables.findIndex((v) => v.name === name)
+        if (idx !== -1) variables[idx] = { ...variables[idx], value }
+        else variables.push({ name, value, enabled: true })
+      }
+      const next = { ...activeEnv, variables }
+      setActiveEnv(next)
+      const sep = activeEnvKey.indexOf(SEP)
+      const colId = activeEnvKey.slice(0, sep)
+      const envName = activeEnvKey.slice(sep + SEP.length)
+      const col = collections.find((c) => c.id === colId)
+      const ref = col?.environments.find((e) => e.name === envName)
+      if (ref?.path && window.tiger) {
+        window.tiger.writeFile(ref.path, serializeEnvironment(next))
+      } else if (col && ref) {
+        setCollectionEnvironments(
+          colId,
+          col.environments.map((e) => (e.name === envName ? { ...e, data: next } : e))
+        )
+      }
+      toast(`Captured: ${captured.map((c) => c.name).join(', ')}`)
+    },
+    [activeEnv, activeEnvKey, collections, setCollectionEnvironments, toast]
+  )
+
   const send = useCallback(async () => {
     if (!activeId || !active) return
     const id = activeId
@@ -361,6 +447,15 @@ export default function App() {
       const data = await runRequest(activeEffective ?? active, activeEnv, settings.timeoutMs, id)
       if (!deletedIds.current.has(id)) {
         setResponses((prev) => ({ ...prev, [id]: { loading: false, data } }))
+        if (active.captures?.length) {
+          applyCaptures(
+            extractCaptures(active.captures, {
+              status: data.status,
+              headers: data.headers,
+              body: data.raw
+            })
+          )
+        }
       }
       trackEvent(events.requestSent(active.method, data.status, data.ok))
     } catch (e) {
@@ -374,7 +469,7 @@ export default function App() {
         return next
       })
     }
-  }, [activeId, active, activeEnv, settings.timeoutMs, sendingIds])
+  }, [activeId, active, activeEnv, settings.timeoutMs, sendingIds, applyCaptures])
 
   const save = useCallback(async () => {
     if (!activeId || !active) return
@@ -461,12 +556,13 @@ export default function App() {
             : c
         )
       )
+      openTab(id)
       setActiveId(id)
       setModal('none')
       setView('workspace')
       toast('Request imported from curl')
     },
-    [collections, toast]
+    [collections, openTab, toast]
   )
 
   const cloneCollection = useCallback(() => setCloneOpen(true), [])
@@ -529,12 +625,15 @@ export default function App() {
           ...Object.fromEntries(result.requests.map((r, i) => [`${colId}${SEP}${i}`, r.request]))
         }))
         setModal('none')
-        if (entries[0]) setActiveId(entries[0].id)
+        if (entries[0]) {
+          openTab(entries[0].id)
+          setActiveId(entries[0].id)
+        }
         toast(`Imported ${entries.length} requests from ${result.name}`)
         trackEvent(events.collectionImported(result.source, result.requests.length))
       })
     },
-    [toast]
+    [openTab, toast]
   )
 
   const doExport = useCallback(
@@ -632,11 +731,12 @@ export default function App() {
             : c
         )
       )
+      openTab(id)
       setActiveId(id)
       setView('workspace')
       setInspect(null)
     },
-    [collections]
+    [collections, openTab]
   )
 
   const duplicateRequest = useCallback(
@@ -677,11 +777,12 @@ export default function App() {
             : c
         )
       )
+      openTab(id)
       setActiveId(id)
       setView('workspace')
       toast('Request duplicated')
     },
-    [requestsById, loadRequest, collections, pathById, toast]
+    [requestsById, loadRequest, collections, pathById, openTab, toast]
   )
 
   const deleteRequest = useCallback(
@@ -702,10 +803,17 @@ export default function App() {
       setRequestsById(({ [entryId]: _drop, ...rest }) => rest)
       setPathById(({ [entryId]: _drop, ...rest }) => rest)
       setResponses(({ [entryId]: _drop, ...rest }) => rest)
-      if (activeId === entryId) setActiveId(null)
+      const tabIndex = openTabs.indexOf(entryId)
+      const nextTabs = openTabs.filter((t) => t !== entryId)
+      setOpenTabs(nextTabs)
+      if (activeId === entryId) {
+        setActiveId(
+          tabIndex === -1 ? null : (nextTabs[Math.min(tabIndex, nextTabs.length - 1)] ?? null)
+        )
+      }
       toast('Request deleted')
     },
-    [pathById, activeId, toast]
+    [pathById, activeId, openTabs, toast]
   )
 
   const closeCollection = useCallback(
@@ -718,6 +826,7 @@ export default function App() {
       setRequestsById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
       setPathById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
       setResponses((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
+      setOpenTabs((prev) => prev.filter((t) => !ids.has(t)))
       if (activeId && ids.has(activeId)) setActiveId(null)
       if (activeEnvKey?.startsWith(`${collectionId}${SEP}`)) {
         setActiveEnvKey(null)
@@ -753,23 +862,6 @@ export default function App() {
       }
     },
     [collections, toast]
-  )
-
-  const setCollectionEnvironments = useCallback(
-    (colId: string, environments: EnvRef[]) => {
-      setCollections((prev) => prev.map((c) => (c.id === colId ? { ...c, environments } : c)))
-      // Keep the active environment fresh if it was edited.
-      if (activeEnvKey?.startsWith(`${colId}${SEP}`)) {
-        const name = activeEnvKey.slice(activeEnvKey.indexOf(SEP) + SEP.length)
-        const ref = environments.find((e) => e.name === name)
-        if (ref?.data) setActiveEnv(ref.data)
-        else if (!ref) {
-          setActiveEnvKey(null)
-          setActiveEnv(null)
-        }
-      }
-    },
-    [activeEnvKey]
   )
 
   const requestCloseCollection = useCallback((colId: string) => setConfirmCloseId(colId), [])
@@ -930,6 +1022,14 @@ export default function App() {
   const paletteItems: SearchItem[] = collections.flatMap((c) =>
     c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
   )
+
+  // Tab labels come from collections state at render time, so renames in the
+  // sidebar/editor stay in sync automatically.
+  const entryById = new Map(collections.flatMap((c) => c.entries).map((e) => [e.id, e]))
+  const tabItems: RequestTab[] = openTabs.flatMap((id) => {
+    const entry = entryById.get(id)
+    return entry ? [{ id: entry.id, name: entry.name, method: entry.method }] : []
+  })
 
   return (
     <div className="app">
@@ -1103,10 +1203,18 @@ export default function App() {
             className="main"
             ref={mainRef}
             style={{
-              gridTemplateRows: editorH ? `${editorH}px 6px minmax(120px, 1fr)` : '1fr 6px 1fr',
+              gridTemplateRows: editorH
+                ? `auto ${editorH}px 6px minmax(120px, 1fr)`
+                : 'auto 1fr 6px 1fr',
               gap: 0
             }}
           >
+            <RequestTabs
+              tabs={tabItems}
+              activeId={activeId}
+              onSelect={selectRequest}
+              onClose={closeTab}
+            />
             {active ? (
               <RequestEditor
                 key={activeId}
@@ -1140,8 +1248,9 @@ export default function App() {
               direction="row"
               onDrag={(delta) => {
                 if (editorBase.current === null) {
+                  // children[0] is the tabs bar; children[1] is the editor.
                   editorBase.current =
-                    mainRef.current?.firstElementChild?.getBoundingClientRect().height ?? 300
+                    mainRef.current?.children.item(1)?.getBoundingClientRect().height ?? 300
                 }
                 const max = (mainRef.current?.getBoundingClientRect().height ?? 800) - 160
                 setEditorH(Math.min(max, Math.max(140, editorBase.current + delta)))

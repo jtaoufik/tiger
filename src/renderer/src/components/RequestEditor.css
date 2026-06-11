@@ -1,0 +1,35 @@
+/* GraphQL body: query on top, a smaller variables editor below. The shared
+   .code-area class wants min-height:100%, which can't stack — override it. */
+.gql-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gql-body .code-area {
+  min-height: 0;
+}
+
+.gql-query {
+  flex: 2.2;
+}
+
+.gql-vars {
+  flex: 1;
+}
+
+.gql-vars-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+}
+
+.body-toolbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -21,6 +21,7 @@
     "git-friendly"
   ],
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",

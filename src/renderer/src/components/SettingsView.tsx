@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Settings, ThemeChoice } from '../../../main/settings'
 import { Logo } from '../Logo'
+import { CheckIcon, CloseIcon, CopyIcon } from './Icons'
+import './SettingsExtras.css'
 
 interface Props {
   settings: Settings
@@ -9,23 +11,104 @@ interface Props {
 
 const THEMES: ThemeChoice[] = ['light', 'dark', 'system']
 
-type SettingsTab = 'general' | 'network' | 'advanced' | 'privacy' | 'about'
+type SettingsTab = 'general' | 'network' | 'advanced' | 'mcp' | 'privacy' | 'about'
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'network', label: 'Network' },
   { id: 'advanced', label: 'Advanced' },
+  { id: 'mcp', label: 'MCP' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'about', label: 'About' }
 ]
 
+function basename(p: string): string {
+  return p.replace(/\\/g, '/').split('/').pop() ?? p
+}
+
+interface FileRowProps {
+  label: string
+  value: string
+  filters: { name: string; extensions: string[] }[]
+  onChange: (v: string) => void
+}
+
+function FileRow({ label, value, filters, onChange }: FileRowProps) {
+  async function pick() {
+    const path = await window.tiger?.pickFile(filters)
+    if (path != null) onChange(path)
+  }
+  function clear() {
+    onChange('')
+  }
+  return (
+    <div className="setting-row">
+      <div style={{ flex: '0 0 160px', minWidth: 0 }}>
+        <div className="label">{label}</div>
+      </div>
+      <div className="cert-row" style={{ flex: 1, minWidth: 0 }}>
+        <span className={`cert-row-label${value ? '' : ' placeholder'}`}>
+          {value ? basename(value) : 'Not set'}
+        </span>
+        <button className="cert-pick-btn" onClick={pick}>
+          Choose file
+        </button>
+        {value && (
+          <button className="cert-clear-btn" onClick={clear} title="Clear">
+            <CloseIcon size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function SettingsView({ settings, onChange }: Props) {
   const [tab, setTab] = useState<SettingsTab>('general')
   const [version, setVersion] = useState('')
+  const [clearLabel, setClearLabel] = useState('Clear cookies')
+  const [mcpServerPath, setMcpServerPath] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     window.tiger?.version?.().then(setVersion)
   }, [])
+
+  useEffect(() => {
+    if (tab === 'mcp') {
+      window.tiger?.mcpInfo?.().then((info) => setMcpServerPath(info.serverPath))
+    }
+  }, [tab])
+
+  function handleClearCookies() {
+    window.tiger?.clearCookies?.().then(() => {
+      setClearLabel('Cleared')
+      setTimeout(() => setClearLabel('Clear cookies'), 1200)
+    })
+  }
+
+  const mcpSnippet = mcpServerPath
+    ? JSON.stringify(
+        {
+          mcpServers: {
+            tiger: {
+              command: 'node',
+              args: [mcpServerPath, '<path to your collection folder>']
+            }
+          }
+        },
+        null,
+        2
+      )
+    : null
+
+  function handleCopyMcp() {
+    if (!mcpSnippet) return
+    navigator.clipboard.writeText(mcpSnippet).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
 
   return (
     <section className="panel settings">
@@ -183,6 +266,27 @@ export function SettingsView({ settings, onChange }: Props) {
               </div>
             </>
           )}
+
+          <div className="setting-row">
+            <div>
+              <div className="label">Persistent cookie jar</div>
+              <div className="desc">
+                Store cookies between sends and sessions. Cookies are saved locally and
+                replayed on subsequent requests to matching domains.
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                className={`switch ${settings.cookieJarEnabled ? 'on' : ''}`}
+                onClick={() => onChange({ cookieJarEnabled: !settings.cookieJarEnabled })}
+              >
+                <span className="knob" />
+              </button>
+              <button className="cookie-clear-btn" onClick={handleClearCookies}>
+                {clearLabel}
+              </button>
+            </div>
+          </div>
         </>
       )}
 
@@ -238,6 +342,83 @@ export function SettingsView({ settings, onChange }: Props) {
               onChange={(e) => onChange({ clientCertSubject: e.target.value })}
             />
           </div>
+
+          <div className="settings-group-label" data-testid="certificates-group">Certificates</div>
+
+          <FileRow
+            label="CA bundle (PEM)"
+            value={settings.caFile}
+            filters={[{ name: 'PEM Certificate', extensions: ['pem', 'crt', 'cer'] }]}
+            onChange={(v) => onChange({ caFile: v })}
+          />
+
+          <FileRow
+            label="Client certificate (PEM)"
+            value={settings.clientCertFile}
+            filters={[{ name: 'PEM Certificate', extensions: ['pem', 'crt', 'cer'] }]}
+            onChange={(v) => onChange({ clientCertFile: v })}
+          />
+
+          <FileRow
+            label="Client key (PEM)"
+            value={settings.clientKeyFile}
+            filters={[{ name: 'PEM Key', extensions: ['pem', 'key'] }]}
+            onChange={(v) => onChange({ clientKeyFile: v })}
+          />
+
+          <FileRow
+            label="PFX / P12 bundle"
+            value={settings.clientPfxFile}
+            filters={[{ name: 'PFX / P12 Bundle', extensions: ['pfx', 'p12'] }]}
+            onChange={(v) => onChange({ clientPfxFile: v })}
+          />
+
+          <div className="setting-row">
+            <div style={{ flex: '0 0 160px', minWidth: 0 }}>
+              <div className="label">Certificate passphrase</div>
+            </div>
+            <input
+              className="num-input"
+              style={{ width: 240 }}
+              type="password"
+              value={settings.certPassphrase}
+              placeholder="passphrase"
+              onChange={(e) => onChange({ certPassphrase: e.target.value })}
+            />
+          </div>
+
+          <p className="cert-hint">
+            Requests using imported certificates bypass the proxy.
+          </p>
+        </>
+      )}
+
+      {tab === 'mcp' && (
+        <>
+          <p className="mcp-intro">
+            Tiger ships a built-in MCP server that exposes your collections to Claude Desktop
+            and other MCP-compatible clients. Add the snippet below to your{' '}
+            <code>claude_desktop_config.json</code> to connect.
+          </p>
+
+          {mcpSnippet ? (
+            <div className="mcp-code-block-wrap">
+              <code className="mcp-code-block">{mcpSnippet}</code>
+              <button className="mcp-copy-btn" onClick={handleCopyMcp} title="Copy snippet">
+                {copied ? <CheckIcon size={13} /> : <CopyIcon size={13} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          ) : (
+            <div className="mcp-code-block-wrap">
+              <code className="mcp-code-block">Loading…</code>
+            </div>
+          )}
+
+          <p className="mcp-note">
+            Replace <code>&lt;path to your collection folder&gt;</code> with the absolute path to
+            the folder you opened in Tiger. You can have multiple entries — one per collection.
+          </p>
         </>
       )}
 

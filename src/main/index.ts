@@ -14,6 +14,7 @@ import {
 } from './http'
 import { importFromDisk, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
+import { clearCookies } from './cookieJar'
 import {
   gitAvailable,
   gitBranches,
@@ -209,6 +210,29 @@ function registerIpc(): void {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
   })
   ipcMain.handle('tiger:reveal', (_e, path: string) => shell.showItemInFolder(path))
+
+  ipcMain.handle(
+    'tiger:pickFile',
+    async (_e, filters: { name: string; extensions: string[] }[]) => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openFile'],
+        filters
+      })
+      if (result.canceled || !result.filePaths[0]) return null
+      return result.filePaths[0]
+    }
+  )
+
+  ipcMain.handle('tiger:cookies:clear', () => {
+    clearCookies()
+  })
+
+  ipcMain.handle('tiger:mcpInfo', () => {
+    const serverPath = app.isPackaged
+      ? join(process.resourcesPath, 'app.asar.unpacked', 'out', 'mcp', 'server.mjs')
+      : join(app.getAppPath(), 'out', 'mcp', 'server.mjs')
+    return { serverPath }
+  })
 }
 
 app.whenReady().then(() => {

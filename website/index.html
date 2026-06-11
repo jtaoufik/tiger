@@ -37,7 +37,7 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "description": "A local-first API client for engineering teams. Collections are plain text files in Git, requests run entirely on your own machines, and importers cover Postman, Insomnia, Bruno and OpenAPI.",
         "url": "https://tiger.62-238-17-135.sslip.io/",
-        "image": "https://tiger.62-238-17-135.sslip.io/icon.png",
+        "image": "https://tiger.62-238-17-135.sslip.io/icon.png"
       },
       {
         "@type": "FAQPage",
@@ -325,6 +325,7 @@
     .spec td:first-child { color: var(--cream); font-weight: 600; }
     .yes { color: var(--good); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
     .no { color: var(--bad); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
+    .mid { color: #c8a043; font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
 
     /* ---------- migrate ---------- */
     .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
@@ -459,7 +460,7 @@
         <div class="cell wide">
           <span class="num">01</span>
           <h3>Collaboration through Git, not a sync server</h3>
-          <p>Collections are folders of .tiger files, and every service's collection opens side by side in one workspace, each backed by its own repo. Branch them, review them in pull requests, onboard with git clone.</p>
+          <p>Collections are folders of .tiger files; every request is a reviewable plain-text file. Branch them, diff them in pull requests, and onboard new engineers with git clone. Request chaining via capture blocks lets one request feed its response values into the next.</p>
           <div class="tree">
 <span class="dir">payments/</span><br/>
 ├── create-invoice.tiger<span class="badge">+12 −3</span><br/>
@@ -469,64 +470,64 @@
         </div>
         <div class="cell">
           <span class="num">02</span>
-          <h3>Data residency by construction</h3>
-          <p>Requests, tokens and responses stay on the engineer's machine. No vendor cloud to audit, no DPA to negotiate, no breach surface you do not control.</p>
+          <h3>TLS you control end to end</h3>
+          <p>Import client certificates and custom CA bundles for mutual TLS. An SSL verification switch covers development against self-signed or internal certificates.</p>
         </div>
         <div class="cell">
           <span class="num">03</span>
-          <h3>Built for corporate networks</h3>
-          <p>HTTP, HTTPS and SOCKS proxy support, an SSL verification switch for development against self-signed certificates, redirect policy and timeouts.</p>
+          <h3>Request tabs and per-request docs</h3>
+          <p>Open multiple requests in parallel tabs without losing your place. Attach markdown documentation to any request so context travels with the collection, not a separate wiki.</p>
         </div>
         <div class="cell">
           <span class="num">04</span>
           <h3>Auth your APIs actually use</h3>
-          <p>OAuth 2.0 client credentials with automatic token exchange, Bearer, Basic and API keys. Secrets resolve from environment files you can keep out of Git.</p>
+          <p>OAuth 2.0 client credentials with automatic token exchange, Bearer, Basic and API keys. Secrets resolve from environment files you keep out of Git. Dynamic variables like {{$uuid}} and {{$timestamp}} generate fresh values on every send.</p>
         </div>
         <div class="cell">
           <span class="num">05</span>
-          <h3>One tool across the fleet</h3>
-          <p>The same app on macOS, Windows and Linux, with standard installers for each. No license keys or seat assignments to manage.</p>
+          <h3>GraphQL, SOAP and REST</h3>
+          <p>GraphQL body editor with schema introspection, SOAP envelope bodies, and standard REST. JSON prettify and minify helpers keep response payloads readable without leaving the app.</p>
         </div>
         <div class="cell">
           <span class="num">06</span>
           <h3>AI-ready with MCP</h3>
-          <p>Tiger ships a Model Context Protocol server, so Claude and other MCP clients can list, inspect and run your collections in agentic workflows.</p>
+          <p>Tiger ships a Model Context Protocol server, so Claude and other MCP clients can list, inspect and run your collections in agentic workflows without any extra tooling.</p>
         </div>
         <div class="cell">
           <span class="num">07</span>
-          <h3>Environments with secrets</h3>
-          <p>Create, rename and duplicate environments; mark variables secret so values stay hidden. Switch dev, staging and prod from one dropdown.</p>
+          <h3>Persistent cookie jar</h3>
+          <p>Cookies set by one request are available to subsequent ones automatically. The cookie jar is per-environment, so staging and production sessions never bleed into each other.</p>
         </div>
         <div class="cell">
           <span class="num">08</span>
           <h3>Built-in performance runs</h3>
-          <p>Fire any request hundreds of times with bounded concurrency and read back p50 and p95 latency, right inside the client.</p>
+          <p>Fire any request hundreds of times with bounded concurrency and read back p50 and p95 latency right inside the client. No separate monitor subscription needed.</p>
         </div>
         <div class="cell">
           <span class="num">09</span>
           <h3>Bring your whole toolkit</h3>
-          <p>Import Postman, Insomnia, Bruno, OpenAPI or paste a curl command. REST and SOAP, cookies, code generation for curl, fetch and Python.</p>
+          <p>Import Postman, Insomnia, Bruno, OpenAPI or paste a curl command. Export whole collections back to Postman v2.1 or single requests as curl. REST, SOAP, GraphQL and code generation for curl, fetch and Python.</p>
         </div>
       </div>
     </section>
 
     <section id="compare" class="reveal">
       <span class="eyebrow">Compare</span>
-      <h2>Tiger vs cloud API clients</h2>
-      <p class="sub">The structural differences that matter to a platform or security review.</p>
+      <h2>Tiger vs Postman vs Bruno</h2>
+      <p class="sub">Factual differences that matter to a platform or security review.</p>
       <div class="spec">
         <table>
           <thead>
-            <tr><th scope="col">Capability</th><th scope="col">Tiger</th><th scope="col">Typical cloud client</th></tr>
+            <tr><th scope="col">Capability</th><th scope="col">Tiger</th><th scope="col">Postman</th><th scope="col">Bruno</th></tr>
           </thead>
           <tbody>
-            <tr><td>Where collections live</td><td class="yes">Your Git repos</td><td class="no">Vendor cloud</td></tr>
-            <tr><td>Account required</td><td class="yes">Never</td><td class="no">Per user</td></tr>
-            <tr><td>Works fully offline</td><td class="yes">Yes</td><td class="no">Degraded or blocked</td></tr>
-            <tr><td>Change review</td><td class="yes">Pull requests</td><td class="no">Proprietary history</td></tr>
-            <tr><td>Request history</td><td class="yes">Local only</td><td class="no">Often synced to cloud</td></tr>
-            <tr><td>Built-in performance runs</td><td class="yes">Yes</td><td class="no">Add-on or absent</td></tr>
-            <tr><td>Secrets kept out of the cloud</td><td class="yes">Local files</td><td class="no">Vendor vault</td></tr>
+            <tr><td>Collections stored as plain files in Git</td><td class="yes">Yes</td><td class="mid">Cloud workspace (local collections available on paid plan)</td><td class="yes">Yes</td></tr>
+            <tr><td>Account required</td><td class="yes">Never</td><td class="mid">Required for most features</td><td class="yes">Never</td></tr>
+            <tr><td>Works fully offline</td><td class="yes">Yes</td><td class="mid">Limited without cloud sync</td><td class="yes">Yes</td></tr>
+            <tr><td>Built-in performance runs</td><td class="yes">Yes</td><td class="mid">Paid-tier monitors</td><td class="no">No</td></tr>
+            <tr><td>One-button team sync with plain language</td><td class="yes">Yes, via Git</td><td class="mid">n/a, uses cloud sync</td><td class="mid">Manual Git workflow</td></tr>
+            <tr><td>MCP server for AI clients</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><td>Free to start</td><td class="yes">Yes</td><td class="mid">Freemium</td><td class="yes">Yes</td></tr>
           </tbody>
         </table>
       </div>

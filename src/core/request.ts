@@ -73,6 +73,20 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
       if (!hasHeader(headers, 'content-type')) {
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
       }
+    } else if (req.body.type === 'graphql') {
+      // GraphQL-over-HTTP: a JSON envelope of { query, variables? }.
+      const query = interpolate(req.body.content, vars)
+      let variables: unknown
+      const varsText = interpolate(req.body.variables ?? '', vars)
+      if (varsText.trim()) {
+        try {
+          variables = JSON.parse(varsText)
+        } catch {
+          variables = undefined // unparsable variables are omitted, not sent broken
+        }
+      }
+      body = JSON.stringify(variables === undefined ? { query } : { query, variables })
+      if (!hasHeader(headers, 'content-type')) headers['Content-Type'] = 'application/json'
     }
   }
 

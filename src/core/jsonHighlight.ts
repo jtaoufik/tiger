@@ -46,3 +46,13 @@ export function formatJsonText(text: string): { ok: boolean; formatted?: string 
     return { ok: false }
   }
 }
+
+/** Collapse valid JSON onto a single line with no insignificant whitespace. */
+export function minifyJsonText(text: string): { ok: boolean; formatted?: string } {
+  if (!text.trim()) return { ok: false }
+  try {
+    return { ok: true, formatted: JSON.stringify(JSON.parse(text)) }
+  } catch {
+    return { ok: false }
+  }
+}

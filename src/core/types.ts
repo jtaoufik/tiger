@@ -38,15 +38,18 @@ export type TigerAuth =
       scope: string
     }
 
-export type BodyType = 'none' | 'json' | 'xml' | 'text' | 'form'
+export type BodyType = 'none' | 'json' | 'xml' | 'text' | 'form' | 'graphql'
 
 export interface TigerBody {
   type: BodyType
   /**
    * Raw body content. For `json`/`text` this is the literal payload. For `form`
    * it holds `key: value` lines parsed into url-encoded pairs at request time.
+   * For `graphql` it is the query document.
    */
   content: string
+  /** GraphQL only: the variables JSON text sent alongside the query. */
+  variables?: string
 }
 
 /** One HTTP request, the in-memory form of a single `.tiger` file. */
@@ -59,6 +62,14 @@ export interface TigerRequest {
   query: KeyValue[]
   body: TigerBody
   auth?: TigerAuth
+  /**
+   * Response captures for request chaining: `name` is the variable to set,
+   * `value` is a path into the response ("status", "header.<Name>", "body",
+   * "body.a.b[0].c").
+   */
+  captures?: KeyValue[]
+  /** Free-form markdown documentation for this request. */
+  docs?: string
 }
 
 /** A named set of `{{variable}}` values. */

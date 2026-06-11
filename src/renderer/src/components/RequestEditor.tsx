@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { HTTP_METHODS, type BodyType, type KeyValue, type TigerRequest } from '@core/types'
-import { formatJsonText } from '@core/jsonHighlight'
+import { formatJsonText, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
 import { AuthEditor } from './AuthEditor'
-import { CodeIcon, GaugeIcon, SaveIcon } from './Icons'
+import { CheckIcon, CodeIcon, CopyIcon, GaugeIcon, SaveIcon } from './Icons'
+import './RequestEditor.css'
 
 interface Props {
   request: TigerRequest
@@ -19,9 +20,9 @@ interface Props {
   onPerf: () => void
 }
 
-type Tab = 'params' | 'headers' | 'auth' | 'body'
+type Tab = 'params' | 'headers' | 'auth' | 'body' | 'capture' | 'docs'
 
-const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form']
+const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form', 'graphql']
 
 export function RequestEditor({
   request,
@@ -42,9 +43,20 @@ export function RequestEditor({
   // mid-typing. The component remounts per request (key={activeId} in App),
   // so this state never leaks across requests.
   const [formRows, setFormRows] = useState<KeyValue[]>(() => formToKv(request.body.content))
+  const [copiedBody, setCopiedBody] = useState(false)
 
   const set = (patch: Partial<TigerRequest>) => onChange({ ...request, ...patch })
   const enabledCount = (kv: KeyValue[]) => kv.filter((k) => k.enabled !== false && k.name).length
+
+  const copyBody = async () => {
+    try {
+      await navigator.clipboard.writeText(request.body.content)
+      setCopiedBody(true)
+      setTimeout(() => setCopiedBody(false), 1200)
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
 
   return (
     <section className="panel editor">
@@ -127,6 +139,15 @@ export function RequestEditor({
         <button className={`tab ${tab === 'body' ? 'active' : ''}`} onClick={() => setTab('body')}>
           Body {request.body.type !== 'none' && <span className="dot" />}
         </button>
+        <button className={`tab ${tab === 'capture' ? 'active' : ''}`} onClick={() => setTab('capture')}>
+          Capture{' '}
+          {enabledCount(request.captures ?? []) > 0 && (
+            <span className="count">{enabledCount(request.captures ?? [])}</span>
+          )}
+        </button>
+        <button className={`tab ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>
+          Docs {!!request.docs?.trim() && <span className="dot" />}
+        </button>
       </div>
 
       <div className="tab-body">
@@ -167,16 +188,31 @@ export function RequestEditor({
                     !request.body.content.includes('{{') && (
                       <span className="json-bad">Invalid JSON</span>
                     )}
-                  <button
-                    className="btn ghost"
-                    style={{ marginLeft: 'auto', padding: '5px 11px', fontSize: 12.5 }}
-                    onClick={() => {
-                      const result = formatJsonText(request.body.content)
-                      if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
-                    }}
-                  >
-                    Format
-                  </button>
+                  <div className="body-toolbar-actions">
+                    <button
+                      className="btn ghost"
+                      style={{ padding: '5px 11px', fontSize: 12.5 }}
+                      onClick={() => {
+                        const result = formatJsonText(request.body.content)
+                        if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
+                      }}
+                    >
+                      Format
+                    </button>
+                    <button
+                      className="btn ghost"
+                      style={{ padding: '5px 11px', fontSize: 12.5 }}
+                      onClick={() => {
+                        const result = minifyJsonText(request.body.content)
+                        if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
+                      }}
+                    >
+                      Minify
+                    </button>
+                    <button className="icon-btn" title="Copy body" onClick={copyBody}>
+                      {copiedBody ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -193,6 +229,28 @@ export function RequestEditor({
                 }}
               />
             )}
+            {request.body.type === 'graphql' && (
+              <div className="gql-body">
+                <textarea
+                  className="code-area gql-query"
+                  spellCheck={false}
+                  value={request.body.content}
+                  placeholder={'query {\n  viewer { id name }\n}'}
+                  onChange={(e) => set({ body: { ...request.body, content: e.target.value } })}
+                />
+                <label className="gql-vars-label" htmlFor="gql-vars">
+                  Variables (JSON)
+                </label>
+                <textarea
+                  id="gql-vars"
+                  className="code-area gql-vars"
+                  spellCheck={false}
+                  value={request.body.variables ?? ''}
+                  placeholder={'{ "id": 1 }'}
+                  onChange={(e) => set({ body: { ...request.body, variables: e.target.value } })}
+                />
+              </div>
+            )}
             {(request.body.type === 'json' || request.body.type === 'xml' || request.body.type === 'text') && (
               <textarea
                 className="code-area"
@@ -203,6 +261,22 @@ export function RequestEditor({
               />
             )}
           </div>
+        )}
+        {tab === 'capture' && (
+          <KeyValueEditor
+            items={request.captures ?? []}
+            placeholder={['Variable', 'body.path.to.value']}
+            onChange={(captures) => set({ captures })}
+          />
+        )}
+        {tab === 'docs' && (
+          <textarea
+            className="code-area"
+            spellCheck={false}
+            value={request.docs ?? ''}
+            placeholder="Document this request in markdown…"
+            onChange={(e) => set({ docs: e.target.value })}
+          />
         )}
       </div>
     </section>

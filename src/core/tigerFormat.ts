@@ -169,6 +169,9 @@ export function parseRequest(input: string): TigerRequest {
   let body: TigerBody = emptyBody()
   // Absent block = inherit from the collection; explicit auth:none = no auth.
   let auth: TigerAuth | undefined
+  let graphqlVars: string | undefined
+  let captures: KeyValue[] | undefined
+  let docs: string | undefined
 
   for (const block of blocks) {
     if (block.name === 'meta') {
@@ -188,6 +191,12 @@ export function parseRequest(input: string): TigerRequest {
     } else if (block.name === 'body') {
       const type = (block.subtype ?? 'text') as BodyType
       body = { type, content: dedent(block.content) }
+    } else if (block.name === 'graphqlvars') {
+      graphqlVars = dedent(block.content)
+    } else if (block.name === 'capture') {
+      captures = parseKeyValues(block.content)
+    } else if (block.name === 'docs') {
+      docs = dedent(block.content)
     } else if (block.name === 'auth') {
       auth = parseAuth(block.subtype, block.content)
     }
@@ -197,8 +206,12 @@ export function parseRequest(input: string): TigerRequest {
     throw new TigerParseError('Request is missing a method block (get, post, …)')
   }
 
+  if (graphqlVars !== undefined) body = { ...body, variables: graphqlVars }
+
   const request: TigerRequest = { name, seq, method, url, headers, query, body }
   if (auth) request.auth = auth
+  if (captures) request.captures = captures
+  if (docs !== undefined) request.docs = docs
   return request
 }
 
@@ -207,6 +220,15 @@ function renderKeyValues(blockName: string, items: KeyValue[]): string {
     (kv) => `  ${kv.enabled === false ? '~' : ''}${kv.name}: ${kv.value}`
   )
   return `${blockName} {\n${lines.join('\n')}\n}`
+}
+
+/** Render a free-text block (body, graphqlvars, docs) with two-space indent. */
+function renderTextBlock(header: string, content: string): string {
+  const indented = content
+    .split('\n')
+    .map((l) => (l.length ? `  ${l}` : l))
+    .join('\n')
+  return `${header} {\n${indented}\n}`
 }
 
 export function serializeRequest(req: TigerRequest): string {
@@ -222,14 +244,15 @@ export function serializeRequest(req: TigerRequest): string {
   if (req.headers.length) parts.push(renderKeyValues('headers', req.headers))
 
   if (req.body.type !== 'none' && req.body.content.trim()) {
-    const indented = req.body.content
-      .split('\n')
-      .map((l) => (l.length ? `  ${l}` : l))
-      .join('\n')
-    parts.push(`body:${req.body.type} {\n${indented}\n}`)
+    parts.push(renderTextBlock(`body:${req.body.type}`, req.body.content))
+  }
+  if (req.body.type === 'graphql' && req.body.variables?.trim()) {
+    parts.push(renderTextBlock('graphqlvars', req.body.variables))
   }
 
   if (req.auth) parts.push(renderAuth(req.auth))
+  if (req.captures?.length) parts.push(renderKeyValues('capture', req.captures))
+  if (req.docs?.trim()) parts.push(renderTextBlock('docs', req.docs))
 
   return `${parts.join('\n\n')}\n`
 }

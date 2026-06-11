@@ -19,23 +19,26 @@ beforeEach(() => {
   document.body.innerHTML = ''
 })
 
+/** The active request is also an open tab, so scope name lookups to the tree. */
+const sidebar = () => document.querySelector('.sidebar') as HTMLElement
+
 describe('App (browser preview, no Electron bridge)', () => {
   it('renders the demo collection with folders in the sidebar', () => {
     render(<App />)
     expect(screen.getByText('Demo collection')).toBeInTheDocument()
     expect(screen.getByText('Posts')).toBeInTheDocument()
     expect(screen.getByText('Users')).toBeInTheDocument()
-    expect(screen.getByText('List posts')).toBeInTheDocument()
+    expect(within(sidebar()).getByText('List posts')).toBeInTheDocument()
   })
 
   it('folds and unfolds a folder via its chevron', () => {
     render(<App />)
     const row = screen.getByText('Posts').closest('.folder-row')!
     fireEvent.click(within(row as HTMLElement).getByTitle('Collapse folder'))
-    expect(screen.queryByText('List posts')).not.toBeInTheDocument()
-    expect(screen.getByText('List users')).toBeInTheDocument()
+    expect(within(sidebar()).queryByText('List posts')).not.toBeInTheDocument()
+    expect(within(sidebar()).getByText('List users')).toBeInTheDocument()
     fireEvent.click(within(row as HTMLElement).getByTitle('Expand folder'))
-    expect(screen.getByText('List posts')).toBeInTheDocument()
+    expect(within(sidebar()).getByText('List posts')).toBeInTheDocument()
   })
 
   it('folds a whole collection via its chevron', () => {
@@ -43,7 +46,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     const head = screen.getByText('Demo collection').closest('.col-head')!
     fireEvent.click(within(head as HTMLElement).getByTitle('Collapse collection'))
     expect(screen.queryByText('Posts')).not.toBeInTheDocument()
-    expect(screen.queryByText('List posts')).not.toBeInTheDocument()
+    expect(within(sidebar()).queryByText('List posts')).not.toBeInTheDocument()
   })
 
   it('opens the collection view with sync, auth and activity on click', async () => {
@@ -70,8 +73,8 @@ describe('App (browser preview, no Electron bridge)', () => {
     fireEvent.change(screen.getByPlaceholderText('Search requests'), {
       target: { value: 'create' }
     })
-    expect(screen.getByText('Create post')).toBeInTheDocument()
-    expect(screen.queryByText('List posts')).not.toBeInTheDocument()
+    expect(within(sidebar()).getByText('Create post')).toBeInTheDocument()
+    expect(within(sidebar()).queryByText('List posts')).not.toBeInTheDocument()
     expect(screen.queryByText('Posts')).not.toBeInTheDocument()
   })
 
@@ -83,7 +86,7 @@ describe('App (browser preview, no Electron bridge)', () => {
 
   it('deletes a request through the in-app confirm modal', async () => {
     render(<App />)
-    const row = screen.getByText('List posts').closest('.tree-row')!
+    const row = within(sidebar()).getByText('List posts').closest('.tree-row')!
     fireEvent.click(within(row as HTMLElement).getByTitle('Delete request'))
     expect(screen.getByText(/Delete "List posts"/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
@@ -255,7 +258,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     render(<App />)
     const row = screen.getByText('Get post').closest('.tree-row')!
     fireEvent.click(within(row as HTMLElement).getByTitle('Duplicate request'))
-    expect(await screen.findByText('Get post copy')).toBeInTheDocument()
+    expect(await within(sidebar()).findByText('Get post copy')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Get post copy')).toBeInTheDocument()
   })
 
@@ -265,6 +268,47 @@ describe('App (browser preview, no Electron bridge)', () => {
     fireEvent.change(url, { target: { value: '{{nope}}/x' } })
     expect(screen.getByText(/Unresolved variables/)).toBeInTheDocument()
     expect(screen.getByText(/\{\{nope\}\}/)).toBeInTheDocument()
+  })
+
+  it('shows one tab initially and two after opening a second request', () => {
+    render(<App />)
+    const tabbar = document.querySelector('.request-tabs')!
+    expect(tabbar.querySelectorAll('.request-tab')).toHaveLength(1)
+    expect(within(tabbar as HTMLElement).getByText('List posts')).toBeInTheDocument()
+
+    const sidebar = document.querySelector('.sidebar')!
+    fireEvent.click(within(sidebar as HTMLElement).getByText('List users'))
+    expect(tabbar.querySelectorAll('.request-tab')).toHaveLength(2)
+    expect(within(tabbar as HTMLElement).getByText('List users')).toBeInTheDocument()
+  })
+
+  it('activates the neighbor tab when the active tab is closed', () => {
+    render(<App />)
+    const sidebar = document.querySelector('.sidebar')!
+    fireEvent.click(within(sidebar as HTMLElement).getByText('List users'))
+    expect(screen.getByDisplayValue('List users')).toBeInTheDocument()
+
+    const tabbar = document.querySelector('.request-tabs') as HTMLElement
+    const activeTab = tabbar.querySelector('.request-tab.active') as HTMLElement
+    expect(within(activeTab).getByText('List users')).toBeInTheDocument()
+    fireEvent.click(within(activeTab).getByTitle('Close tab'))
+
+    expect(tabbar.querySelectorAll('.request-tab')).toHaveLength(1)
+    expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
+  })
+
+  it('labels each tab close button with a title', () => {
+    render(<App />)
+    const tabbar = document.querySelector('.request-tabs') as HTMLElement
+    expect(within(tabbar).getAllByTitle('Close tab').length).toBeGreaterThan(0)
+  })
+
+  it('shows the empty state when the last tab is closed', () => {
+    render(<App />)
+    const tabbar = document.querySelector('.request-tabs') as HTMLElement
+    fireEvent.click(within(tabbar).getByTitle('Close tab'))
+    expect(tabbar.querySelectorAll('.request-tab')).toHaveLength(0)
+    expect(screen.getByText('No request selected')).toBeInTheDocument()
   })
 
   it('formats a JSON body and flags invalid JSON', () => {

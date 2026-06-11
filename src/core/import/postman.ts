@@ -52,6 +52,15 @@ function toBody(raw: unknown): TigerBody {
       .join('\n')
     return { type: 'form', content }
   }
+  if (mode === 'graphql') {
+    const gql = (body.graphql ?? {}) as Json
+    const variables = str(gql.variables)
+    return {
+      type: 'graphql',
+      content: str(gql.query),
+      ...(variables.trim() ? { variables } : {})
+    }
+  }
   return emptyBody()
 }
 
