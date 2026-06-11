@@ -99,10 +99,12 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByText('Get post')).toBeInTheDocument()
   })
 
-  it('closes a collection', () => {
+  it('closes a collection after confirming', () => {
     render(<App />)
     const head = screen.getByText('Demo collection').closest('.col-head')!
     fireEvent.click(within(head as HTMLElement).getByTitle('Close collection'))
+    expect(screen.getByText(/Close "Demo collection"/)).toBeInTheDocument()
+    fireEvent.click(document.querySelector('.modal .btn.danger')!)
     expect(screen.queryByText('Demo collection')).not.toBeInTheDocument()
     expect(screen.getByText('No collections open.')).toBeInTheDocument()
   })
@@ -165,10 +167,12 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('shows network + privacy settings with analytics on by default', () => {
     render(<App />)
     fireEvent.click(screen.getByTitle('Settings'))
+    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
     expect(screen.getByText('Follow redirects')).toBeInTheDocument()
     expect(screen.getByText('Verify SSL certificates')).toBeInTheDocument()
     expect(screen.getByText('Use a proxy')).toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Privacy' }))
     const analyticsRow = screen.getByText('Anonymous usage analytics').closest('.setting-row')!
     expect(analyticsRow.querySelector('.switch.on')).not.toBeNull()
   })
@@ -182,11 +186,28 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(document.documentElement.dataset.theme).toBe('light')
   })
 
-  it('opens the environment editor with the demo variables', () => {
+  it('opens the environments manager with the demo variables and secret toggle', () => {
     render(<App />)
     fireEvent.click(screen.getByTitle('Manage environment'))
-    expect(screen.getByText('Environment · Demo')).toBeInTheDocument()
+    expect(screen.getByText('Environments')).toBeInTheDocument()
     expect(screen.getByDisplayValue('baseUrl')).toBeInTheDocument()
+    expect(screen.getByText('New environment')).toBeInTheDocument()
+    expect(screen.getAllByTitle('Mark as secret').length).toBeGreaterThan(0)
+  })
+
+  it('runs a performance run modal for the active request', () => {
+    render(<App />)
+    fireEvent.click(screen.getByTitle('Performance run'))
+    expect(screen.getByText('Performance run')).toBeInTheDocument()
+    expect(screen.getByText('Total requests')).toBeInTheDocument()
+    expect(screen.getByText('Concurrency')).toBeInTheDocument()
+  })
+
+  it('offers create actions on empty-space right click in the sidebar', () => {
+    render(<App />)
+    fireEvent.contextMenu(document.querySelector('.tree')!)
+    expect(screen.getByText('Open collection folder…')).toBeInTheDocument()
+    expect(screen.getByText('Manage environments…')).toBeInTheDocument()
   })
 
   it('opens the code generation modal with a curl command for the active request', () => {

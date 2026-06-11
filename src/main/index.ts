@@ -174,6 +174,25 @@ app.whenReady().then(() => {
       /* missing icon asset must not block startup */
     }
   }
+  // Proxy authentication: answer 407 challenges with the configured credentials
+  // instead of letting Electron fail the request silently.
+  app.on('login', (event, _webContents, _request, authInfo, callback) => {
+    const { proxyUsername, proxyPassword } = loadSettings()
+    if (authInfo.isProxy && proxyUsername) {
+      event.preventDefault()
+      callback(proxyUsername, proxyPassword)
+    }
+  })
+
+  // Mutual TLS: when a server requests a client certificate, pick the one whose
+  // subject contains the configured filter text (first in the list otherwise).
+  app.on('select-client-certificate', (event, _webContents, _url, list, callback) => {
+    event.preventDefault()
+    const filter = loadSettings().clientCertSubject
+    const match = filter ? list.find((cert) => cert.subjectName.includes(filter)) : undefined
+    callback(match ?? list[0])
+  })
+
   registerIpc()
   applyNetworkSettings()
   createWindow()

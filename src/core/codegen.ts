@@ -22,8 +22,25 @@ export function toFetch(built: BuiltRequest): string {
   return `await fetch(${JSON.stringify(built.url)}, ${JSON.stringify(init, null, 2)})`
 }
 
-export type CodegenTarget = 'curl' | 'fetch'
+export function toPython(built: BuiltRequest): string {
+  const lines = ['import requests', '']
+  if (Object.keys(built.headers).length) {
+    lines.push(`headers = ${JSON.stringify(built.headers, null, 4)}`)
+  }
+  const args = [`"${built.url}"`]
+  if (Object.keys(built.headers).length) args.push('headers=headers')
+  if (built.body) {
+    lines.push(`data = ${JSON.stringify(built.body)}`)
+    args.push('data=data')
+  }
+  lines.push('', `response = requests.${built.method.toLowerCase()}(${args.join(', ')})`, 'print(response.status_code, response.text)')
+  return lines.join('\n')
+}
+
+export type CodegenTarget = 'curl' | 'fetch' | 'python'
 
 export function generateCode(built: BuiltRequest, target: CodegenTarget): string {
-  return target === 'curl' ? toCurl(built) : toFetch(built)
+  if (target === 'curl') return toCurl(built)
+  if (target === 'python') return toPython(built)
+  return toFetch(built)
 }

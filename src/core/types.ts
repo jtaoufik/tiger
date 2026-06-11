@@ -20,6 +20,8 @@ export interface KeyValue {
   name: string
   value: string
   enabled: boolean
+  /** Environment variables only: hide the value in the UI. */
+  secret?: boolean
 }
 
 export type TigerAuth =

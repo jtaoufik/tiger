@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ImportKind } from '../../../main/importers'
 import { Modal } from './Modal'
 import { CodeIcon, DownloadIcon, FileIcon, UploadIcon } from './Icons'
@@ -8,6 +9,7 @@ interface Props {
   collectionName: string | null
   requestName: string | null
   onImport: (kind: ImportKind) => void
+  onImportCurl: (command: string) => void
   onExport: (format: ExportFormat) => void
   onClose: () => void
 }
@@ -23,9 +25,12 @@ export function ImportExportModal({
   collectionName,
   requestName,
   onImport,
+  onImportCurl,
   onExport,
   onClose
 }: Props) {
+  const [curl, setCurl] = useState('')
+  const [showCurl, setShowCurl] = useState(false)
   return (
     <Modal title="Import / Export" onClose={onClose} width={600}>
       <div className="section-label" style={{ marginTop: 0 }}>
@@ -42,6 +47,33 @@ export function ImportExportModal({
           </button>
         ))}
       </div>
+
+      {showCurl ? (
+        <div style={{ marginTop: 10 }}>
+          <textarea
+            className="code-area"
+            style={{ minHeight: 90, border: '1px solid var(--border-strong)', borderRadius: 9, padding: 10 }}
+            placeholder="Paste a curl command…"
+            value={curl}
+            spellCheck={false}
+            onChange={(e) => setCurl(e.target.value)}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+            <button className="btn" onClick={() => setShowCurl(false)}>Cancel</button>
+            <button className="btn accent" disabled={!curl.trim()} onClick={() => onImportCurl(curl)}>
+              Import request
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          className="btn ghost"
+          style={{ marginTop: 10 }}
+          onClick={() => setShowCurl(true)}
+        >
+          <CodeIcon size={14} /> Paste a cURL command
+        </button>
+      )}
 
       <div className="section-label">Export</div>
       <div className="choice-grid">

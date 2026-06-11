@@ -7,6 +7,7 @@ import { resolveAuth, serializeCollectionSettings } from '@core/collectionSettin
 import type { SearchItem } from '@core/search'
 import { exportPostman } from '@core/export'
 import { toCurl } from '@core/codegen'
+import { importCurl } from '@core/import'
 import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
 import type { ImportedRequest } from '@core/import'
@@ -26,7 +27,8 @@ import { SettingsView } from './components/SettingsView'
 import { ImportExportModal, type ExportFormat } from './components/ImportExportModal'
 import { CodeModal } from './components/CodeModal'
 import { HistoryModal } from './components/HistoryModal'
-import { EnvironmentModal } from './components/EnvironmentModal'
+import { EnvironmentsModal } from './components/EnvironmentsModal'
+import { PerfModal } from './components/PerfModal'
 import { ConfirmModal } from './components/ConfirmModal'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
@@ -44,6 +46,7 @@ import {
   FolderOpenIcon,
   GearIcon,
   GitBranchIcon,
+  GlobeIcon,
   PencilIcon,
   PlusIcon,
   SwapIcon,
@@ -62,6 +65,7 @@ interface ResponseState {
 interface EnvRef {
   name: string
   path?: string
+  data?: TigerEnvironment
 }
 
 interface CollectionState {
@@ -75,7 +79,7 @@ interface CollectionState {
   auth?: TigerAuth
 }
 
-type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env'
+type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env' | 'perf'
 
 interface Toast {
   id: number
@@ -99,6 +103,9 @@ const FALLBACK_SETTINGS: Settings = {
   certExceptions: '',
   proxyEnabled: false,
   proxyUrl: '',
+  proxyUsername: '',
+  proxyPassword: '',
+  clientCertSubject: '',
   analyticsEnabled: true,
   clientId: 'local'
 }
@@ -112,7 +119,7 @@ const DEMO_COLLECTION: CollectionState = {
     method: r.request.method,
     folderPath: [r.folder]
   })),
-  environments: [{ name: 'Demo' }]
+  environments: [{ name: 'Demo', data: sampleEnvironment }]
 }
 
 /** localStorage is unavailable in some test environments; never throw. */
@@ -204,6 +211,8 @@ export default function App() {
   const [gitStates, setGitStates] = useState<Record<string, SyncState>>({})
   const [gitColId, setGitColId] = useState<string | null>(null)
   const [authColId, setAuthColId] = useState<string | null>(null)
+  const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
+  const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null)
   const [inspect, setInspect] = useState<
     { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
   >(null)
@@ -433,6 +442,31 @@ export default function App() {
     if (entries[0]) selectRequest(entries[0].id)
   }, [selectRequest])
 
+  const importFromCurl = useCallback(
+    (command: string) => {
+      const req = importCurl(command)
+      if (!req) {
+        toast('Could not parse that as a curl command')
+        return
+      }
+      const colId = collections[0]?.id ?? 'demo'
+      const id = `${colId}${SEP}curl-${Date.now()}`
+      setRequestsById((prev) => ({ ...prev, [id]: req }))
+      setCollections((prev) =>
+        prev.map((c) =>
+          c.id === colId
+            ? { ...c, entries: [...c.entries, { id, name: req.name, method: req.method, folderPath: [] }] }
+            : c
+        )
+      )
+      setActiveId(id)
+      setModal('none')
+      setView('workspace')
+      toast('Request imported from curl')
+    },
+    [collections, toast]
+  )
+
   const loadImport = useCallback(
     (kind: ImportKind) => {
       window.tiger?.importCollection(kind).then((result) => {
@@ -647,8 +681,8 @@ export default function App() {
       const sep = key.indexOf(SEP)
       const colId = key.slice(0, sep)
       const envName = key.slice(sep + SEP.length)
-      if (colId === 'demo') return setActiveEnv(sampleEnvironment)
       const ref = collections.find((c) => c.id === colId)?.environments.find((e) => e.name === envName)
+      if (ref?.data) return setActiveEnv(ref.data)
       if (ref?.path && window.tiger) {
         try {
           const env = parseEnvironment(await window.tiger.readFile(ref.path))
@@ -667,7 +701,26 @@ export default function App() {
     [collections, toast]
   )
 
-  const updateEnvVars = useCallback(
+  const setCollectionEnvironments = useCallback(
+    (colId: string, environments: EnvRef[]) => {
+      setCollections((prev) => prev.map((c) => (c.id === colId ? { ...c, environments } : c)))
+      // Keep the active environment fresh if it was edited.
+      if (activeEnvKey?.startsWith(`${colId}${SEP}`)) {
+        const name = activeEnvKey.slice(activeEnvKey.indexOf(SEP) + SEP.length)
+        const ref = environments.find((e) => e.name === name)
+        if (ref?.data) setActiveEnv(ref.data)
+        else if (!ref) {
+          setActiveEnvKey(null)
+          setActiveEnv(null)
+        }
+      }
+    },
+    [activeEnvKey]
+  )
+
+  const requestCloseCollection = useCallback((colId: string) => setConfirmCloseId(colId), [])
+
+  const _legacyUpdateEnvVars = useCallback(
     (variables: KeyValue[]) => {
       if (!activeEnv || !activeEnvKey) return
       const next = { ...activeEnv, variables }
@@ -680,6 +733,7 @@ export default function App() {
     },
     [activeEnv, activeEnvKey, collections]
   )
+  void _legacyUpdateEnvVars
 
   const openCode = useCallback(() => {
     if (!activeEffective) return
@@ -780,7 +834,7 @@ export default function App() {
       })
       setCtxMenu({ x, y, items })
     },
-    [collections, newRequest, closeCollection]
+    [collections, newRequest, requestCloseCollection]
   )
 
   const saveCollectionAuth = useCallback(
@@ -898,7 +952,8 @@ export default function App() {
           onOpenCollection={openCollection}
           onImportExport={() => setModal('io')}
           onNewRequest={newRequest}
-          onCloseCollection={closeCollection}
+          onCloseCollection={requestCloseCollection}
+          onEmptyMenu={(x, y) => setEmptyMenu({ x, y })}
           onDeleteRequest={setConfirmDeleteId}
           onDuplicateRequest={duplicateRequest}
           onGit={setGitColId}
@@ -977,10 +1032,7 @@ export default function App() {
                 onSaveAuth={(auth) => saveCollectionAuth(col.id, auth)}
                 onNewRequest={() => newRequest(col.id)}
                 onImportExport={() => setModal('io')}
-                onClose={() => {
-                  setInspect(null)
-                  closeCollection(col.id)
-                }}
+                onClose={() => requestCloseCollection(col.id)}
                 onOpenGitDetails={() => setGitColId(col.id)}
               />
             )
@@ -1007,6 +1059,7 @@ export default function App() {
                 onCancel={cancelActive}
                 onCode={openCode}
                 onSave={save}
+                onPerf={() => setModal('perf')}
               />
             ) : (
               <section className="panel editor">
@@ -1050,6 +1103,7 @@ export default function App() {
           collectionName={activeCollection?.name ?? null}
           requestName={active?.name ?? null}
           onImport={loadImport}
+          onImportCurl={importFromCurl}
           onExport={doExport}
           onClose={() => setModal('none')}
         />
@@ -1059,7 +1113,29 @@ export default function App() {
         <HistoryModal entries={history} onClear={clearHistory} onClose={() => setModal('none')} />
       )}
       {modal === 'env' && (
-        <EnvironmentModal env={activeEnv} onChange={updateEnvVars} onClose={() => setModal('none')} />
+        <EnvironmentsModal
+          collections={collections.map((c) => ({
+            id: c.id,
+            name: c.name,
+            root: c.root,
+            environments: c.environments
+          }))}
+          activeEnvKey={activeEnvKey}
+          envKeySep={SEP}
+          onActivate={(key) => changeEnv(key)}
+          onCollectionsChanged={setCollectionEnvironments}
+          onToast={toast}
+          onClose={() => setModal('none')}
+        />
+      )}
+      {modal === 'perf' && activeEffective && (
+        <PerfModal
+          request={active!}
+          collectionAuth={activeCollection?.auth}
+          env={activeEnv}
+          timeoutMs={settings.timeoutMs}
+          onClose={() => setModal('none')}
+        />
       )}
       {authColId &&
         (() => {
@@ -1119,6 +1195,37 @@ export default function App() {
             setUpdateModalOpen(false)
           }}
           onClose={() => setUpdateModalOpen(false)}
+        />
+      )}
+      {emptyMenu && (
+        <ContextMenu
+          x={emptyMenu.x}
+          y={emptyMenu.y}
+          items={[
+            { label: 'Open collection folder…', icon: <FolderOpenIcon size={14} />, onClick: openCollection },
+            { label: 'Import / Export…', icon: <SwapIcon size={14} />, onClick: () => setModal('io') },
+            {
+              label: 'New request',
+              icon: <PlusIcon size={14} />,
+              onClick: () => collections[0] && newRequest(collections[0].id)
+            },
+            { label: 'Manage environments…', icon: <GlobeIcon size={14} />, onClick: () => setModal('env') }
+          ]}
+          onClose={() => setEmptyMenu(null)}
+        />
+      )}
+      {confirmCloseId && (
+        <ConfirmModal
+          title="Close collection"
+          message={`Close "${collections.find((c) => c.id === confirmCloseId)?.name ?? 'this collection'}"? Your files stay on disk; this only removes it from the sidebar.`}
+          confirmLabel="Close"
+          onConfirm={() => {
+            const id = confirmCloseId
+            setConfirmCloseId(null)
+            setInspect((cur) => (cur && cur.colId === id ? null : cur))
+            closeCollection(id)
+          }}
+          onCancel={() => setConfirmCloseId(null)}
         />
       )}
       {confirmDeleteId && (

@@ -179,6 +179,28 @@ export const WrapIcon = (p: IconProps) => (
   </Base>
 )
 
+export const EyeIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Base>
+)
+
+export const EyeOffIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 4l16 16M9.9 6.1A9.8 9.8 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17.6 17.6 0 0 1-3.2 3.9M6.6 6.6A17 17 0 0 0 2.5 12S6 18.5 12 18.5a9.7 9.7 0 0 0 3.4-.6" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+  </Base>
+)
+
+export const GaugeIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4.5 19a9 9 0 1 1 15 0" />
+    <path d="M12 13l4-4" />
+    <circle cx="12" cy="13" r="1.6" />
+  </Base>
+)
+
 export const SaveIcon = (p: IconProps) => (
   <Base {...p}>
     <path d="M5 3.5h11l3.5 3.5v11a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18V5A1.5 1.5 0 0 1 5 3.5z" />

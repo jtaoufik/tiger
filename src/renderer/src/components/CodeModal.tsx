@@ -4,7 +4,13 @@ import type { BuiltRequest } from '@core/request'
 import { Modal } from './Modal'
 import { CheckIcon } from './Icons'
 
-const TARGETS: CodegenTarget[] = ['curl', 'fetch']
+const TARGETS: CodegenTarget[] = ['curl', 'fetch', 'python']
+
+const TARGET_LABELS: Record<CodegenTarget, string> = {
+  curl: 'cURL',
+  fetch: 'JavaScript fetch',
+  python: 'Python requests'
+}
 
 export function CodeModal({ built, onClose }: { built: BuiltRequest; onClose: () => void }) {
   const [target, setTarget] = useState<CodegenTarget>('curl')
@@ -23,7 +29,7 @@ export function CodeModal({ built, onClose }: { built: BuiltRequest; onClose: ()
         <div className="seg">
           {TARGETS.map((t) => (
             <button key={t} className={target === t ? 'on' : ''} onClick={() => setTarget(t)}>
-              {t === 'curl' ? 'cURL' : 'JavaScript fetch'}
+              {TARGET_LABELS[t]}
             </button>
           ))}
         </div>

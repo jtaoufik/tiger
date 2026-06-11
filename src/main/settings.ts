@@ -18,6 +18,11 @@ export interface Settings {
   certExceptions: string
   proxyEnabled: boolean
   proxyUrl: string
+  /** Credentials answered to proxy 407 challenges; blank username = no auth. */
+  proxyUsername: string
+  proxyPassword: string
+  /** When a server requests a client certificate, pick the one whose subject contains this text. */
+  clientCertSubject: string
 
   // Analytics (anonymous, on by default; toggle off any time)
   analyticsEnabled: boolean
@@ -37,6 +42,9 @@ function defaults(): Settings {
     certExceptions: '',
     proxyEnabled: false,
     proxyUrl: '',
+    proxyUsername: '',
+    proxyPassword: '',
+    clientCertSubject: '',
     analyticsEnabled: true,
     clientId: randomUUID()
   }

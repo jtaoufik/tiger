@@ -3,7 +3,7 @@ import { HTTP_METHODS, type BodyType, type KeyValue, type TigerRequest } from '@
 import { formatJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
 import { AuthEditor } from './AuthEditor'
-import { CodeIcon, SaveIcon } from './Icons'
+import { CodeIcon, GaugeIcon, SaveIcon } from './Icons'
 
 interface Props {
   request: TigerRequest
@@ -16,6 +16,7 @@ interface Props {
   onCancel: () => void
   onCode: () => void
   onSave: () => void
+  onPerf: () => void
 }
 
 type Tab = 'params' | 'headers' | 'auth' | 'body'
@@ -32,7 +33,8 @@ export function RequestEditor({
   onSend,
   onCancel,
   onCode,
-  onSave
+  onSave,
+  onPerf
 }: Props) {
   const [tab, setTab] = useState<Tab>('params')
   // Form-body rows live in component state while editing; re-deriving them
@@ -66,6 +68,9 @@ export function RequestEditor({
         )}
         <button className="icon-btn" title="Generate code" onClick={onCode}>
           <CodeIcon />
+        </button>
+        <button className="icon-btn" title="Performance run" onClick={onPerf}>
+          <GaugeIcon />
         </button>
       </div>
       <div className="urlbar" style={{ paddingTop: 8 }}>

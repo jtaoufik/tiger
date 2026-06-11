@@ -23,7 +23,12 @@ export function parseEnvironment(text: string): TigerEnvironment {
         if (kv.name === 'name') name = kv.value
       }
     } else if (block.name === 'vars' || block.name === 'environment') {
-      variables = parseKeyValues(block.content)
+      const parsed = parseKeyValues(block.content)
+      if (block.subtype === 'secret') {
+        variables = [...variables, ...parsed.map((v) => ({ ...v, secret: true }))]
+      } else {
+        variables = [...parsed, ...variables]
+      }
     }
   }
 
@@ -31,8 +36,12 @@ export function parseEnvironment(text: string): TigerEnvironment {
 }
 
 export function serializeEnvironment(env: TigerEnvironment): string {
-  const lines = env.variables.map(
-    (v) => `  ${v.enabled === false ? '~' : ''}${v.name}: ${v.value}`
-  )
-  return `meta {\n  name: ${env.name}\n}\n\nvars {\n${lines.join('\n')}\n}\n`
+  const line = (v: { enabled: boolean; name: string; value: string }) =>
+    `  ${v.enabled === false ? '~' : ''}${v.name}: ${v.value}`
+  const plain = env.variables.filter((v) => !v.secret)
+  const secret = env.variables.filter((v) => v.secret)
+  const parts = [`meta {\n  name: ${env.name}\n}`]
+  parts.push(`vars {\n${plain.map(line).join('\n')}\n}`)
+  if (secret.length) parts.push(`vars:secret {\n${secret.map(line).join('\n')}\n}`)
+  return `${parts.join('\n\n')}\n`
 }

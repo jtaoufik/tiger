@@ -1112,6 +1112,32 @@ button {
 }
 .git-summary { flex: 1; font-weight: 600; font-size: 13.5px; }
 
+
+/* ---------- environments modal ---------- */
+.env-layout { display: grid; grid-template-columns: 220px 1fr; gap: 14px; min-height: 340px; }
+.env-side { display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--border); padding-right: 14px; }
+.env-list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.env-row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.env-row:hover { background: var(--accent-weak); }
+.env-row.sel { background: var(--glass-strong); box-shadow: var(--shadow-sm); }
+.env-row .row-actions { display: none; gap: 1px; }
+.env-row:hover .row-actions, .env-row.sel .row-actions { display: inline-flex; }
+.env-active { color: var(--m-get); }
+.env-new { justify-content: center; margin-top: 6px; }
+.env-main { overflow-y: auto; }
+.env-kv { grid-template-columns: 22px 1fr 1.4fr auto; }
+
+/* ---------- performance runner ---------- */
+.perf-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.perf-bar { flex: 1; height: 8px; border-radius: 99px; background: var(--glass-strong); overflow: hidden; border: 1px solid var(--border); }
+.perf-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
+.perf-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+.perf-cell { background: var(--glass-strong); border: 1px solid var(--border); border-radius: 11px; padding: 12px; text-align: center; }
+.perf-cell .n { display: block; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.perf-cell .l { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+.perf-buckets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.hist-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+
 /* ---------- context menu ---------- */
 .ctx-menu {
   position: fixed;
@@ -1173,3 +1199,16 @@ button {
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); background-clip: padding-box; }
+
+/* ---------- history modal toolbar ---------- */
+.hist-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+/* ---------- settings tabs ---------- */
+.settings-tabs {
+  margin-bottom: 10px;
+}

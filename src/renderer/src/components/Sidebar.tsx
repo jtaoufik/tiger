@@ -54,6 +54,7 @@ interface Props {
   onCollectionMenu: (collectionId: string, x: number, y: number) => void
   onInspectCollection: (collectionId: string) => void
   onInspectFolder: (collectionId: string, path: string[]) => void
+  onEmptyMenu: (x: number, y: number) => void
 }
 
 interface TreeFolder {
@@ -109,7 +110,8 @@ export function Sidebar({
   onRequestMenu,
   onCollectionMenu,
   onInspectCollection,
-  onInspectFolder
+  onInspectFolder,
+  onEmptyMenu
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
@@ -224,7 +226,15 @@ export function Sidebar({
         />
       </div>
 
-      <div className="tree">
+      <div
+        className="tree"
+        onContextMenu={(e) => {
+          if (e.target === e.currentTarget) {
+            e.preventDefault()
+            onEmptyMenu(e.clientX, e.clientY)
+          }
+        }}
+      >
         {collections.length === 0 && (
           <div className="empty" style={{ height: 'auto', padding: '40px 12px' }}>
             <div>No collections open.</div>
