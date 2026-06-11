@@ -10,6 +10,8 @@ export interface HistoryEntry {
   status: number
   ok: boolean
   timeMs: number
+  /** Entry id of the request that produced this send, when known. */
+  requestId?: string
 }
 
 const MAX_ENTRIES = 200

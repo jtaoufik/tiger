@@ -21,6 +21,8 @@ export interface GitStatus {
   ahead: number
   behind: number
   hasUpstream: boolean
+  /** Whether any remote is configured at all. */
+  hasRemote: boolean
 }
 
 export interface GitActionResult {
@@ -58,7 +60,8 @@ export async function gitStatus(root: string): Promise<GitStatus> {
     changedFiles: [],
     ahead: 0,
     behind: 0,
-    hasUpstream: false
+    hasUpstream: false,
+    hasRemote: false
   }
 
   const inside = await run(['rev-parse', '--is-inside-work-tree'], root)
@@ -72,9 +75,12 @@ export async function gitStatus(root: string): Promise<GitStatus> {
     .filter(Boolean)
     .map((line) => ({ status: line.slice(0, 2).trim() || '??', path: line.slice(3) }))
 
+  const remotes = await run(['remote'], root)
+  const hasRemote = remotes.ok && remotes.stdout.trim().length > 0
+
   // Quietly refresh remote refs so "behind" reflects reality; never block long
   // and never fail the status because the network or credentials are absent.
-  await run(['fetch', '--quiet'], root, 8000)
+  if (hasRemote) await run(['fetch', '--quiet'], root, 8000)
 
   let ahead = 0
   let behind = 0
@@ -94,7 +100,8 @@ export async function gitStatus(root: string): Promise<GitStatus> {
     changedFiles,
     ahead,
     behind,
-    hasUpstream
+    hasUpstream,
+    hasRemote
   }
 }
 
@@ -160,4 +167,30 @@ export async function gitSync(root: string, message: string): Promise<GitActionR
     return { ok: true, message: 'Everything is in sync with your team' }
   }
   return { ok: true, message: 'Changes saved locally (no team remote configured)' }
+}
+
+/**
+ * Connect the repository to a remote and publish the current branch. Used by
+ * the friendly sync setup: paste a URL from GitHub/GitLab once, sync forever.
+ */
+export async function gitSetRemote(root: string, url: string): Promise<GitActionResult> {
+  if (!/^(https?:\/\/|git@|ssh:\/\/)/.test(url.trim())) {
+    return { ok: false, message: 'That does not look like a repository URL' }
+  }
+  const existing = await run(['remote'], root)
+  const command = existing.stdout.split('\n').includes('origin')
+    ? ['remote', 'set-url', 'origin', url.trim()]
+    : ['remote', 'add', 'origin', url.trim()]
+  const setRemote = await run(command, root)
+  if (!setRemote.ok) return { ok: false, message: setRemote.stderr.trim() || 'Could not add remote' }
+
+  const publish = await run(['push', '-u', 'origin', 'HEAD'], root, 30000)
+  return publish.ok
+    ? { ok: true, message: 'Connected: your collection is now shared' }
+    : {
+        ok: false,
+        message:
+          publish.stderr.trim().split('\n').pop() ||
+          'Connected the remote, but publishing failed (check access rights)'
+      }
 }

@@ -123,6 +123,43 @@ export function SettingsView({ settings, onChange }: Props) {
       )}
 
       <div className="section-label">
+        Advanced
+      </div>
+
+      <div className="setting-row">
+        <div>
+          <div className="label">Certificate exceptions</div>
+          <div className="desc">
+            Hostnames (comma-separated) where invalid or internal certificates are accepted,
+            for example intranet.acme.local. Safer than turning verification off globally.
+          </div>
+        </div>
+        <input
+          className="num-input"
+          style={{ width: 240 }}
+          value={settings.certExceptions}
+          placeholder="host1, host2"
+          spellCheck={false}
+          onChange={(e) => onChange({ certExceptions: e.target.value })}
+        />
+      </div>
+
+      <div className="setting-row">
+        <div>
+          <div className="label">Maximum redirects</div>
+          <div className="desc">Upper bound when following 3xx responses.</div>
+        </div>
+        <input
+          className="num-input"
+          type="number"
+          min={0}
+          max={20}
+          value={settings.maxRedirects}
+          onChange={(e) => onChange({ maxRedirects: Number(e.target.value) || 5 })}
+        />
+      </div>
+
+      <div className="section-label">
         Privacy
       </div>
 

@@ -28,20 +28,41 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByText('List posts')).toBeInTheDocument()
   })
 
-  it('folds and unfolds a folder', () => {
+  it('folds and unfolds a folder via its chevron', () => {
     render(<App />)
-    fireEvent.click(screen.getByText('Posts'))
+    const row = screen.getByText('Posts').closest('.folder-row')!
+    fireEvent.click(within(row as HTMLElement).getByTitle('Collapse folder'))
     expect(screen.queryByText('List posts')).not.toBeInTheDocument()
     expect(screen.getByText('List users')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('Posts'))
+    fireEvent.click(within(row as HTMLElement).getByTitle('Expand folder'))
     expect(screen.getByText('List posts')).toBeInTheDocument()
   })
 
-  it('folds a whole collection from its header', () => {
+  it('folds a whole collection via its chevron', () => {
     render(<App />)
-    fireEvent.click(screen.getByText('Demo collection'))
+    const head = screen.getByText('Demo collection').closest('.col-head')!
+    fireEvent.click(within(head as HTMLElement).getByTitle('Collapse collection'))
     expect(screen.queryByText('Posts')).not.toBeInTheDocument()
     expect(screen.queryByText('List posts')).not.toBeInTheDocument()
+  })
+
+  it('opens the collection view with sync, auth and activity on click', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Demo collection'))
+    expect(await screen.findByText('Team sync')).toBeInTheDocument()
+    expect(screen.getByText(/Default auth/)).toBeInTheDocument()
+    expect(screen.getByText(/Recent activity/)).toBeInTheDocument()
+    expect(screen.getByText(/lives in memory/)).toBeInTheDocument()
+  })
+
+  it('opens a folder view listing its requests', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Posts'))
+    expect(screen.getByText('New request here')).toBeInTheDocument()
+    const label = [...document.querySelectorAll('.section-label')].find(
+      (el) => el.textContent?.replace(/\s+/g, ' ').trim() === '3 requests in this folder'
+    )
+    expect(label).toBeTruthy()
   })
 
   it('filters requests with the search box', () => {

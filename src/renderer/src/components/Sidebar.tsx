@@ -52,6 +52,8 @@ interface Props {
   onGit: (collectionId: string) => void
   onRequestMenu: (entryId: string, x: number, y: number) => void
   onCollectionMenu: (collectionId: string, x: number, y: number) => void
+  onInspectCollection: (collectionId: string) => void
+  onInspectFolder: (collectionId: string, path: string[]) => void
 }
 
 interface TreeFolder {
@@ -105,7 +107,9 @@ export function Sidebar({
   onDuplicateRequest,
   onGit,
   onRequestMenu,
-  onCollectionMenu
+  onCollectionMenu,
+  onInspectCollection,
+  onInspectFolder
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
@@ -165,22 +169,32 @@ export function Sidebar({
     )
   }
 
-  function renderFolder(folder: TreeFolder, depth: number) {
+  function renderFolder(folder: TreeFolder, depth: number, colId: string) {
     const open = !collapsed.has(folder.key)
+    const path = (JSON.parse(folder.key) as string[]).slice(1)
     return (
       <div key={folder.key}>
         <div
           className="folder-row"
           style={{ paddingLeft: 8 + depth * 16 }}
-          onClick={() => toggle(folder.key)}
+          onClick={() => onInspectFolder(colId, path)}
         >
-          <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
+          <button
+            className="icon-btn chev-btn"
+            title={open ? 'Collapse folder' : 'Expand folder'}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggle(folder.key)
+            }}
+          >
+            <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
+          </button>
           <FolderIcon size={14} />
           <span className="row-label">{folder.name}</span>
         </div>
         {open && (
           <>
-            {folder.folders.map((f) => renderFolder(f, depth + 1))}
+            {folder.folders.map((f) => renderFolder(f, depth + 1, colId))}
             {folder.requests.map((r) => renderRequest(r, depth + 1.4))}
           </>
         )}
@@ -240,13 +254,22 @@ export function Sidebar({
                 <div key={col.id}>
                   <div
                     className="col-head"
-                    onClick={() => toggle(colKey)}
+                    onClick={() => onInspectCollection(col.id)}
                     onContextMenu={(e) => {
                       e.preventDefault()
                       onCollectionMenu(col.id, e.clientX, e.clientY)
                     }}
                   >
-                    <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
+                    <button
+                      className="icon-btn chev-btn"
+                      title={open ? 'Collapse collection' : 'Expand collection'}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggle(colKey)
+                      }}
+                    >
+                      <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
+                    </button>
                     <span className="row-label">{col.name}</span>
                     {(() => {
                       const sync = syncStates[col.id]
@@ -310,7 +333,7 @@ export function Sidebar({
                   </div>
                   {open && (
                     <>
-                      {tree.folders.map((f) => renderFolder(f, 1))}
+                      {tree.folders.map((f) => renderFolder(f, 1, col.id))}
                       {tree.requests.map((r) => renderRequest(r, 1))}
                     </>
                   )}

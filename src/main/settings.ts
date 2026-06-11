@@ -14,6 +14,8 @@ export interface Settings {
   followRedirects: boolean
   maxRedirects: number
   sslVerify: boolean
+  /** Comma-separated hostnames where invalid certificates are accepted. */
+  certExceptions: string
   proxyEnabled: boolean
   proxyUrl: string
 
@@ -32,6 +34,7 @@ function defaults(): Settings {
     followRedirects: true,
     maxRedirects: 5,
     sslVerify: true,
+    certExceptions: '',
     proxyEnabled: false,
     proxyUrl: '',
     analyticsEnabled: true,

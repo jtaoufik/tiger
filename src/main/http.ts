@@ -22,8 +22,18 @@ export function applyNetworkSettings(): void {
       ? { mode: 'fixed_servers', proxyRules: s.proxyUrl }
       : { mode: 'direct' }
   )
-  // cb(0) = trust, cb(-3) = use Chromium's default verification.
-  ses.setCertificateVerifyProc((_req, cb) => cb(s.sslVerify ? -3 : 0))
+  // cb(0) = trust, cb(-3) = use Chromium's default verification. Scoped
+  // exceptions beat the all-or-nothing switch for internal CAs.
+  const exceptions = new Set(
+    s.certExceptions
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean)
+  )
+  ses.setCertificateVerifyProc((req, cb) => {
+    if (!s.sslVerify) return cb(0)
+    cb(exceptions.has(req.hostname.toLowerCase()) ? 0 : -3)
+  })
 }
 
 /** In-flight sends by renderer-chosen key, so the user can cancel them. */

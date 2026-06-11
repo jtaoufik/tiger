@@ -17,6 +17,8 @@ import type { ImportKind } from '../../main/importers'
 import { Logo } from './Logo'
 import { Sidebar, type SidebarEntry, type SyncState } from './components/Sidebar'
 import { GitModal } from './components/GitModal'
+import { CollectionView } from './components/CollectionView'
+import { FolderView } from './components/FolderView'
 import { WelcomeView } from './components/WelcomeView'
 import { RequestEditor } from './components/RequestEditor'
 import { ResponsePanel } from './components/ResponsePanel'
@@ -94,6 +96,7 @@ const FALLBACK_SETTINGS: Settings = {
   followRedirects: true,
   maxRedirects: 5,
   sslVerify: true,
+  certExceptions: '',
   proxyEnabled: false,
   proxyUrl: '',
   analyticsEnabled: true,
@@ -201,6 +204,10 @@ export default function App() {
   const [gitStates, setGitStates] = useState<Record<string, SyncState>>({})
   const [gitColId, setGitColId] = useState<string | null>(null)
   const [authColId, setAuthColId] = useState<string | null>(null)
+  const [inspect, setInspect] = useState<
+    { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
+  >(null)
+  const [colHistory, setColHistory] = useState<HistoryEntry[]>([])
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
   const [sidebarW, setSidebarW] = useState(() => Number(readStored('tiger.sidebarW')) || 264)
   const [editorH, setEditorH] = useState<number | null>(() => {
@@ -310,6 +317,7 @@ export default function App() {
     async (id: string) => {
       setActiveId(id)
       setView('workspace')
+      setInspect(null)
       await loadRequest(id)
     },
     [loadRequest]
@@ -499,7 +507,7 @@ export default function App() {
   )
 
   const newRequest = useCallback(
-    async (collectionId: string) => {
+    async (collectionId: string, folderPath: string[] = []) => {
       const col = collections.find((c) => c.id === collectionId)
       if (!col) return
       const request: TigerRequest = {
@@ -512,7 +520,8 @@ export default function App() {
       }
       let id: string
       if (col.root && window.tiger) {
-        const path = `${col.root}/new-request-${Date.now()}.tiger`
+        const dir = [col.root, ...folderPath].join('/')
+        const path = `${dir}/new-request-${Date.now()}.tiger`
         id = `${col.id}${SEP}${path}`
         const text = serializeRequest(request)
         await window.tiger.writeFile(path, text)
@@ -529,7 +538,7 @@ export default function App() {
                 ...c,
                 entries: [
                   ...c.entries,
-                  { id, name: request.name, method: 'get' as HttpMethod, folderPath: [] }
+                  { id, name: request.name, method: 'get' as HttpMethod, folderPath }
                 ]
               }
             : c
@@ -537,6 +546,7 @@ export default function App() {
       )
       setActiveId(id)
       setView('workspace')
+      setInspect(null)
     },
     [collections]
   )
@@ -789,6 +799,18 @@ export default function App() {
     [collections, toast]
   )
 
+  const inspectCollection = useCallback(async (colId: string) => {
+    setInspect({ type: 'collection', colId })
+    setView('workspace')
+    const all = (await window.tiger?.historyRead()) ?? []
+    setColHistory(all)
+  }, [])
+
+  const inspectFolder = useCallback((colId: string, path: string[]) => {
+    setInspect({ type: 'folder', colId, path })
+    setView('workspace')
+  }, [])
+
   const envCollections = collections.filter((c) => c.environments.length > 0)
 
   const activeSerialized = active ? serializeRequest(active) : ''
@@ -882,6 +904,8 @@ export default function App() {
           onGit={setGitColId}
           onRequestMenu={openRequestMenu}
           onCollectionMenu={openCollectionMenu}
+          onInspectCollection={inspectCollection}
+          onInspectFolder={inspectFolder}
         />
 
         <Resizer
@@ -918,6 +942,49 @@ export default function App() {
           />
         ) : view === 'settings' ? (
           <SettingsView settings={settings} onChange={updateSettings} />
+        ) : inspect ? (
+          (() => {
+            const col = collections.find((c) => c.id === inspect.colId)
+            if (!col) return null
+            if (inspect.type === 'folder') {
+              const key = inspect.path.join('/')
+              return (
+                <FolderView
+                  collectionName={col.name}
+                  path={inspect.path}
+                  entries={col.entries.filter((e) => e.folderPath.join('/') === key)}
+                  onSelect={selectRequest}
+                  onNewRequest={() => newRequest(col.id, inspect.path)}
+                />
+              )
+            }
+            const entryIds = new Set(col.entries.map((e) => e.id))
+            return (
+              <CollectionView
+                collection={{
+                  id: col.id,
+                  name: col.name,
+                  root: col.root,
+                  requestCount: col.entries.length,
+                  folderCount: new Set(
+                    col.entries.map((e) => e.folderPath.join('/')).filter(Boolean)
+                  ).size,
+                  environments: col.environments.map((e) => e.name),
+                  auth: col.auth
+                }}
+                history={colHistory.filter((h) => h.requestId && entryIds.has(h.requestId))}
+                onToast={toast}
+                onSaveAuth={(auth) => saveCollectionAuth(col.id, auth)}
+                onNewRequest={() => newRequest(col.id)}
+                onImportExport={() => setModal('io')}
+                onClose={() => {
+                  setInspect(null)
+                  closeCollection(col.id)
+                }}
+                onOpenGitDetails={() => setGitColId(col.id)}
+              />
+            )
+          })()
         ) : (
           <div
             className="main"

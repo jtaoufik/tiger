@@ -56,7 +56,9 @@ const api = {
     push: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:push', root),
     init: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:init', root),
     sync: (root: string, message: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:sync', root, message)
+      ipcRenderer.invoke('tiger:git:sync', root, message),
+    setRemote: (root: string, url: string): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:setRemote', root, url)
   },
   checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),

@@ -14,7 +14,7 @@ import {
 } from './http'
 import { importFromDisk, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
-import { gitAvailable, gitCommitAll, gitDiff, gitInit, gitPull, gitPush, gitStatus, gitSync } from './git'
+import { gitAvailable, gitCommitAll, gitDiff, gitInit, gitPull, gitPush, gitSetRemote, gitStatus, gitSync } from './git'
 import type { BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
@@ -115,7 +115,8 @@ function registerIpc(): void {
       url: built.url,
       status: res.status,
       ok: res.status >= 200 && res.status < 300,
-      timeMs: res.timeMs
+      timeMs: res.timeMs,
+      requestId: key
     })
     return res
   })
@@ -156,6 +157,7 @@ function registerIpc(): void {
   ipcMain.handle('tiger:git:push', (_e, root: string) => gitPush(root))
   ipcMain.handle('tiger:git:init', (_e, root: string) => gitInit(root))
   ipcMain.handle('tiger:git:sync', (_e, root: string, message: string) => gitSync(root, message))
+  ipcMain.handle('tiger:git:setRemote', (_e, root: string, url: string) => gitSetRemote(root, url))
   ipcMain.handle('tiger:openExternal', (_e, url: string) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
   })
