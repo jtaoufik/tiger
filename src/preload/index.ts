@@ -72,6 +72,9 @@ const api = {
   onUpdateDownloaded: (cb: (info: { version: string }) => void): void => {
     ipcRenderer.on('tiger:update:downloaded', (_e, info) => cb(info))
   },
+  onShortcut: (cb: (name: string) => void): void => {
+    ipcRenderer.on('tiger:shortcut', (_e, name) => cb(name))
+  },
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),
   reveal: (path: string): Promise<void> => ipcRenderer.invoke('tiger:reveal', path),
   pickFile: (filters: { name: string; extensions: string[] }[]): Promise<string | null> =>

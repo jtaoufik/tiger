@@ -332,7 +332,7 @@ export function Sidebar({
                       )}
                       <button
                         className="icon-btn"
-                        title="New request"
+                        title="New request (Cmd/Ctrl+T)"
                         onClick={() => onNewRequest(col.id)}
                       >
                         <PlusIcon size={13} />

@@ -63,6 +63,22 @@ function createWindow(): void {
 
   win.once('ready-to-show', () => win.show())
 
+  // Cmd/Ctrl+W must close the active TAB, not the window. The default menu's
+  // Close accelerator fires before the page sees the key, so intercept here:
+  // preventDefault blocks the menu shortcut and we forward the intent to the
+  // renderer instead.
+  win.webContents.on('before-input-event', (event, input) => {
+    if (
+      input.type === 'keydown' &&
+      (input.meta || input.control) &&
+      !input.alt &&
+      input.key.toLowerCase() === 'w'
+    ) {
+      event.preventDefault()
+      win.webContents.send('tiger:shortcut', 'close-tab')
+    }
+  })
+
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
     return { action: 'deny' }

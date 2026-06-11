@@ -56,7 +56,7 @@ export function RequestTabs({ tabs, activeKey, onSelect, onClose }: RequestTabsP
           <span className="request-tab-name">{tab.label}</span>
           <button
             className="request-tab-close"
-            title="Close tab"
+            title="Close tab (Cmd/Ctrl+W)"
             onClick={(e) => {
               e.stopPropagation()
               onClose(tab.key)

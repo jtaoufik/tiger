@@ -1,0 +1,43 @@
+/* Keyboard shortcuts overlay. */
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.shortcut-group-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-dim);
+  margin-bottom: 7px;
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.shortcut-row:last-child {
+  border-bottom: none;
+}
+.shortcut-keys {
+  display: inline-flex;
+  gap: 4px;
+  min-width: 150px;
+}
+.shortcut-keys kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--glass-strong);
+  box-shadow: 0 1px 0 var(--border-strong);
+}
+.shortcut-what {
+  color: var(--text-dim);
+  font-size: 13px;
+}

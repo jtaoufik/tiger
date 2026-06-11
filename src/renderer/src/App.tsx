@@ -38,6 +38,7 @@ import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { PerfModal } from './components/PerfModal'
 import { ConfirmModal } from './components/ConfirmModal'
 import { PromptModal } from './components/PromptModal'
+import { ShortcutsModal } from './components/ShortcutsModal'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
 import { ContextMenu, type MenuItem } from './components/ContextMenu'
@@ -92,7 +93,7 @@ interface CollectionState {
   docs?: string
 }
 
-type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env' | 'perf'
+type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env' | 'perf' | 'shortcuts'
 
 /** A tab in the workspace bar: a request, a collection page, or a folder page. */
 type OpenTab =
@@ -740,25 +741,83 @@ export default function App() {
     if (activeId) cancelRequest(activeId)
   }, [activeId])
 
+  /** Close whatever tab is showing (request, collection or folder page). */
+  const closeActiveTab = useCallback(() => {
+    if (activeTabKey) closeTab(activeTabKey)
+  }, [activeTabKey, closeTab])
+
+  /** Cycle to the neighboring tab (Ctrl+Tab / Ctrl+Shift+Tab). */
+  const cycleTab = useCallback(
+    (dir: 1 | -1) => {
+      if (openTabs.length < 2 || !activeTabKey) return
+      const index = openTabs.findIndex((t) => tabKey(t) === activeTabKey)
+      const next = openTabs[(index + dir + openTabs.length) % openTabs.length]
+      if (next) activateTab(next)
+    },
+    [openTabs, activeTabKey, activateTab]
+  )
+
+  /** New request in the collection of the active request, else the first one.
+   * newRequest is declared later in the component, so go through a ref. */
+  const newRequestRef = useRef<(collectionId: string, folderPath?: string[]) => void>(() => {})
+  const newRequestShortcut = useCallback(() => {
+    const colId = activeCollection?.id ?? collections[0]?.id
+    if (colId) newRequestRef.current(colId)
+  }, [activeCollection, collections])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
+      // Ctrl+Tab cycles tabs (with Shift: backwards).
+      if (e.ctrlKey && e.key === 'Tab') {
+        e.preventDefault()
+        cycleTab(e.shiftKey ? -1 : 1)
+        return
+      }
       // While the palette is open it owns the keyboard, except the toggle.
       if (paletteOpen && e.key.toLowerCase() !== 'k') return
-      if (e.key.toLowerCase() === 's') {
+      const key = e.key.toLowerCase()
+      if (key === 's') {
         e.preventDefault()
         save()
       } else if (e.key === 'Enter') {
         e.preventDefault()
         send()
-      } else if (e.key.toLowerCase() === 'k') {
+      } else if (key === 'k') {
         e.preventDefault()
         setPaletteOpen((open) => !open)
+      } else if (key === 'w' && !window.tiger) {
+        // In Electron the main process intercepts Cmd+W (the menu owns it);
+        // this fallback covers the browser preview.
+        e.preventDefault()
+        closeActiveTab()
+      } else if (key === 't') {
+        e.preventDefault()
+        newRequestShortcut()
+      } else if (key === 'l') {
+        e.preventDefault()
+        const url = document.querySelector<HTMLInputElement>('.url-input')
+        url?.focus()
+        url?.select()
+      } else if (e.key === '/' || e.key === '?') {
+        e.preventDefault()
+        setModal((m) => (m === 'shortcuts' ? 'none' : 'shortcuts'))
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [save, send, paletteOpen])
+  }, [save, send, paletteOpen, cycleTab, closeActiveTab, newRequestShortcut])
+
+  // Cmd+W arrives from the main process (it must block the menu accelerator).
+  const closeActiveTabRef = useRef(closeActiveTab)
+  useEffect(() => {
+    closeActiveTabRef.current = closeActiveTab
+  })
+  useEffect(() => {
+    window.tiger?.onShortcut?.((name) => {
+      if (name === 'close-tab') closeActiveTabRef.current()
+    })
+  }, [])
 
   const openCollection = useCallback(async () => {
     const opened = await window.tiger?.openCollection()
@@ -1035,6 +1094,7 @@ export default function App() {
     },
     [collections, openTab, reviveIds]
   )
+  newRequestRef.current = newRequest
 
   const duplicateRequest = useCallback(
     async (entryId: string) => {
@@ -1710,6 +1770,7 @@ export default function App() {
           onClose={() => setModal('none')}
         />
       )}
+      {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal('none')} />}
       {modal === 'env' && (
         <EnvironmentsModal
           collections={collections.map((c) => ({
