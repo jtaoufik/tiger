@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Let AI Run Your API Requests: Tiger's MCP Server</title>
+  <meta name="description" content="Tiger ships a Model Context Protocol server so Claude, Cursor and other AI clients can list, read and run your API requests. Free, local, git-native." />
+  <link rel="canonical" href="https://tiger.62-238-17-135.sslip.io/use-cases/mcp-api-client" />
+  <meta name="robots" content="index, follow" />
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://tiger.62-238-17-135.sslip.io/use-cases/mcp-api-client" />
+  <meta property="og:title" content="Let AI Run Your API Requests: Tiger's MCP Server" />
+  <meta property="og:description" content="Tiger ships a Model Context Protocol server so Claude, Cursor and other AI clients can list, read and run your API requests. Free, local, git-native." />
+  <meta property="og:image" content="https://tiger.62-238-17-135.sslip.io/icon.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Let AI Run Your API Requests: Tiger's MCP Server" />
+  <meta name="twitter:description" content="Tiger ships a Model Context Protocol server so Claude, Cursor and other AI clients can list, read and run your API requests. Free, local, git-native." />
+  <meta name="twitter:image" content="https://tiger.62-238-17-135.sslip.io/icon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        "headline": "Let AI Run Your API Requests: Tiger's MCP Server",
+        "description": "Tiger ships a Model Context Protocol server so Claude, Cursor and other AI clients can list, read and run your API requests. Free, local, git-native.",
+        "url": "https://tiger.62-238-17-135.sslip.io/use-cases/mcp-api-client",
+        "image": "https://tiger.62-238-17-135.sslip.io/icon.png",
+        "author": {
+          "@type": "Organization",
+          "name": "Tiger",
+          "url": "https://tiger.62-238-17-135.sslip.io/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Tiger",
+          "url": "https://tiger.62-238-17-135.sslip.io/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://tiger.62-238-17-135.sslip.io/icon.png"
+          }
+        },
+        "about": {
+          "@type": "SoftwareApplication",
+          "name": "Tiger",
+          "operatingSystem": "macOS, Windows",
+          "applicationCategory": "DeveloperApplication",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "description": "A local-first, git-native API client with a built-in MCP server for AI-assisted workflows.",
+          "url": "https://tiger.62-238-17-135.sslip.io/",
+          "image": "https://tiger.62-238-17-135.sslip.io/icon.png"
+        },
+        "keywords": ["MCP api client", "let AI run API requests", "MCP server for API testing", "Model Context Protocol", "Tiger API client"]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --ink: #faf6ee;
+      --ink-2: #f4eee2;
+      --surface: #ffffff;
+      --surface-2: #fffaf2;
+      --line: rgba(36, 24, 8, 0.09);
+      --line-strong: rgba(36, 24, 8, 0.17);
+      --cream: #241c12;
+      --dim: #6e6151;
+      --faint: #9a8c79;
+      --orange: #f26b0a;
+      --orange-hot: #ff8c33;
+      --orange-deep: #c75500;
+      --good: #1e9e63;
+      --bad: #d8472e;
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      --disp: "Bricolage Grotesque", -apple-system, sans-serif;
+      --stripe: repeating-linear-gradient(
+        -55deg,
+        var(--orange) 0 8px,
+        transparent 8px 22px
+      );
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--ink);
+      color: var(--cream);
+      font-family: var(--disp);
+      font-size: 16.5px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(1000px 600px at 8% -5%, rgba(242, 107, 10, 0.09), transparent 60%),
+        radial-gradient(900px 700px at 105% 15%, rgba(242, 107, 10, 0.05), transparent 55%);
+    }
+    body::after {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.22;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.7 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    ::selection { background: var(--orange); color: #fff; }
+    a { color: var(--orange-hot); }
+    :focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
+
+    /* ---------- type helpers ---------- */
+    .eyebrow {
+      font-family: var(--mono); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--orange);
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .eyebrow::before {
+      content: ""; width: 26px; height: 10px;
+      background: var(--stripe); background-size: 200% 100%;
+    }
+    h2 {
+      font-size: clamp(30px, 4.4vw, 44px); font-weight: 700;
+      letter-spacing: -0.02em; line-height: 1.08; margin: 14px 0 14px;
+    }
+    .sub { color: var(--dim); max-width: 640px; margin: 0 0 36px; font-size: 17px; }
+    .m { font-family: var(--mono); }
+
+    /* ---------- header ---------- */
+    header.site {
+      display: flex; align-items: center; gap: 12px; padding: 26px 0;
+    }
+    header.site img { width: 38px; height: 38px; }
+    header.site .name {
+      font-weight: 800; font-size: 21px; letter-spacing: -0.02em;
+    }
+    header.site nav { margin-left: auto; display: flex; gap: 26px; flex-wrap: wrap; align-items: center; }
+    header.site nav a {
+      font-family: var(--mono); font-size: 13px; color: var(--dim);
+      text-decoration: none; transition: color 0.15s;
+    }
+    header.site nav a:hover { color: var(--orange-hot); }
+    .gh-btn {
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      color: var(--cream) !important; text-decoration: none;
+      border: 1px solid var(--line-strong); border-radius: 10px;
+      padding: 8px 16px; transition: border-color 0.15s, background 0.15s;
+    }
+    .gh-btn:hover { border-color: var(--orange); background: rgba(255, 122, 24, 0.08); }
+
+    /* ---------- page hero ---------- */
+    .page-hero {
+      padding: 72px 0 56px;
+    }
+    .page-hero .breadcrumb {
+      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
+      margin-bottom: 24px; display: flex; gap: 8px; align-items: center;
+    }
+    .page-hero .breadcrumb a { color: var(--faint); text-decoration: none; transition: color 0.15s; }
+    .page-hero .breadcrumb a:hover { color: var(--orange-hot); }
+    .page-hero .breadcrumb span { opacity: 0.5; }
+    .page-hero h1 {
+      font-size: clamp(36px, 5.4vw, 58px); font-weight: 800;
+      line-height: 1.04; letter-spacing: -0.03em; margin: 16px 0 22px;
+    }
+    .page-hero h1 em {
+      font-style: normal; color: var(--orange);
+      position: relative; white-space: nowrap;
+    }
+    .page-hero h1 em::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 10px;
+      background: var(--stripe); opacity: 0.35; z-index: -1;
+    }
+    .page-hero .lead {
+      color: var(--dim); font-size: 19px; max-width: 620px; margin: 0 0 36px;
+    }
+    .cta { display: flex; gap: 14px; flex-wrap: wrap; }
+    .btn {
+      font-family: var(--mono); font-weight: 600; font-size: 14.5px;
+      text-decoration: none; padding: 15px 28px; border-radius: 12px;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
+      color: #1a0d02; box-shadow: 0 10px 36px rgba(255, 122, 24, 0.35);
+    }
+    .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(255, 122, 24, 0.45); }
+    .btn.ghost {
+      color: var(--cream); border: 1px solid var(--line-strong);
+    }
+    .btn.ghost:hover { background: rgba(255, 173, 96, 0.07); }
+
+    /* ---------- sections ---------- */
+    section { padding: 64px 0; }
+
+    /* ---------- bento ---------- */
+    .bento {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    @media (max-width: 920px) { .bento { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 620px) { .bento { grid-template-columns: 1fr; } }
+    .cell {
+      position: relative; overflow: hidden;
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line); border-radius: 16px; padding: 26px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .cell:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+    .cell::after {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--stripe); opacity: 0; transition: opacity 0.2s;
+    }
+    .cell:hover::after { opacity: 1; }
+    .cell.wide { grid-column: span 2; }
+    @media (max-width: 620px) { .cell.wide { grid-column: span 1; } }
+    .cell.full { grid-column: span 3; }
+    @media (max-width: 920px) { .cell.full { grid-column: span 2; } }
+    @media (max-width: 620px) { .cell.full { grid-column: span 1; } }
+    .cell .num {
+      font-family: var(--mono); font-size: 12px; color: var(--orange);
+      letter-spacing: 0.14em;
+    }
+    .cell h3 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 8px; }
+    .cell p { margin: 0; color: var(--dim); font-size: 14.5px; line-height: 1.6; }
+
+    /* ---------- code window ---------- */
+    .win {
+      background: linear-gradient(180deg, #241b10, #1a130a);
+      border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+    .win .bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 11px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    }
+    .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: #786b58; opacity: 0.5; }
+    .win .bar i:first-child { background: var(--bad); opacity: 0.9; }
+    .win .bar i:nth-child(2) { background: #ffc24d; opacity: 0.9; }
+    .win .bar i:nth-child(3) { background: var(--good); opacity: 0.9; }
+    .win .bar .file {
+      margin-left: 10px; font-family: var(--mono); font-size: 12px; color: #b3a58e;
+    }
+    .win pre {
+      margin: 0; padding: 20px 22px; font-family: var(--mono);
+      font-size: 13.5px; line-height: 1.75; overflow-x: auto;
+    }
+    .k { color: #ff8c33; font-weight: 600; }
+    .key { color: #f3ead9; }
+    .v { color: #b3a58e; }
+    .var { color: #ffb066; }
+    .cm { color: #786b58; }
+    .str { color: #a8d8a0; }
+    .prop { color: #9ec8f5; }
+
+    /* ---------- workflow steps ---------- */
+    .steps {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-top: 24px;
+    }
+    @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+    .step {
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line); border-radius: 16px; padding: 26px;
+      position: relative; overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .step:hover { transform: translateY(-3px); border-color: var(--line-strong); }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
+      color: #1a0d02; font-family: var(--mono); font-weight: 700; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px; flex-shrink: 0;
+      box-shadow: 0 6px 20px rgba(255, 122, 24, 0.3);
+    }
+    .step h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.01em; }
+    .step p { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.6; }
+
+    /* ---------- tools table ---------- */
+    .spec {
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      background: var(--surface);
+    }
+    .spec table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .spec th {
+      font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--faint); text-align: left;
+      padding: 16px 22px; border-bottom: 1px solid var(--line-strong);
+    }
+    .spec td { padding: 15px 22px; border-bottom: 1px solid var(--line); }
+    .spec tr:last-child td { border-bottom: none; }
+    .spec tbody tr { transition: background 0.15s; }
+    .spec tbody tr:hover { background: rgba(255, 122, 24, 0.04); }
+    .spec td:first-child { color: var(--cream); font-weight: 600; font-family: var(--mono); font-size: 13.5px; }
+    .yes { color: var(--good); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
+    .tag-new {
+      font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+      color: var(--orange); border: 1px solid rgba(242, 107, 10, 0.3);
+      border-radius: 5px; padding: 2px 8px; margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* ---------- security callout ---------- */
+    .callout {
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line); border-left: 4px solid var(--good);
+      border-radius: 14px; padding: 26px 30px;
+    }
+    .callout h3 {
+      font-size: 17px; font-weight: 700; margin: 0 0 10px; letter-spacing: -0.01em;
+      color: var(--good);
+    }
+    .callout p { margin: 0; color: var(--dim); font-size: 15px; line-height: 1.65; }
+    .callout p + p { margin-top: 10px; }
+
+    /* ---------- unique callout ---------- */
+    .unique-banner {
+      background: linear-gradient(135deg, rgba(242, 107, 10, 0.08), rgba(242, 107, 10, 0.03));
+      border: 1px solid rgba(242, 107, 10, 0.22); border-radius: 16px;
+      padding: 32px 36px; margin-top: 16px;
+      display: flex; gap: 22px; align-items: flex-start;
+    }
+    @media (max-width: 620px) { .unique-banner { flex-direction: column; gap: 14px; padding: 22px 20px; } }
+    .unique-banner .icon {
+      width: 48px; height: 48px; flex-shrink: 0;
+      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 22px; box-shadow: 0 8px 24px rgba(255, 122, 24, 0.3);
+    }
+    .unique-banner h3 {
+      font-size: 20px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em;
+    }
+    .unique-banner p { margin: 0; color: var(--dim); font-size: 15px; line-height: 1.65; }
+
+    /* ---------- split layout ---------- */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: start; }
+    @media (max-width: 920px) { .split { grid-template-columns: 1fr; } }
+    .split .copy p { color: var(--dim); font-size: 15.5px; margin: 0 0 14px; }
+    .split .copy p:last-child { margin: 0; }
+
+    /* ---------- open source note ---------- */
+    .oss-note {
+      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
+      margin-top: 18px; display: flex; align-items: center; gap: 8px;
+    }
+    .oss-note::before {
+      content: ""; width: 18px; height: 7px;
+      background: var(--stripe); background-size: 200% 100%; flex-shrink: 0;
+    }
+
+    /* ---------- finale ---------- */
+    .finale {
+      position: relative; text-align: center; padding: 96px 24px; margin: 40px 0 0;
+      border-top: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .finale::before {
+      content: ""; position: absolute; inset: auto -10% -70% -10%; height: 200px;
+      background: var(--stripe); opacity: 0.06; transform: rotate(-2deg);
+    }
+    .finale h2 { font-size: clamp(34px, 5.4vw, 58px); margin-bottom: 14px; }
+    .finale .sub { margin: 0 auto 36px; }
+
+    footer {
+      padding: 34px 0 56px; color: var(--faint);
+      font-family: var(--mono); font-size: 12.5px; text-align: center;
+    }
+    footer a { color: var(--orange-hot); text-decoration: none; }
+
+    /* ---------- motion ---------- */
+    @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+    .page-hero > * { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    .page-hero > *:nth-child(2) { animation-delay: 0.06s; }
+    .page-hero > *:nth-child(3) { animation-delay: 0.12s; }
+    .page-hero > *:nth-child(4) { animation-delay: 0.18s; }
+    .page-hero > *:nth-child(5) { animation-delay: 0.24s; }
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.7s, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, .page-hero > * { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="site">
+      <a href="../.."><img src="/icon.png" alt="Tiger logo, an orange cat" /></a>
+      <a href="../.." style="text-decoration:none;color:inherit;"><span class="name">Tiger</span></a>
+      <nav aria-label="Main">
+        <a href="/compare/tiger-vs-postman">vs Postman</a>
+        <a href="/alternatives/postman">Alternatives</a>
+        <a href="/guides/postman-to-tiger">Migration guide</a>
+        <a class="gh-btn" href="/#download">Download ↓</a>
+      </nav>
+    </header>
+
+    <div class="page-hero">
+      <div class="breadcrumb" aria-label="Breadcrumb">
+        <a href="../..">Home</a>
+        <span>/</span>
+        <a href="..">Use cases</a>
+        <span>/</span>
+        <span style="color:var(--dim);">MCP API client</span>
+      </div>
+      <span class="eyebrow">Use case · MCP API client</span>
+      <h1>Let AI run your<br/><em>API requests</em></h1>
+      <p class="lead">
+        Tiger ships a built-in Model Context Protocol server. Point any MCP-compatible
+        AI assistant at your collection and it can list, inspect and execute your requests
+        without leaving its own interface.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="/#download">Download Tiger, free</a>
+        <a class="btn ghost" href="/compare/tiger-vs-postman">Compare with Postman</a>
+      </div>
+      <div class="oss-note">Free and open source (MIT)</div>
+    </div>
+
+    <section class="reveal" id="what-is-mcp">
+      <span class="eyebrow">Background</span>
+      <h2>What is MCP?</h2>
+      <p class="sub">
+        Model Context Protocol (MCP) is an open standard that lets AI assistants
+        call external tools in a structured, auditable way. Instead of asking an AI to
+        guess how to invoke something, you expose a typed set of actions it can call
+        directly.
+      </p>
+      <div class="unique-banner">
+        <div class="icon" aria-hidden="true">&#127381;</div>
+        <div>
+          <h3>Tiger is the only git-native API client that ships an MCP server</h3>
+          <p>
+            Postman, Bruno, Insomnia and every other API client we know of does not expose
+            an MCP server. Tiger's is included, local, and requires no account, plugin or
+            third-party service. Your AI assistant gets direct, typed access to the same
+            collections your team already version-controls in Git.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="reveal" id="workflow">
+      <span class="eyebrow">Workflow</span>
+      <h2>How it works in practice</h2>
+      <p class="sub">
+        Three steps from zero to an AI assistant that can explore and run your API
+        collection autonomously.
+      </p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Open your collection in Tiger</h3>
+          <p>
+            Clone the repo that holds your .tiger files, or import an existing Postman
+            export. The MCP server starts automatically when Tiger launches; no separate
+            process or configuration needed inside the app.
+          </p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Add Tiger to your AI client's config</h3>
+          <p>
+            Drop a single JSON block into your Claude Desktop, Cursor or other MCP-compatible
+            client configuration. Point it at Tiger's compiled server file and the collection
+            path you want to expose.
+          </p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Ask your assistant to work with the API</h3>
+          <p>
+            The AI can now list every request in the collection, read the full definition of
+            any request including headers, body schema and variable references, and fire a
+            request against your target environment with a single tool call.
+          </p>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <h3>Results flow back into context</h3>
+          <p>
+            Response status, headers and body are returned directly to the AI's context window.
+            It can interpret the response, chain follow-up requests, or surface errors without
+            you switching windows.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="reveal" id="config">
+      <span class="eyebrow">Configuration</span>
+      <h2>Claude Desktop config snippet</h2>
+      <p class="sub">
+        Add the following block to your
+        <span class="m">claude_desktop_config.json</span> (macOS:
+        <span class="m">~/Library/Application Support/Claude/claude_desktop_config.json</span>).
+        Adjust the two paths to match your machine.
+      </p>
+      <div class="split">
+        <div class="copy">
+          <p>
+            The <span class="m">command</span> field points to the Node.js binary on your
+            machine. The first argument is the path to Tiger's compiled MCP server module
+            (inside the app bundle or the project's <span class="m">out/mcp/</span> folder).
+            The second is the path to the Tiger collection directory you want the AI to access.
+          </p>
+          <p>
+            Secrets held in environment files are <em style="font-style:normal;color:var(--cream);font-weight:600;">redacted</em> before values
+            are returned to the AI. The AI sees variable names, not secret values. If you
+            want to allow the AI to actually send requests, set
+            <span class="m">allowRun</span> to <span class="m">true</span> in the args.
+          </p>
+          <p>
+            Restart Claude Desktop after saving. The Tiger tools will appear in the
+            model's tool list on the next conversation.
+          </p>
+        </div>
+        <div class="win">
+          <div class="bar"><i></i><i></i><i></i><span class="file">claude_desktop_config.json</span></div>
+<pre><span class="k">{</span>
+  <span class="prop">"mcpServers"</span><span class="key">: {</span>
+    <span class="prop">"tiger"</span><span class="key">: {</span>
+      <span class="prop">"command"</span><span class="key">:</span> <span class="str">"node"</span><span class="key">,</span>
+      <span class="prop">"args"</span><span class="key">: [</span>
+        <span class="str">"/Applications/Tiger.app/Contents</span>
+<span class="str">  /Resources/out/mcp/server.mjs"</span><span class="key">,</span>
+        <span class="str">"/path/to/your/collection"</span>
+      <span class="key">]</span>
+    <span class="key">}</span>
+  <span class="key">}</span>
+<span class="k">}</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="reveal" id="tools">
+      <span class="eyebrow">MCP tools</span>
+      <h2>The four tools Tiger exposes</h2>
+      <p class="sub">
+        The MCP server registers exactly four tools. Each has a typed input schema so the
+        AI model can call them without guessing argument names or shapes.
+      </p>
+      <div class="spec">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Tool name</th>
+              <th scope="col">What it does</th>
+              <th scope="col">Returns</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>list_requests</td>
+              <td>Returns every request in the collection grouped by folder, including name, method and path.</td>
+              <td style="color:var(--dim);font-size:14px;">JSON array of request summaries</td>
+            </tr>
+            <tr>
+              <td>get_request</td>
+              <td>Returns the full definition of a single request: method, URL, headers, body, auth config and variable references. Secret values are redacted.</td>
+              <td style="color:var(--dim);font-size:14px;">Full request object (secrets stripped)</td>
+            </tr>
+            <tr>
+              <td>run_request</td>
+              <td>Executes a request against the active environment and returns the response status, headers and body. Honors variable substitution and auth flows.</td>
+              <td style="color:var(--dim);font-size:14px;">HTTP response (status, headers, body)</td>
+            </tr>
+            <tr>
+              <td>list_environments</td>
+              <td>Lists the environments available in the collection with their non-secret variable names, so the AI can confirm which environment is active before running requests.</td>
+              <td style="color:var(--dim);font-size:14px;">Array of environment names and variables</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="reveal" id="security">
+      <span class="eyebrow">Security</span>
+      <h2>What the AI can and cannot see</h2>
+      <p class="sub">
+        The MCP server is designed around least privilege. Here is exactly what is and
+        is not exposed.
+      </p>
+      <div class="bento">
+        <div class="cell">
+          <span class="num">A</span>
+          <h3>Secrets are redacted</h3>
+          <p>
+            Variables prefixed with a tilde (~) in Tiger environment files are treated as
+            secrets. Their values are never sent to the MCP client. The AI sees the variable
+            name, confirming the slot exists, but cannot read the value.
+          </p>
+        </div>
+        <div class="cell">
+          <span class="num">B</span>
+          <h3>Read and run only</h3>
+          <p>
+            The four tools cover reading collection structure and executing requests. There
+            are no tools to write, delete or modify requests. The AI can explore and invoke,
+            but cannot change your collection files.
+          </p>
+        </div>
+        <div class="cell">
+          <span class="num">C</span>
+          <h3>Entirely local</h3>
+          <p>
+            The MCP server process runs on your machine. No data is sent to any Tiger cloud
+            service because there is no Tiger cloud service. Communication is only between
+            your AI client and the local Node.js process.
+          </p>
+        </div>
+        <div class="cell wide">
+          <span class="num">D</span>
+          <h3>Requests go to your APIs</h3>
+          <p>
+            When <span class="m">run_request</span> executes a call, the HTTP request
+            travels directly from your machine to your target API, exactly as if you had
+            pressed Send in the Tiger UI. No proxy, no intermediary. TLS, client certificates
+            and proxy settings from Tiger's configuration apply as normal.
+          </p>
+        </div>
+        <div class="cell">
+          <span class="num">E</span>
+          <h3>Scope-limited by path</h3>
+          <p>
+            The collection path you pass in the config determines the scope. The MCP server
+            can only access requests inside that directory. Other collections or files on
+            your machine are not reachable.
+          </p>
+        </div>
+      </div>
+      <div style="margin-top:24px;">
+        <div class="callout">
+          <h3>Honest caveat</h3>
+          <p>
+            Allowing an AI to execute real API requests carries the same risk as allowing any
+            tool to do so. Review which environment is active before pointing an AI assistant
+            at a production collection. Use a staging or sandbox environment for exploratory
+            AI workflows.
+          </p>
+          <p>
+            Tiger's MCP server does not add authentication between the AI client and the
+            server process. Anyone who can reach the local port can call the tools. This is
+            standard practice for local MCP servers today, and consistent with how all other
+            MCP tools in the ecosystem operate.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="reveal" id="why-unique">
+      <span class="eyebrow">Competitive context</span>
+      <h2>Why no other client ships this</h2>
+      <p class="sub">
+        Cloud-based API clients cannot safely expose an MCP server because their
+        collections live in a vendor cloud behind authentication. A local process with
+        read access to your collections only makes sense when the collections are local.
+        Tiger's git-native, file-based approach is what makes the MCP server practical.
+      </p>
+      <div class="spec">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Client</th>
+              <th scope="col">Collections stored locally</th>
+              <th scope="col">MCP server included</th>
+              <th scope="col">AI can run requests locally</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Tiger</td>
+              <td class="yes">Yes<span class="tag-new">NEW</span></td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>Postman</td>
+              <td style="color:var(--dim);font-size:14px;">Cloud-primary (local collections on paid tier)</td>
+              <td style="color:var(--bad);font-family:var(--mono);font-size:13.5px;font-weight:600;">No</td>
+              <td style="color:var(--bad);font-family:var(--mono);font-size:13.5px;font-weight:600;">No</td>
+            </tr>
+            <tr>
+              <td>Bruno</td>
+              <td class="yes">Yes</td>
+              <td style="color:var(--bad);font-family:var(--mono);font-size:13.5px;font-weight:600;">No</td>
+              <td style="color:var(--bad);font-family:var(--mono);font-size:13.5px;font-weight:600;">No</td>
+            </tr>
+            <tr>
+              <td>Insomnia</td>
+              <td style="color:var(--dim);font-size:14px;">Cloud-primary, local mode available</td>
+              <td style="color:var(--bad);font-family:var(--mono);font-size:13.5px;font-weight:600;">No</td>
+              <td style="color:var(--bad);font-family:var(--mono);font-size:13.5px;font-weight:600;">No</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:18px;color:var(--faint);font-family:var(--mono);font-size:12.5px;">
+        Table reflects publicly documented features as of June 2026. If any entry is wrong,
+        <a href="/#download" style="color:var(--orange-hot);">let us know</a>.
+      </p>
+    </section>
+
+    <section class="finale reveal">
+      <span class="eyebrow" style="justify-content:center;">Get started</span>
+      <h2>Give your AI assistant<br/>real API access</h2>
+      <p class="sub">
+        Download Tiger, open your collection, add the config snippet, and your AI client
+        can start listing and running requests in under five minutes.
+      </p>
+      <div class="cta" style="justify-content:center;">
+        <a class="btn primary" href="/#download">Download Tiger, free</a>
+        <a class="btn ghost" href="/guides/postman-to-tiger">Migration guide</a>
+      </div>
+      <div class="oss-note" style="justify-content:center;margin-top:24px;">Free and open source (MIT)</div>
+    </section>
+
+    <footer>
+      <p>
+        &copy; 2026 Tiger. All rights reserved. &nbsp;&middot;&nbsp;
+        <a href="../..">Home</a> &nbsp;&middot;&nbsp;
+        <a href="/compare/tiger-vs-postman">Tiger vs Postman</a> &nbsp;&middot;&nbsp;
+        <a href="/alternatives/postman">Postman alternatives</a> &nbsp;&middot;&nbsp;
+        <a href="/guides/postman-to-tiger">Migration guide</a>
+      </p>
+    </footer>
+
+  </div>
+
+  <script>
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add('in')),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  </script>
+</body>
+</html>

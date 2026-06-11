@@ -22,6 +22,7 @@ export interface CollectionInfo {
   folderCount: number
   environments: string[]
   auth?: TigerAuth
+  docs?: string
 }
 
 interface Props {
@@ -29,6 +30,7 @@ interface Props {
   history: HistoryEntry[]
   onToast: (text: string) => void
   onSaveAuth: (auth: TigerAuth | undefined) => void
+  onSaveDocs: (docs: string) => void
   onNewRequest: () => void
   onImportExport: () => void
   onClose: () => void
@@ -46,6 +48,7 @@ export function CollectionView({
   history,
   onToast,
   onSaveAuth,
+  onSaveDocs,
   onNewRequest,
   onImportExport,
   onClose,
@@ -234,6 +237,20 @@ export function CollectionView({
             </button>
           </div>
         )}
+      </div>
+
+      <div className="section-label">Documentation</div>
+      <div className="cv-card">
+        <textarea
+          className="docs-area"
+          placeholder="Document this collection in Markdown: what it covers, how to authenticate, gotchas…"
+          defaultValue={collection.docs ?? ''}
+          key={collection.id}
+          spellCheck={false}
+          onBlur={(e) => {
+            if (e.target.value !== (collection.docs ?? '')) onSaveDocs(e.target.value)
+          }}
+        />
       </div>
 
       <div className="section-label">Default auth (inherited by requests)</div>

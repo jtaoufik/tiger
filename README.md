@@ -5,28 +5,54 @@
 <h1 align="center">Tiger</h1>
 
 <p align="center">
-  A local-first API client with a frosted glass interface.<br/>
-  Your collections are plain text files on disk. No cloud, no account, no lock-in.
+  Tiger is a free, open source, git-native API client. A local-first, account-free Postman alternative with a built-in MCP server.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey" alt="macOS and Windows" />
+  <img src="https://img.shields.io/badge/version-0.2.0-orange" alt="v0.2.0" />
 </p>
 
 ---
 
-Tiger is an offline API client in the spirit of [Bruno](https://www.usebruno.com): requests live in a folder you control, in a small text format (`.tiger`) that diffs cleanly and reviews like code. On top of that it adds a glass UI with light and dark themes, imports from the tools you already use, and an MCP server so AI assistants can drive your collections.
+Tiger is an open source API client where every request is a plain `.tiger` text file on disk. Commit your collections, branch them, and review API changes in pull requests the same way you review code. No account required. No cloud sync. No lock-in.
 
-## Features
+On top of the git-friendly storage model, Tiger adds a glass UI with light and dark themes, a full importer suite, an MCP server so AI assistants (Claude, Cursor) can run requests directly, and a request chaining system to capture response values into variables for the next call.
 
-- **Local-first collections.** A collection is just a folder of `.tiger` files. Commit it, branch it, review it in pull requests.
-- **A real workspace.** Several collections open side by side, collapsible folders, search across requests, create and delete requests in place.
-- **Environments.** Named variable sets with `{{variable}}` interpolation everywhere: URL, headers, query, body, auth.
-- **Auth built in.** Bearer, Basic, API key (header or query) and OAuth 2.0 client credentials.
-- **Import from anywhere.** Postman (v2.0/v2.1), Bruno (.bru folders), OpenAPI 3 / Swagger 2 (JSON or YAML) and Insomnia (v4).
-- **Export.** Whole workspace to a Postman v2.1 collection, single requests as `.tiger` or a copy-ready curl command.
-- **Code generation.** Turn any request into curl or JavaScript fetch.
-- **History.** The last 200 sends with status, timing and size.
-- **Company-grade network options.** Proxy (HTTP/HTTPS/SOCKS), SSL verification toggle, redirect policy, configurable timeout.
-- **MCP server.** Expose a collection to Claude or any MCP client: list, read and run requests over the Model Context Protocol.
-- **Cross-platform.** macOS and Windows (Linux builds too) from one Electron codebase.
-- **Free to start.** Paid team features may come later.
+## Why Tiger
+
+- **Collections as plain text in Git.** A collection is a folder of `.tiger` files. Diff them, branch them, and review API changes in pull requests. Every field is human-readable.
+- **No account, fully offline, local-first.** Tiger never phones home for your data. Everything lives in a folder you own.
+- **MCP server for AI assistants.** Claude, Cursor, and any MCP-compatible assistant can list, read, and run requests from your collection without leaving the chat. Tiger is the only MCP API client built this way from the ground up.
+- **Environments and secrets.** Named variable sets with `{{variable}}` interpolation in URLs, headers, query params, bodies, and auth fields. Secret variables are masked in the UI.
+- **Request chaining.** Capture values from a response (status code, header, or a JSON path like `body.data[0].id`) and write them into environment variables for the next request.
+- **Dynamic variables.** `{{$uuid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, and `{{$randomInt}}` are re-evaluated on every send.
+- **OAuth 2.0, proxy, client certificates (mTLS).** Client credentials grant, Bearer, Basic, and API key auth. HTTP/HTTPS/SOCKS proxy support. Custom CA bundles and client certificate authentication via PEM pair or PFX/PKCS12 file.
+- **GraphQL.** Dedicated body type with a separate variables pane.
+- **SOAP and XML.** Send raw XML bodies for SOAP/WS-* APIs the same way you would for REST.
+- **JSON prettify and minify.** Format button and syntax highlighting in the editor and response panel, with Pretty/Raw and word-wrap toggles.
+- **Performance runs.** Fire N requests with a configurable concurrency level and get back min, max, avg, p50, and p95 timings.
+- **Import from Postman, Insomnia, Bruno, OpenAPI, and curl.** Import a Postman v2.0/v2.1 export, an Insomnia v4 export, a Bruno folder, an OpenAPI 3 / Swagger 2 spec (JSON or YAML), or paste a curl command.
+- **Code generation.** Turn any request into a curl command or a JavaScript fetch snippet.
+- **Cookie jar.** Persist cookies between sends and sessions, with automatic cross-origin stripping on redirects.
+
+## Tiger vs Postman vs Bruno
+
+| | Tiger | Postman | Bruno |
+|---|---|---|---|
+| Open source | Yes | No | Yes |
+| Collections as plain text in Git | Yes (`.tiger`) | No | Yes (`.bru`) |
+| No account required | Yes | No | Yes |
+| Built-in MCP server | Yes | No | No |
+| Request chaining (captures) | Yes | Yes | Yes |
+| Dynamic variables | Yes | Yes | Partial |
+| OAuth 2.0 | Yes | Yes | Yes |
+| Client certificates (mTLS) | Yes | Yes | No |
+| GraphQL | Yes | Yes | Yes |
+| SOAP / XML | Yes | Yes | Yes |
+| Performance runner | Yes | Yes | No |
+| Offline, local-first | Yes | Partial | Yes |
 
 ## The `.tiger` format
 
@@ -54,9 +80,13 @@ body:json {
 auth:bearer {
   token: {{token}}
 }
+
+capture {
+  postId: body.id
+}
 ```
 
-A `~` prefix disables a line without deleting it. Environments live in an `environments/` folder inside the collection:
+A `~` prefix disables a line without deleting it. The `capture` block writes response values into environment variables for the next request in the chain. Environments live in an `environments/` subfolder:
 
 ```
 meta {
@@ -73,7 +103,7 @@ vars {
 
 ```bash
 npm install
-npm run dev        # launch the app in development
+npm run dev        # launch the app in development mode
 npm test           # run the test suite
 npm run package    # build distributables for your platform
 ```
@@ -82,13 +112,13 @@ Open a collection folder from the sidebar, or try `examples/jsonplaceholder` to 
 
 ## Connect an AI assistant (MCP)
 
-Tiger ships an MCP server that gives AI clients safe, structured access to a collection:
+Tiger ships an MCP server that gives AI clients safe, structured access to a collection. Build it once:
 
 ```bash
 npm run build:mcp
 ```
 
-Then register it, for example in Claude Desktop's `claude_desktop_config.json`:
+Then register it in your AI client's config. For Claude Desktop, add this to `claude_desktop_config.json`:
 
 ```json
 {
@@ -101,24 +131,25 @@ Then register it, for example in Claude Desktop's `claude_desktop_config.json`:
 }
 ```
 
-The assistant gets four tools: `list_requests`, `list_environments`, `get_request` and `run_request`. Responses come back with status, timing, headers and a pretty-printed body.
+The assistant gets four tools: `list_requests`, `list_environments`, `get_request`, and `run_request`. Every response includes the status code, timing, response headers, and a pretty-printed body. Your collection stays on disk; nothing is sent to any third party.
 
 ## Privacy
 
-Tiger sends anonymous usage analytics by default: app opened, request sent (method and status bucket only) and collection imported (source and count). It never records URLs, hostnames, header values or bodies, and the only identifier is a random app-local id. Turn it off any time in Settings, under Privacy.
+Tiger sends anonymous usage analytics by default: app opened, request sent (method and status bucket only), and collection imported (source and count). It never records URLs, hostnames, header values, or bodies. The only identifier is a random app-local ID. Turn it off any time in Settings under Privacy.
 
 ## Architecture
 
 ```
 src/core      Pure TypeScript: format, interpolation, auth, request building,
-              response formatting, importers, exporters, codegen. No DOM, no Node.
+              response formatting, captures, importers, exporters, codegen.
+              No DOM, no Node dependency. Fully unit-tested.
 src/main      Electron main process: windows, file IO, HTTP, settings, history.
 src/preload   The narrow, typed IPC bridge.
 src/renderer  React UI (glass).
 src/mcp       The MCP server (stdio) and its filesystem store.
 ```
 
-The core is dependency-free and fully unit-tested; the UI and the MCP server are thin layers over it.
+The core is dependency-free and fully unit-tested. The UI and the MCP server are thin layers on top of it.
 
 ## Contributing
 
@@ -126,4 +157,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: tests first, keep cor
 
 ## License
 
-Proprietary. Free to download and use during the preview; see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

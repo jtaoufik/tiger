@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Postman to Tiger Migration Guide</title>
+  <meta name="description" content="Move from Postman to Tiger in a few steps. Export your Postman collection, import it into Tiger, and keep your environments and requests. Free, no account." />
+  <link rel="canonical" href="https://tiger.62-238-17-135.sslip.io/guides/postman-to-tiger" />
+  <meta name="robots" content="index, follow" />
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://tiger.62-238-17-135.sslip.io/guides/postman-to-tiger" />
+  <meta property="og:title" content="Postman to Tiger Migration Guide" />
+  <meta property="og:description" content="Move from Postman to Tiger in a few steps. Export your Postman collection, import it into Tiger, and keep your environments and requests. Free, no account." />
+  <meta property="og:image" content="https://tiger.62-238-17-135.sslip.io/icon.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Postman to Tiger Migration Guide" />
+  <meta name="twitter:description" content="Move from Postman to Tiger in a few steps. Export your Postman collection, import it into Tiger, and keep your environments and requests. Free, no account." />
+  <meta name="twitter:image" content="https://tiger.62-238-17-135.sslip.io/icon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Postman to Tiger Migration Guide",
+    "description": "Move from Postman to Tiger in a few steps. Export your Postman collection, import it into Tiger, and keep your environments and requests.",
+    "url": "https://tiger.62-238-17-135.sslip.io/guides/postman-to-tiger",
+    "image": "https://tiger.62-238-17-135.sslip.io/icon.png",
+    "totalTime": "PT30M",
+    "supply": [
+      { "@type": "HowToSupply", "name": "Postman desktop app or web" },
+      { "@type": "HowToSupply", "name": "Tiger API client" }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Export your Postman collection as Collection v2.1 JSON",
+        "text": "Open Postman, right-click the collection you want to migrate, choose Export, select Collection v2.1 (recommended), and save the .json file somewhere convenient."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "Download Tiger",
+        "text": "Download the Tiger installer for your platform from tiger.62-238-17-135.sslip.io/#download. macOS users: right-click the app and choose Open the first time as these are early preview builds not yet code-signed.",
+        "url": "https://tiger.62-238-17-135.sslip.io/#download"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Import in Tiger via Import / Export > Postman",
+        "text": "Open Tiger, go to the sidebar and choose Import / Export, then select Postman. Drop your exported .json file onto the dialog or click Browse. Tiger reads Postman v2.0 and v2.1 collections."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 4,
+        "name": "Re-enter environment values and auth credentials",
+        "text": "Tiger imports variable references intact but not the secret values. Open Settings > Environments, recreate your environments and fill in base URLs, secrets and auth tokens. For OAuth 2.0 flows, Tiger guides you through the client credentials exchange."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 5,
+        "name": "Commit your collection to Git",
+        "text": "Tiger stores each request as a plain .tiger file. Add the collection folder to your repository, commit, and push. Your team clones once and gets everything."
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --ink: #faf6ee;
+      --ink-2: #f4eee2;
+      --surface: #ffffff;
+      --surface-2: #fffaf2;
+      --line: rgba(36, 24, 8, 0.09);
+      --line-strong: rgba(36, 24, 8, 0.17);
+      --cream: #241c12;
+      --dim: #6e6151;
+      --faint: #9a8c79;
+      --orange: #f26b0a;
+      --orange-hot: #ff8c33;
+      --orange-deep: #c75500;
+      --good: #1e9e63;
+      --bad: #d8472e;
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      --disp: "Bricolage Grotesque", -apple-system, sans-serif;
+      --stripe: repeating-linear-gradient(
+        -55deg,
+        var(--orange) 0 8px,
+        transparent 8px 22px
+      );
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--ink);
+      color: var(--cream);
+      font-family: var(--disp);
+      font-size: 16.5px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(1000px 600px at 8% -5%, rgba(242, 107, 10, 0.09), transparent 60%),
+        radial-gradient(900px 700px at 105% 15%, rgba(242, 107, 10, 0.05), transparent 55%);
+    }
+    body::after {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.22;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.7 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    ::selection { background: var(--orange); color: #fff; }
+    a { color: var(--orange-hot); }
+    :focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
+
+    /* ---------- type helpers ---------- */
+    .eyebrow {
+      font-family: var(--mono); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--orange);
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .eyebrow::before {
+      content: ""; width: 26px; height: 10px;
+      background: var(--stripe); background-size: 200% 100%;
+    }
+    h2 {
+      font-size: clamp(28px, 4vw, 40px); font-weight: 700;
+      letter-spacing: -0.02em; line-height: 1.08; margin: 14px 0 14px;
+    }
+    .sub { color: var(--dim); max-width: 640px; margin: 0 0 36px; font-size: 17px; }
+    .m { font-family: var(--mono); }
+
+    /* ---------- header ---------- */
+    header.site {
+      display: flex; align-items: center; gap: 12px; padding: 26px 0;
+    }
+    header.site img { width: 38px; height: 38px; }
+    header.site .name {
+      font-weight: 800; font-size: 21px; letter-spacing: -0.02em;
+    }
+    header.site .name a { color: inherit; text-decoration: none; }
+    header.site nav { margin-left: auto; display: flex; gap: 26px; flex-wrap: wrap; align-items: center; }
+    header.site nav a {
+      font-family: var(--mono); font-size: 13px; color: var(--dim);
+      text-decoration: none; transition: color 0.15s;
+    }
+    header.site nav a:hover { color: var(--orange-hot); }
+    .gh-btn {
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      color: var(--cream) !important; text-decoration: none;
+      border: 1px solid var(--line-strong); border-radius: 10px;
+      padding: 8px 16px; transition: border-color 0.15s, background 0.15s;
+    }
+    .gh-btn:hover { border-color: var(--orange); background: rgba(255, 122, 24, 0.08); }
+
+    /* ---------- btn ---------- */
+    .btn {
+      font-family: var(--mono); font-weight: 600; font-size: 14.5px;
+      text-decoration: none; padding: 15px 28px; border-radius: 12px;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+      display: inline-block;
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
+      color: #1a0d02; box-shadow: 0 10px 36px rgba(255, 122, 24, 0.35);
+    }
+    .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(255, 122, 24, 0.45); }
+    .btn.ghost {
+      color: var(--cream); border: 1px solid var(--line-strong);
+    }
+    .btn.ghost:hover { background: rgba(255, 173, 96, 0.07); }
+    .cta { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    /* ---------- hero / page header ---------- */
+    .page-hero {
+      padding: 56px 0 48px;
+      border-bottom: 1px solid var(--line);
+    }
+    .page-hero h1 {
+      font-size: clamp(34px, 5.2vw, 58px); font-weight: 800;
+      line-height: 1.04; letter-spacing: -0.03em; margin: 16px 0 18px;
+    }
+    .page-hero h1 em {
+      font-style: normal; color: var(--orange);
+      position: relative; white-space: nowrap;
+    }
+    .page-hero h1 em::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 3px; height: 9px;
+      background: var(--stripe); opacity: 0.3; z-index: -1;
+    }
+    .page-hero .lead { color: var(--dim); font-size: 18px; max-width: 620px; margin: 0 0 28px; }
+    .meta-row {
+      display: flex; gap: 22px; flex-wrap: wrap; align-items: center;
+      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
+    }
+    .meta-row b { color: var(--dim); font-weight: 600; }
+    .badge-free {
+      font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+      color: var(--good); border: 1px solid rgba(30, 158, 99, 0.35);
+      border-radius: 6px; padding: 3px 9px;
+    }
+
+    /* ---------- layout ---------- */
+    .guide-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 56px;
+      padding: 56px 0 80px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .guide-layout { grid-template-columns: 1fr; gap: 40px; }
+      .sidebar { order: -1; }
+    }
+
+    /* ---------- sidebar ---------- */
+    .sidebar {
+      position: sticky; top: 28px;
+    }
+    .sidebar-card {
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 22px 22px 26px; margin-bottom: 16px;
+    }
+    .sidebar-card h3 {
+      font-size: 13px; font-family: var(--mono); font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--orange);
+      margin: 0 0 14px;
+    }
+    .sidebar-card ol, .sidebar-card ul {
+      margin: 0; padding: 0 0 0 18px;
+      color: var(--dim); font-size: 14px; line-height: 1.8;
+    }
+    .sidebar-card li { margin-bottom: 4px; }
+    .sidebar-card a { color: var(--dim); text-decoration: none; transition: color 0.15s; }
+    .sidebar-card a:hover { color: var(--orange-hot); }
+    .sidebar-card .btn { width: 100%; text-align: center; margin-top: 14px; }
+
+    /* ---------- steps ---------- */
+    .steps { list-style: none; margin: 0; padding: 0; }
+    .step {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 0 24px;
+      margin-bottom: 48px;
+      position: relative;
+    }
+    .step:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      left: 25px; top: 52px; bottom: -12px;
+      width: 2px;
+      background: var(--line-strong);
+    }
+    .step-num {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(180deg, rgba(242,107,10,0.18), rgba(242,107,10,0.08));
+      border: 1px solid rgba(242,107,10,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-weight: 700; font-size: 17px;
+      color: var(--orange); flex-shrink: 0;
+    }
+    .step-body { padding-top: 10px; }
+    .step-body h3 {
+      font-size: 20px; font-weight: 700; letter-spacing: -0.01em;
+      margin: 0 0 10px;
+    }
+    .step-body p { color: var(--dim); margin: 0 0 14px; font-size: 15.5px; }
+    .step-body p:last-child { margin-bottom: 0; }
+
+    /* ---------- code block ---------- */
+    .win {
+      background: linear-gradient(180deg, #241b10, #1a130a);
+      border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      overflow: hidden; margin: 16px 0;
+    }
+    .win .bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 11px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    }
+    .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: #786b58; opacity: 0.5; }
+    .win .bar i:first-child { background: var(--bad); opacity: 0.9; }
+    .win .bar i:nth-child(2) { background: #ffc24d; opacity: 0.9; }
+    .win .bar i:nth-child(3) { background: var(--good); opacity: 0.9; }
+    .win .bar .file {
+      margin-left: 10px; font-family: var(--mono); font-size: 12px; color: #b3a58e;
+    }
+    .win pre {
+      margin: 0; padding: 18px 22px; font-family: var(--mono);
+      font-size: 13px; line-height: 1.8; overflow-x: auto; color: #d4c8b3;
+    }
+    .k { color: #ff8c33; font-weight: 600; }
+    .key { color: #f3ead9; }
+    .v { color: #b3a58e; }
+    .var { color: #ffb066; }
+    .cm { color: #786b58; }
+
+    /* ---------- note box ---------- */
+    .note {
+      border-left: 3px solid var(--orange);
+      background: rgba(242, 107, 10, 0.06);
+      border-radius: 0 10px 10px 0;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 15px;
+      color: var(--dim);
+    }
+    .note strong { color: var(--cream); }
+
+    /* ---------- table ---------- */
+    .spec {
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      background: var(--surface); margin: 8px 0 40px;
+    }
+    .spec table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .spec th {
+      font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--faint); text-align: left;
+      padding: 16px 22px; border-bottom: 1px solid var(--line-strong);
+    }
+    .spec td { padding: 14px 22px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .spec tr:last-child td { border-bottom: none; }
+    .spec tbody tr { transition: background 0.15s; }
+    .spec tbody tr:hover { background: rgba(255, 122, 24, 0.04); }
+    .spec td:first-child { color: var(--cream); font-weight: 600; width: 38%; }
+    .yes { color: var(--good); font-family: var(--mono); font-size: 13px; font-weight: 600; }
+    .redo { color: #c8a043; font-family: var(--mono); font-size: 13px; font-weight: 600; }
+
+    /* ---------- troubleshoot list ---------- */
+    .trouble { margin: 0; padding: 0; list-style: none; }
+    .trouble li {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .trouble li:first-child { border-top: 1px solid var(--line); }
+    .trouble .q-tag {
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      color: var(--orange); background: rgba(242,107,10,0.1);
+      border: 1px solid rgba(242,107,10,0.25); border-radius: 5px;
+      padding: 3px 8px; letter-spacing: 0.08em; flex-shrink: 0; margin-top: 2px;
+    }
+    .trouble .ans { color: var(--dim); font-size: 15px; line-height: 1.6; }
+    .trouble .ans strong { color: var(--cream); }
+
+    /* ---------- finale ---------- */
+    .finale {
+      position: relative; text-align: center; padding: 80px 24px;
+      border-top: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .finale::before {
+      content: ""; position: absolute; inset: auto -10% -70% -10%; height: 200px;
+      background: var(--stripe); opacity: 0.06; transform: rotate(-2deg);
+    }
+    .finale h2 { margin-bottom: 12px; }
+    .finale .sub { margin: 0 auto 32px; }
+    .finale .cta { justify-content: center; }
+    .finale .mit {
+      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
+      margin-top: 20px;
+    }
+
+    /* ---------- section headings inside article ---------- */
+    .article h2 {
+      font-size: clamp(22px, 3vw, 30px); margin: 48px 0 12px;
+      padding-top: 16px; border-top: 1px solid var(--line);
+    }
+    .article h2:first-of-type { margin-top: 0; border-top: none; padding-top: 0; }
+
+    /* ---------- breadcrumb ---------- */
+    .breadcrumb {
+      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
+      margin-top: 18px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    .breadcrumb a { color: var(--faint); text-decoration: none; transition: color 0.15s; }
+    .breadcrumb a:hover { color: var(--orange-hot); }
+    .breadcrumb .sep { opacity: 0.4; }
+
+    footer {
+      padding: 34px 0 56px; color: var(--faint);
+      font-family: var(--mono); font-size: 12.5px; text-align: center;
+    }
+    footer a { color: var(--orange-hot); text-decoration: none; }
+
+    /* ---------- motion ---------- */
+    @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    .page-hero > * { animation: rise 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    .page-hero > *:nth-child(2) { animation-delay: 0.07s; }
+    .page-hero > *:nth-child(3) { animation-delay: 0.14s; }
+    .page-hero > *:nth-child(4) { animation-delay: 0.21s; }
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.65s, transform 0.65s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, .page-hero > * { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="site">
+      <img src="/icon.png" alt="Tiger logo, an orange cat" />
+      <span class="name"><a href="/">Tiger</a></span>
+      <nav aria-label="Main">
+        <a href="/#teams">Why teams switch</a>
+        <a href="/#compare">Compare</a>
+        <a href="/#migrate">Migration</a>
+        <a href="/#faq">FAQ</a>
+        <a class="gh-btn" href="/#download">Download ↓</a>
+      </nav>
+    </header>
+
+    <div class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span class="sep">/</span>
+      <span>Guides</span>
+      <span class="sep">/</span>
+      <span>Postman to Tiger</span>
+    </div>
+
+    <div class="page-hero">
+      <span class="eyebrow">Migration guide</span>
+      <h1>Postman to <em>Tiger</em><br/>Migration Guide</h1>
+      <p class="lead">
+        Export your Postman collection, import it into Tiger, and your whole team is
+        up and running in under an hour. No cloud account. No per-seat fee.
+      </p>
+      <div class="meta-row">
+        <span><b>5 steps</b> &middot; ~30 minutes</span>
+        <span class="badge-free">Free and open source (MIT)</span>
+      </div>
+    </div>
+
+    <div class="guide-layout reveal">
+
+      <!-- ===== MAIN ARTICLE ===== -->
+      <article class="article">
+
+        <h2>Step-by-step migration</h2>
+        <p class="sub" style="margin-bottom:0;">Follow each step in order. The whole migration takes about 30 minutes for a typical team with a handful of collections.</p>
+
+        <ol class="steps" style="margin-top:36px;">
+
+          <!-- Step 1 -->
+          <li class="step">
+            <div class="step-num" aria-hidden="true">1</div>
+            <div class="step-body">
+              <h3>Export your Postman collection (Collection v2.1 JSON)</h3>
+              <p>
+                Open Postman and locate the collection you want to migrate in the left sidebar.
+                Right-click the collection name and choose <strong>Export</strong>.
+                In the dialog, select <strong>Collection v2.1 (Recommended)</strong> and click Export.
+                Save the <span class="m">.json</span> file to a convenient location on your machine.
+              </p>
+              <p>
+                Repeat for each collection you want to bring over. If you have environment
+                definitions, export those separately from <strong>Environments</strong> in the
+                left sidebar (you will not import them directly; you will re-enter the values in
+                step 4, but having them open for reference saves time).
+              </p>
+              <div class="note">
+                <strong>v2.0 works too.</strong> Tiger accepts both Postman Collection v2.0 and v2.1
+                formats. v2.1 is preferred because it preserves more metadata.
+              </div>
+            </div>
+          </li>
+
+          <!-- Step 2 -->
+          <li class="step">
+            <div class="step-num" aria-hidden="true">2</div>
+            <div class="step-body">
+              <h3>Download Tiger</h3>
+              <p>
+                Grab the installer for your platform from the
+                <a href="/#download">Tiger download page</a>.
+                Available for macOS (Apple Silicon and Intel) and Windows (installer and portable).
+              </p>
+              <div class="note">
+                <strong>macOS gatekeeper note.</strong> These are early preview builds and are not yet
+                code-signed. On macOS, right-click the app and choose <strong>Open</strong> the first
+                time to bypass the Gatekeeper warning.
+              </div>
+              <p>
+                Tiger requires no account creation and no license key.
+                Launch it once to confirm it starts.
+              </p>
+            </div>
+          </li>
+
+          <!-- Step 3 -->
+          <li class="step">
+            <div class="step-num" aria-hidden="true">3</div>
+            <div class="step-body">
+              <h3>Import in Tiger via Import / Export &gt; Postman</h3>
+              <p>
+                In Tiger, look for the <strong>Import / Export</strong> option in the sidebar or
+                the File menu. Choose <strong>Postman</strong> as the source format. Drop your
+                exported <span class="m">.json</span> file onto the import dialog, or click
+                <strong>Browse</strong> and navigate to it.
+              </p>
+              <p>
+                Tiger parses the collection and recreates the folder structure, request names,
+                HTTP methods, headers, query parameters, request bodies and variable references.
+                Large collections with hundreds of requests import in seconds.
+              </p>
+              <div class="win" aria-hidden="true">
+                <div class="bar"><i></i><i></i><i></i><span class="file">payments/create-invoice.tiger</span></div>
+<pre><span class="k">meta</span> {
+  <span class="key">name</span>: <span class="v">Create invoice</span>
+  <span class="key">method</span>: <span class="v">POST</span>
+}
+
+<span class="k">url</span> {
+  <span class="v">{{baseUrl}}/v1/invoices</span>
+}
+
+<span class="k">headers</span> {
+  <span class="key">Authorization</span>: <span class="v">Bearer {{accessToken}}</span>
+  <span class="key">Content-Type</span>: <span class="v">application/json</span>
+}
+
+<span class="cm">// Body and query params follow...</span></pre>
+              </div>
+              <p>
+                Variable references like <span class="m">{{baseUrl}}</span> and
+                <span class="m">{{accessToken}}</span> are preserved exactly as they were in
+                Postman. You fill in the actual values in the next step.
+              </p>
+            </div>
+          </li>
+
+          <!-- Step 4 -->
+          <li class="step">
+            <div class="step-num" aria-hidden="true">4</div>
+            <div class="step-body">
+              <h3>Re-enter environment values and auth credentials</h3>
+              <p>
+                Tiger does not import environment <em>values</em> from Postman (secrets and
+                tokens should not travel in an exported JSON anyway). Open
+                <strong>Settings &gt; Environments</strong> in Tiger and create an environment
+                for each context you need, for example <em>staging</em> and <em>production</em>.
+              </p>
+              <div class="win" aria-hidden="true">
+                <div class="bar"><i></i><i></i><i></i><span class="file">environments/staging.tiger</span></div>
+<pre><span class="k">meta</span> {
+  <span class="key">name</span>: <span class="v">staging</span>
+}
+
+<span class="k">vars</span> {
+  <span class="key">baseUrl</span>: <span class="v">https://api.staging.acme.dev</span>
+  <span class="key">idp</span>: <span class="v">https://id.staging.acme.dev</span>
+  <span class="key">clientId</span>: <span class="v">acme-ci</span>
+  <span class="cm">~clientSecret: kept-out-of-git</span>
+}</pre>
+              </div>
+              <p>
+                For OAuth 2.0 client credentials flows, Tiger has a built-in auth exchange.
+                Set the token URL, client ID and client secret and Tiger fetches and refreshes
+                the token automatically. For Bearer or API key auth, paste the value into the
+                corresponding environment variable.
+              </p>
+              <div class="note">
+                <strong>Prefix a variable with <span class="m">~</span></strong> to mark it as
+                secret. Tiger stores it separately from the main collection files so you can
+                safely add the environment files to Git without leaking credentials.
+              </div>
+            </div>
+          </li>
+
+          <!-- Step 5 -->
+          <li class="step">
+            <div class="step-num" aria-hidden="true">5</div>
+            <div class="step-body">
+              <h3>Commit your collection to Git</h3>
+              <p>
+                Tiger stores each request as a plain <span class="m">.tiger</span> text file.
+                Your imported collection is a folder on disk. Add that folder to your team
+                repository:
+              </p>
+              <div class="win" aria-hidden="true">
+                <div class="bar"><i></i><i></i><i></i><span class="file">terminal</span></div>
+<pre><span class="cm"># From your project root</span>
+<span class="key">git add</span> <span class="v">api-collections/</span>
+<span class="key">git commit</span> <span class="v">-m "import: add payments collection from Postman"</span>
+<span class="key">git push</span></pre>
+              </div>
+              <p>
+                From now on, adding a request is a commit, changing an endpoint is a diff, and
+                reviewing auth changes is a pull request. Engineers joining the team get
+                everything with <span class="m">git clone</span>.
+              </p>
+            </div>
+          </li>
+
+        </ol>
+
+        <!-- CARRY OVER TABLE -->
+        <h2>What carries over and what to redo</h2>
+        <p style="color:var(--dim);font-size:15.5px;margin-bottom:20px;">
+          The importer is accurate but honest: structural data migrates automatically;
+          secret values are entered once in Tiger.
+        </p>
+        <div class="spec">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">What</th>
+                <th scope="col">Status</th>
+                <th scope="col">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Folder structure</td>
+                <td class="yes">Carries over</td>
+                <td style="color:var(--dim);font-size:14px;">Nested folders become nested directories in Tiger.</td>
+              </tr>
+              <tr>
+                <td>Request names and HTTP methods</td>
+                <td class="yes">Carries over</td>
+                <td style="color:var(--dim);font-size:14px;">GET, POST, PUT, PATCH, DELETE and other verbs are preserved.</td>
+              </tr>
+              <tr>
+                <td>Headers</td>
+                <td class="yes">Carries over</td>
+                <td style="color:var(--dim);font-size:14px;">All headers including disabled ones.</td>
+              </tr>
+              <tr>
+                <td>Query parameters</td>
+                <td class="yes">Carries over</td>
+                <td style="color:var(--dim);font-size:14px;">Including disabled params and their descriptions.</td>
+              </tr>
+              <tr>
+                <td>Request bodies (JSON, form, raw, binary)</td>
+                <td class="yes">Carries over</td>
+                <td style="color:var(--dim);font-size:14px;">Body type is preserved. GraphQL bodies carry over as raw.</td>
+              </tr>
+              <tr>
+                <td>Variable references (e.g. {{baseUrl}})</td>
+                <td class="yes">Carries over</td>
+                <td style="color:var(--dim);font-size:14px;">References are preserved verbatim; you fill in values in Tiger environments.</td>
+              </tr>
+              <tr>
+                <td>Request descriptions / documentation</td>
+                <td class="yes">Carries over</td>
+                <td style="color:var(--dim);font-size:14px;">Markdown descriptions on requests and folders are imported.</td>
+              </tr>
+              <tr>
+                <td>Environment variable values</td>
+                <td class="redo">Re-enter once</td>
+                <td style="color:var(--dim);font-size:14px;">Values are not imported; create environments in Tiger and fill them in. Takes a few minutes per environment.</td>
+              </tr>
+              <tr>
+                <td>Auth configuration (OAuth tokens, API keys)</td>
+                <td class="redo">Re-enter once</td>
+                <td style="color:var(--dim);font-size:14px;">Auth type is noted on import but credentials must be entered in Tiger. OAuth 2.0 flows are set up once per environment.</td>
+              </tr>
+              <tr>
+                <td>Pre-request and test scripts</td>
+                <td class="redo">Re-enter once</td>
+                <td style="color:var(--dim);font-size:14px;">Postman scripts use a JS sandbox Tiger does not replicate. Logic like token refresh is handled by Tiger's native auth; custom assertions are re-written in Tiger's capture blocks.</td>
+              </tr>
+              <tr>
+                <td>Monitors and scheduled runs</td>
+                <td class="redo">Re-configure</td>
+                <td style="color:var(--dim);font-size:14px;">Tiger's built-in performance runner covers ad-hoc load tests. Scheduled CI runs are set up in your own pipeline.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TROUBLESHOOTING -->
+        <h2>Troubleshooting</h2>
+        <ul class="trouble">
+          <li>
+            <span class="q-tag">FIX</span>
+            <div class="ans">
+              <strong>Import dialog rejects my file.</strong> Confirm you exported as
+              Collection v2.1 or v2.0 JSON, not a Postman "workspace" or team export.
+              The file should be a single <span class="m">.json</span> whose top-level key
+              is <span class="m">"info"</span> with a <span class="m">"schema"</span> field.
+            </div>
+          </li>
+          <li>
+            <span class="q-tag">FIX</span>
+            <div class="ans">
+              <strong>Variable references show as literal text after import.</strong>
+              You need to select an active environment. Open Settings &gt; Environments,
+              confirm your environment has the matching variable names, and set it as active
+              for the collection.
+            </div>
+          </li>
+          <li>
+            <span class="q-tag">FIX</span>
+            <div class="ans">
+              <strong>OAuth flow does not complete.</strong> Check that your authorization
+              server allows the redirect URI Tiger registers. For client credentials flows
+              there is no redirect; confirm the token URL and client credentials are entered
+              in the environment, not hard-coded in the request.
+            </div>
+          </li>
+          <li>
+            <span class="q-tag">FIX</span>
+            <div class="ans">
+              <strong>Requests that used Postman pre-request scripts no longer work.</strong>
+              Common cases like dynamic timestamp headers or UUID generation are covered by
+              Tiger's built-in <span class="m">{{$timestamp}}</span> and
+              <span class="m">{{$uuid}}</span> dynamic variables. For custom token-injection
+              logic, use Tiger's OAuth auth configuration instead of a script.
+            </div>
+          </li>
+          <li>
+            <span class="q-tag">FIX</span>
+            <div class="ans">
+              <strong>SSL certificate errors on internal services.</strong> Go to Settings
+              and disable SSL verification for development environments, or import your
+              internal CA bundle under Settings &gt; Certificates.
+            </div>
+          </li>
+          <li>
+            <span class="q-tag">FIX</span>
+            <div class="ans">
+              <strong>macOS "app is damaged" message.</strong> These are unsigned preview
+              builds. Right-click the app in Finder and choose Open, then confirm. You only
+              need to do this once.
+            </div>
+          </li>
+        </ul>
+
+        <!-- INTERNAL LINKS / CONTEXT -->
+        <h2>More resources</h2>
+        <p style="color:var(--dim);font-size:15.5px;">
+          Read the
+          <a href="/compare/tiger-vs-postman">Tiger vs Postman full comparison</a>
+          for a detailed feature-by-feature breakdown, or head back to the
+          <a href="/">Tiger homepage</a> to download the app.
+          Considering other alternatives? See the
+          <a href="/alternatives/postman">Postman alternatives overview</a>
+          or the
+          <a href="/use-cases/mcp-api-client">Tiger as an MCP API client</a> guide.
+        </p>
+
+        <!-- SUPPORT NOTE -->
+        <div class="note" style="margin-top:8px;font-size:15px;">
+          <strong>Need a hand?</strong> If something in your collection does not import
+          as expected, open an issue on the Tiger GitHub repository with the collection
+          snippet (sanitize any secrets first) and the Tiger version number. The team
+          responds to migration issues quickly.
+        </div>
+
+      </article>
+
+      <!-- ===== SIDEBAR ===== -->
+      <aside class="sidebar" aria-label="On this page">
+        <div class="sidebar-card">
+          <h3>On this page</h3>
+          <ol>
+            <li><a href="#step-by-step">Step-by-step migration</a></li>
+            <li><a href="#carry-over">What carries over</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+          </ol>
+        </div>
+        <div class="sidebar-card">
+          <h3>Download Tiger</h3>
+          <p style="font-size:14px;color:var(--dim);margin:0 0 4px;">Free for personal and commercial use. No account required.</p>
+          <a class="btn primary" href="/#download">Download Tiger</a>
+          <p class="mit" style="text-align:center;margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--faint);">Free and open source (MIT)</p>
+        </div>
+        <div class="sidebar-card">
+          <h3>Related</h3>
+          <ul style="list-style:none;padding:0;margin:0;">
+            <li style="margin-bottom:8px;"><a href="/compare/tiger-vs-postman" style="font-size:14px;">Tiger vs Postman</a></li>
+            <li style="margin-bottom:8px;"><a href="/alternatives/postman" style="font-size:14px;">Postman alternatives</a></li>
+            <li><a href="/use-cases/mcp-api-client" style="font-size:14px;">Tiger as MCP client</a></li>
+          </ul>
+        </div>
+      </aside>
+
+    </div><!-- .guide-layout -->
+
+    <!-- FINAL CTA -->
+    <section class="finale reveal">
+      <span class="eyebrow" style="justify-content:center;">Ready to migrate?</span>
+      <h2>Your collections belong<br/>in the repo</h2>
+      <p class="sub">
+        Download Tiger, import your Postman collection, and open your first pull
+        request on an API change. Free, no account, no lock-in.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="/#download">Download Tiger</a>
+        <a class="btn ghost" href="/compare/tiger-vs-postman">Compare with Postman</a>
+      </div>
+      <p class="mit">Free and open source (MIT)</p>
+    </section>
+
+    <footer>
+      <p>
+        &copy; 2026 Tiger. All rights reserved.
+        &nbsp;&middot;&nbsp;
+        <a href="/">Home</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/compare/tiger-vs-postman">Tiger vs Postman</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/#download">Download</a>
+      </p>
+    </footer>
+
+  </div>
+
+  <script>
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add('in')),
+      { threshold: 0.08 }
+    );
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  </script>
+</body>
+</html>

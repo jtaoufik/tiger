@@ -54,3 +54,21 @@ describe('resolveAuth', () => {
     expect(resolveAuth(req(), undefined)).toBeUndefined()
   })
 })
+
+describe('collection/folder docs', () => {
+  it('round-trips a docs block', () => {
+    const settings = { name: 'API', docs: '# Payments\n\nHow to auth: bearer token.' }
+    const out = serializeCollectionSettings(settings)
+    expect(out).toContain('docs {')
+    expect(parseCollectionSettings(out)).toEqual(settings)
+  })
+
+  it('round-trips name + auth + docs together', () => {
+    const settings = {
+      name: 'API',
+      auth: { type: 'bearer', token: '{{token}}' } as const,
+      docs: 'Notes about {{baseUrl}}.'
+    }
+    expect(parseCollectionSettings(serializeCollectionSettings(settings))).toEqual(settings)
+  })
+})

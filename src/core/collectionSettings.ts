@@ -4,12 +4,14 @@
  * inherit unless they set their own (an explicit `auth:none` opts out).
  */
 
-import { parseAuth, parseKeyValues, renderAuth, tokenizeBlocks } from './tigerFormat'
+import { dedent, parseAuth, parseKeyValues, renderAuth, tokenizeBlocks } from './tigerFormat'
 import type { TigerAuth, TigerRequest } from './types'
 
 export interface CollectionSettings {
   name?: string
   auth?: TigerAuth
+  /** Free-form markdown documentation for a collection or folder. */
+  docs?: string
 }
 
 export function parseCollectionSettings(text: string): CollectionSettings {
@@ -22,6 +24,8 @@ export function parseCollectionSettings(text: string): CollectionSettings {
     } else if (block.name === 'auth') {
       const auth = parseAuth(block.subtype, block.content)
       if (auth.type !== 'none') settings.auth = auth
+    } else if (block.name === 'docs') {
+      settings.docs = dedent(block.content)
     }
   }
   return settings
@@ -31,6 +35,13 @@ export function serializeCollectionSettings(settings: CollectionSettings): strin
   const parts: string[] = []
   if (settings.name) parts.push(`meta {\n  name: ${settings.name}\n}`)
   if (settings.auth && settings.auth.type !== 'none') parts.push(renderAuth(settings.auth))
+  if (settings.docs && settings.docs.trim()) {
+    const indented = settings.docs
+      .split('\n')
+      .map((l) => (l.length ? `  ${l}` : l))
+      .join('\n')
+    parts.push(`docs {\n${indented}\n}`)
+  }
   return parts.length ? `${parts.join('\n\n')}\n` : ''
 }
 

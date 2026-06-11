@@ -1011,6 +1011,19 @@ button {
   user-select: text;
 }
 .cv-remote-row input:focus { outline: none; border-color: var(--accent); }
+.docs-area {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  user-select: text;
+}
+.docs-area:focus { outline: none; }
 .chev-btn { padding: 1px; }
 
 /* ---------- git ---------- */

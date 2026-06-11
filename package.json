@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
   "author": "jtaoufik",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
   "type": "module",
   "main": "./out/main/index.js",
   "bin": {

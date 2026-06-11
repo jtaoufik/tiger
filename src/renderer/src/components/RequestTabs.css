@@ -20,23 +20,30 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: 220px;
-  padding: 5px 5px 5px 8px;
+  padding: 6px 6px 6px 9px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--glass);
   color: var(--text-dim);
   font-size: 12.5px;
+  font-weight: 550;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .request-tab:hover {
   background: var(--glass-hover);
+  color: var(--text);
 }
 .request-tab.active {
-  background: var(--glass-strong);
+  background: var(--accent-weak);
   border-color: var(--accent);
   color: var(--text);
+  box-shadow: 0 -2px 0 var(--accent) inset;
+}
+.request-tab.active .request-tab-name {
+  font-weight: 650;
 }
 .request-tab .method-pill {
   flex-shrink: 0;

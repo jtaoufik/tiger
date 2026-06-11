@@ -80,6 +80,8 @@ interface CollectionState {
   environments: EnvRef[]
   /** Collection-level default auth, inherited by requests. */
   auth?: TigerAuth
+  /** Collection-level documentation (markdown). */
+  docs?: string
 }
 
 type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env' | 'perf'
@@ -620,7 +622,8 @@ export default function App() {
       root: opened.root,
       entries,
       environments: opened.environments.map((e) => ({ name: e.name, path: e.path })),
-      auth: opened.settings?.auth
+      auth: opened.settings?.auth,
+      docs: opened.settings?.docs
     }
     setCollections((prev) => {
       const existing = prev.findIndex((c) => c.id === next.id)
@@ -1140,10 +1143,26 @@ export default function App() {
       if (col.root && window.tiger) {
         window.tiger.writeFile(
           `${col.root}/collection.tiger`,
-          serializeCollectionSettings({ name: col.name, auth })
+          serializeCollectionSettings({ name: col.name, auth, docs: col.docs })
         )
       }
       toast(auth ? 'Collection auth saved' : 'Collection auth cleared')
+    },
+    [collections, toast]
+  )
+
+  const saveCollectionDocs = useCallback(
+    (colId: string, docs: string) => {
+      const col = collections.find((c) => c.id === colId)
+      if (!col) return
+      setCollections((prev) => prev.map((c) => (c.id === colId ? { ...c, docs } : c)))
+      if (col.root && window.tiger) {
+        window.tiger.writeFile(
+          `${col.root}/collection.tiger`,
+          serializeCollectionSettings({ name: col.name, auth: col.auth, docs })
+        )
+      }
+      toast('Collection docs saved')
     },
     [collections, toast]
   )
@@ -1316,10 +1335,12 @@ export default function App() {
               return (
                 <FolderView
                   collectionName={col.name}
+                  root={col.root}
                   path={inspect.path}
                   entries={col.entries.filter((e) => e.folderPath.join('/') === key)}
                   onSelect={selectRequest}
                   onNewRequest={() => newRequest(col.id, inspect.path)}
+                  onToast={toast}
                 />
               )
             }
@@ -1335,11 +1356,13 @@ export default function App() {
                     col.entries.map((e) => e.folderPath.join('/')).filter(Boolean)
                   ).size,
                   environments: col.environments.map((e) => e.name),
-                  auth: col.auth
+                  auth: col.auth,
+                  docs: col.docs
                 }}
                 history={colHistory.filter((h) => h.requestId && entryIds.has(h.requestId))}
                 onToast={toast}
                 onSaveAuth={(auth) => saveCollectionAuth(col.id, auth)}
+                onSaveDocs={(docs) => saveCollectionDocs(col.id, docs)}
                 onNewRequest={() => newRequest(col.id)}
                 onImportExport={() => setModal('io')}
                 onClose={() => requestCloseCollection(col.id)}
@@ -1430,7 +1453,15 @@ export default function App() {
       )}
       {modal === 'code' && codeBuilt && <CodeModal built={codeBuilt} onClose={() => setModal('none')} />}
       {modal === 'history' && (
-        <HistoryModal entries={history} onClear={clearHistory} onClose={() => setModal('none')} />
+        <HistoryModal
+          entries={history}
+          activeRequestId={activeId}
+          activeRequestName={active?.name ?? null}
+          collectionEntryIds={(activeCollection ?? collections[0])?.entries.map((e) => e.id) ?? []}
+          collectionName={(activeCollection ?? collections[0])?.name ?? null}
+          onClear={clearHistory}
+          onClose={() => setModal('none')}
+        />
       )}
       {modal === 'env' && (
         <EnvironmentsModal

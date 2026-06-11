@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Tiger vs Postman: Free, Git-Native API Client Comparison</title>
+  <meta name="description" content="Compare Tiger and Postman. Tiger is free for teams, stores collections as plain text in Git, works offline, and needs no account. See the full feature matrix." />
+  <link rel="canonical" href="https://tiger.62-238-17-135.sslip.io/compare/tiger-vs-postman" />
+  <meta name="robots" content="index, follow" />
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://tiger.62-238-17-135.sslip.io/compare/tiger-vs-postman" />
+  <meta property="og:title" content="Tiger vs Postman: Free, Git-Native API Client Comparison" />
+  <meta property="og:description" content="Compare Tiger and Postman. Tiger is free for teams, stores collections as plain text in Git, works offline, and needs no account. See the full feature matrix." />
+  <meta property="og:image" content="https://tiger.62-238-17-135.sslip.io/icon.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Tiger vs Postman: Free, Git-Native API Client Comparison" />
+  <meta name="twitter:description" content="Tiger is free for teams, Git-native, and fully offline. Postman moved its Free plan to single-user in March 2026. See the full side-by-side." />
+  <meta name="twitter:image" content="https://tiger.62-238-17-135.sslip.io/icon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Tiger",
+        "operatingSystem": "macOS, Windows",
+        "applicationCategory": "DeveloperApplication",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "A local-first API client for engineering teams. Collections are plain text files in Git, requests run entirely on your own machines, and importers cover Postman, Insomnia, Bruno and OpenAPI.",
+        "url": "https://tiger.62-238-17-135.sslip.io/",
+        "image": "https://tiger.62-238-17-135.sslip.io/icon.png"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Why can't two teammates share a free Postman account anymore?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Postman updated its Free plan in March 2026 to allow only a single user per workspace. A second teammate automatically pushes the team onto a paid plan. Tiger has no equivalent limit: any number of engineers can use the same Git repository without any account or subscription."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does Tiger store collections compared to Postman?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Tiger saves every request as a plain-text .tiger file on disk. You commit those files to your existing Git repository, review changes in pull requests, and onboard new engineers with git clone. Postman stores collections in its cloud by default; offline or local-only storage requires a paid plan."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Tiger work completely offline?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Tiger has no cloud backend. All features, including collections, environments, request history and performance runs, are available with no network connection at all. Postman requires connectivity for cloud sync and several paid-tier features."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "When should I still choose Postman over Tiger?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Postman is the better pick when your team already relies on its large ecosystem of public API collections and third-party integrations, when you need built-in cloud-hosted monitors that alert without any self-hosted infrastructure, or when stakeholders outside the engineering team need access through Postman's browser-based collaboration workspace."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --ink: #faf6ee;
+      --ink-2: #f4eee2;
+      --surface: #ffffff;
+      --surface-2: #fffaf2;
+      --line: rgba(36, 24, 8, 0.09);
+      --line-strong: rgba(36, 24, 8, 0.17);
+      --cream: #241c12;
+      --dim: #6e6151;
+      --faint: #9a8c79;
+      --orange: #f26b0a;
+      --orange-hot: #ff8c33;
+      --orange-deep: #c75500;
+      --good: #1e9e63;
+      --bad: #d8472e;
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      --disp: "Bricolage Grotesque", -apple-system, sans-serif;
+      --stripe: repeating-linear-gradient(
+        -55deg,
+        var(--orange) 0 8px,
+        transparent 8px 22px
+      );
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--ink);
+      color: var(--cream);
+      font-family: var(--disp);
+      font-size: 16.5px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(1000px 600px at 8% -5%, rgba(242, 107, 10, 0.09), transparent 60%),
+        radial-gradient(900px 700px at 105% 15%, rgba(242, 107, 10, 0.05), transparent 55%);
+    }
+    body::after {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.22;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.7 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    ::selection { background: var(--orange); color: #fff; }
+    a { color: var(--orange-hot); }
+    :focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
+
+    /* ---------- type helpers ---------- */
+    .eyebrow {
+      font-family: var(--mono); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--orange);
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .eyebrow::before {
+      content: ""; width: 26px; height: 10px;
+      background: var(--stripe); background-size: 200% 100%;
+    }
+    h2 {
+      font-size: clamp(30px, 4.4vw, 44px); font-weight: 700;
+      letter-spacing: -0.02em; line-height: 1.08; margin: 14px 0 14px;
+    }
+    .sub { color: var(--dim); max-width: 640px; margin: 0 0 36px; font-size: 17px; }
+    .m { font-family: var(--mono); }
+
+    /* ---------- header ---------- */
+    header.site {
+      display: flex; align-items: center; gap: 12px; padding: 26px 0;
+    }
+    header.site img { width: 38px; height: 38px; }
+    header.site .name {
+      font-weight: 800; font-size: 21px; letter-spacing: -0.02em;
+    }
+    header.site nav { margin-left: auto; display: flex; gap: 26px; flex-wrap: wrap; align-items: center; }
+    header.site nav a {
+      font-family: var(--mono); font-size: 13px; color: var(--dim);
+      text-decoration: none; transition: color 0.15s;
+    }
+    header.site nav a:hover { color: var(--orange-hot); }
+    .gh-btn {
+      font-family: var(--mono); font-size: 13px; font-weight: 600;
+      color: var(--cream) !important; text-decoration: none;
+      border: 1px solid var(--line-strong); border-radius: 10px;
+      padding: 8px 16px; transition: border-color 0.15s, background 0.15s;
+    }
+    .gh-btn:hover { border-color: var(--orange); background: rgba(255, 122, 24, 0.08); }
+
+    /* ---------- page hero ---------- */
+    .page-hero {
+      padding: 56px 0 48px;
+    }
+    .page-hero .breadcrumb {
+      font-family: var(--mono); font-size: 12px; color: var(--faint);
+      margin-bottom: 22px; display: flex; gap: 8px; align-items: center;
+    }
+    .page-hero .breadcrumb a {
+      color: var(--faint); text-decoration: none; transition: color 0.15s;
+    }
+    .page-hero .breadcrumb a:hover { color: var(--orange-hot); }
+    .page-hero .breadcrumb span { opacity: 0.45; }
+    .page-hero h1 {
+      font-size: clamp(34px, 5.2vw, 58px); font-weight: 800;
+      line-height: 1.04; letter-spacing: -0.03em; margin: 0 0 20px;
+    }
+    .page-hero h1 em {
+      font-style: normal; color: var(--orange);
+      position: relative; white-space: nowrap;
+    }
+    .page-hero h1 em::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 10px;
+      background: var(--stripe); opacity: 0.35; z-index: -1;
+    }
+    .page-hero .lead { color: var(--dim); font-size: 18px; max-width: 620px; margin: 0 0 32px; }
+
+    /* ---------- buttons ---------- */
+    .cta { display: flex; gap: 14px; flex-wrap: wrap; }
+    .btn {
+      font-family: var(--mono); font-weight: 600; font-size: 14.5px;
+      text-decoration: none; padding: 15px 28px; border-radius: 12px;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
+      color: #1a0d02; box-shadow: 0 10px 36px rgba(255, 122, 24, 0.35);
+    }
+    .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(255, 122, 24, 0.45); }
+    .btn.ghost {
+      color: var(--cream); border: 1px solid var(--line-strong);
+    }
+    .btn.ghost:hover { background: rgba(255, 173, 96, 0.07); }
+
+    /* ---------- notice banner ---------- */
+    .notice {
+      background: linear-gradient(135deg, rgba(242,107,10,0.1), rgba(242,107,10,0.04));
+      border: 1px solid rgba(242,107,10,0.28);
+      border-radius: 14px; padding: 20px 24px;
+      display: flex; gap: 16px; align-items: flex-start;
+      margin-bottom: 48px;
+    }
+    .notice .icon {
+      font-size: 20px; flex-shrink: 0; line-height: 1.4;
+    }
+    .notice p {
+      margin: 0; color: var(--dim); font-size: 15px; line-height: 1.6;
+    }
+    .notice p strong { color: var(--cream); }
+
+    /* ---------- sections ---------- */
+    section { padding: 64px 0; }
+
+    /* ---------- compare table ---------- */
+    .spec {
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      background: var(--surface);
+    }
+    .spec table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .spec th {
+      font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--faint); text-align: left;
+      padding: 16px 22px; border-bottom: 1px solid var(--line-strong);
+    }
+    .spec th:not(:first-child) { text-align: center; }
+    .spec td { padding: 15px 22px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .spec tr:last-child td { border-bottom: none; }
+    .spec tbody tr { transition: background 0.15s; }
+    .spec tbody tr:hover { background: rgba(255, 122, 24, 0.04); }
+    .spec td:first-child { color: var(--cream); font-weight: 600; }
+    .spec td:not(:first-child) { text-align: center; }
+    .yes { color: var(--good); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
+    .no { color: var(--bad); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
+    .mid { color: #c8a043; font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
+    .spec .note { display: block; font-family: var(--disp); font-size: 12.5px; font-weight: 400; color: var(--faint); margin-top: 4px; }
+    .col-tiger { background: rgba(242,107,10,0.04); }
+    .spec th.col-tiger { color: var(--orange); }
+
+    /* ---------- honest section ---------- */
+    .honest-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 8px;
+    }
+    @media (max-width: 860px) { .honest-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .honest-grid { grid-template-columns: 1fr; } }
+    .cell {
+      position: relative; overflow: hidden;
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line); border-radius: 16px; padding: 26px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .cell:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+    .cell::after {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--stripe); opacity: 0; transition: opacity 0.2s;
+    }
+    .cell:hover::after { opacity: 1; }
+    .cell h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 8px; }
+    .cell p { margin: 0; color: var(--dim); font-size: 14.5px; line-height: 1.6; }
+    .cell .icon-label {
+      font-family: var(--mono); font-size: 12px; color: var(--faint);
+      margin-bottom: 12px; display: block;
+    }
+
+    /* ---------- faq ---------- */
+    .faq details {
+      border-bottom: 1px solid var(--line); padding: 4px 0;
+    }
+    .faq details:first-of-type { border-top: 1px solid var(--line); }
+    .faq summary {
+      display: flex; align-items: baseline; gap: 18px; cursor: pointer;
+      padding: 20px 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em;
+      list-style: none; transition: color 0.15s;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary:hover { color: var(--orange-hot); }
+    .faq summary .ix {
+      font-family: var(--mono); font-size: 12.5px; color: var(--orange); flex-shrink: 0;
+    }
+    .faq summary .pm {
+      margin-left: auto; font-family: var(--mono); color: var(--faint);
+      transition: transform 0.2s; flex-shrink: 0;
+    }
+    .faq details[open] .pm { transform: rotate(45deg); color: var(--orange); }
+    .faq details p { margin: 0 0 22px 44px; color: var(--dim); max-width: 720px; font-size: 15.5px; }
+
+    /* ---------- final cta ---------- */
+    .finale {
+      position: relative; text-align: center; padding: 96px 24px; margin: 40px 0 0;
+      border-top: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .finale::before {
+      content: ""; position: absolute; inset: auto -10% -70% -10%; height: 200px;
+      background: var(--stripe); opacity: 0.06; transform: rotate(-2deg);
+    }
+    .finale h2 { font-size: clamp(34px, 5.4vw, 58px); margin-bottom: 14px; }
+    .finale .sub { margin: 0 auto 36px; }
+    .finale .oss-note {
+      font-family: var(--mono); font-size: 12.5px; color: var(--faint); margin-top: 22px;
+    }
+
+    footer {
+      padding: 34px 0 56px; color: var(--faint);
+      font-family: var(--mono); font-size: 12.5px; text-align: center;
+    }
+    footer a { color: var(--orange-hot); text-decoration: none; }
+
+    /* ---------- motion ---------- */
+    @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+    .page-hero > * { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    .page-hero > *:nth-child(2) { animation-delay: 0.06s; }
+    .page-hero > *:nth-child(3) { animation-delay: 0.12s; }
+    .page-hero > *:nth-child(4) { animation-delay: 0.18s; }
+    .page-hero > *:nth-child(5) { animation-delay: 0.24s; }
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.7s, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, .page-hero > * { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+
+    /* ---------- responsive ---------- */
+    @media (max-width: 700px) {
+      .spec table { font-size: 13.5px; }
+      .spec th, .spec td { padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="site">
+      <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;">
+        <img src="/icon.png" alt="Tiger logo, an orange cat" />
+        <span class="name">Tiger</span>
+      </a>
+      <nav aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/compare/tiger-vs-postman" aria-current="page">Compare</a>
+        <a href="/guides/postman-to-tiger">Migration guide</a>
+        <a href="/alternatives/postman">Alternatives</a>
+        <a class="gh-btn" href="/#download">Download ↓</a>
+      </nav>
+    </header>
+
+    <div class="page-hero">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Tiger</a>
+        <span>/</span>
+        <a href="/compare/tiger-vs-postman">Compare</a>
+        <span>/</span>
+        <span aria-current="page">Tiger vs Postman</span>
+      </nav>
+      <span class="eyebrow">Side-by-side comparison</span>
+      <h1>Tiger vs <em>Postman</em></h1>
+      <p class="lead">
+        Postman moved its Free plan to single-user in March 2026. A second teammate now forces a paid subscription.
+        Tiger is free for any team size, stores collections as plain text in Git, and requires no account at all.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="/#download">Download Tiger free</a>
+        <a class="btn ghost" href="/guides/postman-to-tiger">Migration guide</a>
+      </div>
+    </div>
+
+    <div class="notice reveal" role="note">
+      <span class="icon">&#9432;</span>
+      <p>
+        <strong>Postman Free plan change, March 2026:</strong> Postman limited its Free plan to a single user per workspace.
+        Any second collaborator automatically triggers an upgrade to the Basic paid plan (billed per seat, per month).
+        Tiger places no limit on team size and requires no account for any feature.
+      </p>
+    </div>
+
+    <section id="matrix" class="reveal">
+      <span class="eyebrow">Feature matrix</span>
+      <h2>Full side-by-side breakdown</h2>
+      <p class="sub">Every row reflects the tools' current public plans as of June 2026. Sources: Postman pricing page, Postman docs.</p>
+      <div class="spec">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col" class="col-tiger">Tiger</th>
+              <th scope="col">Postman</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Free for teams</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">Any team size, no seat limit</span>
+              </td>
+              <td class="no">No
+                <span class="note">Single user only on Free; teams require a paid plan</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Account required</td>
+              <td class="yes col-tiger">Never
+                <span class="note">Zero signup, zero login</span>
+              </td>
+              <td class="mid">Required for most features
+                <span class="note">Account needed for collections, sync, monitors</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Collections stored as plain text in Git</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">.tiger files committed directly to your repo</span>
+              </td>
+              <td class="no">No
+                <span class="note">Cloud workspace by default; local collections on paid plan only</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Works fully offline</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">All features available with no network</span>
+              </td>
+              <td class="mid">Limited
+                <span class="note">Cloud sync and several features require connectivity</span>
+              </td>
+            </tr>
+            <tr>
+              <td>MCP server for AI clients</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">Built-in Model Context Protocol server; works with Claude and others</span>
+              </td>
+              <td class="no">No
+              </td>
+            </tr>
+            <tr>
+              <td>SOAP and GraphQL</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">SOAP envelope bodies; GraphQL editor with schema introspection</span>
+              </td>
+              <td class="yes">Yes
+                <span class="note">GraphQL and SOAP supported across plans</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Request chaining (capture blocks)</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">Response values feed directly into subsequent requests</span>
+              </td>
+              <td class="mid">Paid plan
+                <span class="note">Available via scripting on Basic and above</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Built-in performance runs</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">p50/p95 latency, bounded concurrency, no extra subscription</span>
+              </td>
+              <td class="mid">Paid monitors
+                <span class="note">Cloud monitors require a paid plan; local Collection Runner is free</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Client certificates and mTLS</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">Import client certificates and custom CA bundles</span>
+              </td>
+              <td class="yes">Yes
+                <span class="note">Supported across plans</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Open source (MIT)</td>
+              <td class="yes col-tiger">Yes
+                <span class="note">Free and open source; full MIT license</span>
+              </td>
+              <td class="no">No
+                <span class="note">Proprietary; Electron app is closed-source</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="honest" class="reveal">
+      <span class="eyebrow">Honest assessment</span>
+      <h2>When Postman is still the better pick</h2>
+      <p class="sub">
+        Tiger is the right tool for teams that want Git-native, offline, cost-free API development.
+        Postman leads in a few areas worth knowing about.
+      </p>
+      <div class="honest-grid">
+        <div class="cell">
+          <span class="icon-label">ECOSYSTEM</span>
+          <h3>Public API network</h3>
+          <p>Postman hosts tens of thousands of public collections for popular APIs. If your workflow starts with importing a ready-made vendor collection, Postman's network is much larger than anything Tiger currently offers.</p>
+        </div>
+        <div class="cell">
+          <span class="icon-label">CLOUD COLLABORATION</span>
+          <h3>Browser-based workspaces</h3>
+          <p>Postman's web interface lets stakeholders outside the engineering team view and run collections in a browser without installing anything. Tiger currently requires the desktop app, making it less suited to non-developer audiences.</p>
+        </div>
+        <div class="cell">
+          <span class="icon-label">MONITORS</span>
+          <h3>Hosted, scheduled monitoring</h3>
+          <p>Postman's cloud monitors run your collections on a schedule and send alerts without any server you maintain. Tiger's performance runs are manual and local, so continuous monitoring requires your own CI or external tooling.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2>Common questions</h2>
+      <div class="faq">
+        <details>
+          <summary><span class="ix">01</span>Why can't two teammates share a free Postman account anymore?<span class="pm">+</span></summary>
+          <p>Postman updated its Free plan in March 2026 to allow only a single user per workspace. A second teammate automatically pushes the team onto a paid plan. Tiger has no equivalent limit: any number of engineers can use the same Git repository without any account or subscription.</p>
+        </details>
+        <details>
+          <summary><span class="ix">02</span>How does Tiger store collections compared to Postman?<span class="pm">+</span></summary>
+          <p>Tiger saves every request as a plain-text .tiger file on disk. You commit those files to your existing Git repository, review changes in pull requests, and onboard new engineers with git clone. Postman stores collections in its cloud by default; offline or local-only storage requires a paid plan.</p>
+        </details>
+        <details>
+          <summary><span class="ix">03</span>Does Tiger work completely offline?<span class="pm">+</span></summary>
+          <p>Yes. Tiger has no cloud backend. All features, including collections, environments, request history and performance runs, are available with no network connection at all. Postman requires connectivity for cloud sync and several paid-tier features.</p>
+        </details>
+        <details>
+          <summary><span class="ix">04</span>When should I still choose Postman over Tiger?<span class="pm">+</span></summary>
+          <p>Postman is the better pick when your team already relies on its large ecosystem of public API collections and third-party integrations, when you need built-in cloud-hosted monitors that alert without any self-hosted infrastructure, or when stakeholders outside the engineering team need access through Postman's browser-based collaboration workspace.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="finale reveal">
+      <span class="eyebrow" style="justify-content:center;">Get started</span>
+      <h2>Switch before the next<br/>Postman renewal</h2>
+      <p class="sub">
+        Import your Postman collections in minutes. Free for any team size, no account needed.
+      </p>
+      <div class="cta" style="justify-content:center;">
+        <a class="btn primary" href="/#download">Download Tiger</a>
+        <a class="btn ghost" href="/guides/postman-to-tiger">Step-by-step migration guide</a>
+      </div>
+      <p class="oss-note">Free and open source (MIT)</p>
+    </section>
+
+    <footer>
+      <p>
+        &copy; 2026 Tiger. All rights reserved.
+        &nbsp;&middot;&nbsp;
+        <a href="/">Home</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/alternatives/postman">Postman alternatives</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/use-cases/mcp-api-client">MCP API client</a>
+      </p>
+    </footer>
+
+  </div>
+
+  <script>
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add('in')),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  </script>
+</body>
+</html>
