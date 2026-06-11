@@ -3,7 +3,11 @@ import { parseRequest, serializeRequest } from '@core/tigerFormat'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
 import { buildRequest, type BuiltRequest } from '@core/request'
 import { envToVars, findMissingVars } from '@core/interpolate'
-import { resolveAuth, serializeCollectionSettings } from '@core/collectionSettings'
+import {
+  parseCollectionSettings,
+  resolveAuth,
+  serializeCollectionSettings
+} from '@core/collectionSettings'
 import type { SearchItem } from '@core/search'
 import { exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
@@ -89,6 +93,19 @@ interface CollectionState {
 }
 
 type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env' | 'perf'
+
+/** A tab in the workspace bar: a request, a collection page, or a folder page. */
+type OpenTab =
+  | { kind: 'request'; id: string }
+  | { kind: 'collection'; colId: string }
+  | { kind: 'folder'; colId: string; path: string[] }
+
+const tabKey = (t: OpenTab): string =>
+  t.kind === 'request'
+    ? `r:${t.id}`
+    : t.kind === 'collection'
+      ? `c:${t.colId}`
+      : `f:${t.colId}${SEP}${t.path.join('/')}`
 
 interface Toast {
   id: number
@@ -210,9 +227,9 @@ export default function App() {
   )
   const [pathById, setPathById] = useState<Record<string, string>>({})
   const [activeId, setActiveId] = useState<string | null>(sampleRequests[0]?.id ?? null)
-  /** Ids of requests open as tabs, in opening order (like Postman tabs). */
-  const [openTabs, setOpenTabs] = useState<string[]>(
-    sampleRequests[0] ? [sampleRequests[0].id] : []
+  /** Open tabs (requests, collection pages, folder pages), in opening order. */
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>(
+    sampleRequests[0] ? [{ kind: 'request', id: sampleRequests[0].id }] : []
   )
 
   const [activeEnvKey, setActiveEnvKey] = useState<string | null>(`demo${SEP}Demo`)
@@ -251,6 +268,10 @@ export default function App() {
     { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
   >(null)
   const [colHistory, setColHistory] = useState<HistoryEntry[]>([])
+  /** Folder-level default auth + docs, keyed by `${colId}${SEP}${path}`. */
+  const [folderSettings, setFolderSettings] = useState<
+    Record<string, { auth?: TigerAuth; docs?: string }>
+  >({})
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
   const [sidebarW, setSidebarW] = useState(() => Number(readStored('tiger.sidebarW')) || 264)
   const [editorH, setEditorH] = useState<number | null>(() => {
@@ -400,13 +421,26 @@ export default function App() {
     [collections, activeId, pathById]
   )
 
+  const fKey = (colId: string, path: string[]): string => `${colId}${SEP}${path.join('/')}`
+  const folderAuth = (colId: string, path: string[]): TigerAuth | undefined =>
+    folderSettings[fKey(colId, path)]?.auth
+  const folderDocs = (colId: string, path: string[]): string | undefined =>
+    folderSettings[fKey(colId, path)]?.docs
+
   const active = activeId ? requestsById[activeId] : undefined
   const activeCollection = activeId
     ? collections.find((c) => c.entries.some((e) => e.id === activeId))
     : undefined
-  /** The request with collection auth inheritance applied. */
+  const activeEntry = activeCollection?.entries.find((e) => e.id === activeId)
+  /**
+   * The request with auth inheritance applied: its own auth, else its folder's
+   * default auth, else the collection default (Postman/Bruno semantics).
+   */
+  const inheritedAuth =
+    (activeCollection && activeEntry ? folderAuth(activeCollection.id, activeEntry.folderPath) : undefined) ??
+    activeCollection?.auth
   const activeEffective = active
-    ? { ...active, auth: resolveAuth(active, activeCollection?.auth) }
+    ? { ...active, auth: resolveAuth(active, inheritedAuth) }
     : undefined
 
   const loadRequest = useCallback(
@@ -427,14 +461,14 @@ export default function App() {
     [requestsById, pathById]
   )
 
-  /** Register a request as an open tab (no-op when already open). */
-  const openTab = useCallback((id: string) => {
-    setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]))
+  /** Register a tab (no-op when already open). */
+  const openTab = useCallback((t: OpenTab) => {
+    setOpenTabs((prev) => (prev.some((x) => tabKey(x) === tabKey(t)) ? prev : [...prev, t]))
   }, [])
 
   const selectRequest = useCallback(
     async (id: string) => {
-      openTab(id)
+      openTab({ kind: 'request', id })
       setActiveId(id)
       setView('workspace')
       setInspect(null)
@@ -443,17 +477,67 @@ export default function App() {
     [loadRequest, openTab]
   )
 
-  const closeTab = useCallback(
-    (id: string) => {
-      const index = openTabs.indexOf(id)
-      if (index === -1) return
-      const next = openTabs.filter((t) => t !== id)
-      setOpenTabs(next)
-      // Closing the active tab activates its neighbor (the tab that took its
-      // slot, else the new last one); the empty state shows when none remain.
-      if (activeId === id) setActiveId(next[Math.min(index, next.length - 1)] ?? null)
+  /** Activate any tab kind (used when selecting and when closing a neighbor). */
+  const activateTab = useCallback(
+    async (t: OpenTab) => {
+      setView('workspace')
+      if (t.kind === 'request') {
+        setInspect(null)
+        setActiveId(t.id)
+        await loadRequest(t.id)
+      } else if (t.kind === 'collection') {
+        setInspect({ type: 'collection', colId: t.colId })
+        setColHistory((await window.tiger?.historyRead()) ?? [])
+      } else {
+        setInspect({ type: 'folder', colId: t.colId, path: t.path })
+        // Load this folder's saved auth/docs from folder.tiger on first visit.
+        const col = collectionsRef.current.find((c) => c.id === t.colId)
+        const key = `${t.colId}${SEP}${t.path.join('/')}`
+        if (col?.root && window.tiger) {
+          window.tiger
+            .readFile(`${col.root}/${t.path.join('/')}/folder.tiger`)
+            .then((text) => {
+              const parsed = parseCollectionSettings(text)
+              setFolderSettings((prev) =>
+                prev[key] ? prev : { ...prev, [key]: { auth: parsed.auth, docs: parsed.docs } }
+              )
+            })
+            .catch(() => {
+              /* no folder.tiger yet */
+            })
+        }
+      }
     },
-    [openTabs, activeId]
+    [loadRequest]
+  )
+
+  /** The key of the tab currently shown, derived from activeId/inspect. */
+  const activeTabKey =
+    inspect?.type === 'collection'
+      ? `c:${inspect.colId}`
+      : inspect?.type === 'folder'
+        ? `f:${inspect.colId}${SEP}${inspect.path.join('/')}`
+        : activeId
+          ? `r:${activeId}`
+          : null
+
+  const closeTab = useCallback(
+    (key: string) => {
+      const index = openTabs.findIndex((t) => tabKey(t) === key)
+      if (index === -1) return
+      const next = openTabs.filter((t) => tabKey(t) !== key)
+      setOpenTabs(next)
+      // Closing the active tab activates its neighbor; empty state when none.
+      if (activeTabKey === key) {
+        const neighbor = next[Math.min(index, next.length - 1)]
+        if (neighbor) activateTab(neighbor)
+        else {
+          setActiveId(null)
+          setInspect(null)
+        }
+      }
+    },
+    [openTabs, activeTabKey, activateTab]
   )
 
   const updateActive = useCallback(
@@ -738,7 +822,7 @@ export default function App() {
             : c
         )
       )
-      openTab(id)
+      openTab({ kind: 'request', id })
       setActiveId(id)
       setModal('none')
       setView('workspace')
@@ -810,7 +894,7 @@ export default function App() {
         }))
         setModal('none')
         if (entries[0]) {
-          openTab(entries[0].id)
+          openTab({ kind: 'request', id: entries[0].id })
           setActiveId(entries[0].id)
         }
         toast(`Imported ${entries.length} requests from ${result.name}`)
@@ -916,7 +1000,7 @@ export default function App() {
             : c
         )
       )
-      openTab(id)
+      openTab({ kind: 'request', id })
       setActiveId(id)
       setView('workspace')
       setInspect(null)
@@ -963,7 +1047,7 @@ export default function App() {
             : c
         )
       )
-      openTab(id)
+      openTab({ kind: 'request', id })
       setActiveId(id)
       setView('workspace')
       toast('Request duplicated')
@@ -989,17 +1073,17 @@ export default function App() {
       setRequestsById(({ [entryId]: _drop, ...rest }) => rest)
       setPathById(({ [entryId]: _drop, ...rest }) => rest)
       setResponses(({ [entryId]: _drop, ...rest }) => rest)
-      const tabIndex = openTabs.indexOf(entryId)
-      const nextTabs = openTabs.filter((t) => t !== entryId)
+      const tabIndex = openTabs.findIndex((t) => t.kind === 'request' && t.id === entryId)
+      const nextTabs = openTabs.filter((t) => !(t.kind === 'request' && t.id === entryId))
       setOpenTabs(nextTabs)
       if (activeId === entryId) {
-        setActiveId(
-          tabIndex === -1 ? null : (nextTabs[Math.min(tabIndex, nextTabs.length - 1)] ?? null)
-        )
+        const neighbor = tabIndex === -1 ? undefined : nextTabs[Math.min(tabIndex, nextTabs.length - 1)]
+        if (neighbor) activateTab(neighbor)
+        else setActiveId(null)
       }
       toast('Request deleted')
     },
-    [pathById, activeId, openTabs, toast]
+    [pathById, activeId, openTabs, activateTab, toast]
   )
 
   const closeCollection = useCallback(
@@ -1012,7 +1096,13 @@ export default function App() {
       setRequestsById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
       setPathById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
       setResponses((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
-      setOpenTabs((prev) => prev.filter((t) => !ids.has(t)))
+      setOpenTabs((prev) =>
+        prev.filter(
+          (t) =>
+            !(t.kind === 'request' && ids.has(t.id)) &&
+            !((t.kind === 'collection' || t.kind === 'folder') && t.colId === collectionId)
+        )
+      )
       if (activeId && ids.has(activeId)) setActiveId(null)
       if (activeEnvKey?.startsWith(`${collectionId}${SEP}`)) {
         setActiveEnvKey(null)
@@ -1230,17 +1320,52 @@ export default function App() {
     [collections, toast]
   )
 
-  const inspectCollection = useCallback(async (colId: string) => {
-    setInspect({ type: 'collection', colId })
-    setView('workspace')
-    const all = (await window.tiger?.historyRead()) ?? []
-    setColHistory(all)
-  }, [])
+  /** Persist folder-level auth/docs to state and to `<folder>/folder.tiger`. */
+  const saveFolderSetting = useCallback(
+    (colId: string, path: string[], patch: { auth?: TigerAuth; docs?: string }, label: string) => {
+      const col = collections.find((c) => c.id === colId)
+      const key = `${colId}${SEP}${path.join('/')}`
+      setFolderSettings((prev) => {
+        const next = { ...(prev[key] ?? {}), ...patch }
+        if (col?.root && window.tiger) {
+          window.tiger.writeFile(
+            `${col.root}/${path.join('/')}/folder.tiger`,
+            serializeCollectionSettings(next)
+          )
+        }
+        return { ...prev, [key]: next }
+      })
+      toast(label)
+    },
+    [collections, toast]
+  )
 
-  const inspectFolder = useCallback((colId: string, path: string[]) => {
-    setInspect({ type: 'folder', colId, path })
-    setView('workspace')
-  }, [])
+  const saveFolderAuth = useCallback(
+    (colId: string, path: string[], auth: TigerAuth | undefined) =>
+      saveFolderSetting(colId, path, { auth }, auth ? 'Folder auth saved' : 'Folder auth cleared'),
+    [saveFolderSetting]
+  )
+  const saveFolderDocs = useCallback(
+    (colId: string, path: string[], docs: string) =>
+      saveFolderSetting(colId, path, { docs }, 'Folder docs saved'),
+    [saveFolderSetting]
+  )
+
+  const inspectCollection = useCallback(
+    (colId: string) => {
+      openTab({ kind: 'collection', colId })
+      return activateTab({ kind: 'collection', colId })
+    },
+    [openTab, activateTab]
+  )
+
+  const inspectFolder = useCallback(
+    (colId: string, path: string[]) => {
+      openTab({ kind: 'folder', colId, path })
+      return activateTab({ kind: 'folder', colId, path })
+    },
+    [openTab, activateTab]
+  )
 
   const envCollections = collections.filter((c) => c.environments.length > 0)
 
@@ -1257,9 +1382,18 @@ export default function App() {
   // Tab labels come from collections state at render time, so renames in the
   // sidebar/editor stay in sync automatically.
   const entryById = new Map(collections.flatMap((c) => c.entries).map((e) => [e.id, e]))
-  const tabItems: RequestTab[] = openTabs.flatMap((id) => {
-    const entry = entryById.get(id)
-    return entry ? [{ id: entry.id, name: entry.name, method: entry.method }] : []
+  const tabItems: RequestTab[] = openTabs.flatMap((t): RequestTab[] => {
+    const key = tabKey(t)
+    if (t.kind === 'request') {
+      const entry = entryById.get(t.id)
+      return entry ? [{ key, kind: 'request' as const, label: entry.name, method: entry.method }] : []
+    }
+    const col = collections.find((c) => c.id === t.colId)
+    if (!col) return []
+    if (t.kind === 'collection') {
+      return [{ key, kind: 'collection' as const, label: col.name }]
+    }
+    return [{ key, kind: 'folder' as const, label: t.path[t.path.length - 1] ?? 'folder' }]
   })
 
   return (
@@ -1389,116 +1523,126 @@ export default function App() {
           />
         ) : view === 'settings' ? (
           <SettingsView settings={settings} onChange={updateSettings} />
-        ) : inspect ? (
-          (() => {
-            const col = collections.find((c) => c.id === inspect.colId)
-            if (!col) return null
-            if (inspect.type === 'folder') {
-              const key = inspect.path.join('/')
-              return (
-                <FolderView
-                  collectionName={col.name}
-                  root={col.root}
-                  path={inspect.path}
-                  entries={col.entries.filter((e) => e.folderPath.join('/') === key)}
-                  onSelect={selectRequest}
-                  onNewRequest={() => newRequest(col.id, inspect.path)}
-                  onToast={toast}
-                />
-              )
-            }
-            const entryIds = new Set(col.entries.map((e) => e.id))
-            return (
-              <CollectionView
-                collection={{
-                  id: col.id,
-                  name: col.name,
-                  root: col.root,
-                  requestCount: col.entries.length,
-                  folderCount: new Set(
-                    col.entries.map((e) => e.folderPath.join('/')).filter(Boolean)
-                  ).size,
-                  environments: col.environments.map((e) => e.name),
-                  auth: col.auth,
-                  docs: col.docs
-                }}
-                history={colHistory.filter((h) => h.requestId && entryIds.has(h.requestId))}
-                onToast={toast}
-                onSaveAuth={(auth) => saveCollectionAuth(col.id, auth)}
-                onSaveDocs={(docs) => saveCollectionDocs(col.id, docs)}
-                onNewRequest={() => newRequest(col.id)}
-                onImportExport={() => setModal('io')}
-                onClose={() => requestCloseCollection(col.id)}
-                onOpenGitDetails={() => setGitColId(col.id)}
-              />
-            )
-          })()
         ) : (
-          <div
-            className="main"
-            ref={mainRef}
-            style={{
-              gridTemplateRows: editorH
-                ? `auto ${editorH}px 6px minmax(120px, 1fr)`
-                : 'auto 1fr 6px 1fr',
-              gap: 0
-            }}
-          >
+          <div className="workspace">
             <RequestTabs
               tabs={tabItems}
-              activeId={activeId}
-              onSelect={selectRequest}
+              activeKey={activeTabKey}
+              onSelect={(key) => {
+                const t = openTabs.find((x) => tabKey(x) === key)
+                if (t) activateTab(t)
+              }}
               onClose={closeTab}
             />
-            {active ? (
-              <RequestEditor
-                key={activeId}
-                request={active}
-                sending={!!activeId && sendingIds.has(activeId)}
-                diskBacked={!!(activeId && pathById[activeId])}
-                dirty={dirty}
-                missingVars={missingVars}
-                onChange={updateActive}
-                onSend={send}
-                onCancel={cancelActive}
-                onCode={openCode}
-                onSave={save}
-                onPerf={() => setModal('perf')}
-              />
-            ) : (
-              <section className="panel editor">
-                <div className="empty">
-                  <Logo size={54} rounded />
-                  <h3>No request selected</h3>
-                  <div>Choose one from the sidebar, or start here:</div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                    <button className="btn" onClick={openCollection}>Open a folder</button>
-                    <button className="btn" onClick={() => setModal('io')}>Import / Export</button>
-                    <button className="btn" onClick={() => setView('home')}>All features</button>
-                  </div>
-                </div>
-              </section>
-            )}
-            <Resizer
-              direction="row"
-              onDrag={(delta) => {
-                if (editorBase.current === null) {
-                  // children[0] is the tabs bar; children[1] is the editor.
-                  editorBase.current =
-                    mainRef.current?.children.item(1)?.getBoundingClientRect().height ?? 300
+            {inspect ? (
+              (() => {
+                const col = collections.find((c) => c.id === inspect.colId)
+                if (!col) return null
+                if (inspect.type === 'folder') {
+                  const key = inspect.path.join('/')
+                  return (
+                    <FolderView
+                      collectionName={col.name}
+                      root={col.root}
+                      path={inspect.path}
+                      entries={col.entries.filter((e) => e.folderPath.join('/') === key)}
+                      auth={folderAuth(col.id, inspect.path)}
+                      docs={folderDocs(col.id, inspect.path)}
+                      onSelect={selectRequest}
+                      onNewRequest={() => newRequest(col.id, inspect.path)}
+                      onSaveAuth={(auth) => saveFolderAuth(col.id, inspect.path, auth)}
+                      onSaveDocs={(docs) => saveFolderDocs(col.id, inspect.path, docs)}
+                      onToast={toast}
+                    />
+                  )
                 }
-                const max = (mainRef.current?.getBoundingClientRect().height ?? 800) - 160
-                setEditorH(Math.min(max, Math.max(140, editorBase.current + delta)))
-              }}
-              onEnd={() =>
-                setEditorH((h) => {
-                  editorBase.current = h
-                  if (h) writeStored('tiger.editorH', String(h))
-                  return h
-                })
-              }
-            />
-            <ResponsePanel state={activeId ? responses[activeId] : undefined} />
+                const entryIds = new Set(col.entries.map((e) => e.id))
+                return (
+                  <CollectionView
+                    collection={{
+                      id: col.id,
+                      name: col.name,
+                      root: col.root,
+                      requestCount: col.entries.length,
+                      folderCount: new Set(
+                        col.entries.map((e) => e.folderPath.join('/')).filter(Boolean)
+                      ).size,
+                      environments: col.environments.map((e) => e.name),
+                      auth: col.auth,
+                      docs: col.docs
+                    }}
+                    history={colHistory.filter((h) => h.requestId && entryIds.has(h.requestId))}
+                    onToast={toast}
+                    onSaveAuth={(auth) => saveCollectionAuth(col.id, auth)}
+                    onSaveDocs={(docs) => saveCollectionDocs(col.id, docs)}
+                    onNewRequest={() => newRequest(col.id)}
+                    onImportExport={() => setModal('io')}
+                    onClose={() => requestCloseCollection(col.id)}
+                    onOpenGitDetails={() => setGitColId(col.id)}
+                  />
+                )
+              })()
+            ) : (
+              <div
+                className="main"
+                ref={mainRef}
+                style={{
+                  gridTemplateRows: editorH
+                    ? `${editorH}px 6px minmax(120px, 1fr)`
+                    : '1fr 6px 1fr',
+                  gap: 0
+                }}
+              >
+                {active ? (
+                  <RequestEditor
+                    key={activeId}
+                    request={active}
+                    sending={!!activeId && sendingIds.has(activeId)}
+                    diskBacked={!!(activeId && pathById[activeId])}
+                    dirty={dirty}
+                    missingVars={missingVars}
+                    onChange={updateActive}
+                    onSend={send}
+                    onCancel={cancelActive}
+                    onCode={openCode}
+                    onSave={save}
+                    onPerf={() => setModal('perf')}
+                  />
+                ) : (
+                  <section className="panel editor">
+                    <div className="empty">
+                      <Logo size={54} rounded />
+                      <h3>No request selected</h3>
+                      <div>Choose one from the sidebar, or start here:</div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                        <button className="btn" onClick={openCollection}>Open a folder</button>
+                        <button className="btn" onClick={() => setModal('io')}>Import / Export</button>
+                        <button className="btn" onClick={() => setView('home')}>All features</button>
+                      </div>
+                    </div>
+                  </section>
+                )}
+                <Resizer
+                  direction="row"
+                  onDrag={(delta) => {
+                    if (editorBase.current === null) {
+                      editorBase.current =
+                        mainRef.current?.children.item(0)?.getBoundingClientRect().height ?? 300
+                    }
+                    const max = (mainRef.current?.getBoundingClientRect().height ?? 800) - 160
+                    setEditorH(Math.min(max, Math.max(140, editorBase.current + delta)))
+                  }}
+                  onEnd={() =>
+                    setEditorH((h) => {
+                      editorBase.current = h
+                      if (h) writeStored('tiger.editorH', String(h))
+                      return h
+                    })
+                  }
+                />
+                <ResponsePanel state={activeId ? responses[activeId] : undefined} />
+              </div>
+            )}
           </div>
         )}
       </div>

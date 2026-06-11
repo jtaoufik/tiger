@@ -9,6 +9,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  Box,
   Check,
   ChevronRight,
   Clock,
@@ -49,6 +50,7 @@ const base = (Comp: LucideIcon) => {
 }
 
 export const ChevronIcon = base(ChevronRight)
+export const BoxIcon = base(Box)
 export const FolderIcon = base(Folder)
 export const FolderOpenIcon = base(FolderOpen)
 export const FileIcon = base(FileText)

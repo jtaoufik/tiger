@@ -1,59 +1,65 @@
 /**
- * Open-request tabs (Postman-style) shown at the top of the workspace. Names
- * and methods come from the collections state at render time, so they stay in
- * sync with sidebar renames. Middle-click closes a tab, like a browser.
+ * Workspace tabs (Postman-style). A tab is a request, a collection page or a
+ * folder page. Labels and methods come from the App's collections state at
+ * render time, so renames stay in sync. Middle-click closes a tab.
  */
 import type { HttpMethod } from '@core/types'
-import { CloseIcon } from './Icons'
+import { BoxIcon, CloseIcon, FolderIcon } from './Icons'
 import './RequestTabs.css'
 
 export interface RequestTab {
-  id: string
-  name: string
-  method: HttpMethod
+  key: string
+  kind: 'request' | 'collection' | 'folder'
+  label: string
+  method?: HttpMethod
 }
 
 interface RequestTabsProps {
   tabs: RequestTab[]
-  activeId: string | null
-  onSelect: (id: string) => void
-  onClose: (id: string) => void
+  activeKey: string | null
+  onSelect: (key: string) => void
+  onClose: (key: string) => void
 }
 
-export function RequestTabs({ tabs, activeId, onSelect, onClose }: RequestTabsProps) {
+export function RequestTabs({ tabs, activeKey, onSelect, onClose }: RequestTabsProps) {
   return (
     <div className="request-tabs" role="tablist">
       {tabs.map((tab) => (
         <div
-          key={tab.id}
+          key={tab.key}
           role="tab"
-          aria-selected={tab.id === activeId}
+          aria-selected={tab.key === activeKey}
           tabIndex={0}
-          className={`request-tab${tab.id === activeId ? ' active' : ''}`}
-          title={tab.name}
-          onClick={() => onSelect(tab.id)}
+          className={`request-tab${tab.key === activeKey ? ' active' : ''}`}
+          title={tab.label}
+          onClick={() => onSelect(tab.key)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
-              onSelect(tab.id)
+              onSelect(tab.key)
             }
           }}
           onAuxClick={(e) => {
-            // Middle-click closes, like browser tabs.
             if (e.button === 1) {
               e.preventDefault()
-              onClose(tab.id)
+              onClose(tab.key)
             }
           }}
         >
-          <span className={`method-pill m-${tab.method}`}>{tab.method.toUpperCase()}</span>
-          <span className="request-tab-name">{tab.name}</span>
+          {tab.kind === 'request' ? (
+            <span className={`method-pill m-${tab.method}`}>{tab.method?.toUpperCase()}</span>
+          ) : tab.kind === 'folder' ? (
+            <FolderIcon size={13} />
+          ) : (
+            <BoxIcon size={13} />
+          )}
+          <span className="request-tab-name">{tab.label}</span>
           <button
             className="request-tab-close"
             title="Close tab"
             onClick={(e) => {
               e.stopPropagation()
-              onClose(tab.id)
+              onClose(tab.key)
             }}
           >
             <CloseIcon size={12} />

@@ -1359,3 +1359,25 @@ button {
   color: var(--text-dim);
   white-space: pre-wrap;
 }
+
+/* ---------- Workspace (tabs above editor / collection / folder views) ---------- */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.workspace > .main {
+  flex: 1;
+  min-height: 0;
+}
+.workspace > .collection-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.request-tab > svg {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.request-tab.active > svg { color: var(--accent); }

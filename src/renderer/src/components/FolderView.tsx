@@ -1,65 +1,36 @@
-import { useEffect, useState } from 'react'
-import { parseCollectionSettings, serializeCollectionSettings } from '@core/collectionSettings'
+import type { TigerAuth } from '@core/types'
 import type { SidebarEntry } from './Sidebar'
+import { AuthEditor } from './AuthEditor'
 import { FolderIcon, PlusIcon } from './Icons'
 
 interface Props {
   collectionName: string
-  /** Absolute collection root, when on disk; enables folder.tiger docs. */
+  /** Absolute collection root, when on disk; enables folder.tiger persistence. */
   root?: string
   path: string[]
   entries: SidebarEntry[]
+  auth?: TigerAuth
+  docs?: string
   onSelect: (id: string) => void
   onNewRequest: () => void
+  onSaveAuth: (auth: TigerAuth | undefined) => void
+  onSaveDocs: (docs: string) => void
   onToast: (text: string) => void
 }
 
-/** Full-page view for a folder: docs, its requests, plus new-request-here. */
+/** Full-page view for a folder: docs, default auth, its requests. */
 export function FolderView({
   collectionName,
-  root,
   path,
   entries,
+  auth,
+  docs,
   onSelect,
   onNewRequest,
-  onToast
+  onSaveAuth,
+  onSaveDocs
 }: Props) {
-  const folderFile = root ? `${root}/${path.join('/')}/folder.tiger` : null
-  const [docs, setDocs] = useState('')
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoaded(false)
-    if (!folderFile || !window.tiger) {
-      setDocs('')
-      setLoaded(true)
-      return
-    }
-    window.tiger
-      .readFile(folderFile)
-      .then((text) => {
-        if (!cancelled) setDocs(parseCollectionSettings(text).docs ?? '')
-      })
-      .catch(() => {
-        if (!cancelled) setDocs('')
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [folderFile])
-
-  const saveDocs = (next: string) => {
-    if (!folderFile || !window.tiger) return
-    if (next.trim()) {
-      window.tiger.writeFile(folderFile, serializeCollectionSettings({ docs: next }))
-      onToast('Folder docs saved')
-    }
-  }
-
+  const key = path.join('/')
   return (
     <section className="panel collection-view">
       <div className="cv-head">
@@ -77,23 +48,24 @@ export function FolderView({
         </button>
       </div>
 
-      {folderFile && loaded && (
-        <>
-          <div className="section-label">Documentation</div>
-          <div className="cv-card">
-            <textarea
-              className="docs-area"
-              placeholder="Document this folder in Markdown…"
-              defaultValue={docs}
-              key={folderFile + (loaded ? '1' : '0')}
-              spellCheck={false}
-              onBlur={(e) => {
-                if (e.target.value !== docs) saveDocs(e.target.value)
-              }}
-            />
-          </div>
-        </>
-      )}
+      <div className="section-label">Documentation</div>
+      <div className="cv-card">
+        <textarea
+          className="docs-area"
+          placeholder="Document this folder in Markdown…"
+          defaultValue={docs ?? ''}
+          key={`docs-${key}`}
+          spellCheck={false}
+          onBlur={(e) => {
+            if (e.target.value !== (docs ?? '')) onSaveDocs(e.target.value)
+          }}
+        />
+      </div>
+
+      <div className="section-label">Default auth (inherited by requests in this folder)</div>
+      <div className="cv-card">
+        <AuthEditor noInherit auth={auth} onChange={onSaveAuth} />
+      </div>
 
       <div className="section-label">
         {entries.length} request{entries.length === 1 ? '' : 's'} in this folder
