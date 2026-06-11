@@ -129,7 +129,7 @@ export function dedent(text: string): string {
   return lines.map((l) => l.slice(min)).join('\n')
 }
 
-function parseAuth(subtype: string | undefined, content: string): TigerAuth {
+export function parseAuth(subtype: string | undefined, content: string): TigerAuth {
   const kv = Object.fromEntries(parseKeyValues(content).map((k) => [k.name, k.value]))
   switch (subtype) {
     case 'bearer':
@@ -167,7 +167,8 @@ export function parseRequest(input: string): TigerRequest {
   let headers: KeyValue[] = []
   let query: KeyValue[] = []
   let body: TigerBody = emptyBody()
-  let auth: TigerAuth = { type: 'none' }
+  // Absent block = inherit from the collection; explicit auth:none = no auth.
+  let auth: TigerAuth | undefined
 
   for (const block of blocks) {
     if (block.name === 'meta') {
@@ -197,7 +198,7 @@ export function parseRequest(input: string): TigerRequest {
   }
 
   const request: TigerRequest = { name, seq, method, url, headers, query, body }
-  if (auth.type !== 'none') request.auth = auth
+  if (auth) request.auth = auth
   return request
 }
 
@@ -228,12 +229,13 @@ export function serializeRequest(req: TigerRequest): string {
     parts.push(`body:${req.body.type} {\n${indented}\n}`)
   }
 
-  if (req.auth && req.auth.type !== 'none') parts.push(renderAuth(req.auth))
+  if (req.auth) parts.push(renderAuth(req.auth))
 
   return `${parts.join('\n\n')}\n`
 }
 
-function renderAuth(auth: TigerAuth): string {
+export function renderAuth(auth: TigerAuth): string {
+  if (auth.type === 'none') return 'auth:none {\n}'
   const lines: string[] = []
   if (auth.type === 'bearer') {
     lines.push(`  token: ${auth.token}`)

@@ -2,7 +2,10 @@ import type { TigerAuth } from '@core/types'
 
 interface Props {
   auth: TigerAuth | undefined
-  onChange: (auth: TigerAuth) => void
+  /** undefined = inherit from the collection */
+  onChange: (auth: TigerAuth | undefined) => void
+  /** Hide the inherit option (used when editing the collection default itself). */
+  noInherit?: boolean
 }
 
 function defaultFor(type: TigerAuth['type']): TigerAuth {
@@ -46,17 +49,22 @@ function Field({
   )
 }
 
-export function AuthEditor({ auth, onChange }: Props) {
+export function AuthEditor({ auth, onChange, noInherit }: Props) {
   const current: TigerAuth = auth ?? { type: 'none' }
+  const selected = auth ? auth.type : noInherit ? 'none' : 'inherit'
 
   return (
     <div>
       <div className="field">
         <label>Type</label>
         <select
-          value={current.type}
-          onChange={(e) => onChange(defaultFor(e.target.value as TigerAuth['type']))}
+          value={selected}
+          onChange={(e) => {
+            const v = e.target.value
+            onChange(v === 'inherit' ? undefined : defaultFor(v as TigerAuth['type']))
+          }}
         >
+          {!noInherit && <option value="inherit">Inherit from collection</option>}
           <option value="none">No Auth</option>
           <option value="bearer">Bearer Token</option>
           <option value="basic">Basic Auth</option>
@@ -65,11 +73,16 @@ export function AuthEditor({ auth, onChange }: Props) {
         </select>
       </div>
 
-      {current.type === 'none' && (
+      {selected === 'inherit' && (
+        <div style={{ color: 'var(--text-dim)' }}>
+          Uses the collection's auth. Set one via right-click on the collection.
+        </div>
+      )}
+      {selected === 'none' && (
         <div style={{ color: 'var(--text-dim)' }}>This request sends no authentication.</div>
       )}
 
-      {current.type === 'bearer' && (
+      {auth && current.type === 'bearer' && (
         <Field label="Token" value={current.token} onChange={(v) => onChange({ ...current, token: v })} />
       )}
 

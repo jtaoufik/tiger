@@ -30,7 +30,7 @@ async function walk(root: string, dir: string, acc: RequestEntry[]): Promise<voi
     if (entry.isDirectory()) {
       if (entry.name === ENVIRONMENTS_DIR || entry.name.startsWith('.')) continue
       await walk(root, full, acc)
-    } else if (entry.isFile() && entry.name.endsWith('.tiger')) {
+    } else if (entry.isFile() && entry.name.endsWith('.tiger') && entry.name !== 'collection.tiger') {
       const meta = await readMeta(full)
       const folder = relative(root, dir)
       acc.push({ ...meta, path: full, folder: folder ? folder.split(sep) : [] })

@@ -3,13 +3,14 @@ import { parseRequest, serializeRequest } from '@core/tigerFormat'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
 import { buildRequest, type BuiltRequest } from '@core/request'
 import { envToVars, findMissingVars } from '@core/interpolate'
+import { resolveAuth, serializeCollectionSettings } from '@core/collectionSettings'
 import type { SearchItem } from '@core/search'
 import { exportPostman } from '@core/export'
 import { toCurl } from '@core/codegen'
 import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
 import type { ImportedRequest } from '@core/import'
-import type { HttpMethod, KeyValue, TigerEnvironment, TigerRequest } from '@core/types'
+import type { HttpMethod, KeyValue, TigerAuth, TigerEnvironment, TigerRequest } from '@core/types'
 import type { Settings } from '../../main/settings'
 import type { HistoryEntry } from '../../main/history'
 import type { ImportKind } from '../../main/importers'
@@ -24,6 +25,8 @@ import { CodeModal } from './components/CodeModal'
 import { HistoryModal } from './components/HistoryModal'
 import { EnvironmentModal } from './components/EnvironmentModal'
 import { ConfirmModal } from './components/ConfirmModal'
+import { Modal } from './components/Modal'
+import { AuthEditor } from './components/AuthEditor'
 import { ContextMenu, type MenuItem } from './components/ContextMenu'
 import { PaletteModal } from './components/PaletteModal'
 import { Resizer } from './components/Resizer'
@@ -65,6 +68,8 @@ interface CollectionState {
   root?: string
   entries: SidebarEntry[]
   environments: EnvRef[]
+  /** Collection-level default auth, inherited by requests. */
+  auth?: TigerAuth
 }
 
 type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env'
@@ -194,6 +199,7 @@ export default function App() {
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const [gitStates, setGitStates] = useState<Record<string, SyncState>>({})
   const [gitColId, setGitColId] = useState<string | null>(null)
+  const [authColId, setAuthColId] = useState<string | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
   const [sidebarW, setSidebarW] = useState(() => Number(readStored('tiger.sidebarW')) || 264)
   const [editorH, setEditorH] = useState<number | null>(() => {
@@ -276,6 +282,10 @@ export default function App() {
   const activeCollection = activeId
     ? collections.find((c) => c.entries.some((e) => e.id === activeId))
     : undefined
+  /** The request with collection auth inheritance applied. */
+  const activeEffective = active
+    ? { ...active, auth: resolveAuth(active, activeCollection?.auth) }
+    : undefined
 
   const loadRequest = useCallback(
     async (id: string): Promise<TigerRequest | undefined> => {
@@ -328,7 +338,7 @@ export default function App() {
     setSendingIds((prev) => new Set(prev).add(id))
     setResponses((prev) => ({ ...prev, [id]: { loading: true } }))
     try {
-      const data = await runRequest(active, activeEnv, settings.timeoutMs, id)
+      const data = await runRequest(activeEffective ?? active, activeEnv, settings.timeoutMs, id)
       if (!deletedIds.current.has(id)) {
         setResponses((prev) => ({ ...prev, [id]: { loading: false, data } }))
       }
@@ -392,10 +402,11 @@ export default function App() {
     }))
     const next: CollectionState = {
       id: opened.root,
-      name: opened.name,
+      name: opened.settings?.name || opened.name,
       root: opened.root,
       entries,
-      environments: opened.environments.map((e) => ({ name: e.name, path: e.path }))
+      environments: opened.environments.map((e) => ({ name: e.name, path: e.path })),
+      auth: opened.settings?.auth
     }
     setCollections((prev) => {
       const existing = prev.findIndex((c) => c.id === next.id)
@@ -660,10 +671,10 @@ export default function App() {
   )
 
   const openCode = useCallback(() => {
-    if (!active) return
-    setCodeBuilt(buildRequest(active, envToVars(activeEnv)))
+    if (!activeEffective) return
+    setCodeBuilt(buildRequest(activeEffective, envToVars(activeEnv)))
     setModal('code')
-  }, [active, activeEnv])
+  }, [activeEffective, activeEnv])
 
   const openHistory = useCallback(async () => {
     setHistory((await window.tiger?.historyRead()) ?? [])
@@ -729,6 +740,11 @@ export default function App() {
           label: 'Import / Export…',
           icon: <SwapIcon size={14} />,
           onClick: () => setModal('io')
+        },
+        {
+          label: 'Collection auth…',
+          icon: <PencilIcon size={14} />,
+          onClick: () => setAuthColId(colId)
         }
       ]
       if (col.root) {
@@ -756,11 +772,29 @@ export default function App() {
     [collections, newRequest, closeCollection]
   )
 
+  const saveCollectionAuth = useCallback(
+    (colId: string, auth: TigerAuth | undefined) => {
+      const col = collections.find((c) => c.id === colId)
+      if (!col) return
+      setCollections((prev) => prev.map((c) => (c.id === colId ? { ...c, auth } : c)))
+      if (col.root && window.tiger) {
+        window.tiger.writeFile(
+          `${col.root}/collection.tiger`,
+          serializeCollectionSettings({ name: col.name, auth })
+        )
+      }
+      toast(auth ? 'Collection auth saved' : 'Collection auth cleared')
+    },
+    [collections, toast]
+  )
+
   const envCollections = collections.filter((c) => c.environments.length > 0)
 
   const activeSerialized = active ? serializeRequest(active) : ''
   const dirty = !!(activeId && pathById[activeId] && savedText.current[activeId] !== activeSerialized)
-  const missingVars = active ? findMissingVars(sentSurface(active), envToVars(activeEnv)) : []
+  const missingVars = activeEffective
+    ? findMissingVars(sentSurface(activeEffective), envToVars(activeEnv))
+    : []
 
   const paletteItems: SearchItem[] = collections.flatMap((c) =>
     c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
@@ -931,6 +965,26 @@ export default function App() {
       {modal === 'env' && (
         <EnvironmentModal env={activeEnv} onChange={updateEnvVars} onClose={() => setModal('none')} />
       )}
+      {authColId &&
+        (() => {
+          const col = collections.find((c) => c.id === authColId)
+          if (!col) return null
+          return (
+            <Modal
+              title={`Collection auth · ${col.name}`}
+              onClose={() => setAuthColId(null)}
+            >
+              <p style={{ margin: '0 0 14px', color: 'var(--text-dim)', fontSize: 13.5 }}>
+                Requests in this collection inherit this auth unless they set their own.
+              </p>
+              <AuthEditor
+                noInherit
+                auth={col.auth}
+                onChange={(auth) => saveCollectionAuth(col.id, auth)}
+              />
+            </Modal>
+          )
+        })()}
       {gitColId &&
         (() => {
           const col = collections.find((c) => c.id === gitColId)

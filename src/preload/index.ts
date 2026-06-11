@@ -9,6 +9,7 @@ import type { ImportResult } from '../core/import'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { UpdateInfo } from '../core/version'
 import type { GitActionResult, GitAvailability, GitStatus } from '../main/git'
+import type { CollectionSettings } from '../core/collectionSettings'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
@@ -17,6 +18,7 @@ export interface OpenedCollection {
   name: string
   requests: RequestEntry[]
   environments: EnvironmentRef[]
+  settings: CollectionSettings
 }
 
 const api = {

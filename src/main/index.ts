@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electro
 import { randomUUID } from 'node:crypto'
 import { basename, join } from 'node:path'
 import { readCollection, readEnvironments } from './collection'
+import { parseCollectionSettings } from '../core/collectionSettings'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import {
   applyNetworkSettings,
@@ -64,11 +65,19 @@ function registerIpc(): void {
     })
     if (result.canceled || !result.filePaths[0]) return null
     const root = result.filePaths[0]
+    const { readFile } = await import('node:fs/promises')
+    let settings = {}
+    try {
+      settings = parseCollectionSettings(await readFile(join(root, 'collection.tiger'), 'utf8'))
+    } catch {
+      /* optional file */
+    }
     return {
       root,
       name: basename(root),
       requests: await readCollection(root),
-      environments: await readEnvironments(root)
+      environments: await readEnvironments(root),
+      settings
     }
   })
 

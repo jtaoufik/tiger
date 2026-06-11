@@ -102,6 +102,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     const select = document.querySelector('.tab-body select')!
     const labels = [...select.querySelectorAll('option')].map((o) => o.textContent)
     expect(labels).toEqual([
+      'Inherit from collection',
       'No Auth',
       'Bearer Token',
       'Basic Auth',
