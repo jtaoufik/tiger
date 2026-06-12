@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tiger.62-238-17-135.sslip.io/sitemap.xml
+Sitemap: https://jtaoufik.github.io/tiger/sitemap.xml

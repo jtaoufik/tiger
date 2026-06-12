@@ -364,7 +364,7 @@ export async function getOAuthToken(auth: OAuth2, vars: VarMap): Promise<string>
 
 import { isNewerVersion, type UpdateInfo } from '../core/version'
 
-const UPDATE_MANIFEST = 'https://tiger.62-238-17-135.sslip.io/version.json'
+const UPDATE_MANIFEST = 'https://jtaoufik.github.io/tiger/version.json'
 
 /**
  * Fetch the published version manifest and report an update when it is newer
@@ -381,7 +381,7 @@ export async function checkForUpdate(currentVersion: string): Promise<UpdateInfo
     const url =
       typeof manifest.url === 'string' && /^https?:\/\//.test(manifest.url)
         ? manifest.url
-        : 'https://tiger.62-238-17-135.sslip.io/#download'
+        : 'https://jtaoufik.github.io/tiger/#download'
     return {
       latest: manifest.version,
       url,
