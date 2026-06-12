@@ -63,6 +63,7 @@ import {
   SwapIcon,
   TrashIcon
 } from './components/Icons'
+import { SEP, tabKey, type OpenTab } from './session'
 import { cancelRequest, runRequest } from './runRequest'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
 import { sampleEnvironment, sampleRequests } from './sample'
@@ -96,30 +97,10 @@ interface CollectionState {
 
 type ModalKind = 'none' | 'io' | 'history' | 'env' | 'shortcuts'
 
-/** A tab in the workspace bar: a request, a collection page, or a folder page. */
-type OpenTab =
-  | { kind: 'request'; id: string }
-  | { kind: 'collection'; colId: string }
-  | { kind: 'folder'; colId: string; path: string[] }
-
-const tabKey = (t: OpenTab): string =>
-  t.kind === 'request'
-    ? `r:${t.id}`
-    : t.kind === 'collection'
-      ? `c:${t.colId}`
-      : `f:${t.colId}${SEP}${t.path.join('/')}`
-
 interface Toast {
   id: number
   text: string
 }
-
-/**
- * Separator for composite ids (collection + request path, collection + env
- * name). U+001F never appears in file paths or names, so ids can't collide
- * even when one collection's folder is opened again as its own collection.
- */
-const SEP = '\u001f'
 
 const FALLBACK_SETTINGS: Settings = {
   theme: 'system',

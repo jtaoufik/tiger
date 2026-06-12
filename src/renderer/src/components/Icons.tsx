@@ -8,9 +8,11 @@
  */
 import {
   ArrowDown,
+  ArrowRightToLine,
   ArrowUp,
   Box,
   Check,
+  CircleX,
   ChevronRight,
   Clock,
   Code,
@@ -24,6 +26,8 @@ import {
   Gauge,
   GitBranch,
   Globe,
+  ListX,
+  Locate,
   Pencil,
   Play,
   Plus,
@@ -75,6 +79,10 @@ export const UploadIcon = base(Upload)
 export const GitBranchIcon = base(GitBranch)
 export const RefreshIcon = base(RefreshCw)
 export const ArrowUpIcon = base(ArrowUp)
+export const ArrowRightToLineIcon = base(ArrowRightToLine)
+export const XCircleIcon = base(CircleX)
+export const ListXIcon = base(ListX)
+export const LocateIcon = base(Locate)
 export const ArrowDownIcon = base(ArrowDown)
 export const WrapIcon = base(WrapText)
 export const EyeIcon = base(Eye)

@@ -3,6 +3,7 @@
  * folder page. Labels and methods come from the App's collections state at
  * render time, so renames stay in sync. Middle-click closes a tab.
  */
+import { useEffect, useRef } from 'react'
 import type { HttpMethod } from '@core/types'
 import { BoxIcon, CloseIcon, FolderIcon } from './Icons'
 import './RequestTabs.css'
@@ -22,8 +23,16 @@ interface RequestTabsProps {
 }
 
 export function RequestTabs({ tabs, activeKey, onSelect, onClose }: RequestTabsProps) {
+  const stripRef = useRef<HTMLDivElement>(null)
+
+  // Keep the active tab visible when activating or opening at the end.
+  useEffect(() => {
+    const el = stripRef.current?.querySelector('.request-tab.active') as HTMLElement | null
+    el?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
+  }, [activeKey, tabs.length])
+
   return (
-    <div className="request-tabs" role="tablist">
+    <div className="request-tabs" role="tablist" ref={stripRef}>
       {tabs.map((tab) => (
         <div
           key={tab.key}
