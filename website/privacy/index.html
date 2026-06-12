@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy · Tiger</title>
+  <meta name="description" content="Tiger's privacy policy: your requests, collections and response data never leave your machine. Anonymous usage analytics only, with a one-click opt-out." />
+  <link rel="canonical" href="https://tiger.62-238-17-135.sslip.io/privacy/" />
+  <meta name="robots" content="index, follow" />
+  <link rel="icon" type="image/png" href="../icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #faf6ee; --surface: #ffffff; --line: rgba(36, 24, 8, 0.09);
+      --line-strong: rgba(36, 24, 8, 0.17); --cream: #241c12; --dim: #6e6151;
+      --orange: #f26b0a; --orange-hot: #ff8c33;
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      --disp: "Bricolage Grotesque", -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--ink); color: var(--cream);
+      font-family: var(--disp); font-size: 16.5px; line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      background: #000; color: #fff; padding: 18px 24px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header img { width: 28px; height: 28px; border-radius: 7px; }
+    header a { color: #fff; text-decoration: none; font-weight: 700; font-size: 20px; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 { font-size: clamp(30px, 5vw, 42px); letter-spacing: -0.02em; line-height: 1.1; }
+    h2 { font-size: 22px; margin-top: 38px; }
+    .updated { font-family: var(--mono); font-size: 13px; color: var(--dim); }
+    a { color: var(--orange-hot); }
+    ul { padding-left: 22px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line-strong);
+      border-radius: 12px; padding: 18px 20px; margin: 22px 0;
+    }
+    footer { border-top: 1px solid var(--line); padding: 24px; text-align: center; color: var(--dim); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="../icon.png" alt="" />
+    <a href="../">Tiger</a>
+  </header>
+  <div class="wrap">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: June 12, 2026</p>
+
+    <div class="card">
+      <b>The short version:</b> your API requests, collections, environments, tokens and response
+      data never leave your machine. Tiger has no accounts and no cloud backend. The app sends
+      anonymous usage statistics only, and you can turn them off with one switch.
+    </div>
+
+    <h2>What stays on your machine</h2>
+    <p>
+      Everything you work with: request definitions (.tiger files), environments and secrets,
+      response bodies and headers, history, cookies, settings and certificates. Tiger stores them
+      in folders you choose and in the app's local data directory. Requests are sent directly from
+      your computer to the APIs you call; no proxy or relay operated by us is involved.
+    </p>
+
+    <h2>Anonymous usage analytics</h2>
+    <p>
+      To understand which features matter, Tiger records a small set of anonymous events through
+      Google Analytics for Firebase:
+    </p>
+    <ul>
+      <li>app opened (version, platform)</li>
+      <li>request sent (HTTP method and status bucket such as 2xx or 4xx, never the URL)</li>
+      <li>collection imported (source format and request count)</li>
+    </ul>
+    <p>
+      These events never include URLs, hostnames, header values, request or response bodies,
+      variable values, file paths or any personal information. The only identifier is a random,
+      app-local ID that is not linked to you.
+    </p>
+
+    <h2>Opting out</h2>
+    <p>
+      Settings &gt; Privacy &gt; "Anonymous usage analytics" turns analytics off entirely. The
+      switch takes effect immediately and persists.
+    </p>
+
+    <h2>Update checks</h2>
+    <p>
+      The app periodically checks for new versions by fetching a version file from this website
+      and from GitHub Releases. These are ordinary HTTPS requests that carry no personal data.
+    </p>
+
+    <h2>The website</h2>
+    <p>
+      This website is a static site hosted on GitHub Pages. It sets no cookies and runs no
+      analytics scripts. GitHub may log standard web server access data; see
+      <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about this policy: open an issue at
+      <a href="https://github.com/jtaoufik/tiger">github.com/jtaoufik/tiger</a>.
+    </p>
+  </div>
+  <footer>
+    &copy; 2026 Tiger. Free and open source under the MIT license. &nbsp;&middot;&nbsp;
+    <a href="../">Home</a>
+  </footer>
+</body>
+</html>
