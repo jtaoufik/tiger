@@ -2,7 +2,10 @@
   "name": "tiger-api-client",
   "version": "0.3.1",
   "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
-  "author": "jtaoufik",
+  "author": {
+    "name": "Taoufik Jabbari",
+    "email": "jtaoufik@users.noreply.github.com"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./out/main/index.js",
