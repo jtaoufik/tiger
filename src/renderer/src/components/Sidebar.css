@@ -1,0 +1,20 @@
+/* Sidebar drag-and-drop and inline rename. */
+.folder-row.drop-target,
+.col-head.drop-target {
+  background: var(--accent-weak);
+  box-shadow: 0 0 0 1.5px var(--accent) inset;
+  border-radius: var(--radius-sm);
+}
+.rename-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--glass-strong);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+  outline: none;
+  user-select: text;
+}

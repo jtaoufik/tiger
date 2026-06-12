@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
+import './Sidebar.css'
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -56,6 +57,10 @@ interface Props {
   onInspectCollection: (collectionId: string) => void
   onInspectFolder: (collectionId: string, path: string[]) => void
   onEmptyMenu: (x: number, y: number) => void
+  onRenameRequest: (entryId: string, name: string) => void
+  onRenameFolder: (collectionId: string, path: string[], name: string) => void
+  onDuplicateFolder: (collectionId: string, path: string[]) => void
+  onMoveRequest: (entryId: string, collectionId: string, folderPath: string[]) => void
 }
 
 interface TreeFolder {
@@ -110,6 +115,10 @@ export function Sidebar({
   onDuplicateRequest,
   onGit,
   onRequestMenu,
+  onRenameRequest,
+  onRenameFolder,
+  onDuplicateFolder,
+  onMoveRequest,
   onCollectionMenu,
   onInspectCollection,
   onInspectFolder,
@@ -117,6 +126,38 @@ export function Sidebar({
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
+
+  // Inline rename: which row is being renamed, and the draft text.
+  const [renaming, setRenaming] = useState<
+    { kind: 'request'; id: string } | { kind: 'folder'; key: string } | null
+  >(null)
+  const [draft, setDraft] = useState('')
+  // Folder/collection key currently hovered by a request drag.
+  const [dropKey, setDropKey] = useState<string | null>(null)
+
+  // F2 renames the selected request, like file managers.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'F2' || !activeId || renaming) return
+      const entry = collections.flatMap((c) => c.entries).find((x) => x.id === activeId)
+      if (entry) {
+        e.preventDefault()
+        setDraft(entry.name)
+        setRenaming({ kind: 'request', id: entry.id })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [activeId, renaming, collections])
+
+  const commitRename = (entry?: SidebarEntry, folderColId?: string, folderPath?: string[]) => {
+    if (!renaming) return
+    if (renaming.kind === 'request' && entry) onRenameRequest(entry.id, draft)
+    if (renaming.kind === 'folder' && folderColId && folderPath) {
+      onRenameFolder(folderColId, folderPath, draft)
+    }
+    setRenaming(null)
+  }
 
   const toggle = (key: string) =>
     setCollapsed((prev) => {
@@ -133,12 +174,21 @@ export function Sidebar({
 
   const q = query.trim().toLowerCase()
 
-  function renderRequest(entry: SidebarEntry, depth: number) {
+  function renderRequest(entry: SidebarEntry, depth: number, colId: string) {
+    const isRenaming = renaming?.kind === 'request' && renaming.id === entry.id
     return (
       <div
         key={entry.id}
         className={`tree-row ${entry.id === activeId ? 'active' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
+        draggable={!isRenaming}
+        onDragStart={(e) => {
+          e.dataTransfer.setData(
+            'application/x-tiger-request',
+            JSON.stringify({ id: entry.id, colId })
+          )
+          e.dataTransfer.effectAllowed = 'move'
+        }}
         onClick={() => onSelect(entry.id)}
         onContextMenu={(e) => {
           e.preventDefault()
@@ -146,7 +196,33 @@ export function Sidebar({
         }}
       >
         <span className={`method-pill m-${entry.method}`}>{entry.method.toUpperCase()}</span>
-        <span className="row-label">{entry.name}</span>
+        {isRenaming ? (
+          <input
+            className="rename-input"
+            autoFocus
+            value={draft}
+            spellCheck={false}
+            onChange={(e) => setDraft(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={() => commitRename(entry)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename(entry)
+              if (e.key === 'Escape') setRenaming(null)
+            }}
+          />
+        ) : (
+          <span
+            className="row-label"
+            title="Double-click to rename (F2)"
+            onDoubleClick={(e) => {
+              e.stopPropagation()
+              setDraft(entry.name)
+              setRenaming({ kind: 'request', id: entry.id })
+            }}
+          >
+            {entry.name}
+          </span>
+        )}
         <span className="row-actions">
           <button
             className="icon-btn"
@@ -179,9 +255,26 @@ export function Sidebar({
     return (
       <div key={folder.key}>
         <div
-          className="folder-row"
+          className={`folder-row ${dropKey === folder.key ? 'drop-target' : ''}`}
           style={{ paddingLeft: 8 + depth * 16 }}
           onClick={() => onInspectFolder(colId, path)}
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes('application/x-tiger-request')) {
+              e.preventDefault()
+              setDropKey(folder.key)
+            }
+          }}
+          onDragLeave={() => setDropKey((k) => (k === folder.key ? null : k))}
+          onDrop={(e) => {
+            e.preventDefault()
+            setDropKey(null)
+            try {
+              const payload = JSON.parse(e.dataTransfer.getData('application/x-tiger-request'))
+              if (payload.colId === colId) onMoveRequest(payload.id, colId, path)
+            } catch {
+              /* not ours */
+            }
+          }}
         >
           <button
             className="icon-btn chev-btn"
@@ -194,12 +287,50 @@ export function Sidebar({
             <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
           </button>
           <FolderIcon size={14} />
-          <span className="row-label">{folder.name}</span>
+          {renaming?.kind === 'folder' && renaming.key === folder.key ? (
+            <input
+              className="rename-input"
+              autoFocus
+              value={draft}
+              spellCheck={false}
+              onChange={(e) => setDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={() => commitRename(undefined, colId, path)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename(undefined, colId, path)
+                if (e.key === 'Escape') setRenaming(null)
+              }}
+            />
+          ) : (
+            <span
+              className="row-label"
+              title="Double-click to rename"
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                setDraft(folder.name)
+                setRenaming({ kind: 'folder', key: folder.key })
+              }}
+            >
+              {folder.name}
+            </span>
+          )}
+          <span className="row-actions">
+            <button
+              className="icon-btn"
+              title="Duplicate folder"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDuplicateFolder(colId, path)
+              }}
+            >
+              <CopyIcon size={13} />
+            </button>
+          </span>
         </div>
         {open && (
           <>
             {folder.folders.map((f) => renderFolder(f, depth + 1, colId))}
-            {folder.requests.map((r) => renderRequest(r, depth + 1.4))}
+            {folder.requests.map((r) => renderRequest(r, depth + 1.4, colId))}
           </>
         )}
       </div>
@@ -258,7 +389,7 @@ export function Sidebar({
                   <div className="col-head" style={{ cursor: 'default' }}>
                     <span className="row-label">{col.name}</span>
                   </div>
-                  {hits.map((e) => renderRequest(e, 1))}
+                  {hits.map((e) => renderRequest(e, 1, col.id))}
                 </div>
               )
             })
@@ -268,11 +399,30 @@ export function Sidebar({
               return (
                 <div key={col.id}>
                   <div
-                    className="col-head"
+                    className={`col-head ${dropKey === colKey ? 'drop-target' : ''}`}
                     onClick={() => onInspectCollection(col.id)}
                     onContextMenu={(e) => {
                       e.preventDefault()
                       onCollectionMenu(col.id, e.clientX, e.clientY)
+                    }}
+                    onDragOver={(e) => {
+                      if (e.dataTransfer.types.includes('application/x-tiger-request')) {
+                        e.preventDefault()
+                        setDropKey(colKey)
+                      }
+                    }}
+                    onDragLeave={() => setDropKey((k) => (k === colKey ? null : k))}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setDropKey(null)
+                      try {
+                        const payload = JSON.parse(
+                          e.dataTransfer.getData('application/x-tiger-request')
+                        )
+                        if (payload.colId === col.id) onMoveRequest(payload.id, col.id, [])
+                      } catch {
+                        /* not ours */
+                      }
                     }}
                   >
                     <button
@@ -349,7 +499,7 @@ export function Sidebar({
                   {open && (
                     <>
                       {tree.folders.map((f) => renderFolder(f, 1, col.id))}
-                      {tree.requests.map((r) => renderRequest(r, 1))}
+                      {tree.requests.map((r) => renderRequest(r, 1, col.id))}
                     </>
                   )}
                 </div>

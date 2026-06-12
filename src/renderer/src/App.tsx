@@ -13,6 +13,7 @@ import { exportOpenApi, exportPostman, exportPostmanEnvironment } from '@core/ex
 import { toCurl } from '@core/codegen'
 import { importCurl } from '@core/import'
 import { extractCaptures } from '@core/capture'
+import { movedRequestPath, renamedFolderPath, uniqueCopyName } from '@core/treeMove'
 import type { RunnerItem } from '@core/runner'
 import { runScript, type ScriptTestResult } from '@core/script'
 import { events } from '@core/analytics'
@@ -1171,6 +1172,200 @@ export default function App() {
     [requestsById, loadRequest, collections, pathById, openTab, reviveIds, toast]
   )
 
+  /** Rename a request: the name lives in the file's meta block. */
+  const renameRequest = useCallback(
+    async (entryId: string, name: string) => {
+      const trimmed = name.trim()
+      if (!trimmed) return
+      const source = requestsById[entryId] ?? (await loadRequest(entryId))
+      if (!source || source.name === trimmed) return
+      const updated = { ...source, name: trimmed }
+      setRequestsById((prev) => ({ ...prev, [entryId]: updated }))
+      setCollections((prev) =>
+        prev.map((c) => ({
+          ...c,
+          entries: c.entries.map((e) => (e.id === entryId ? { ...e, name: trimmed } : e))
+        }))
+      )
+      const path = pathById[entryId]
+      if (path && window.tiger) {
+        const text = serializeRequest(updated)
+        await window.tiger.writeFile(path, text)
+        savedText.current[entryId] = text
+        editedIds.current.delete(entryId)
+      }
+      toast('Renamed')
+    },
+    [requestsById, loadRequest, pathById, toast]
+  )
+
+  /** Move a request into another folder (or the root) of the same collection. */
+  const moveRequest = useCallback(
+    async (entryId: string, colId: string, targetFolder: string[]) => {
+      const col = collectionsRef.current.find((c) => c.id === colId)
+      const entry = col?.entries.find((e) => e.id === entryId)
+      if (!col || !entry) return
+      if (entry.folderPath.join('/') === targetFolder.join('/')) return
+      const fromPath = pathById[entryId]
+      if (col.root && window.tiger && fromPath) {
+        const toPath = movedRequestPath(col.root, fromPath, targetFolder)
+        try {
+          await window.tiger.moveFile(fromPath, toPath)
+        } catch (e) {
+          toast(`Move failed: ${(e as Error).message}`)
+          return
+        }
+        setPathById((prev) => ({ ...prev, [entryId]: toPath }))
+      }
+      setCollections((prev) =>
+        prev.map((c) =>
+          c.id === colId
+            ? {
+                ...c,
+                entries: c.entries.map((e) =>
+                  e.id === entryId ? { ...e, folderPath: targetFolder } : e
+                )
+              }
+            : c
+        )
+      )
+      toast(
+        targetFolder.length
+          ? `Moved to ${targetFolder[targetFolder.length - 1]}`
+          : 'Moved to collection root'
+      )
+    },
+    [pathById, toast]
+  )
+
+  /** Rename a folder: directory rename on disk plus path remaps in memory. */
+  const renameFolder = useCallback(
+    async (colId: string, path: string[], newName: string) => {
+      const trimmed = newName.trim()
+      const col = collectionsRef.current.find((c) => c.id === colId)
+      if (!col || !trimmed || trimmed === path[path.length - 1]) return
+      if (/[/\\]/.test(trimmed)) {
+        toast('Folder names cannot contain slashes')
+        return
+      }
+      const fromDir = col.root ? `${col.root}/${path.join('/')}` : null
+      const toDir = col.root ? `${col.root}/${[...path.slice(0, -1), trimmed].join('/')}` : null
+      if (fromDir && toDir && window.tiger) {
+        try {
+          await window.tiger.moveFile(fromDir, toDir)
+        } catch (e) {
+          toast(`Rename failed: ${(e as Error).message}`)
+          return
+        }
+      }
+      setCollections((prev) =>
+        prev.map((c) =>
+          c.id === colId
+            ? {
+                ...c,
+                entries: c.entries.map((e) => {
+                  const next = renamedFolderPath(e.folderPath, path, trimmed)
+                  return next ? { ...e, folderPath: next } : e
+                })
+              }
+            : c
+        )
+      )
+      if (fromDir && toDir) {
+        setPathById((prev) => {
+          const out: Record<string, string> = {}
+          for (const [k, v] of Object.entries(prev)) {
+            out[k] = v.startsWith(`${fromDir}/`) ? toDir + v.slice(fromDir.length) : v
+          }
+          return out
+        })
+        setFolderSettings((prev) => {
+          const out: typeof prev = {}
+          const oldKey = `${colId}${SEP}${path.join('/')}`
+          const newKey = `${colId}${SEP}${[...path.slice(0, -1), trimmed].join('/')}`
+          for (const [k, v] of Object.entries(prev)) {
+            if (k === oldKey) out[newKey] = v
+            else if (k.startsWith(`${oldKey}/`)) out[newKey + k.slice(oldKey.length)] = v
+            else out[k] = v
+          }
+          return out
+        })
+      }
+      setOpenTabs((prev) =>
+        prev.map((t) => {
+          if (t.kind !== 'folder' || t.colId !== colId) return t
+          const next = renamedFolderPath(t.path, path, trimmed)
+          return next ? { ...t, path: next } : t
+        })
+      )
+      setInspect((cur) => {
+        if (!cur || cur.type !== 'folder' || cur.colId !== colId) return cur
+        const next = renamedFolderPath(cur.path, path, trimmed)
+        return next ? { ...cur, path: next } : cur
+      })
+      toast('Folder renamed')
+    },
+    [toast]
+  )
+
+  /** Duplicate a folder: copy every request in its subtree into "<name> copy". */
+  const duplicateFolder = useCallback(
+    async (colId: string, path: string[]) => {
+      const col = collectionsRef.current.find((c) => c.id === colId)
+      if (!col || !path.length) return
+      const parent = path.slice(0, -1)
+      const siblings = new Set(
+        col.entries
+          .filter(
+            (e) =>
+              e.folderPath.length > parent.length &&
+              e.folderPath.slice(0, parent.length).join('/') === parent.join('/')
+          )
+          .map((e) => e.folderPath[parent.length])
+      )
+      const copyName = uniqueCopyName(path[path.length - 1], [...siblings])
+      const inSubtree = col.entries.filter(
+        (e) =>
+          e.folderPath.length >= path.length &&
+          e.folderPath.slice(0, path.length).join('/') === path.join('/')
+      )
+      const added: SidebarEntry[] = []
+      const newRequests: Record<string, TigerRequest> = {}
+      for (const e of inSubtree) {
+        const source = requestsById[e.id] ?? (await loadRequest(e.id))
+        if (!source) continue
+        const clone: TigerRequest = JSON.parse(JSON.stringify(source))
+        const newFolder = [...parent, copyName, ...e.folderPath.slice(path.length)]
+        let id: string
+        const srcPath = pathById[e.id]
+        if (col.root && window.tiger && srcPath) {
+          const fileName = srcPath.slice(
+            Math.max(srcPath.lastIndexOf('/'), srcPath.lastIndexOf('\\')) + 1
+          )
+          const newPath = [col.root, ...newFolder, fileName].join('/')
+          id = `${col.id}${SEP}${newPath}`
+          const text = serializeRequest(clone)
+          await window.tiger.writeFile(newPath, text)
+          savedText.current[id] = text
+          editedIds.current.delete(id)
+          setPathById((prev) => ({ ...prev, [id]: newPath }))
+        } else {
+          id = `${col.id}${SEP}dupf-${Date.now()}-${added.length}`
+        }
+        newRequests[id] = clone
+        added.push({ id, name: clone.name, method: clone.method, folderPath: newFolder })
+      }
+      if (!added.length) return
+      reviveIds(added.map((a) => a.id))
+      setRequestsById((prev) => ({ ...prev, ...newRequests }))
+      setCollections((prev) =>
+        prev.map((c) => (c.id === colId ? { ...c, entries: [...c.entries, ...added] } : c))
+      )
+      toast(`Folder duplicated as "${copyName}"`)
+    },
+    [requestsById, loadRequest, pathById, reviveIds, toast]
+  )
+
   const deleteRequest = useCallback(
     async (entryId: string) => {
       setConfirmDeleteId(null)
@@ -1613,6 +1808,10 @@ export default function App() {
           onCollectionMenu={openCollectionMenu}
           onInspectCollection={inspectCollection}
           onInspectFolder={inspectFolder}
+          onRenameRequest={renameRequest}
+          onRenameFolder={renameFolder}
+          onDuplicateFolder={duplicateFolder}
+          onMoveRequest={moveRequest}
         />
 
         <Resizer

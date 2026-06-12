@@ -28,6 +28,8 @@ const api = {
   writeFile: (path: string, content: string): Promise<boolean> =>
     ipcRenderer.invoke('tiger:writeFile', path, content),
   deleteFile: (path: string): Promise<boolean> => ipcRenderer.invoke('tiger:deleteFile', path),
+  moveFile: (from: string, to: string): Promise<boolean> =>
+    ipcRenderer.invoke('tiger:moveFile', from, to),
   listEnvironments: (root: string): Promise<EnvironmentRef[]> =>
     ipcRenderer.invoke('tiger:listEnvironments', root),
   send: (built: BuiltRequest, timeoutMs: number, cancelKey?: string): Promise<RawResponse> =>

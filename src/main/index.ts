@@ -130,6 +130,21 @@ function registerIpc(): void {
     return true
   })
 
+  ipcMain.handle('tiger:moveFile', async (_e, from: string, to: string) => {
+    const { rename, mkdir, access } = await import('node:fs/promises')
+    const { dirname } = await import('node:path')
+    // Never silently overwrite an existing file or folder at the destination.
+    try {
+      await access(to)
+      throw new Error(`Already exists: ${to}`)
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+    }
+    await mkdir(dirname(to), { recursive: true })
+    await rename(from, to)
+    return true
+  })
+
   ipcMain.handle('tiger:deleteFile', async (_e, path: string) => {
     const { rm } = await import('node:fs/promises')
     await rm(path)

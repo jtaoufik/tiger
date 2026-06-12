@@ -509,3 +509,69 @@ describe('multipart body editor', () => {
     expect(screen.getByDisplayValue('@file:/tmp/cat.png')).toBeInTheDocument()
   })
 })
+
+describe('sidebar UX: rename, duplicate folder, drag to move', () => {
+  it('renames a request inline via double-click', async () => {
+    render(<App />)
+    fireEvent.doubleClick(within(sidebar()).getByText('Get post'))
+    const input = screen.getByDisplayValue('Get post')
+    fireEvent.change(input, { target: { value: 'Fetch post' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(await within(sidebar()).findByText('Fetch post')).toBeInTheDocument()
+    expect(within(sidebar()).queryByText('Get post')).not.toBeInTheDocument()
+  })
+
+  it('renames a folder inline via double-click', async () => {
+    render(<App />)
+    fireEvent.doubleClick(within(sidebar()).getByText('Posts'))
+    const input = screen.getByDisplayValue('Posts')
+    fireEvent.change(input, { target: { value: 'Articles' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(await within(sidebar()).findByText('Articles')).toBeInTheDocument()
+    // Requests stayed inside the renamed folder.
+    expect(within(sidebar()).getByText('List posts')).toBeInTheDocument()
+  })
+
+  it('renames the active request with F2', async () => {
+    render(<App />)
+    fireEvent.keyDown(window, { key: 'F2' })
+    const input = document.querySelector('.rename-input') as HTMLInputElement
+    expect(input.value).toBe('List posts')
+    fireEvent.change(input, { target: { value: 'All posts' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(await within(sidebar()).findByText('All posts')).toBeInTheDocument()
+  })
+
+  it('duplicates a folder with all its requests', async () => {
+    render(<App />)
+    const row = within(sidebar()).getByText('Posts').closest('.folder-row')!
+    fireEvent.click(within(row as HTMLElement).getByTitle('Duplicate folder'))
+    expect(await within(sidebar()).findByText('Posts copy')).toBeInTheDocument()
+    expect(await screen.findByText('Folder duplicated as "Posts copy"')).toBeInTheDocument()
+    expect(within(sidebar()).getAllByText('List posts')).toHaveLength(2)
+  })
+
+  it('moves a request into another folder by drag and drop', async () => {
+    render(<App />)
+    const dataTransfer = {
+      store: {} as Record<string, string>,
+      effectAllowed: '',
+      types: ['application/x-tiger-request'],
+      setData(k: string, v: string) {
+        this.store[k] = v
+      },
+      getData(k: string) {
+        return this.store[k] ?? ''
+      }
+    }
+    const source = within(sidebar()).getByText('Get post').closest('.tree-row')!
+    fireEvent.dragStart(source, { dataTransfer })
+    const target = within(sidebar()).getByText('Users').closest('.folder-row')!
+    fireEvent.dragOver(target, { dataTransfer })
+    fireEvent.drop(target, { dataTransfer })
+    expect(await screen.findByText('Moved to Users')).toBeInTheDocument()
+    // The Users folder page now lists it.
+    fireEvent.click(within(sidebar()).getByText('Users'))
+    expect(await screen.findByText('2 requests in this folder')).toBeInTheDocument()
+  })
+})
