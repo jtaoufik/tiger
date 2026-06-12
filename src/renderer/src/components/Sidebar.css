@@ -18,3 +18,12 @@
   outline: none;
   user-select: text;
 }
+
+/* Reveal-in-sidebar flash. */
+.tree-row.flash {
+  animation: row-flash 1.2s ease-out;
+}
+@keyframes row-flash {
+  0%, 60% { background: var(--accent-weak); box-shadow: 0 0 0 1.5px var(--accent) inset; }
+  100% { background: transparent; box-shadow: none; }
+}

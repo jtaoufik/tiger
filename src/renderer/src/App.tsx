@@ -48,6 +48,7 @@ import { Resizer } from './components/Resizer'
 import { UpdateModal } from './components/UpdateModal'
 import type { UpdateInfo } from '@core/version'
 import {
+  ArrowRightToLineIcon,
   CheckIcon,
   ClockIcon,
   CloseIcon,
@@ -58,10 +59,13 @@ import {
   GearIcon,
   GitBranchIcon,
   GlobeIcon,
+  ListXIcon,
+  LocateIcon,
   PencilIcon,
   PlusIcon,
   SwapIcon,
-  TrashIcon
+  TrashIcon,
+  XCircleIcon
 } from './components/Icons'
 import { SEP, tabKey, type OpenTab } from './session'
 import { cancelRequest, runRequest } from './runRequest'
@@ -752,6 +756,77 @@ export default function App() {
     return items
   }, [runnerScope, loadRequest])
 
+  /** Close every tab except the given one; it becomes active. */
+  const closeOtherTabs = useCallback(
+    (key: string) => {
+      const keep = openTabs.find((t) => tabKey(t) === key)
+      if (!keep) return
+      setOpenTabs([keep])
+      if (activeTabKey !== key) activateTab(keep)
+    },
+    [openTabs, activeTabKey, activateTab]
+  )
+
+  const closeAllTabs = useCallback(() => {
+    setOpenTabs([])
+    setActiveId(null)
+    setInspect(null)
+  }, [])
+
+  const closeTabsToRight = useCallback(
+    (key: string) => {
+      const index = openTabs.findIndex((t) => tabKey(t) === key)
+      if (index === -1) return
+      const next = openTabs.slice(0, index + 1)
+      setOpenTabs(next)
+      if (!next.some((t) => tabKey(t) === activeTabKey)) activateTab(next[index])
+    },
+    [openTabs, activeTabKey, activateTab]
+  )
+
+  /** Ask the sidebar to expand ancestors and flash a request row. */
+  const revealSeq = useRef(0)
+  const [sidebarReveal, setSidebarReveal] = useState<{ id: string; nonce: number } | null>(null)
+
+  const openTabMenu = useCallback(
+    (key: string, x: number, y: number) => {
+      const tab = openTabs.find((t) => tabKey(t) === key)
+      if (!tab) return
+      const index = openTabs.findIndex((t) => tabKey(t) === key)
+      const items: MenuItem[] = [
+        { label: 'Close', icon: <CloseIcon size={14} />, onClick: () => closeTab(key) }
+      ]
+      if (openTabs.length > 1) {
+        items.push({
+          label: 'Close others',
+          icon: <ListXIcon size={14} />,
+          onClick: () => closeOtherTabs(key)
+        })
+      }
+      if (index < openTabs.length - 1) {
+        items.push({
+          label: 'Close to the right',
+          icon: <ArrowRightToLineIcon size={14} />,
+          onClick: () => closeTabsToRight(key)
+        })
+      }
+      items.push({
+        label: 'Close all',
+        icon: <XCircleIcon size={14} />,
+        onClick: () => closeAllTabs()
+      })
+      if (tab.kind === 'request') {
+        items.push('sep', {
+          label: 'Reveal in sidebar',
+          icon: <LocateIcon size={14} />,
+          onClick: () => setSidebarReveal({ id: tab.id, nonce: ++revealSeq.current })
+        })
+      }
+      setCtxMenu({ x, y, items })
+    },
+    [openTabs, closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs]
+  )
+
   /** Cycle to the neighboring tab (Ctrl+Tab / Ctrl+Shift+Tab). */
   const cycleTab = useCallback(
     (dir: 1 | -1) => {
@@ -1362,6 +1437,7 @@ export default function App() {
       setRequestsById(({ [entryId]: _drop, ...rest }) => rest)
       setPathById(({ [entryId]: _drop, ...rest }) => rest)
       setResponses(({ [entryId]: _drop, ...rest }) => rest)
+      serializedCache.current.delete(entryId)
       const tabIndex = openTabs.findIndex((t) => t.kind === 'request' && t.id === entryId)
       const nextTabs = openTabs.filter((t) => !(t.kind === 'request' && t.id === entryId))
       setOpenTabs(nextTabs)
@@ -1380,7 +1456,10 @@ export default function App() {
       const col = collections.find((c) => c.id === collectionId)
       if (!col) return
       const ids = new Set(col.entries.map((e) => e.id))
-      for (const id of ids) deletedIds.current.add(id)
+      for (const id of ids) {
+        deletedIds.current.add(id)
+        serializedCache.current.delete(id)
+      }
       setCollections((prev) => prev.filter((c) => c.id !== collectionId))
       setRequestsById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
       setPathById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
@@ -1657,14 +1736,23 @@ export default function App() {
   // fall back to a flag-based dirty check and skip the missing-var warning.
   const LARGE_BODY = 100_000
   const largeBody = (active?.body.content.length ?? 0) > LARGE_BODY
-  const activeSerialized = active && !largeBody ? serializeRequest(active) : ''
-  const dirty = !!(
-    activeId &&
-    pathById[activeId] &&
-    (largeBody
-      ? editedIds.current.has(activeId)
-      : savedText.current[activeId] !== activeSerialized)
-  )
+  /**
+   * Per-request dirty check, cheap enough for every tab on every render: the
+   * serialization is memoized on the request OBJECT reference (state updates
+   * replace the object, so a stale cache entry is impossible), and very large
+   * bodies use the edited flag instead of serializing at all.
+   */
+  const serializedCache = useRef(new Map<string, { req: TigerRequest; text: string }>())
+  const isDirty = (id: string): boolean => {
+    const req = requestsById[id]
+    if (!req || !pathById[id]) return false
+    if (req.body.content.length > LARGE_BODY) return editedIds.current.has(id)
+    const hit = serializedCache.current.get(id)
+    const text = hit && hit.req === req ? hit.text : serializeRequest(req)
+    if (!hit || hit.req !== req) serializedCache.current.set(id, { req, text })
+    return savedText.current[id] !== text
+  }
+  const dirty = !!(activeId && isDirty(activeId))
   const missingVars =
     activeEffective && !largeBody
       ? findMissingVars(sentSurface(activeEffective), envToVars(activeEnv))
@@ -1681,7 +1769,9 @@ export default function App() {
     const key = tabKey(t)
     if (t.kind === 'request') {
       const entry = entryById.get(t.id)
-      return entry ? [{ key, kind: 'request' as const, label: entry.name, method: entry.method }] : []
+      return entry
+        ? [{ key, kind: 'request' as const, label: entry.name, method: entry.method, dirty: isDirty(t.id) }]
+        : []
     }
     const col = collections.find((c) => c.id === t.colId)
     if (!col) return []
@@ -1781,6 +1871,7 @@ export default function App() {
           onCollectionMenu={openCollectionMenu}
           onInspectCollection={inspectCollection}
           onInspectFolder={inspectFolder}
+          reveal={sidebarReveal}
           onRenameRequest={renameRequest}
           onRenameFolder={renameFolder}
           onDuplicateFolder={duplicateFolder}
@@ -1832,6 +1923,7 @@ export default function App() {
                 if (t) activateTab(t)
               }}
               onClose={closeTab}
+              onTabMenu={openTabMenu}
             />
             {inspect ? (
               (() => {

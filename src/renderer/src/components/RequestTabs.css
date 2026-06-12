@@ -69,3 +69,10 @@
   color: var(--text);
   background: var(--accent-weak);
 }
+.request-tab-dirty {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}

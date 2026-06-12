@@ -61,6 +61,8 @@ interface Props {
   onRenameFolder: (collectionId: string, path: string[], name: string) => void
   onDuplicateFolder: (collectionId: string, path: string[]) => void
   onMoveRequest: (entryId: string, collectionId: string, folderPath: string[]) => void
+  /** Expand ancestors and flash this request row (nonce re-triggers). */
+  reveal?: { id: string; nonce: number } | null
 }
 
 interface TreeFolder {
@@ -119,6 +121,7 @@ export function Sidebar({
   onRenameFolder,
   onDuplicateFolder,
   onMoveRequest,
+  reveal,
   onCollectionMenu,
   onInspectCollection,
   onInspectFolder,
@@ -150,6 +153,39 @@ export function Sidebar({
     return () => window.removeEventListener('keydown', onKey)
   }, [activeId, renaming, collections])
 
+  const [flashId, setFlashId] = useState<string | null>(null)
+
+  // Reveal: clear search, expand the collection + ancestor folders, flash + scroll.
+  useEffect(() => {
+    if (!reveal) return
+    const col = collections.find((c) => c.entries.some((e) => e.id === reveal.id))
+    const entry = col?.entries.find((e) => e.id === reveal.id)
+    if (!col || !entry) return
+    setQuery('')
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      next.delete(JSON.stringify([col.id]))
+      for (let i = 1; i <= entry.folderPath.length; i++) {
+        next.delete(JSON.stringify([col.id, ...entry.folderPath.slice(0, i)]))
+      }
+      return next
+    })
+    setFlashId(reveal.id)
+    const timer = setTimeout(() => setFlashId(null), 1300)
+    setTimeout(() => {
+      // Ids contain U+001F, so locate by dataset rather than a CSS selector.
+      const rows = document.querySelectorAll<HTMLElement>('.tree-row[data-entry-id]')
+      for (const row of rows) {
+        if (row.dataset.entryId === reveal.id) {
+          row.scrollIntoView?.({ block: 'nearest' })
+          break
+        }
+      }
+    }, 0)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reveal?.nonce])
+
   const commitRename = (entry?: SidebarEntry, folderColId?: string, folderPath?: string[]) => {
     if (!renaming) return
     if (renaming.kind === 'request' && entry) onRenameRequest(entry.id, draft)
@@ -179,8 +215,9 @@ export function Sidebar({
     return (
       <div
         key={entry.id}
-        className={`tree-row ${entry.id === activeId ? 'active' : ''}`}
+        className={`tree-row ${entry.id === activeId ? 'active' : ''} ${entry.id === flashId ? 'flash' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
+        data-entry-id={entry.id}
         draggable={!isRenaming}
         onDragStart={(e) => {
           e.dataTransfer.setData(

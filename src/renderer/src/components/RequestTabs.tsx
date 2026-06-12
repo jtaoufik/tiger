@@ -13,6 +13,8 @@ export interface RequestTab {
   kind: 'request' | 'collection' | 'folder'
   label: string
   method?: HttpMethod
+  /** Unsaved changes (request tabs only). */
+  dirty?: boolean
 }
 
 interface RequestTabsProps {
@@ -20,9 +22,10 @@ interface RequestTabsProps {
   activeKey: string | null
   onSelect: (key: string) => void
   onClose: (key: string) => void
+  onTabMenu: (key: string, x: number, y: number) => void
 }
 
-export function RequestTabs({ tabs, activeKey, onSelect, onClose }: RequestTabsProps) {
+export function RequestTabs({ tabs, activeKey, onSelect, onClose, onTabMenu }: RequestTabsProps) {
   const stripRef = useRef<HTMLDivElement>(null)
 
   // Keep the active tab visible when activating or opening at the end.
@@ -42,6 +45,10 @@ export function RequestTabs({ tabs, activeKey, onSelect, onClose }: RequestTabsP
           className={`request-tab${tab.key === activeKey ? ' active' : ''}`}
           title={tab.label}
           onClick={() => onSelect(tab.key)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            onTabMenu(tab.key, e.clientX, e.clientY)
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
@@ -63,6 +70,7 @@ export function RequestTabs({ tabs, activeKey, onSelect, onClose }: RequestTabsP
             <BoxIcon size={13} />
           )}
           <span className="request-tab-name">{tab.label}</span>
+          {tab.dirty && <span className="request-tab-dirty" title="Unsaved changes" />}
           <button
             className="request-tab-close"
             title="Close tab (Cmd/Ctrl+W)"

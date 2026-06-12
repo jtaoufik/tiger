@@ -581,3 +581,74 @@ describe('sidebar UX: rename, duplicate folder, drag to move', () => {
     expect(await screen.findByText('2 requests in this folder')).toBeInTheDocument()
   })
 })
+
+describe('tab management: dirty dot, context menu, reveal', () => {
+  it('shows no dirty dot for memory-only requests', () => {
+    render(<App />)
+    fireEvent.change(document.querySelector('.url-input')!, {
+      target: { value: 'https://changed.example' }
+    })
+    expect(document.querySelector('.request-tab-dirty')).toBeNull()
+  })
+
+  it('offers close actions and reveal on tab right-click', () => {
+    render(<App />)
+    fireEvent.click(within(sidebar()).getByText('List users'))
+    fireEvent.contextMenu(document.querySelector('.request-tab')!)
+    expect(screen.getByText('Close')).toBeInTheDocument()
+    expect(screen.getByText('Close others')).toBeInTheDocument()
+    expect(screen.getByText('Close to the right')).toBeInTheDocument()
+    expect(screen.getByText('Close all')).toBeInTheDocument()
+    expect(screen.getByText('Reveal in sidebar')).toBeInTheDocument()
+  })
+
+  it('hides close-others and close-right when only one tab is open', () => {
+    render(<App />)
+    fireEvent.contextMenu(document.querySelector('.request-tab')!)
+    expect(screen.queryByText('Close others')).not.toBeInTheDocument()
+    expect(screen.queryByText('Close to the right')).not.toBeInTheDocument()
+    expect(screen.getByText('Close all')).toBeInTheDocument()
+  })
+
+  it('close others keeps only the clicked tab and activates it', () => {
+    render(<App />)
+    fireEvent.click(within(sidebar()).getByText('List users'))
+    fireEvent.click(within(sidebar()).getByText('Get post'))
+    expect(document.querySelectorAll('.request-tab')).toHaveLength(3)
+    // Right-click the FIRST tab (List posts) and close others.
+    fireEvent.contextMenu(document.querySelectorAll('.request-tab')[0])
+    fireEvent.click(screen.getByText('Close others'))
+    expect(document.querySelectorAll('.request-tab')).toHaveLength(1)
+    expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
+  })
+
+  it('close to the right trims the strip and re-activates the clicked tab', () => {
+    render(<App />)
+    fireEvent.click(within(sidebar()).getByText('List users'))
+    fireEvent.click(within(sidebar()).getByText('Get post'))
+    fireEvent.contextMenu(document.querySelectorAll('.request-tab')[0])
+    fireEvent.click(screen.getByText('Close to the right'))
+    expect(document.querySelectorAll('.request-tab')).toHaveLength(1)
+    expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
+  })
+
+  it('close all empties the strip and shows the empty state', () => {
+    render(<App />)
+    fireEvent.contextMenu(document.querySelector('.request-tab')!)
+    fireEvent.click(screen.getByText('Close all'))
+    expect(document.querySelectorAll('.request-tab')).toHaveLength(0)
+    expect(screen.getByText('No request selected')).toBeInTheDocument()
+  })
+
+  it('reveal in sidebar expands the collapsed folder and flashes the row', async () => {
+    render(<App />)
+    // Collapse the Posts folder so the row is hidden.
+    const row = screen.getByText('Posts').closest('.folder-row')!
+    fireEvent.click(within(row as HTMLElement).getByTitle('Collapse folder'))
+    expect(within(sidebar()).queryByText('List posts')).not.toBeInTheDocument()
+    fireEvent.contextMenu(document.querySelector('.request-tab')!)
+    fireEvent.click(screen.getByText('Reveal in sidebar'))
+    expect(await within(sidebar()).findByText('List posts')).toBeInTheDocument()
+    expect(document.querySelector('.tree-row.flash')).toBeTruthy()
+  })
+})
