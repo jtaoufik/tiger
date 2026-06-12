@@ -32,7 +32,8 @@ const GROUPS: Array<{ title: string; items: Shortcut[] }> = [
     items: [
       { keys: [MOD, 'W'], what: 'Close the active tab' },
       { keys: ['Ctrl', 'Tab'], what: 'Next tab' },
-      { keys: ['Ctrl', 'Shift', 'Tab'], what: 'Previous tab' }
+      { keys: ['Ctrl', 'Shift', 'Tab'], what: 'Previous tab' },
+      { keys: [MOD, '1-9'], what: 'Jump to tab (9 is the last tab)' }
     ]
   }
 ]

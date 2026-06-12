@@ -652,3 +652,56 @@ describe('tab management: dirty dot, context menu, reveal', () => {
     expect(document.querySelector('.tree-row.flash')).toBeTruthy()
   })
 })
+
+describe('tab management: reorder + jump shortcuts', () => {
+  const tabDataTransfer = () => ({
+    store: {} as Record<string, string>,
+    effectAllowed: '',
+    types: ['application/x-tiger-tab'],
+    setData(k: string, v: string) {
+      this.store[k] = v
+    },
+    getData(k: string) {
+      return this.store[k] ?? ''
+    }
+  })
+
+  it('reorders tabs by drag and drop', () => {
+    render(<App />)
+    fireEvent.click(within(sidebar()).getByText('List users'))
+    const tabs = () => [...document.querySelectorAll('.request-tab-name')].map((n) => n.textContent)
+    expect(tabs()).toEqual(['List posts', 'List users'])
+    const dataTransfer = tabDataTransfer()
+    const [first, second] = document.querySelectorAll('.request-tab')
+    fireEvent.dragStart(first, { dataTransfer })
+    // jsdom rects are zero-sized, so clientX 0 resolves to side 'after'.
+    fireEvent.dragOver(second, { dataTransfer })
+    fireEvent.drop(second, { dataTransfer })
+    expect(tabs()).toEqual(['List users', 'List posts'])
+  })
+
+  it('cycles in the new order after a reorder', () => {
+    render(<App />)
+    fireEvent.click(within(sidebar()).getByText('List users'))
+    const dataTransfer = tabDataTransfer()
+    const [first, second] = document.querySelectorAll('.request-tab')
+    fireEvent.dragStart(first, { dataTransfer })
+    fireEvent.dragOver(second, { dataTransfer })
+    fireEvent.drop(second, { dataTransfer })
+    // Active is still List users (first now); Ctrl+Tab wraps to List posts.
+    fireEvent.keyDown(window, { key: 'Tab', ctrlKey: true })
+    expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
+  })
+
+  it('jumps to tabs with Cmd+1, Cmd+2 and Cmd+9 (last)', () => {
+    render(<App />)
+    fireEvent.click(within(sidebar()).getByText('List users'))
+    fireEvent.click(within(sidebar()).getByText('Get post'))
+    fireEvent.keyDown(window, { key: '1', metaKey: true })
+    expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: '2', metaKey: true })
+    expect(screen.getByDisplayValue('List users')).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: '9', metaKey: true })
+    expect(screen.getByDisplayValue('Get post')).toBeInTheDocument()
+  })
+})

@@ -784,6 +784,37 @@ export default function App() {
     [openTabs, activeTabKey, activateTab]
   )
 
+  /** Key-based reorder: rendered tabs can be a filtered subset of openTabs. */
+  const reorderTabs = useCallback(
+    (sourceKey: string, targetKey: string, side: 'before' | 'after') => {
+      setOpenTabs((prev) => {
+        const from = prev.findIndex((t) => tabKey(t) === sourceKey)
+        if (from === -1 || sourceKey === targetKey) return prev
+        const copy = [...prev]
+        const [moved] = copy.splice(from, 1)
+        const to = copy.findIndex((t) => tabKey(t) === targetKey)
+        if (to === -1) return prev
+        copy.splice(side === 'before' ? to : to + 1, 0, moved)
+        return copy
+      })
+    },
+    []
+  )
+
+  /** Cmd/Ctrl+1..8 jump to the Nth visible tab; 9 jumps to the last one. */
+  const jumpToTab = useCallback(
+    (n: number) => {
+      const entryIds = new Set(collectionsRef.current.flatMap((c) => c.entries.map((e) => e.id)))
+      const colIds = new Set(collectionsRef.current.map((c) => c.id))
+      const visible = openTabs.filter((t) =>
+        t.kind === 'request' ? entryIds.has(t.id) : colIds.has(t.colId)
+      )
+      const target = n === 9 ? visible[visible.length - 1] : visible[n - 1]
+      if (target) activateTab(target)
+    },
+    [openTabs, activateTab]
+  )
+
   /** Ask the sidebar to expand ancestors and flash a request row. */
   const revealSeq = useRef(0)
   const [sidebarReveal, setSidebarReveal] = useState<{ id: string; nonce: number } | null>(null)
@@ -857,6 +888,11 @@ export default function App() {
       }
       // While the palette is open it owns the keyboard, except the toggle.
       if (paletteOpen && e.key.toLowerCase() !== 'k') return
+      if (/^[1-9]$/.test(e.key) && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        jumpToTab(Number(e.key))
+        return
+      }
       const key = e.key.toLowerCase()
       if (key === 's') {
         e.preventDefault()
@@ -887,7 +923,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [save, send, paletteOpen, cycleTab, closeActiveTab, newRequestShortcut])
+  }, [save, send, paletteOpen, cycleTab, closeActiveTab, newRequestShortcut, jumpToTab])
 
   // Cmd+W arrives from the main process (it must block the menu accelerator).
   const closeActiveTabRef = useRef(closeActiveTab)
@@ -1924,6 +1960,7 @@ export default function App() {
               }}
               onClose={closeTab}
               onTabMenu={openTabMenu}
+              onReorder={reorderTabs}
             />
             {inspect ? (
               (() => {

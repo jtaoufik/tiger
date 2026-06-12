@@ -3,7 +3,7 @@
  * folder page. Labels and methods come from the App's collections state at
  * render time, so renames stay in sync. Middle-click closes a tab.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { HttpMethod } from '@core/types'
 import { BoxIcon, CloseIcon, FolderIcon } from './Icons'
 import './RequestTabs.css'
@@ -23,10 +23,12 @@ interface RequestTabsProps {
   onSelect: (key: string) => void
   onClose: (key: string) => void
   onTabMenu: (key: string, x: number, y: number) => void
+  onReorder: (sourceKey: string, targetKey: string, side: 'before' | 'after') => void
 }
 
-export function RequestTabs({ tabs, activeKey, onSelect, onClose, onTabMenu }: RequestTabsProps) {
+export function RequestTabs({ tabs, activeKey, onSelect, onClose, onTabMenu, onReorder }: RequestTabsProps) {
   const stripRef = useRef<HTMLDivElement>(null)
+  const [drop, setDrop] = useState<{ key: string; side: 'before' | 'after' } | null>(null)
 
   // Keep the active tab visible when activating or opening at the end.
   useEffect(() => {
@@ -42,8 +44,30 @@ export function RequestTabs({ tabs, activeKey, onSelect, onClose, onTabMenu }: R
           role="tab"
           aria-selected={tab.key === activeKey}
           tabIndex={0}
-          className={`request-tab${tab.key === activeKey ? ' active' : ''}`}
+          className={`request-tab${tab.key === activeKey ? ' active' : ''}${
+            drop?.key === tab.key ? ` drop-${drop.side}` : ''
+          }`}
           title={tab.label}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('application/x-tiger-tab', tab.key)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes('application/x-tiger-tab')) return
+            e.preventDefault()
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+            const side = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+            setDrop({ key: tab.key, side })
+          }}
+          onDragLeave={() => setDrop((d) => (d?.key === tab.key ? null : d))}
+          onDrop={(e) => {
+            e.preventDefault()
+            const source = e.dataTransfer.getData('application/x-tiger-tab')
+            if (source && drop) onReorder(source, tab.key, drop.side)
+            setDrop(null)
+          }}
+          onDragEnd={() => setDrop(null)}
           onClick={() => onSelect(tab.key)}
           onContextMenu={(e) => {
             e.preventDefault()
