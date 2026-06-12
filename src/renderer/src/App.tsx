@@ -286,6 +286,8 @@ export default function App() {
   const savedText = useRef<Record<string, string>>({})
   /** Guards async continuations against requests deleted mid-flight. */
   const deletedIds = useRef(new Set<string>())
+  /** Requests edited since last save, for cheap dirty tracking on large bodies. */
+  const editedIds = useRef(new Set<string>())
   /** Monotonic token so a stale environment file read can't win a race. */
   const envSeq = useRef(0)
 
@@ -412,6 +414,7 @@ export default function App() {
         try {
           const parsed = parseRequest(await window.tiger.readFile(pathById[activeId]))
           savedText.current[activeId] = serializeRequest(parsed)
+          editedIds.current.delete(activeId)
           setRequestsById((prev) => ({ ...prev, [activeId]: parsed }))
         } catch {
           /* file removed by the git op; leave it dropped */
@@ -450,6 +453,7 @@ export default function App() {
         try {
           const parsed = parseRequest(await window.tiger.readFile(pathById[id]))
           savedText.current[id] = serializeRequest(parsed)
+          editedIds.current.delete(id)
           setRequestsById((prev) => ({ ...prev, [id]: parsed }))
           return parsed
         } catch {
@@ -543,6 +547,8 @@ export default function App() {
   const updateActive = useCallback(
     (request: TigerRequest) => {
       if (!activeId) return
+      // Cheap dirty flag for large bodies, where serializing per keystroke lags.
+      editedIds.current.add(activeId)
       setRequestsById((prev) => ({ ...prev, [activeId]: request }))
       // Keep the sidebar entry's name and method in sync with the editor, but
       // only rebuild collections when one of those actually changed. Otherwise
@@ -725,6 +731,7 @@ export default function App() {
       const text = serializeRequest(active)
       await window.tiger.writeFile(path, text)
       savedText.current[activeId] = text
+      editedIds.current.delete(activeId)
       toast('Saved')
     }
   }, [activeId, active, pathById, toast])
@@ -809,6 +816,7 @@ export default function App() {
         const text = serializeRequest(req)
         await window.tiger.writeFile(path, text)
         savedText.current[id] = text
+        editedIds.current.delete(id)
         setPathById((prev) => ({ ...prev, [id]: path }))
       } else {
         id = `${target.id}${SEP}curl-${Date.now()}`
@@ -1000,6 +1008,7 @@ export default function App() {
         const text = serializeRequest(request)
         await window.tiger.writeFile(path, text)
         savedText.current[id] = text
+        editedIds.current.delete(id)
         setPathById((prev) => ({ ...prev, [id]: path }))
       } else {
         id = `${col.id}${SEP}new-${Date.now()}`
@@ -1047,6 +1056,7 @@ export default function App() {
         const text = serializeRequest(clone)
         await window.tiger.writeFile(path, text)
         savedText.current[id] = text
+        editedIds.current.delete(id)
         setPathById((prev) => ({ ...prev, [id]: path }))
       } else {
         id = `${col.id}${SEP}dup-${Date.now()}`
@@ -1388,11 +1398,22 @@ export default function App() {
 
   const envCollections = collections.filter((c) => c.environments.length > 0)
 
-  const activeSerialized = active ? serializeRequest(active) : ''
-  const dirty = !!(activeId && pathById[activeId] && savedText.current[activeId] !== activeSerialized)
-  const missingVars = activeEffective
-    ? findMissingVars(sentSurface(activeEffective), envToVars(activeEnv))
-    : []
+  // Past this body size, serializing and var-scanning on every keystroke lags;
+  // fall back to a flag-based dirty check and skip the missing-var warning.
+  const LARGE_BODY = 100_000
+  const largeBody = (active?.body.content.length ?? 0) > LARGE_BODY
+  const activeSerialized = active && !largeBody ? serializeRequest(active) : ''
+  const dirty = !!(
+    activeId &&
+    pathById[activeId] &&
+    (largeBody
+      ? editedIds.current.has(activeId)
+      : savedText.current[activeId] !== activeSerialized)
+  )
+  const missingVars =
+    activeEffective && !largeBody
+      ? findMissingVars(sentSurface(activeEffective), envToVars(activeEnv))
+      : []
 
   const paletteItems: SearchItem[] = collections.flatMap((c) =>
     c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))

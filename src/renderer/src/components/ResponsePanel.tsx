@@ -83,8 +83,23 @@ export function ResponsePanel({ state }: Props) {
   }
 
   const res = state.data!
-  const showPretty = pretty && res.isJson
+  // Skip tokenized highlighting for very large bodies to stay responsive.
+  const showPretty = pretty && res.isJson && !res.tooLargeToPretty
   const bodyText = showPretty ? res.body : res.raw
+
+  const t = res.timings
+  const timingTitle = t
+    ? [
+        t.dns != null ? `DNS lookup  ${t.dns} ms` : null,
+        t.tcp != null ? `TCP connect  ${t.tcp} ms` : null,
+        t.tls != null ? `TLS handshake  ${t.tls} ms` : null,
+        `Waiting (TTFB)  ${t.waiting} ms`,
+        `Download  ${t.download} ms`,
+        `Total  ${t.total} ms`
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : ''
   const cookies = parseSetCookie(
     res.headers.filter((h) => h.name.toLowerCase() === 'set-cookie').map((h) => h.value)
   )
@@ -108,14 +123,19 @@ export function ResponsePanel({ state }: Props) {
         <span className={`status-pill ${res.ok ? 'status-ok' : 'status-bad'}`}>
           {res.status} {res.statusText}
         </span>
-        <span className="meta-chip">
+        <span className="meta-chip" title={timingTitle}>
           Time <b>{res.timeMs} ms</b>
         </span>
+        {t && (t.waiting > 0 || t.download > 0) && (
+          <span className="meta-chip timing" title={timingTitle}>
+            TTFB <b>{t.waiting} ms</b> · Down <b>{t.download} ms</b>
+          </span>
+        )}
         <span className="meta-chip">
           Size <b>{res.sizeLabel}</b>
         </span>
         <span style={{ flex: 1 }} />
-        {tab === 'body' && res.isJson && (
+        {tab === 'body' && res.isJson && !res.tooLargeToPretty && (
           <div className="seg mini">
             <button className={pretty ? 'on' : ''} onClick={() => setPretty(true)}>
               Pretty
@@ -124,6 +144,11 @@ export function ResponsePanel({ state }: Props) {
               Raw
             </button>
           </div>
+        )}
+        {tab === 'body' && res.tooLargeToPretty && (
+          <span className="meta-chip" title="Highlighting and pretty-print are off for very large responses to keep Tiger responsive.">
+            Large response · raw
+          </span>
         )}
         {tab === 'body' && (
           <button

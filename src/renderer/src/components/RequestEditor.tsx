@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { HTTP_METHODS, type BodyType, type KeyValue, type TigerRequest } from '@core/types'
-import { formatJsonText, minifyJsonText } from '@core/jsonHighlight'
+import { formatJsonText, isValidJson, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
 import { AuthEditor } from './AuthEditor'
 import { CheckIcon, CodeIcon, CopyIcon, GaugeIcon, SaveIcon } from './Icons'
@@ -204,7 +204,8 @@ export function RequestEditor({
               </div>
               {request.body.type === 'json' && request.body.content.trim() && (
                 <>
-                  {!formatJsonText(request.body.content).ok &&
+                  {request.body.content.length < 100000 &&
+                    !isValidJson(request.body.content) &&
                     !request.body.content.includes('{{') && (
                       <span className="json-bad">Invalid JSON</span>
                     )}

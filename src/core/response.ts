@@ -3,12 +3,28 @@
  * timing, a human size label, and a pretty-printed body when it is JSON.
  */
 
+/**
+ * Phase timings in milliseconds, as far as the transport exposes them. `waiting`
+ * is time to first byte (request sent until response headers), `download` is the
+ * body transfer, `total` is the whole exchange. DNS/TCP/TLS are filled in only on
+ * the Node send path (used when client certificates are configured).
+ */
+export interface ResponseTimings {
+  total: number
+  waiting: number
+  download: number
+  dns?: number
+  tcp?: number
+  tls?: number
+}
+
 export interface RawResponse {
   status: number
   statusText: string
   headers: Record<string, string>
   body: string
   timeMs: number
+  timings?: ResponseTimings
 }
 
 export interface FormattedResponse {
@@ -16,14 +32,20 @@ export interface FormattedResponse {
   statusText: string
   ok: boolean
   timeMs: number
+  timings?: ResponseTimings
   size: number
   sizeLabel: string
   contentType: string
   isJson: boolean
+  /** True when the body was too large to pretty-print (kept raw to avoid lag). */
+  tooLargeToPretty: boolean
   body: string
   raw: string
   headers: Array<{ name: string; value: string }>
 }
+
+/** Above this body size we skip JSON pretty-printing and highlighting to stay responsive. */
+export const PRETTY_LIMIT = 2_000_000
 
 export function byteLength(text: string): number {
   return new TextEncoder().encode(text).length
@@ -55,7 +77,10 @@ export function formatResponse(res: RawResponse): FormattedResponse {
 
   let isJson = false
   let body = res.body
-  if (res.body.trim().length > 0) {
+  // Very large bodies are kept raw: parsing + re-stringifying a multi-MB string
+  // is what makes other clients lag, so we skip it past PRETTY_LIMIT.
+  const tooLargeToPretty = res.body.length > PRETTY_LIMIT
+  if (res.body.trim().length > 0 && !tooLargeToPretty) {
     try {
       const parsed = JSON.parse(res.body)
       body = JSON.stringify(parsed, null, 2)
@@ -64,6 +89,8 @@ export function formatResponse(res: RawResponse): FormattedResponse {
       isJson = false
       body = res.body
     }
+  } else if (tooLargeToPretty) {
+    isJson = /json/i.test(contentType)
   }
 
   return {
@@ -71,10 +98,12 @@ export function formatResponse(res: RawResponse): FormattedResponse {
     statusText: res.statusText,
     ok: res.status >= 200 && res.status < 300,
     timeMs: res.timeMs,
+    timings: res.timings,
     size,
     sizeLabel: humanSize(size),
     contentType,
     isJson,
+    tooLargeToPretty,
     body,
     raw: res.body,
     headers: Object.entries(res.headers).map(([name, value]) => ({ name, value }))

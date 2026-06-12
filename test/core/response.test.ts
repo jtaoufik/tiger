@@ -59,3 +59,33 @@ describe('formatResponse', () => {
     expect(out.isJson).toBe(false)
   })
 })
+
+describe('formatResponse timings + large bodies', () => {
+  it('passes through phase timings', () => {
+    const r = formatResponse({
+      status: 200, statusText: 'OK', headers: {}, body: '{}', timeMs: 120,
+      timings: { total: 120, waiting: 90, download: 30 }
+    })
+    expect(r.timings).toEqual({ total: 120, waiting: 90, download: 30 })
+  })
+
+  it('skips pretty-printing past the size limit and flags it', () => {
+    const big = '[' + '1,'.repeat(1_100_000) + '1]' // > PRETTY_LIMIT chars
+    const r = formatResponse({
+      status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' },
+      body: big, timeMs: 5
+    })
+    expect(r.tooLargeToPretty).toBe(true)
+    expect(r.body).toBe(big) // unchanged, not re-stringified
+    expect(r.isJson).toBe(true) // inferred from content-type
+  })
+
+  it('pretty-prints normal JSON and marks it not-too-large', () => {
+    const r = formatResponse({
+      status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' },
+      body: '{"a":1}', timeMs: 5
+    })
+    expect(r.tooLargeToPretty).toBe(false)
+    expect(r.body).toBe('{\n  "a": 1\n}')
+  })
+})

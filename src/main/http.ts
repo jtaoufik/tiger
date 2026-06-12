@@ -154,7 +154,12 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
           ? { ...tls, rejectUnauthorized: s.sslVerify && !hostExcepted(s, parsed.hostname) }
           : {})
       }
+      // Socket-level phase timings (only meaningful on the final, non-redirect hop).
+      let dnsAt = 0
+      let connectAt = 0
+      let tlsAt = 0
       const req = requester(url, options, (res) => {
+        const headersAt = Date.now()
         const status = res.statusCode ?? 0
         const location = res.headers.location
         // Persist Set-Cookie on EVERY hop, not just the final response, so the
@@ -183,6 +188,7 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
         const chunks: Buffer[] = []
         res.on('data', (c: Buffer) => chunks.push(c))
         res.on('end', () => {
+          const endAt = Date.now()
           const headers: Record<string, string> = {}
           for (const [name, value] of Object.entries(res.headers)) {
             if (name.toLowerCase() === 'set-cookie' && Array.isArray(value)) {
@@ -196,8 +202,27 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
             statusText: res.statusMessage ?? '',
             headers,
             body: Buffer.concat(chunks).toString('utf8'),
-            timeMs: Date.now() - started
+            timeMs: endAt - started,
+            timings: {
+              total: endAt - started,
+              waiting: headersAt - started,
+              download: endAt - headersAt,
+              ...(dnsAt ? { dns: dnsAt - started } : {}),
+              ...(connectAt && dnsAt ? { tcp: connectAt - dnsAt } : {}),
+              ...(tlsAt && connectAt ? { tls: tlsAt - connectAt } : {})
+            }
           })
+        })
+      })
+      req.on('socket', (socket) => {
+        socket.on('lookup', () => {
+          dnsAt = Date.now()
+        })
+        socket.on('connect', () => {
+          connectAt = Date.now()
+        })
+        socket.on('secureConnect', () => {
+          tlsAt = Date.now()
         })
       })
       req.on('error', reject)
@@ -236,7 +261,10 @@ export async function sendHttp(
       signal: controller.signal,
       redirect: s.followRedirects ? 'follow' : 'manual'
     })
+    // net.fetch resolves once response headers arrive: that marks time-to-first-byte.
+    const headersAt = Date.now()
     const body = await res.text()
+    const endAt = Date.now()
     const headers: Record<string, string> = {}
     res.headers.forEach((value, key) => {
       headers[key] = value
@@ -251,7 +279,12 @@ export async function sendHttp(
       statusText: res.statusText,
       headers,
       body,
-      timeMs: Date.now() - started
+      timeMs: endAt - started,
+      timings: {
+        total: endAt - started,
+        waiting: headersAt - started,
+        download: endAt - headersAt
+      }
     }
   } finally {
     clearTimeout(timer)

@@ -56,3 +56,14 @@ export function minifyJsonText(text: string): { ok: boolean; formatted?: string 
     return { ok: false }
   }
 }
+
+/** Cheap validity check (parse only, no re-stringify) for the editor badge. */
+export function isValidJson(text: string): boolean {
+  if (!text.trim()) return false
+  try {
+    JSON.parse(text)
+    return true
+  } catch {
+    return false
+  }
+}

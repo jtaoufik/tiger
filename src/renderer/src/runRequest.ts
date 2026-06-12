@@ -48,7 +48,9 @@ export async function runRequest(
           body: built.body,
           signal: controller.signal
         })
+        const headersAt = performance.now()
         const body = await res.text()
+        const endAt = performance.now()
         const headers: Record<string, string> = {}
         res.headers.forEach((value, key) => {
           headers[key] = value
@@ -58,7 +60,12 @@ export async function runRequest(
           statusText: res.statusText,
           headers,
           body,
-          timeMs: Math.round(performance.now() - started)
+          timeMs: Math.round(endAt - started),
+          timings: {
+            total: Math.round(endAt - started),
+            waiting: Math.round(headersAt - started),
+            download: Math.round(endAt - headersAt)
+          }
         }
       } finally {
         clearTimeout(timer)

@@ -5,6 +5,9 @@ All notable changes to Tiger are documented here. The update checker reads
 
 ## Unreleased
 
+- Response timing breakdown: TTFB (waiting), download and total, with DNS/TCP/TLS phases on the certificate send path
+- Large JSON paste and big responses stay responsive (pretty-print and highlighting cap past ~2 MB; cheaper editor validity check)
+
 - Export collections to OpenAPI 3.0 (import already supported OpenAPI and Swagger)
 - Pre-request and post-response scripts with assertions and a tests panel
 - Collection and folder pages open as tabs; folder-level docs and default auth
