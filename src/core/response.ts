@@ -23,6 +23,8 @@ export interface RawResponse {
   statusText: string
   headers: Record<string, string>
   body: string
+  /** Base64 body bytes, included by the transport for image responses only. */
+  bodyBase64?: string
   timeMs: number
   timings?: ResponseTimings
 }
@@ -39,6 +41,8 @@ export interface FormattedResponse {
   isJson: boolean
   /** True when the body was too large to pretty-print (kept raw to avoid lag). */
   tooLargeToPretty: boolean
+  /** data: URL for image responses, ready for an <img> preview. */
+  imageDataUrl?: string
   body: string
   raw: string
   headers: Array<{ name: string; value: string }>
@@ -93,6 +97,11 @@ export function formatResponse(res: RawResponse): FormattedResponse {
     isJson = /json/i.test(contentType)
   }
 
+  const imageDataUrl =
+    res.bodyBase64 && /^image\//i.test(contentType)
+      ? `data:${contentType.split(';')[0]};base64,${res.bodyBase64}`
+      : undefined
+
   return {
     status: res.status,
     statusText: res.statusText,
@@ -104,6 +113,7 @@ export function formatResponse(res: RawResponse): FormattedResponse {
     contentType,
     isJson,
     tooLargeToPretty,
+    ...(imageDataUrl ? { imageDataUrl } : {}),
     body,
     raw: res.body,
     headers: Object.entries(res.headers).map(([name, value]) => ({ name, value }))

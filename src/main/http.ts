@@ -203,11 +203,14 @@ function sendViaNode(
               headers[name] = Array.isArray(value) ? value.join(', ') : String(value)
             }
           }
+          const bodyBuf = Buffer.concat(chunks)
+          const isImage = /^image\//i.test(String(res.headers['content-type'] ?? ''))
           resolve({
             status,
             statusText: res.statusMessage ?? '',
             headers,
-            body: Buffer.concat(chunks).toString('utf8'),
+            body: bodyBuf.toString('utf8'),
+            ...(isImage ? { bodyBase64: bodyBuf.toString('base64') } : {}),
             timeMs: endAt - started,
             timings: {
               total: endAt - started,
@@ -304,12 +307,14 @@ export async function sendHttp(
     })
     // net.fetch resolves once response headers arrive: that marks time-to-first-byte.
     const headersAt = Date.now()
-    const body = await res.text()
+    const buf = Buffer.from(await res.arrayBuffer())
+    const body = buf.toString('utf8')
     const endAt = Date.now()
     const headers: Record<string, string> = {}
     res.headers.forEach((value, key) => {
       headers[key] = value
     })
+    const isImage = /^image\//i.test(headers['content-type'] ?? '')
     if (s.cookieJarEnabled) {
       const fetchHeaders = res.headers as Headers & { getSetCookie?: () => string[] }
       const setCookies = fetchHeaders.getSetCookie?.() ?? (headers['set-cookie'] ? [headers['set-cookie']] : [])
@@ -320,6 +325,7 @@ export async function sendHttp(
       statusText: res.statusText,
       headers,
       body,
+      ...(isImage ? { bodyBase64: buf.toString('base64') } : {}),
       timeMs: endAt - started,
       timings: {
         total: endAt - started,

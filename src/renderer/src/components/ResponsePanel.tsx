@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormattedResponse } from '@core/response'
 import { parseSetCookie } from '@core/cookies'
+import { findMatches, splitByRanges } from '@core/textSearch'
 import { Logo } from '../Logo'
-import { CheckIcon, CopyIcon, SaveIcon, WrapIcon } from './Icons'
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CloseIcon, CopyIcon, SaveIcon, SearchIcon, WrapIcon } from './Icons'
 import { JsonView } from './JsonView'
+import './ResponsePanel.css'
 
 interface ScriptTest {
   name: string
@@ -38,6 +40,33 @@ export function ResponsePanel({ state }: Props) {
   const [pretty, setPretty] = useState(true)
   const [wrap, setWrap] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [preview, setPreview] = useState(true)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [activeMatch, setActiveMatch] = useState(0)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const activeMarkRef = useRef<HTMLElement>(null)
+  const hasData = !!state?.data
+
+  // Cmd/Ctrl+F opens search whenever a response is on screen.
+  useEffect(() => {
+    if (!hasData) return
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setTab('body')
+        setSearchOpen(true)
+        setTimeout(() => searchInputRef.current?.select(), 0)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [hasData])
+
+  // Keep the active match visible.
+  useEffect(() => {
+    activeMarkRef.current?.scrollIntoView?.({ block: 'center' })
+  }, [activeMatch, query])
 
   const copyBody = async (body: string) => {
     try {
@@ -86,6 +115,9 @@ export function ResponsePanel({ state }: Props) {
   // Skip tokenized highlighting for very large bodies to stay responsive.
   const showPretty = pretty && res.isJson && !res.tooLargeToPretty
   const bodyText = showPretty ? res.body : res.raw
+  const isHtml = /text\/html/i.test(res.contentType)
+  const showImage = !!res.imageDataUrl && preview
+  const showHtmlPreview = isHtml && preview && !res.imageDataUrl
 
   const t = res.timings
   const timingTitle = t
@@ -117,6 +149,14 @@ export function ResponsePanel({ state }: Props) {
     }
   }
 
+  const search = query && searchOpen ? findMatches(bodyText, query) : { ranges: [], truncated: false }
+  const matchTotal = search.ranges.length
+
+  const nextMatch = (dir: 1 | -1) => {
+    if (!matchTotal) return
+    setActiveMatch((cur) => (cur + dir + matchTotal) % matchTotal)
+  }
+
   return (
     <section className="panel response">
       <div className="response-head">
@@ -144,6 +184,29 @@ export function ResponsePanel({ state }: Props) {
               Raw
             </button>
           </div>
+        )}
+        {tab === 'body' && (isHtml || res.imageDataUrl) && (
+          <div className="seg mini">
+            <button className={preview ? 'on' : ''} onClick={() => setPreview(true)}>
+              Preview
+            </button>
+            <button className={!preview ? 'on' : ''} onClick={() => setPreview(false)}>
+              Raw
+            </button>
+          </div>
+        )}
+        {tab === 'body' && (
+          <button
+            className="icon-btn"
+            title="Search in response (Cmd/Ctrl+F)"
+            style={searchOpen ? { color: 'var(--accent)' } : undefined}
+            onClick={() => {
+              setSearchOpen((o) => !o)
+              setTimeout(() => searchInputRef.current?.select(), 0)
+            }}
+          >
+            <SearchIcon size={14} />
+          </button>
         )}
         {tab === 'body' && res.tooLargeToPretty && (
           <span className="meta-chip" title="Highlighting and pretty-print are off for very large responses to keep Tiger responsive.">
@@ -185,13 +248,76 @@ export function ResponsePanel({ state }: Props) {
       </div>
 
       {tab === 'body' ? (
-        <div className="response-body" style={wrap ? { whiteSpace: 'pre-wrap', wordBreak: 'break-all' } : undefined}>
-          {bodyText ? (
-            showPretty ? <JsonView text={bodyText} /> : bodyText
-          ) : (
-            '(empty body)'
+        <>
+          {searchOpen && (
+            <div className="resp-search">
+              <SearchIcon size={13} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search in response"
+                value={query}
+                spellCheck={false}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setActiveMatch(0)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') nextMatch(e.shiftKey ? -1 : 1)
+                  if (e.key === 'Escape') setSearchOpen(false)
+                }}
+              />
+              <span className="resp-search-count">
+                {matchTotal ? `${activeMatch + 1}/${matchTotal}${search.truncated ? '+' : ''}` : '0/0'}
+              </span>
+              <button className="icon-btn" title="Previous match (Shift+Enter)" onClick={() => nextMatch(-1)}>
+                <ArrowUpIcon size={13} />
+              </button>
+              <button className="icon-btn" title="Next match (Enter)" onClick={() => nextMatch(1)}>
+                <ArrowDownIcon size={13} />
+              </button>
+              <button className="icon-btn" title="Close search (Esc)" onClick={() => setSearchOpen(false)}>
+                <CloseIcon size={13} />
+              </button>
+            </div>
           )}
-        </div>
+          {showImage ? (
+            <div className="response-body img-preview">
+              <img src={res.imageDataUrl} alt="Response image preview" />
+            </div>
+          ) : showHtmlPreview ? (
+            <iframe className="html-preview" sandbox="" srcDoc={res.raw} title="HTML response preview" />
+          ) : (
+            <div
+              className="response-body"
+              style={wrap ? { whiteSpace: 'pre-wrap', wordBreak: 'break-all' } : undefined}
+            >
+              {bodyText ? (
+                searchOpen && query && matchTotal ? (
+                  splitByRanges(bodyText, search.ranges).map((seg, i) =>
+                    seg.match === null ? (
+                      seg.text
+                    ) : (
+                      <mark
+                        key={i}
+                        ref={seg.match === activeMatch ? activeMarkRef : undefined}
+                        className={seg.match === activeMatch ? 'hit active' : 'hit'}
+                      >
+                        {seg.text}
+                      </mark>
+                    )
+                  )
+                ) : showPretty ? (
+                  <JsonView text={bodyText} />
+                ) : (
+                  bodyText
+                )
+              ) : (
+                '(empty body)'
+              )}
+            </div>
+          )}
+        </>
       ) : tab === 'headers' ? (
         <div className="response-body" style={{ whiteSpace: 'normal' }}>
           {res.headers.map((h, i) => (
