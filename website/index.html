@@ -402,6 +402,11 @@
     }
     .install-note b { color: var(--cream); }
     .install-note p { margin: 8px 0 0; font-size: 14.5px; color: var(--dim); }
+    .install-note code {
+      font-family: var(--mono); font-size: 12.5px;
+      background: rgba(36, 24, 8, 0.06); padding: 2px 6px; border-radius: 5px;
+      color: var(--cream); white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -618,7 +623,10 @@
       <div class="install-note">
         <b>First launch on a fresh machine</b>
         <p class="m">
-          <b>macOS:</b> right-click the app and choose Open, then confirm.
+          <b>macOS:</b> right-click the app and choose Open. If macOS still blocks it
+          ("Apple cannot check it"), open System Settings, go to Privacy &amp; Security, and
+          click "Open Anyway". As a last resort, run
+          <code>xattr -dr com.apple.quarantine /Applications/Tiger.app</code> in Terminal.
         </p>
         <p class="m">
           <b>Windows:</b> Defender SmartScreen may warn because the app is new and unsigned.
