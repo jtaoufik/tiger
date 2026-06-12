@@ -1,6 +1,6 @@
 {
   "name": "tiger-api-client",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
   "author": "jtaoufik",
   "license": "MIT",
@@ -114,6 +114,12 @@
         },
         {
           "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "x64"
           ]

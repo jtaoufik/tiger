@@ -1,13 +1,12 @@
 {
-  "version": "0.3.0",
+  "version": "0.3.1",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Pre-request and post-response scripts with assertions and a tests panel",
-    "Collection and folder pages open as tabs; folder-level docs and default auth",
-    "OpenAPI 3.0 export (import already covered OpenAPI and Swagger)",
-    "Response timing breakdown: TTFB, download and total",
-    "Large JSON paste and big responses stay smooth",
-    "Lucide icon set; per-request and per-collection history",
-    "Background auto-update from GitHub Releases"
+    "Complete tab management: right-click menu (close others/right/all), drag to reorder, unsaved-change dots, Cmd 1-9 jumps",
+    "Your session survives restarts: collections and tabs reopen where you left off",
+    "Collection runner, multipart file upload, response search and previews",
+    "Keyboard shortcuts overlay (Cmd+/) and reveal-in-sidebar",
+    "Collection and folder pages organized in tabs; Code and Perf as editor tabs",
+    "Windows builds are back: install via winget or the direct installer"
   ]
 }

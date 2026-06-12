@@ -3,6 +3,18 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.3.1 · 2026-06-12
+
+- Complete tab management: right-click menu (Close / Close others / Close to the right / Close all / Reveal in sidebar), drag-to-reorder, unsaved-change dots, Cmd/Ctrl+1-9 tab jumps, active tab kept in view
+- Session restore: open collections, the tab strip and the active tab survive restarts
+- Collection runner with live pass/fail from script tests, on collection and folder pages
+- multipart/form-data bodies with per-row file upload; curl -F codegen
+- Response power tools: Cmd/Ctrl+F search with highlights, sandboxed HTML preview, inline image preview, timing breakdown on hover
+- Keyboard shortcuts overlay (Cmd/Ctrl+/), close-tab, tab cycling, quick-create, focus-URL
+- Sidebar: inline rename (double-click or F2), duplicate folder, drag requests between folders (moves files on disk)
+- Collection and folder pages organized in tabs; Code and Perf are editor tabs
+- Windows builds return: install via winget (no SmartScreen prompt) or the direct installer
+
 ## 0.3.0 · 2026-06-12
 
 - Now open source under the MIT license
