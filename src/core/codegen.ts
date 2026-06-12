@@ -11,7 +11,13 @@ export function toCurl(built: BuiltRequest): string {
   for (const [name, value] of Object.entries(built.headers)) {
     parts.push(`-H ${shellQuote(`${name}: ${value}`)}`)
   }
-  if (built.body) parts.push(`--data ${shellQuote(built.body)}`)
+  if (built.multipart?.length) {
+    for (const part of built.multipart) {
+      parts.push(`-F ${shellQuote(`${part.name}=${part.isFile ? `@${part.value}` : part.value}`)}`)
+    }
+  } else if (built.body) {
+    parts.push(`--data ${shellQuote(built.body)}`)
+  }
   return parts.join(' \\\n  ')
 }
 

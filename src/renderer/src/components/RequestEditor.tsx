@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { HTTP_METHODS, type BodyType, type KeyValue, type TigerRequest } from '@core/types'
 import { formatJsonText, isValidJson, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
+import { MultipartEditor } from './MultipartEditor'
 import { AuthEditor } from './AuthEditor'
 import { CheckIcon, CodeIcon, CopyIcon, GaugeIcon, SaveIcon } from './Icons'
 import './RequestEditor.css'
@@ -22,7 +23,7 @@ interface Props {
 
 type Tab = 'params' | 'headers' | 'auth' | 'body' | 'capture' | 'scripts' | 'docs'
 
-const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form', 'graphql']
+const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form', 'graphql', 'multipart']
 
 export function RequestEditor({
   request,
@@ -43,6 +44,9 @@ export function RequestEditor({
   // mid-typing. The component remounts per request (key={activeId} in App),
   // so this state never leaks across requests.
   const [formRows, setFormRows] = useState<KeyValue[]>(() => formToKv(request.body.content))
+  const [multipartRows, setMultipartRows] = useState<KeyValue[]>(() =>
+    formToKv(request.body.content)
+  )
   const [copiedBody, setCopiedBody] = useState(false)
   // Re-seed the form rows whenever the body type transitions INTO 'form'.
   // Without this, switching form -> json -> form keeps the stale rows from the
@@ -52,6 +56,9 @@ export function RequestEditor({
   useEffect(() => {
     if (request.body.type === 'form' && prevBodyType.current !== 'form') {
       setFormRows(formToKv(request.body.content))
+    }
+    if (request.body.type === 'multipart' && prevBodyType.current !== 'multipart') {
+      setMultipartRows(formToKv(request.body.content))
     }
     prevBodyType.current = request.body.type
   }, [request.body.type, request.body.content])
@@ -246,6 +253,15 @@ export function RequestEditor({
                 placeholder={['Field', 'Value']}
                 onChange={(kv) => {
                   setFormRows(kv)
+                  set({ body: { ...request.body, content: kvToForm(kv) } })
+                }}
+              />
+            )}
+            {request.body.type === 'multipart' && (
+              <MultipartEditor
+                items={multipartRows}
+                onChange={(kv) => {
+                  setMultipartRows(kv)
                   set({ body: { ...request.body, content: kvToForm(kv) } })
                 }}
               />

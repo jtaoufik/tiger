@@ -1,9 +1,11 @@
 import { net, session } from 'electron'
 import { readFileSync } from 'node:fs'
+import { basename } from 'node:path'
 import { request as httpsRequest, type RequestOptions } from 'node:https'
 import { request as httpRequest } from 'node:http'
 import { cookieHeaderFor, storeCookies } from './cookieJar'
 import type { BuiltRequest } from '../core/request'
+import { assembleMultipart, generateBoundary, type MultipartPart } from '../core/multipart'
 import type { RawResponse } from '../core/response'
 import { interpolate, type VarMap } from '../core/interpolate'
 import {
@@ -102,8 +104,8 @@ export function redirectHeaders(
 export function redirectMethodBody(
   status: number,
   method: string,
-  body: string | undefined
-): { method: string; body: string | undefined } {
+  body: string | Buffer | undefined
+): { method: string; body: string | Buffer | undefined } {
   if (status === 303) return { method: 'GET', body: undefined }
   if ((status === 301 || status === 302) && method.toUpperCase() === 'POST') {
     return { method: 'GET', body: undefined }
@@ -116,7 +118,11 @@ export function redirectMethodBody(
  * client certificates (PEM pair or PFX). Follows redirects manually. Note:
  * this path does not go through the Chromium proxy.
  */
-function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<RawResponse> {
+function sendViaNode(
+  built: BuiltRequest,
+  controller: AbortController,
+  bodyPayload: string | Buffer | undefined = built.body
+): Promise<RawResponse> {
   const s = loadSettings()
   const started = Date.now()
 
@@ -138,7 +144,7 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
   const follow = (
     url: string,
     method: string,
-    body: string | undefined,
+    body: string | Buffer | undefined,
     sendHeaders: Record<string, string>,
     hops: number
   ): Promise<RawResponse> =>
@@ -230,7 +236,33 @@ function sendViaNode(built: BuiltRequest, controller: AbortController): Promise<
       req.end()
     })
 
-  return follow(built.url, built.method, built.body, built.headers, 0)
+  return follow(built.url, built.method, bodyPayload, built.headers, 0)
+}
+
+/**
+ * Assemble a multipart body at send time: file rows are read from disk HERE
+ * (core stays pure), and the Content-Type carries the generated boundary.
+ */
+function resolveMultipart(
+  built: BuiltRequest
+): { headers: Record<string, string>; bodyBytes: Buffer } | null {
+  if (!built.multipart?.length) return null
+  const parts: MultipartPart[] = built.multipart.map((p) =>
+    p.isFile
+      ? {
+          name: p.name,
+          value: new Uint8Array(readFileSync(p.value)),
+          fileName: basename(p.value)
+        }
+      : { name: p.name, value: p.value }
+  )
+  const { bytes, contentType } = assembleMultipart(parts, generateBoundary())
+  const headers = { ...built.headers }
+  for (const k of Object.keys(headers)) {
+    if (k.toLowerCase() === 'content-type') delete headers[k]
+  }
+  headers['Content-Type'] = contentType
+  return { headers, bodyBytes: Buffer.from(bytes) }
 }
 
 export async function sendHttp(
@@ -250,14 +282,23 @@ export async function sendHttp(
     if (cookie) built = { ...built, headers: { ...built.headers, Cookie: cookie } }
   }
 
+  // multipart/form-data: read file rows and assemble the binary body now.
+  let bodyPayload: string | Buffer | undefined = built.body
+  const mp = resolveMultipart(built)
+  if (mp) {
+    built = { ...built, headers: mp.headers }
+    bodyPayload = mp.bodyBytes
+  }
+
   try {
     if (tlsConfigured(s)) {
-      return await sendViaNode(built, controller)
+      return await sendViaNode(built, controller, bodyPayload)
     }
     const res = await net.fetch(built.url, {
       method: built.method,
       headers: built.headers,
-      body: built.body,
+      // Buffer is a Uint8Array at runtime; TS's BodyInit just doesn't know it.
+      body: bodyPayload as BodyInit | undefined,
       signal: controller.signal,
       redirect: s.followRedirects ? 'follow' : 'manual'
     })

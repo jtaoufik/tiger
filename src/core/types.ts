@@ -38,7 +38,7 @@ export type TigerAuth =
       scope: string
     }
 
-export type BodyType = 'none' | 'json' | 'xml' | 'text' | 'form' | 'graphql'
+export type BodyType = 'none' | 'json' | 'xml' | 'text' | 'form' | 'graphql' | 'multipart'
 
 export interface TigerBody {
   type: BodyType

@@ -485,3 +485,27 @@ describe('collection runner', () => {
     expect(await screen.findByText('Run 3 requests')).toBeInTheDocument()
   })
 })
+
+describe('multipart body editor', () => {
+  it('offers multipart as a body type with field rows and a file picker', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText(/^Body/))
+    fireEvent.click(screen.getByRole('button', { name: 'multipart' }))
+    expect(screen.getByPlaceholderText('Field')).toBeInTheDocument()
+    expect(screen.getAllByTitle('Choose a file for this field').length).toBeGreaterThan(0)
+    expect(screen.getByText(/File rows upload the file/)).toBeInTheDocument()
+  })
+
+  it('keeps typed multipart rows in the request body content', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText(/^Body/))
+    fireEvent.click(screen.getByRole('button', { name: 'multipart' }))
+    fireEvent.change(screen.getAllByPlaceholderText('Field')[0], { target: { value: 'avatar' } })
+    fireEvent.change(screen.getAllByPlaceholderText('Text value, or pick a file')[0], {
+      target: { value: '@file:/tmp/cat.png' }
+    })
+    // The row materialized: a new trailing blank row appears.
+    expect(screen.getAllByPlaceholderText('Field').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByDisplayValue('@file:/tmp/cat.png')).toBeInTheDocument()
+  })
+})

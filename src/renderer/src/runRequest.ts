@@ -1,4 +1,5 @@
 import { buildRequest } from '@core/request'
+import { assembleMultipart, generateBoundary } from '@core/multipart'
 import { envToVars } from '@core/interpolate'
 import { formatResponse, type FormattedResponse, type RawResponse } from '@core/response'
 import type { TigerEnvironment, TigerRequest } from '@core/types'
@@ -42,10 +43,25 @@ export async function runRequest(
       const timer = setTimeout(() => controller.abort(), timeoutMs)
       const started = performance.now()
       try {
+        // multipart in the browser preview: text fields work; file rows need
+        // the desktop app (the browser cannot read arbitrary disk paths).
+        let bodyPayload: BodyInit | undefined = built.body
+        let sendHeaders = built.headers
+        if (built.multipart?.length) {
+          if (built.multipart.some((p) => p.isFile)) {
+            throw new Error('File uploads need the desktop app')
+          }
+          const assembled = assembleMultipart(
+            built.multipart.map((p) => ({ name: p.name, value: p.value })),
+            generateBoundary()
+          )
+          bodyPayload = assembled.bytes as unknown as BodyInit
+          sendHeaders = { ...sendHeaders, 'Content-Type': assembled.contentType }
+        }
         const res = await fetch(built.url, {
           method: built.method,
-          headers: built.headers,
-          body: built.body,
+          headers: sendHeaders,
+          body: bodyPayload,
           signal: controller.signal
         })
         const headersAt = performance.now()

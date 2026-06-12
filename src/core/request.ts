@@ -6,6 +6,7 @@
 
 import { applyAuth } from './auth'
 import { interpolate, type VarMap } from './interpolate'
+import { parseMultipartContent } from './multipart'
 import { parseKeyValues } from './tigerFormat'
 import type { TigerRequest } from './types'
 
@@ -14,6 +15,11 @@ export interface BuiltRequest {
   url: string
   headers: Record<string, string>
   body?: string
+  /**
+   * multipart/form-data parts (file rows carry the file PATH; the sender reads
+   * the bytes and assembles the body with a boundary at send time).
+   */
+  multipart?: Array<{ name: string; value: string; isFile: boolean }>
 }
 
 const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD'])
@@ -64,6 +70,7 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
   }
 
   let body: string | undefined
+  let multipart: BuiltRequest['multipart']
   if (req.body.type !== 'none' && !METHODS_WITHOUT_BODY.has(method)) {
     if (req.body.type === 'json') {
       body = interpolate(req.body.content, vars)
@@ -100,8 +107,17 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
       }
       body = JSON.stringify(variables === undefined ? { query } : { query, variables })
       if (!hasHeader(headers, 'content-type')) headers['Content-Type'] = 'application/json'
+    } else if (req.body.type === 'multipart') {
+      // The Content-Type (with boundary) is set by the sender when assembling.
+      multipart = parseMultipartContent(req.body.content)
+        .filter((row) => row.enabled !== false && row.name)
+        .map((row) => ({
+          name: interpolate(row.name, vars),
+          value: interpolate(row.value, vars),
+          isFile: row.isFile
+        }))
     }
   }
 
-  return { method, url, headers, body }
+  return multipart ? { method, url, headers, body, multipart } : { method, url, headers, body }
 }

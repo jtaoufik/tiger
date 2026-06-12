@@ -1,0 +1,21 @@
+/* multipart/form-data editor rows. */
+.multipart .mp-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.multipart .mp-value.is-file svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.multipart .mp-value .kv-input {
+  flex: 1;
+  min-width: 0;
+}
+.mp-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
