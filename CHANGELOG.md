@@ -3,20 +3,17 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
-## Unreleased
+## 0.3.0 · 2026-06-12
 
+- Now open source under the MIT license
+- Pre-request and post-response scripts (sandboxed JS) with assertions and a tests panel
+- Collection and folder pages open as tabs; folder-level documentation and default auth, inherited request -> folder -> collection
+- Export collections to OpenAPI 3.0 (import already supported OpenAPI and Swagger)
 - Response timing breakdown: TTFB (waiting), download and total, with DNS/TCP/TLS phases on the certificate send path
 - Large JSON paste and big responses stay responsive (pretty-print and highlighting cap past ~2 MB; cheaper editor validity check)
-
-- Export collections to OpenAPI 3.0 (import already supported OpenAPI and Swagger)
-- Pre-request and post-response scripts with assertions and a tests panel
-- Collection and folder pages open as tabs; folder-level docs and default auth
-- Per-request and per-collection history; background auto-update from GitHub Releases
-
-- Fix: `package.json` license field corrected from "MIT" to "SEE LICENSE IN LICENSE" to match the proprietary LICENSE file
-- Fix: `package` script now runs `build:mcp` before `electron-builder` so the MCP server is compiled into shipped builds
-- Fix: Added `asarUnpack` for `out/mcp/**` so the MCP server binary is extractable at runtime; added `bin.tiger-mcp` entry
-- Fix: Website operatingSystem JSON-LD and stat strip corrected from 3 platforms to 2 (macOS, Windows); FAQ deploy answer updated to reflect only the macOS DMG and Windows installer/portable that are published, with Linux/ZIP noted as available on request
+- Imported client certificates (CA bundle, PEM pair, PFX), persistent cookie jar, dynamic variables, GraphQL body
+- Per-request and per-collection history; Lucide icon set; background auto-update from GitHub Releases
+- macOS builds are signed and notarized; the `package` script now builds the MCP server and unpacks it from the asar
 
 ## 0.2.0 · 2026-06-11
 
