@@ -4,6 +4,7 @@ import type { SidebarEntry } from './Sidebar'
 import { AuthEditor } from './AuthEditor'
 import { FolderIcon, PlayIcon, PlusIcon } from './Icons'
 import './FolderView.css'
+import './PageTabs.css'
 
 interface Props {
   collectionName: string
@@ -56,6 +57,7 @@ export function FolderView({
         </button>
       </div>
 
+      <div className="cv-tabcard">
       <div className="tabs cv-tabs">
         <button
           className={`tab ${pageTab === 'requests' ? 'active' : ''}`}
@@ -76,7 +78,7 @@ export function FolderView({
           Auth {!!auth && auth.type !== 'none' && <span className="dot" />}
         </button>
       </div>
-
+      <div className="cv-tabbody">
       {pageTab === 'docs' && (
         <div className="cv-card">
           <textarea
@@ -125,6 +127,8 @@ export function FolderView({
       </div>
         </>
       )}
+      </div>
+      </div>
     </section>
   )
 }

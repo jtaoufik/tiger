@@ -1,0 +1,29 @@
+/* Page-level tab card on collection and folder views: tabs and their content
+   form ONE surface, matching the request editor's tabbed panel. */
+.cv-tabcard {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--glass);
+  overflow: hidden;
+}
+.cv-tabcard .tabs {
+  padding: 6px 10px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--glass-strong);
+}
+.cv-tabbody {
+  padding: 16px 18px 18px;
+}
+/* Sections inside the card lose their own card chrome: one surface, not
+   cards-in-cards. */
+.cv-tabbody .cv-card {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 6px;
+}
+.cv-tabbody .section-label:first-child {
+  margin-top: 0;
+}

@@ -3,6 +3,7 @@ import type { TigerAuth } from '@core/types'
 import type { GitStatus } from '../../../main/git'
 import type { HistoryEntry } from '../../../main/history'
 import { AuthEditor } from './AuthEditor'
+import './PageTabs.css'
 import {
   CheckIcon,
   ClockIcon,
@@ -147,6 +148,7 @@ export function CollectionView({
         </span>
       </div>
 
+      <div className="cv-tabcard">
       <div className="tabs cv-tabs">
         <button
           className={`tab ${pageTab === 'overview' ? 'active' : ''}`}
@@ -173,7 +175,7 @@ export function CollectionView({
           Activity {history.length > 0 && <span className="count">{Math.min(history.length, 8)}</span>}
         </button>
       </div>
-
+      <div className="cv-tabbody">
       {pageTab === 'overview' && (
         <>
       <div className="section-label">Team sync</div>
@@ -330,6 +332,8 @@ export function CollectionView({
       </div>
         </>
       )}
+      </div>
+      </div>
     </section>
   )
 }
