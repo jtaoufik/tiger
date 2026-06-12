@@ -1,8 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { basename, join } from 'node:path'
-import { readCollection, readEnvironments } from './collection'
-import { parseCollectionSettings } from '../core/collectionSettings'
+import { join } from 'node:path'
+import { readCollection, readEnvironments, readOpenedCollection } from './collection'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import {
   applyNetworkSettings,
@@ -98,20 +97,17 @@ function registerIpc(): void {
       properties: ['openDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return null
-    const root = result.filePaths[0]
-    const { readFile } = await import('node:fs/promises')
-    let settings = {}
+    return readOpenedCollection(result.filePaths[0])
+  })
+
+  // Dialog-less open for session restore; null when the root is gone.
+  ipcMain.handle('tiger:openPath', async (_e, root: string) => {
     try {
-      settings = parseCollectionSettings(await readFile(join(root, 'collection.tiger'), 'utf8'))
+      const { stat } = await import('node:fs/promises')
+      if (!(await stat(root)).isDirectory()) return null
+      return await readOpenedCollection(root)
     } catch {
-      /* optional file */
-    }
-    return {
-      root,
-      name: basename(root),
-      requests: await readCollection(root),
-      environments: await readEnvironments(root),
-      settings
+      return null
     }
   })
 
@@ -224,20 +220,7 @@ function registerIpc(): void {
     const target = pjoin(dest.filePaths[0], repoNameFromUrl(url))
     const result = await gitClone(url, target)
     if (!result.ok) return { error: result.message }
-    const { readFile } = await import('node:fs/promises')
-    let settings = {}
-    try {
-      settings = parseCollectionSettings(await readFile(pjoin(target, 'collection.tiger'), 'utf8'))
-    } catch {
-      /* optional */
-    }
-    return {
-      root: target,
-      name: basename(target),
-      requests: await readCollection(target),
-      environments: await readEnvironments(target),
-      settings
-    }
+    return readOpenedCollection(target)
   })
   ipcMain.handle('tiger:openExternal', (_e, url: string) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)

@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { BuiltRequest } from '../core/request'
 import type { RawResponse } from '../core/response'
-import type { RequestEntry, EnvironmentRef } from '../main/collection'
+import type { RequestEntry, EnvironmentRef, OpenedCollectionPayload } from '../main/collection'
 import type { Settings } from '../main/settings'
 import type { HistoryEntry } from '../main/history'
 import type { ImportKind } from '../main/importers'
@@ -9,20 +9,14 @@ import type { ImportResult } from '../core/import'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { UpdateInfo } from '../core/version'
 import type { GitActionResult, GitAvailability, GitBranches, GitCommit, GitStatus } from '../main/git'
-import type { CollectionSettings } from '../core/collectionSettings'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
-export interface OpenedCollection {
-  root: string
-  name: string
-  requests: RequestEntry[]
-  environments: EnvironmentRef[]
-  settings: CollectionSettings
-}
+export type OpenedCollection = OpenedCollectionPayload
 
 const api = {
   openCollection: (): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openCollection'),
+  openPath: (root: string): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openPath', root),
   reload: (root: string): Promise<RequestEntry[]> => ipcRenderer.invoke('tiger:reload', root),
   readFile: (path: string): Promise<string> => ipcRenderer.invoke('tiger:readFile', path),
   writeFile: (path: string, content: string): Promise<boolean> =>

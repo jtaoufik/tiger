@@ -20,6 +20,7 @@ import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
 import type { ImportedRequest } from '@core/import'
 import type { HttpMethod, KeyValue, TigerAuth, TigerEnvironment, TigerRequest } from '@core/types'
+import type { OpenedCollection } from '../../preload'
 import type { Settings } from '../../main/settings'
 import type { HistoryEntry } from '../../main/history'
 import type { ImportKind } from '../../main/importers'
@@ -67,7 +68,15 @@ import {
   TrashIcon,
   XCircleIcon
 } from './components/Icons'
-import { SEP, tabKey, type OpenTab } from './session'
+import {
+  SEP,
+  SESSION_KEYS,
+  parseStoredRoots,
+  parseStoredTabs,
+  resolveStoredTabs,
+  tabKey,
+  type OpenTab
+} from './session'
 import { cancelRequest, runRequest } from './runRequest'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
 import { sampleEnvironment, sampleRequests } from './sample'
@@ -208,19 +217,35 @@ export default function App() {
   const [modal, setModal] = useState<ModalKind>('none')
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const [collections, setCollections] = useState<CollectionState[]>([DEMO_COLLECTION])
+  /**
+   * Bootstrap with the demo collection only when there is no session to
+   * restore (no bridge, or no persisted roots). When a session exists, state
+   * starts empty and the restore effects below repopulate it.
+   */
+  const [bootDemo] = useState(
+    () => !window.tiger?.openPath || parseStoredRoots(readStored(SESSION_KEYS.roots)).length === 0
+  )
+  const [collections, setCollections] = useState<CollectionState[]>(
+    bootDemo ? [DEMO_COLLECTION] : []
+  )
   const [requestsById, setRequestsById] = useState<Record<string, TigerRequest>>(
-    Object.fromEntries(sampleRequests.map((r) => [r.id, r.request]))
+    bootDemo ? Object.fromEntries(sampleRequests.map((r) => [r.id, r.request])) : {}
   )
   const [pathById, setPathById] = useState<Record<string, string>>({})
-  const [activeId, setActiveId] = useState<string | null>(sampleRequests[0]?.id ?? null)
+  const [activeId, setActiveId] = useState<string | null>(
+    bootDemo ? (sampleRequests[0]?.id ?? null) : null
+  )
   /** Open tabs (requests, collection pages, folder pages), in opening order. */
   const [openTabs, setOpenTabs] = useState<OpenTab[]>(
-    sampleRequests[0] ? [{ kind: 'request', id: sampleRequests[0].id }] : []
+    bootDemo && sampleRequests[0] ? [{ kind: 'request', id: sampleRequests[0].id }] : []
   )
 
-  const [activeEnvKey, setActiveEnvKey] = useState<string | null>(`demo${SEP}Demo`)
-  const [activeEnv, setActiveEnv] = useState<TigerEnvironment | null>(sampleEnvironment)
+  const [activeEnvKey, setActiveEnvKey] = useState<string | null>(
+    bootDemo ? `demo${SEP}Demo` : null
+  )
+  const [activeEnv, setActiveEnv] = useState<TigerEnvironment | null>(
+    bootDemo ? sampleEnvironment : null
+  )
   /**
    * Always-current mirror of activeEnv + its key. applyCaptures runs after an
    * async send and must merge into the LATEST environment, not the snapshot it
@@ -228,8 +253,8 @@ export default function App() {
    * capture) is silently overwritten in state and on disk.
    */
   const activeEnvRef = useRef<{ key: string | null; env: TigerEnvironment | null }>({
-    key: `demo${SEP}Demo`,
-    env: sampleEnvironment
+    key: bootDemo ? `demo${SEP}Demo` : null,
+    env: bootDemo ? sampleEnvironment : null
   })
   useEffect(() => {
     activeEnvRef.current = { key: activeEnvKey, env: activeEnv }
@@ -505,6 +530,86 @@ export default function App() {
     },
     [loadRequest]
   )
+
+  /**
+   * Session restore, two-phase: (1) on mount reopen every persisted root via
+   * the dialog-less openPath and apply the payloads; (2) once those
+   * collections are in state, resolve the persisted tabs against what really
+   * opened and activate the saved tab. Two phases because activating right
+   * after applying would close over the not-yet-flushed pathById/collections.
+   */
+  const sessionRestored = useRef(false)
+  const [pendingRestore, setPendingRestore] = useState<{
+    tabs: OpenTab[]
+    activeKey: string | null
+    roots: string[]
+  } | null>(null)
+
+  useEffect(() => {
+    if (bootDemo) {
+      sessionRestored.current = true
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const roots = parseStoredRoots(readStored(SESSION_KEYS.roots))
+      const payloads = await Promise.all(roots.map((r) => window.tiger!.openPath(r)))
+      if (cancelled) return
+      const openedRoots: string[] = []
+      for (const payload of payloads) {
+        if (payload) {
+          applyOpenedCollection(payload)
+          openedRoots.push(payload.root)
+        }
+      }
+      if (!openedRoots.length) {
+        // Every persisted root is gone: fall back to the demo bootstrap.
+        setCollections([DEMO_COLLECTION])
+        setRequestsById(Object.fromEntries(sampleRequests.map((r) => [r.id, r.request])))
+        if (sampleRequests[0]) {
+          setOpenTabs([{ kind: 'request', id: sampleRequests[0].id }])
+          setActiveId(sampleRequests[0].id)
+        }
+        setActiveEnvKey(`demo${SEP}Demo`)
+        setActiveEnv(sampleEnvironment)
+        sessionRestored.current = true
+        return
+      }
+      setPendingRestore({
+        tabs: parseStoredTabs(readStored(SESSION_KEYS.tabs)),
+        activeKey: readStored(SESSION_KEYS.active) || null,
+        roots: openedRoots
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!pendingRestore) return
+    if (!pendingRestore.roots.every((r) => collections.some((c) => c.id === r))) return
+    const shapes = collections
+      .filter((c) => c.root)
+      .map((c) => ({
+        colId: c.id,
+        entryIds: new Set(c.entries.map((e) => e.id)),
+        folderKeys: new Set(c.entries.map((e) => e.folderPath.join('/')))
+      }))
+    const valid = resolveStoredTabs(pendingRestore.tabs, shapes)
+    setOpenTabs(valid)
+    const target =
+      valid.find((t) => tabKey(t) === pendingRestore.activeKey) ?? valid[valid.length - 1]
+    if (target) {
+      activateTab(target)
+    } else {
+      setActiveId(null)
+      setInspect(null)
+    }
+    sessionRestored.current = true
+    setPendingRestore(null)
+  }, [pendingRestore, collections, activateTab])
 
   /** The key of the tab currently shown, derived from activeId/inspect. */
   const activeTabKey =
@@ -936,38 +1041,47 @@ export default function App() {
     })
   }, [])
 
+  /** Turn an opened-collection payload into state; shared by dialog, clone and restore. */
+  const applyOpenedCollection = useCallback(
+    (opened: OpenedCollection): SidebarEntry[] => {
+      const entries: SidebarEntry[] = opened.requests.map((r) => ({
+        id: `${opened.root}${SEP}${r.path}`,
+        name: r.name,
+        method: r.method,
+        folderPath: r.folder
+      }))
+      reviveIds(entries.map((e) => e.id))
+      const next: CollectionState = {
+        id: opened.root,
+        name: opened.settings?.name || opened.name,
+        root: opened.root,
+        entries,
+        environments: opened.environments.map((e) => ({ name: e.name, path: e.path })),
+        auth: opened.settings?.auth,
+        docs: opened.settings?.docs
+      }
+      setCollections((prev) => {
+        const existing = prev.findIndex((c) => c.id === next.id)
+        if (existing !== -1) {
+          const copy = [...prev]
+          copy[existing] = next
+          return copy
+        }
+        return [...prev, next]
+      })
+      setPathById((prev) => ({
+        ...prev,
+        ...Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
+      }))
+      return entries
+    },
+    [reviveIds]
+  )
+
   const openCollection = useCallback(async () => {
     const opened = await window.tiger?.openCollection()
     if (!opened) return
-    const entries: SidebarEntry[] = opened.requests.map((r) => ({
-      id: `${opened.root}${SEP}${r.path}`,
-      name: r.name,
-      method: r.method,
-      folderPath: r.folder
-    }))
-    reviveIds(entries.map((e) => e.id))
-    const next: CollectionState = {
-      id: opened.root,
-      name: opened.settings?.name || opened.name,
-      root: opened.root,
-      entries,
-      environments: opened.environments.map((e) => ({ name: e.name, path: e.path })),
-      auth: opened.settings?.auth,
-      docs: opened.settings?.docs
-    }
-    setCollections((prev) => {
-      const existing = prev.findIndex((c) => c.id === next.id)
-      if (existing !== -1) {
-        const copy = [...prev]
-        copy[existing] = next
-        return copy
-      }
-      return [...prev, next]
-    })
-    setPathById((prev) => ({
-      ...prev,
-      ...Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
-    }))
+    const entries = applyOpenedCollection(opened)
     if (entries[0]) selectRequest(entries[0].id)
   }, [selectRequest, reviveIds])
 
@@ -1030,28 +1144,7 @@ export default function App() {
       toast(`Clone failed: ${opened.error}`)
       return
     }
-    const entries: SidebarEntry[] = opened.requests.map((r) => ({
-      id: `${opened.root}${SEP}${r.path}`,
-      name: r.name,
-      method: r.method,
-      folderPath: r.folder
-    }))
-    reviveIds(entries.map((e) => e.id))
-    setCollections((prev) => [
-      ...prev.filter((c) => c.id !== opened.root),
-      {
-        id: opened.root,
-        name: opened.settings?.name || opened.name,
-        root: opened.root,
-        entries,
-        environments: opened.environments.map((e) => ({ name: e.name, path: e.path })),
-        auth: opened.settings?.auth
-      }
-    ])
-    setPathById((prev) => ({
-      ...prev,
-      ...Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
-    }))
+    const entries = applyOpenedCollection(opened)
     if (entries[0]) selectRequest(entries[0].id)
     toast(`Cloned ${opened.name}`)
   }, [selectRequest, reviveIds, toast])
@@ -1816,6 +1909,19 @@ export default function App() {
     }
     return [{ key, kind: 'folder' as const, label: t.path[t.path.length - 1] ?? 'folder' }]
   })
+
+  // Persist the session (open roots, tabs, active tab) once restore settled,
+  // so a half-booted state can never clobber the saved session.
+  useEffect(() => {
+    if (!sessionRestored.current) return
+    writeStored(
+      SESSION_KEYS.roots,
+      JSON.stringify(collections.filter((c) => c.root).map((c) => c.root))
+    )
+    writeStored(SESSION_KEYS.tabs, JSON.stringify(openTabs))
+    writeStored(SESSION_KEYS.active, activeTabKey ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collections, openTabs, activeTabKey])
 
   return (
     <div className="app">

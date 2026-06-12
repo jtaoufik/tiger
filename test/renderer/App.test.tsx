@@ -26,6 +26,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.body.innerHTML = ''
+  window.localStorage.clear()
   analyticsMock.initAnalytics.mockClear()
   analyticsMock.setAnalyticsEnabled.mockClear()
   analyticsMock.trackEvent.mockClear()
@@ -703,5 +704,86 @@ describe('tab management: reorder + jump shortcuts', () => {
     expect(screen.getByDisplayValue('List users')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: '9', metaKey: true })
     expect(screen.getByDisplayValue('Get post')).toBeInTheDocument()
+  })
+})
+
+describe('session restore', () => {
+  const ROOT = '/col'
+  const SEP = ''
+  const aId = `${ROOT}${SEP}${ROOT}/alpha.tiger`
+  const bId = `${ROOT}${SEP}${ROOT}/posts/beta.tiger`
+  const payload = {
+    root: ROOT,
+    name: 'col',
+    requests: [
+      { name: 'Alpha', method: 'get', path: `${ROOT}/alpha.tiger`, folder: [] },
+      { name: 'Beta', method: 'get', path: `${ROOT}/posts/beta.tiger`, folder: ['posts'] }
+    ],
+    environments: [],
+    settings: {}
+  }
+  const requestText = 'meta {\n  name: Alpha\n}\nget {\n  url: https://api.test/a\n}'
+
+  const bridge = (openPathResult: unknown) => ({
+    openPath: vi.fn().mockResolvedValue(openPathResult),
+    readFile: vi.fn().mockResolvedValue(requestText),
+    writeFile: vi.fn().mockResolvedValue(true),
+    getSettings: vi.fn().mockResolvedValue({
+      theme: 'system',
+      timeoutMs: 30000,
+      fontSize: 13,
+      analyticsEnabled: false
+    }),
+    version: vi.fn().mockResolvedValue('test'),
+    checkUpdate: vi.fn().mockResolvedValue(null),
+    onUpdateDownloaded: vi.fn(),
+    onShortcut: vi.fn(),
+    historyRead: vi.fn().mockResolvedValue([]),
+    track: vi.fn()
+  })
+
+  it('reopens persisted collections and restores tabs + active request', async () => {
+    localStorage.setItem('tiger.session.roots', JSON.stringify([ROOT]))
+    localStorage.setItem(
+      'tiger.session.tabs',
+      JSON.stringify([
+        { kind: 'request', id: aId },
+        { kind: 'folder', colId: ROOT, path: ['posts'] }
+      ])
+    )
+    localStorage.setItem('tiger.session.active', `r:${aId}`)
+    ;(window as { tiger?: unknown }).tiger = bridge(payload)
+
+    render(<App />)
+    expect(await screen.findByDisplayValue('Alpha')).toBeInTheDocument()
+    expect(screen.queryByText('Demo collection')).not.toBeInTheDocument()
+    const tabNames = [...document.querySelectorAll('.request-tab-name')].map((n) => n.textContent)
+    expect(tabNames).toEqual(['Alpha', 'posts'])
+  })
+
+  it('filters tabs whose request vanished and activates a survivor', async () => {
+    localStorage.setItem('tiger.session.roots', JSON.stringify([ROOT]))
+    localStorage.setItem(
+      'tiger.session.tabs',
+      JSON.stringify([
+        { kind: 'request', id: `${ROOT}${SEP}${ROOT}/deleted.tiger` },
+        { kind: 'request', id: bId }
+      ])
+    )
+    localStorage.setItem('tiger.session.active', `r:${ROOT}${SEP}${ROOT}/deleted.tiger`)
+    ;(window as { tiger?: unknown }).tiger = bridge(payload)
+
+    render(<App />)
+    // The deleted tab is dropped; the surviving one becomes active.
+    expect(await screen.findByDisplayValue('Alpha')).toBeInTheDocument() // readFile mock returns Alpha text
+    expect(document.querySelectorAll('.request-tab')).toHaveLength(1)
+  })
+
+  it('falls back to the demo when every persisted root is gone', async () => {
+    localStorage.setItem('tiger.session.roots', JSON.stringify(['/vanished']))
+    ;(window as { tiger?: unknown }).tiger = bridge(null)
+
+    render(<App />)
+    expect(await screen.findByText('Demo collection')).toBeInTheDocument()
   })
 })

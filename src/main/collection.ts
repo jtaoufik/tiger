@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, join, relative, sep } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
+import { parseCollectionSettings, type CollectionSettings } from '../core/collectionSettings'
 import { parseEnvironment } from '../core/environment'
 import type { HttpMethod } from '../core/types'
 
@@ -70,5 +71,33 @@ export async function readEnvironments(root: string): Promise<EnvironmentRef[]> 
     return out
   } catch {
     return []
+  }
+}
+
+export interface OpenedCollectionPayload {
+  root: string
+  name: string
+  requests: RequestEntry[]
+  environments: EnvironmentRef[]
+  settings: CollectionSettings
+}
+
+/**
+ * Everything the renderer needs to open a collection at `root`. Shared by the
+ * open dialog, git clone and session restore.
+ */
+export async function readOpenedCollection(root: string): Promise<OpenedCollectionPayload> {
+  let settings: CollectionSettings = {}
+  try {
+    settings = parseCollectionSettings(await readFile(join(root, 'collection.tiger'), 'utf8'))
+  } catch {
+    /* optional file */
+  }
+  return {
+    root,
+    name: basename(root),
+    requests: await readCollection(root),
+    environments: await readEnvironments(root),
+    settings
   }
 }
