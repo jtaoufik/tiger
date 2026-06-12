@@ -57,6 +57,7 @@ export function CollectionView({
   onClose,
   onOpenGitDetails
 }: Props) {
+  const [pageTab, setPageTab] = useState<'overview' | 'docs' | 'auth' | 'activity'>('overview')
   const [screen, setScreen] = useState<SyncScreen>('loading')
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [remoteUrl, setRemoteUrl] = useState('')
@@ -146,6 +147,35 @@ export function CollectionView({
         </span>
       </div>
 
+      <div className="tabs cv-tabs">
+        <button
+          className={`tab ${pageTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setPageTab('overview')}
+        >
+          Overview
+        </button>
+        <button
+          className={`tab ${pageTab === 'docs' ? 'active' : ''}`}
+          onClick={() => setPageTab('docs')}
+        >
+          Docs {!!collection.docs?.trim() && <span className="dot" />}
+        </button>
+        <button
+          className={`tab ${pageTab === 'auth' ? 'active' : ''}`}
+          onClick={() => setPageTab('auth')}
+        >
+          Auth {!!collection.auth && collection.auth.type !== 'none' && <span className="dot" />}
+        </button>
+        <button
+          className={`tab ${pageTab === 'activity' ? 'active' : ''}`}
+          onClick={() => setPageTab('activity')}
+        >
+          Activity {history.length > 0 && <span className="count">{Math.min(history.length, 8)}</span>}
+        </button>
+      </div>
+
+      {pageTab === 'overview' && (
+        <>
       <div className="section-label">Team sync</div>
       <div className="cv-card">
         {screen === 'loading' && <div className="cv-dim">Checking…</div>}
@@ -245,25 +275,35 @@ export function CollectionView({
         )}
       </div>
 
-      <div className="section-label">Documentation</div>
-      <div className="cv-card">
-        <textarea
-          className="docs-area"
-          placeholder="Document this collection in Markdown: what it covers, how to authenticate, gotchas…"
-          defaultValue={collection.docs ?? ''}
-          key={collection.id}
-          spellCheck={false}
-          onBlur={(e) => {
-            if (e.target.value !== (collection.docs ?? '')) onSaveDocs(e.target.value)
-          }}
-        />
-      </div>
+        </>
+      )}
 
-      <div className="section-label">Default auth (inherited by requests)</div>
-      <div className="cv-card">
-        <AuthEditor noInherit auth={collection.auth} onChange={onSaveAuth} />
-      </div>
+      {pageTab === 'docs' && (
+        <div className="cv-card">
+          <textarea
+            className="docs-area"
+            placeholder="Document this collection in Markdown: what it covers, how to authenticate, gotchas…"
+            defaultValue={collection.docs ?? ''}
+            key={collection.id}
+            spellCheck={false}
+            onBlur={(e) => {
+              if (e.target.value !== (collection.docs ?? '')) onSaveDocs(e.target.value)
+            }}
+          />
+        </div>
+      )}
 
+      {pageTab === 'auth' && (
+        <>
+          <div className="section-label">Default auth (inherited by requests)</div>
+          <div className="cv-card">
+            <AuthEditor noInherit auth={collection.auth} onChange={onSaveAuth} />
+          </div>
+        </>
+      )}
+
+      {pageTab === 'activity' && (
+        <>
       <div className="section-label">
         <ClockIcon size={12} /> Recent activity in this collection
       </div>
@@ -288,6 +328,8 @@ export function CollectionView({
           </div>
         )}
       </div>
+        </>
+      )}
     </section>
   )
 }

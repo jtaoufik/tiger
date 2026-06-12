@@ -4,7 +4,6 @@ import { envToVars } from '@core/interpolate'
 import { computeStats, runPool, type PerfStats } from '@core/perf'
 import { resolveAuth } from '@core/collectionSettings'
 import type { TigerAuth, TigerEnvironment, TigerRequest } from '@core/types'
-import { Modal } from './Modal'
 import { GaugeIcon } from './Icons'
 
 interface Props {
@@ -12,14 +11,13 @@ interface Props {
   collectionAuth: TigerAuth | undefined
   env: TigerEnvironment | null
   timeoutMs: number
-  onClose: () => void
 }
 
 /**
- * Fire a request many times with bounded concurrency and report latency
- * percentiles. A lightweight load/perf check, run against the live request.
+ * Performance tab: fire the request many times with bounded concurrency and
+ * report latency percentiles. A lightweight load check on the live request.
  */
-export function PerfModal({ request, collectionAuth, env, timeoutMs, onClose }: Props) {
+export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
   const [total, setTotal] = useState(50)
   const [concurrency, setConcurrency] = useState(10)
   const [running, setRunning] = useState(false)
@@ -67,7 +65,7 @@ export function PerfModal({ request, collectionAuth, env, timeoutMs, onClose }: 
   const canRun = !!window.tiger && !running
 
   return (
-    <Modal title="Performance run" onClose={onClose} width={560}>
+    <div className="perf-pane">
       <p style={{ margin: '0 0 16px', color: 'var(--text-dim)', fontSize: 13.5 }}>
         Sends <b>{request.method.toUpperCase()}</b> {request.url || 'this request'} repeatedly with
         bounded concurrency and reports latency percentiles.
@@ -165,6 +163,6 @@ export function PerfModal({ request, collectionAuth, env, timeoutMs, onClose }: 
           </button>
         )}
       </div>
-    </Modal>
+    </div>
   )
 }

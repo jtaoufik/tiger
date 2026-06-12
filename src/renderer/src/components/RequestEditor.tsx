@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { HTTP_METHODS, type BodyType, type KeyValue, type TigerRequest } from '@core/types'
+import {
+  HTTP_METHODS,
+  type BodyType,
+  type KeyValue,
+  type TigerAuth,
+  type TigerEnvironment,
+  type TigerRequest
+} from '@core/types'
+import type { BuiltRequest } from '@core/request'
 import { formatJsonText, isValidJson, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
+import { CodePane } from './CodePane'
 import { MultipartEditor } from './MultipartEditor'
+import { PerfPane } from './PerfPane'
 import { AuthEditor } from './AuthEditor'
-import { CheckIcon, CodeIcon, CopyIcon, GaugeIcon, SaveIcon } from './Icons'
+import { CheckIcon, CopyIcon, SaveIcon } from './Icons'
 import './RequestEditor.css'
 
 interface Props {
@@ -16,12 +26,14 @@ interface Props {
   onChange: (request: TigerRequest) => void
   onSend: () => void
   onCancel: () => void
-  onCode: () => void
   onSave: () => void
-  onPerf: () => void
+  /** Build the request with current env vars, for the Code tab. */
+  getBuilt: () => BuiltRequest | null
+  /** Inputs the Perf tab needs to fire the live request repeatedly. */
+  perf: { collectionAuth: TigerAuth | undefined; env: TigerEnvironment | null; timeoutMs: number }
 }
 
-type Tab = 'params' | 'headers' | 'auth' | 'body' | 'capture' | 'scripts' | 'docs'
+type Tab = 'params' | 'headers' | 'auth' | 'body' | 'capture' | 'scripts' | 'docs' | 'code' | 'perf'
 
 const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form', 'graphql', 'multipart']
 
@@ -34,9 +46,9 @@ export function RequestEditor({
   onChange,
   onSend,
   onCancel,
-  onCode,
   onSave,
-  onPerf
+  getBuilt,
+  perf
 }: Props) {
   const [tab, setTab] = useState<Tab>('params')
   // Form-body rows live in component state while editing; re-deriving them
@@ -96,12 +108,6 @@ export function RequestEditor({
             {dirty && <span className="dirty-dot" />}
           </button>
         )}
-        <button className="icon-btn" title="Generate code" onClick={onCode}>
-          <CodeIcon />
-        </button>
-        <button className="icon-btn" title="Performance run" onClick={onPerf}>
-          <GaugeIcon />
-        </button>
       </div>
       <div className="urlbar" style={{ paddingTop: 8 }}>
         <select
@@ -174,6 +180,12 @@ export function RequestEditor({
         </button>
         <button className={`tab ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>
           Docs {!!request.docs?.trim() && <span className="dot" />}
+        </button>
+        <button className={`tab ${tab === 'code' ? 'active' : ''}`} onClick={() => setTab('code')}>
+          Code
+        </button>
+        <button className={`tab ${tab === 'perf' ? 'active' : ''}`} onClick={() => setTab('perf')}>
+          Perf
         </button>
       </div>
 
@@ -349,6 +361,15 @@ export function RequestEditor({
             value={request.docs ?? ''}
             placeholder="Document this request in markdown…"
             onChange={(e) => set({ docs: e.target.value })}
+          />
+        )}
+        {tab === 'code' && <CodePane getBuilt={getBuilt} />}
+        {tab === 'perf' && (
+          <PerfPane
+            request={request}
+            collectionAuth={perf.collectionAuth}
+            env={perf.env}
+            timeoutMs={perf.timeoutMs}
           />
         )}
       </div>

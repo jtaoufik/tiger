@@ -62,13 +62,18 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(within(sidebar()).queryByText('List posts')).not.toBeInTheDocument()
   })
 
-  it('opens the collection view with sync, auth and activity on click', async () => {
+  it('opens the collection view with overview, docs, auth and activity tabs', async () => {
     render(<App />)
     fireEvent.click(screen.getByText('Demo collection'))
+    // Overview is the default tab and carries Team sync.
     expect(await screen.findByText('Team sync')).toBeInTheDocument()
-    expect(screen.getByText(/Default auth/)).toBeInTheDocument()
-    expect(screen.getByText(/Recent activity/)).toBeInTheDocument()
     expect(screen.getByText(/lives in memory/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Auth' }))
+    expect(screen.getByText(/Default auth/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Activity/ }))
+    expect(screen.getByText(/Recent activity/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Docs' }))
+    expect(screen.getByPlaceholderText(/Document this collection/)).toBeInTheDocument()
   })
 
   it('opens a folder view listing its requests', () => {
@@ -213,10 +218,10 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getAllByTitle('Mark as secret').length).toBeGreaterThan(0)
   })
 
-  it('runs a performance run modal for the active request', () => {
+  it('offers a Perf tab with run configuration for the active request', () => {
     render(<App />)
-    fireEvent.click(screen.getByTitle('Performance run'))
-    expect(screen.getByText('Performance run')).toBeInTheDocument()
+    const editor = document.querySelector('.editor')!
+    fireEvent.click(within(editor as HTMLElement).getByText('Perf'))
     expect(screen.getByText('Total requests')).toBeInTheDocument()
     expect(screen.getByText('Concurrency')).toBeInTheDocument()
   })
@@ -243,9 +248,10 @@ describe('App (browser preview, no Electron bridge)', () => {
     ).toBeInTheDocument()
   })
 
-  it('opens the code generation modal with a curl command for the active request', () => {
+  it('offers a Code tab with a curl command for the active request', () => {
     render(<App />)
-    fireEvent.click(screen.getByTitle('Generate code'))
+    const editor = document.querySelector('.editor')!
+    fireEvent.click(within(editor as HTMLElement).getByText('Code'))
     const code = document.querySelector('.code-block')!
     expect(code.textContent).toContain('curl -X GET')
     expect(code.textContent).toContain('https://jsonplaceholder.typicode.com/posts')

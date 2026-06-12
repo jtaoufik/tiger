@@ -48,3 +48,41 @@
   border-radius: 8px;
   border: 1px solid var(--border-strong);
 }
+
+/* Timing breakdown popover on the Time chip (hover, like a profiler card). */
+.timing-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.timing-wrap .meta-chip.timing { cursor: help; }
+.timing-pop {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 190px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--glass-modal);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+}
+.timing-wrap:hover .timing-pop { display: flex; }
+.timing-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-dim);
+}
+.timing-row b { color: var(--text); font-family: var(--mono); font-weight: 600; }
+.timing-row.total {
+  margin-top: 3px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 650;
+}

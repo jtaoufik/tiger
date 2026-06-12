@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { parseRequest, serializeRequest } from '@core/tigerFormat'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
-import { buildRequest, type BuiltRequest } from '@core/request'
+import { buildRequest } from '@core/request'
 import { envToVars, findMissingVars } from '@core/interpolate'
 import {
   parseCollectionSettings,
@@ -34,10 +34,8 @@ import { RequestTabs, type RequestTab } from './components/RequestTabs'
 import { ResponsePanel } from './components/ResponsePanel'
 import { SettingsView } from './components/SettingsView'
 import { ImportExportModal, type ExportFormat } from './components/ImportExportModal'
-import { CodeModal } from './components/CodeModal'
 import { HistoryModal } from './components/HistoryModal'
 import { EnvironmentsModal } from './components/EnvironmentsModal'
-import { PerfModal } from './components/PerfModal'
 import { ConfirmModal } from './components/ConfirmModal'
 import { PromptModal } from './components/PromptModal'
 import { RunnerModal } from './components/RunnerModal'
@@ -96,7 +94,7 @@ interface CollectionState {
   docs?: string
 }
 
-type ModalKind = 'none' | 'io' | 'code' | 'history' | 'env' | 'perf' | 'shortcuts'
+type ModalKind = 'none' | 'io' | 'history' | 'env' | 'shortcuts'
 
 /** A tab in the workspace bar: a request, a collection page, or a folder page. */
 type OpenTab =
@@ -255,7 +253,6 @@ export default function App() {
   const [responses, setResponses] = useState<Record<string, ResponseState>>({})
   const [sendingIds, setSendingIds] = useState<Set<string>>(new Set())
   const [history, setHistory] = useState<HistoryEntry[]>([])
-  const [codeBuilt, setCodeBuilt] = useState<BuiltRequest | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [appVersion, setAppVersion] = useState('dev')
@@ -1494,11 +1491,6 @@ export default function App() {
   )
   void _legacyUpdateEnvVars
 
-  const openCode = useCallback(() => {
-    if (!activeEffective) return
-    setCodeBuilt(buildRequest(activeEffective, envToVars(activeEnv)))
-    setModal('code')
-  }, [activeEffective, activeEnv])
 
   const openHistory = useCallback(async () => {
     setHistory((await window.tiger?.historyRead()) ?? [])
@@ -1932,9 +1924,15 @@ export default function App() {
                     onChange={updateActive}
                     onSend={send}
                     onCancel={cancelActive}
-                    onCode={openCode}
                     onSave={save}
-                    onPerf={() => setModal('perf')}
+                    getBuilt={() =>
+                      activeEffective ? buildRequest(activeEffective, envToVars(activeEnv)) : null
+                    }
+                    perf={{
+                      collectionAuth: inheritedAuth,
+                      env: activeEnv,
+                      timeoutMs: settings.timeoutMs
+                    }}
                   />
                 ) : (
                   <section className="panel editor">
@@ -1986,7 +1984,6 @@ export default function App() {
           onClose={() => setModal('none')}
         />
       )}
-      {modal === 'code' && codeBuilt && <CodeModal built={codeBuilt} onClose={() => setModal('none')} />}
       {modal === 'history' && (
         <HistoryModal
           entries={history}
@@ -2033,15 +2030,6 @@ export default function App() {
           onCollectionsChanged={setCollectionEnvironments}
           onActiveEnvMaybeChanged={(colId, name, data) => reloadActiveEnv(colId, name, data)}
           onToast={toast}
-          onClose={() => setModal('none')}
-        />
-      )}
-      {modal === 'perf' && activeEffective && (
-        <PerfModal
-          request={active!}
-          collectionAuth={activeCollection?.auth}
-          env={activeEnv}
-          timeoutMs={settings.timeoutMs}
           onClose={() => setModal('none')}
         />
       )}

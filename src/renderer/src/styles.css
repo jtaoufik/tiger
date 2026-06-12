@@ -1382,4 +1382,3 @@ button {
 }
 .request-tab.active > svg { color: var(--accent); }
 
-.meta-chip.timing { cursor: help; }

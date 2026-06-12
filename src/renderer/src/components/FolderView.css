@@ -6,3 +6,8 @@
   gap: 10px;
   padding: 6px 0;
 }
+
+/* Page-level tabs on collection and folder views. */
+.cv-tabs {
+  margin: 4px 0 14px;
+}

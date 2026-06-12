@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { TigerAuth } from '@core/types'
 import type { SidebarEntry } from './Sidebar'
 import { AuthEditor } from './AuthEditor'
@@ -34,6 +35,7 @@ export function FolderView({
   onSaveDocs
 }: Props) {
   const key = path.join('/')
+  const [pageTab, setPageTab] = useState<'requests' | 'docs' | 'auth'>('requests')
   return (
     <section className="panel collection-view">
       <div className="cv-head">
@@ -54,25 +56,53 @@ export function FolderView({
         </button>
       </div>
 
-      <div className="section-label">Documentation</div>
-      <div className="cv-card">
-        <textarea
-          className="docs-area"
-          placeholder="Document this folder in Markdown…"
-          defaultValue={docs ?? ''}
-          key={`docs-${key}`}
-          spellCheck={false}
-          onBlur={(e) => {
-            if (e.target.value !== (docs ?? '')) onSaveDocs(e.target.value)
-          }}
-        />
+      <div className="tabs cv-tabs">
+        <button
+          className={`tab ${pageTab === 'requests' ? 'active' : ''}`}
+          onClick={() => setPageTab('requests')}
+        >
+          Requests <span className="count">{entries.length}</span>
+        </button>
+        <button
+          className={`tab ${pageTab === 'docs' ? 'active' : ''}`}
+          onClick={() => setPageTab('docs')}
+        >
+          Docs {!!docs?.trim() && <span className="dot" />}
+        </button>
+        <button
+          className={`tab ${pageTab === 'auth' ? 'active' : ''}`}
+          onClick={() => setPageTab('auth')}
+        >
+          Auth {!!auth && auth.type !== 'none' && <span className="dot" />}
+        </button>
       </div>
 
-      <div className="section-label">Default auth (inherited by requests in this folder)</div>
-      <div className="cv-card">
-        <AuthEditor noInherit auth={auth} onChange={onSaveAuth} />
-      </div>
+      {pageTab === 'docs' && (
+        <div className="cv-card">
+          <textarea
+            className="docs-area"
+            placeholder="Document this folder in Markdown…"
+            defaultValue={docs ?? ''}
+            key={`docs-${key}`}
+            spellCheck={false}
+            onBlur={(e) => {
+              if (e.target.value !== (docs ?? '')) onSaveDocs(e.target.value)
+            }}
+          />
+        </div>
+      )}
 
+      {pageTab === 'auth' && (
+        <>
+          <div className="section-label">Default auth (inherited by requests in this folder)</div>
+          <div className="cv-card">
+            <AuthEditor noInherit auth={auth} onChange={onSaveAuth} />
+          </div>
+        </>
+      )}
+
+      {pageTab === 'requests' && (
+        <>
       <div className="section-label">
         {entries.length} request{entries.length === 1 ? '' : 's'} in this folder
       </div>
@@ -93,6 +123,8 @@ export function FolderView({
           ))
         )}
       </div>
+        </>
+      )}
     </section>
   )
 }
