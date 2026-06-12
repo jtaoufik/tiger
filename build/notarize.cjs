@@ -11,6 +11,7 @@
  */
 
 const { notarize } = require('@electron/notarize')
+const { execFileSync } = require('node:child_process')
 
 exports.default = async function notarizing(context) {
   if (context.electronPlatformName !== 'darwin') return
@@ -29,5 +30,8 @@ exports.default = async function notarizing(context) {
   const appPath = `${context.appOutDir}/${appName}.app`
   console.log(`Notarizing ${appName} (this can take a few minutes)...`)
   await notarize({ appPath, appleId, appleIdPassword, teamId })
-  console.log('Notarization complete.')
+  // Staple the ticket so Gatekeeper validates offline.
+  console.log('Stapling notarization ticket...')
+  execFileSync('xcrun', ['stapler', 'staple', appPath], { stdio: 'inherit' })
+  console.log('Notarization + stapling complete.')
 }

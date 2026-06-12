@@ -623,15 +623,12 @@
       <div class="install-note">
         <b>First launch on a fresh machine</b>
         <p class="m">
-          <b>macOS:</b> right-click the app and choose Open. If macOS still blocks it
-          ("Apple cannot check it"), open System Settings, go to Privacy &amp; Security, and
-          click "Open Anyway". As a last resort, run
-          <code>xattr -dr com.apple.quarantine /Applications/Tiger.app</code> in Terminal.
+          <b>macOS:</b> signed with a Developer ID and notarized by Apple, so it opens normally.
         </p>
         <p class="m">
-          <b>Windows:</b> Defender SmartScreen may warn because the app is new and unsigned.
-          Click <b>More info</b>, then <b>Run anyway</b>. Code signing is on the roadmap so this
-          warning will go away in a future release.
+          <b>Windows:</b> not yet code-signed, so Defender SmartScreen may warn that the app is
+          from an unknown publisher. Click <b>More info</b>, then <b>Run anyway</b>. Trusted
+          Windows builds are coming.
         </p>
       </div>
       <div class="spec">
