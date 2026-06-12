@@ -2,8 +2,9 @@ name: Release
 
 # Build and publish installers when a version tag is pushed (e.g. v0.3.0).
 # macOS is signed + notarized for free with an Apple Developer ID when the
-# secrets below are set. Windows builds here and is signed for free by SignPath
-# Foundation once the project is approved (see docs/RELEASING.md).
+# MAC_CSC_LINK / APPLE_* secrets are set; otherwise it builds unsigned.
+# Windows builds here and is signed for free by SignPath Foundation once the
+# project is approved (see docs/RELEASING.md).
 
 on:
   push:
@@ -37,14 +38,31 @@ jobs:
           npm run build
           npm run build:mcp
 
+      # Configure macOS signing only when a certificate secret is present.
+      # An empty CSC_LINK makes electron-builder fail, so when there is no cert
+      # we disable signing discovery and ship an unsigned (but working) build.
+      - name: Configure macOS signing
+        if: matrix.os == 'macos-latest'
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$MAC_CSC_LINK" ]; then
+            echo "Signing identity present; will sign and notarize."
+            echo "CSC_LINK=$MAC_CSC_LINK" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "APPLE_ID=$APPLE_ID" >> "$GITHUB_ENV"
+            echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+          else
+            echo "No signing certificate; building unsigned."
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Package and publish
         run: npx electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS Developer ID signing + notarization (free with an Apple account).
-          # Set these repo secrets to produce a trusted macOS build:
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
