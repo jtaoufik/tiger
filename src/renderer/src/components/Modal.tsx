@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { CloseIcon } from './Icons'
+import './Modal.css'
 
 interface Props {
   title: string

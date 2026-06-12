@@ -81,7 +81,7 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
       {phase === 'loading' && <div className="cv-dim">Loading requests…</div>}
 
       {phase !== 'loading' && items.length === 0 && (
-        <div className="cv-dim">No requests in this scope.</div>
+        <div className="cv-dim">Nothing to run yet: this scope has no requests. Add one from the sidebar, then run again.</div>
       )}
 
       {phase !== 'loading' && items.length > 0 && (

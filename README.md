@@ -40,7 +40,11 @@ On top of the git-friendly storage model, Tiger adds a glass UI with light and d
 - **GraphQL.** Dedicated body type with a separate variables pane.
 - **SOAP and XML.** Send raw XML bodies for SOAP/WS-* APIs the same way you would for REST.
 - **JSON prettify and minify.** Format button and syntax highlighting in the editor and response panel, with Pretty/Raw and word-wrap toggles.
+- **Collection runner.** Run every request in a collection or folder sequentially with live pass/fail verdicts from your script tests, capture chaining between requests, and a stop button.
 - **Performance runs.** Fire N requests with a configurable concurrency level and get back min, max, avg, p50, and p95 timings.
+- **Multipart and file upload.** multipart/form-data bodies mix text fields and file rows with a per-row file picker; file paths live in the .tiger format as @file: values.
+- **Response power tools.** Search inside any response with Cmd/Ctrl+F (match cycling and highlights), preview HTML responses in a sandboxed frame, and view image responses inline.
+- **Keyboard-first.** A shortcuts overlay on Cmd/Ctrl+/, tab cycling, close-tab, quick-create, and focus-URL shortcuts. Inline rename (double-click or F2) and drag-and-drop to move requests between folders.
 - **Import and export Postman, OpenAPI, and more.** Import a Postman v2.0/v2.1 export, an Insomnia v4 export, a Bruno folder, an OpenAPI 3 / Swagger 2 spec, or a pasted curl command. Export collections back to Postman v2.1 or OpenAPI 3.0, and single requests as `.tiger` or curl.
 - **Code generation.** Turn any request into a curl command or a JavaScript fetch snippet.
 - **Cookie jar.** Persist cookies between sends and sessions, with automatic cross-origin stripping on redirects.
@@ -60,6 +64,8 @@ On top of the git-friendly storage model, Tiger adds a glass UI with light and d
 | GraphQL | Yes | Yes | Yes |
 | SOAP / XML | Yes | Yes | Yes |
 | Performance runner | Yes | Yes | No |
+| Collection runner with test assertions | Yes | Paid tiers | Limited |
+| Multipart file upload | Yes | Yes | Yes |
 | Offline, local-first | Yes | Partial | Yes |
 
 ## The `.tiger` format

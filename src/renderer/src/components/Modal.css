@@ -1,0 +1,19 @@
+/* Consistent modal enter transition (fade backdrop, lift content). */
+.modal-backdrop {
+  animation: modal-fade 0.16s ease-out;
+}
+.modal {
+  animation: modal-lift 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-lift {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal { animation: none; }
+}

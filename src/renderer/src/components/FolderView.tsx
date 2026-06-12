@@ -2,6 +2,7 @@ import type { TigerAuth } from '@core/types'
 import type { SidebarEntry } from './Sidebar'
 import { AuthEditor } from './AuthEditor'
 import { FolderIcon, PlayIcon, PlusIcon } from './Icons'
+import './FolderView.css'
 
 interface Props {
   collectionName: string
@@ -77,7 +78,12 @@ export function FolderView({
       </div>
       <div className="cv-card">
         {entries.length === 0 ? (
-          <div className="cv-dim">Empty folder. Create the first request here.</div>
+          <div className="cv-empty">
+            <div className="cv-dim">This folder is empty.</div>
+            <button className="btn" onClick={onNewRequest}>
+              <PlusIcon size={14} /> Create the first request
+            </button>
+          </div>
         ) : (
           entries.map((e) => (
             <div className="tree-row" key={e.id} onClick={() => onSelect(e.id)}>
