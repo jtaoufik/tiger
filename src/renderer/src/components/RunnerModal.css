@@ -1,0 +1,47 @@
+/* Collection runner modal. */
+.runner-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.runner-summary {
+  font-weight: 650;
+  font-size: 13px;
+}
+.runner-summary.good { color: var(--m-get); }
+.runner-summary.bad { color: var(--m-delete); }
+.runner-list {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.runner-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.runner-row:last-child { border-bottom: none; }
+.runner-row.pass { background: rgba(44, 163, 106, 0.06); }
+.runner-row.fail { background: rgba(224, 83, 61, 0.07); }
+.runner-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.runner-error {
+  color: var(--m-delete);
+  font-size: 12px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.runner-verdict.ok { color: var(--m-get); }
+.runner-verdict.bad { color: var(--m-delete); }

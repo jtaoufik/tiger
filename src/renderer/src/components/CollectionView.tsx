@@ -8,6 +8,7 @@ import {
   ClockIcon,
   FolderOpenIcon,
   GitBranchIcon,
+  PlayIcon,
   PlusIcon,
   RefreshIcon,
   SwapIcon,
@@ -31,6 +32,7 @@ interface Props {
   onToast: (text: string) => void
   onSaveAuth: (auth: TigerAuth | undefined) => void
   onSaveDocs: (docs: string) => void
+  onRun: () => void
   onNewRequest: () => void
   onImportExport: () => void
   onClose: () => void
@@ -49,6 +51,7 @@ export function CollectionView({
   onToast,
   onSaveAuth,
   onSaveDocs,
+  onRun,
   onNewRequest,
   onImportExport,
   onClose,
@@ -104,6 +107,9 @@ export function CollectionView({
           {collection.root && <div className="cv-path">{collection.root}</div>}
         </div>
         <span style={{ flex: 1 }} />
+        <button className="btn" onClick={onRun} title="Run every request in this collection">
+          <PlayIcon size={14} /> Run
+        </button>
         <button className="btn" onClick={onNewRequest}>
           <PlusIcon size={14} /> New request
         </button>

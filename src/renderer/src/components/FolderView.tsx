@@ -1,7 +1,7 @@
 import type { TigerAuth } from '@core/types'
 import type { SidebarEntry } from './Sidebar'
 import { AuthEditor } from './AuthEditor'
-import { FolderIcon, PlusIcon } from './Icons'
+import { FolderIcon, PlayIcon, PlusIcon } from './Icons'
 
 interface Props {
   collectionName: string
@@ -12,6 +12,7 @@ interface Props {
   auth?: TigerAuth
   docs?: string
   onSelect: (id: string) => void
+  onRun: () => void
   onNewRequest: () => void
   onSaveAuth: (auth: TigerAuth | undefined) => void
   onSaveDocs: (docs: string) => void
@@ -26,6 +27,7 @@ export function FolderView({
   auth,
   docs,
   onSelect,
+  onRun,
   onNewRequest,
   onSaveAuth,
   onSaveDocs
@@ -43,6 +45,9 @@ export function FolderView({
           </div>
         </div>
         <span style={{ flex: 1 }} />
+        <button className="btn" onClick={onRun} title="Run every request in this folder">
+          <PlayIcon size={14} /> Run
+        </button>
         <button className="btn accent" onClick={onNewRequest}>
           <PlusIcon size={14} /> New request here
         </button>

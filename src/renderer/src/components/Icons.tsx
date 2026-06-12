@@ -25,11 +25,13 @@ import {
   GitBranch,
   Globe,
   Pencil,
+  Play,
   Plus,
   RefreshCw,
   Save,
   Search,
   Settings,
+  Square,
   ArrowRightLeft,
   Trash2,
   Upload,
@@ -66,6 +68,8 @@ export const SearchIcon = base(Search)
 export const CopyIcon = base(Copy)
 export const CheckIcon = base(Check)
 export const PencilIcon = base(Pencil)
+export const PlayIcon = base(Play)
+export const StopIcon = base(Square)
 export const DownloadIcon = base(Download)
 export const UploadIcon = base(Upload)
 export const GitBranchIcon = base(GitBranch)

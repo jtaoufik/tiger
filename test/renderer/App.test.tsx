@@ -465,3 +465,23 @@ describe('keyboard shortcuts', () => {
     expect(document.activeElement?.classList.contains('url-input')).toBe(true)
   })
 })
+
+describe('collection runner', () => {
+  it('opens the runner from the collection page listing every request', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Demo collection'))
+    fireEvent.click(await screen.findByTitle('Run every request in this collection'))
+    expect(await screen.findByText('Run · Demo collection')).toBeInTheDocument()
+    expect(await screen.findByText('Run 4 requests')).toBeInTheDocument()
+    const rows = document.querySelectorAll('.runner-row')
+    expect(rows).toHaveLength(4)
+  })
+
+  it('opens the runner from a folder page scoped to that folder', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Posts'))
+    fireEvent.click(await screen.findByTitle('Run every request in this folder'))
+    expect(await screen.findByText('Run · Posts')).toBeInTheDocument()
+    expect(await screen.findByText('Run 3 requests')).toBeInTheDocument()
+  })
+})

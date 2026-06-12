@@ -13,6 +13,7 @@ import { exportOpenApi, exportPostman, exportPostmanEnvironment } from '@core/ex
 import { toCurl } from '@core/codegen'
 import { importCurl } from '@core/import'
 import { extractCaptures } from '@core/capture'
+import type { RunnerItem } from '@core/runner'
 import { runScript, type ScriptTestResult } from '@core/script'
 import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
@@ -38,6 +39,7 @@ import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { PerfModal } from './components/PerfModal'
 import { ConfirmModal } from './components/ConfirmModal'
 import { PromptModal } from './components/PromptModal'
+import { RunnerModal } from './components/RunnerModal'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
@@ -265,6 +267,7 @@ export default function App() {
   const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null)
   const [cloneOpen, setCloneOpen] = useState(false)
+  const [runnerScope, setRunnerScope] = useState<{ colId: string; path?: string[] } | null>(null)
   const [inspect, setInspect] = useState<
     { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
   >(null)
@@ -273,6 +276,10 @@ export default function App() {
   const [folderSettings, setFolderSettings] = useState<
     Record<string, { auth?: TigerAuth; docs?: string }>
   >({})
+  const folderSettingsRef = useRef(folderSettings)
+  useEffect(() => {
+    folderSettingsRef.current = folderSettings
+  })
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
   const [sidebarW, setSidebarW] = useState(() => Number(readStored('tiger.sidebarW')) || 264)
   const [editorH, setEditorH] = useState<number | null>(() => {
@@ -745,6 +752,26 @@ export default function App() {
   const closeActiveTab = useCallback(() => {
     if (activeTabKey) closeTab(activeTabKey)
   }, [activeTabKey, closeTab])
+
+  /** Every request in the runner scope, with auth inheritance applied. */
+  const loadRunnerItems = useCallback(async (): Promise<RunnerItem[]> => {
+    if (!runnerScope) return []
+    const col = collectionsRef.current.find((c) => c.id === runnerScope.colId)
+    if (!col) return []
+    const scopeKey = runnerScope.path?.join('/')
+    const entries = col.entries.filter(
+      (e) => scopeKey === undefined || e.folderPath.join('/') === scopeKey
+    )
+    const items: RunnerItem[] = []
+    for (const e of entries) {
+      const request = await loadRequest(e.id)
+      if (!request) continue
+      const inherited =
+        folderSettingsRef.current[`${col.id}${SEP}${e.folderPath.join('/')}`]?.auth ?? col.auth
+      items.push({ id: e.id, name: e.name, request: { ...request, auth: resolveAuth(request, inherited) } })
+    }
+    return items
+  }, [runnerScope, loadRequest])
 
   /** Cycle to the neighboring tab (Ctrl+Tab / Ctrl+Shift+Tab). */
   const cycleTab = useCallback(
@@ -1649,6 +1676,7 @@ export default function App() {
                       auth={folderAuth(col.id, inspect.path)}
                       docs={folderDocs(col.id, inspect.path)}
                       onSelect={selectRequest}
+                      onRun={() => setRunnerScope({ colId: col.id, path: inspect.path })}
                       onNewRequest={() => newRequest(col.id, inspect.path)}
                       onSaveAuth={(auth) => saveFolderAuth(col.id, inspect.path, auth)}
                       onSaveDocs={(docs) => saveFolderDocs(col.id, inspect.path, docs)}
@@ -1675,6 +1703,7 @@ export default function App() {
                     onToast={toast}
                     onSaveAuth={(auth) => saveCollectionAuth(col.id, auth)}
                     onSaveDocs={(docs) => saveCollectionDocs(col.id, docs)}
+                    onRun={() => setRunnerScope({ colId: col.id })}
                     onNewRequest={() => newRequest(col.id)}
                     onImportExport={() => setModal('io')}
                     onClose={() => requestCloseCollection(col.id)}
@@ -1771,6 +1800,22 @@ export default function App() {
         />
       )}
       {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal('none')} />}
+      {runnerScope &&
+        (() => {
+          const col = collections.find((c) => c.id === runnerScope.colId)
+          const title = runnerScope.path?.length
+            ? runnerScope.path[runnerScope.path.length - 1]
+            : (col?.name ?? 'collection')
+          return (
+            <RunnerModal
+              title={title}
+              loadItems={loadRunnerItems}
+              environment={activeEnv}
+              timeoutMs={settings.timeoutMs}
+              onClose={() => setRunnerScope(null)}
+            />
+          )
+        })()}
       {modal === 'env' && (
         <EnvironmentsModal
           collections={collections.map((c) => ({
