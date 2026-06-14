@@ -5,9 +5,10 @@
  * name into a safe folder name, or rejecting it.
  */
 
-// Path separators plus characters that are illegal or troublesome in folder
-// names on macOS, Windows and Linux.
-const ILLEGAL = /[\\/:*?"<>| -]/g
+// Path separators and the characters Windows forbids in file names. Spaces are
+// kept (collapsed to single spaces below) and so are hyphens, so "my-api" stays
+// "my-api".
+const ILLEGAL = /[\\/:*?"<>|]/g
 
 /**
  * Normalize a user-typed collection name into a safe folder name. Returns null

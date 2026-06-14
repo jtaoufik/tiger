@@ -113,7 +113,6 @@ function registerIpc(): void {
     })
     if (result.canceled || !result.filePaths[0]) return null
     const { mkdir } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const target = join(result.filePaths[0], folder)
     await mkdir(target, { recursive: true })
     return readOpenedCollection(target)
