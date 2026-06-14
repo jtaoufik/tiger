@@ -39,31 +39,35 @@ export function WelcomeView({
   onSettings,
   onGit
 }: Props) {
-  const tiles = [
+  // The ways to get a collection in front of you. These lead the screen.
+  const primary = [
     {
-      icon: <FolderOpenIcon size={20} />,
+      icon: <FolderOpenIcon size={22} />,
       title: 'Open a collection',
       desc: 'Any folder of .tiger files, straight from disk.',
       onClick: onOpenCollection
     },
     {
-      icon: <PlusIcon size={20} />,
+      icon: <PlusIcon size={22} />,
       title: 'New collection',
       desc: 'Create an empty collection folder on your machine.',
       onClick: onNewCollection
     },
     {
-      icon: <GitBranchIcon size={20} />,
+      icon: <GitBranchIcon size={22} />,
       title: 'Clone from Git',
-      desc: 'Paste a repository URL to pull a team collection onto your machine.',
+      desc: 'Pull a team collection from a repository URL.',
       onClick: onClone
     },
     {
-      icon: <SwapIcon size={20} />,
-      title: 'Import / Export',
-      desc: 'Postman, Insomnia, Bruno, OpenAPI in. Postman and curl out.',
+      icon: <SwapIcon size={22} />,
+      title: 'Import',
+      desc: 'Bring in Postman, Insomnia, Bruno or OpenAPI.',
       onClick: onImportExport
-    },
+    }
+  ]
+
+  const tiles = [
     {
       icon: <PlusIcon size={20} />,
       title: 'New request',
@@ -108,9 +112,24 @@ export function WelcomeView({
         <Logo size={56} />
         <div>
           <h2>Welcome to Tiger</h2>
-          <p>The API client that lives in your repos. Everything below is one click away.</p>
+          <p>The API client that lives in your repos. Start with a collection.</p>
         </div>
       </div>
+
+      <div className="welcome-section-label">Start a collection</div>
+      <div className="welcome-primary">
+        {primary.map((tile) => (
+          <button className="welcome-tile primary" key={tile.title} onClick={tile.onClick}>
+            <span className="chip">{tile.icon}</span>
+            <span className="meta">
+              <span className="t">{tile.title}</span>
+              <span className="d">{tile.desc}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="welcome-section-label">Tools</div>
       <div className="welcome-grid">
         {tiles.map((tile) => (
           <button className="welcome-tile" key={tile.title} onClick={tile.onClick}>
@@ -120,6 +139,7 @@ export function WelcomeView({
           </button>
         ))}
       </div>
+
       <div className="welcome-foot">
         <FileIcon size={13} /> Requests are plain .tiger files: branch them, review them, own them.
         <span style={{ flex: 1 }} />
