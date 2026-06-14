@@ -7,10 +7,11 @@ import {
   importInsomnia,
   importOpenApi,
   importPostman,
+  importWsdl,
   type ImportResult
 } from '../core/import'
 
-export type ImportKind = 'postman' | 'bruno' | 'openapi' | 'insomnia'
+export type ImportKind = 'postman' | 'bruno' | 'openapi' | 'insomnia' | 'wsdl'
 
 async function pickFile(title: string, extensions: string[]): Promise<string | null> {
   const result = await dialog.showOpenDialog({
@@ -62,6 +63,10 @@ export async function importFromDisk(kind: ImportKind): Promise<ImportResult | n
   if (kind === 'insomnia') {
     const file = await pickFile('Insomnia export', ['json', 'yaml', 'yml'])
     return file ? importInsomnia(await readStructured(file)) : null
+  }
+  if (kind === 'wsdl') {
+    const file = await pickFile('WSDL document', ['wsdl', 'xml'])
+    return file ? importWsdl(await readFile(file, 'utf8')) : null
   }
   // openapi
   const file = await pickFile('OpenAPI / Swagger document', ['json', 'yaml', 'yml'])
