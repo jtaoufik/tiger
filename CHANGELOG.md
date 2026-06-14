@@ -3,6 +3,11 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.4.1
+
+- WSDL / SOAP import now produces ready-to-send requests. The operation's parameters are expanded from the WSDL `<types>` schema into the SOAP body, the mandatory `SOAPAction` header is always sent for SOAP 1.1 (even when empty), and a single SOAP binding is used so operations are no longer duplicated across SOAP 1.1 and 1.2; non-SOAP HTTP bindings are ignored.
+- Welcome screen: the ways into a collection (Open, New collection, Clone, Import) now lead the screen as prominent cards, above the secondary tools.
+
 ## 0.4.0
 
 - WSDL / SOAP import: pick a `.wsdl` file and each binding operation becomes a POST request with a ready-to-fill SOAP envelope, the correct Content-Type and (SOAP 1.1) SOAPAction header. Supports SOAP 1.1 and 1.2.
