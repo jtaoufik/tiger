@@ -39,25 +39,21 @@ jobs:
           npm run build
           npm run build:mcp
 
-      # Configure macOS signing only when a certificate secret is present.
-      # An empty CSC_LINK makes electron-builder fail, so when there is no cert
-      # we disable signing discovery and ship an unsigned (but working) build.
+      # Configure macOS Developer ID signing when the certificate secret is present.
+      # An empty CSC_LINK makes electron-builder fail, so without a cert we disable
+      # signing discovery and ship an unsigned (but working) build. Notarization is a
+      # separate DMG-level step below (via the App Store Connect API key), so the
+      # afterSign hook (build/notarize.cjs) intentionally stays a no-op.
       - name: Configure macOS signing
         if: matrix.os == 'macos-latest'
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -n "$MAC_CSC_LINK" ]; then
-            echo "Signing identity present; will sign and notarize."
+            echo "Developer ID certificate present; the app will be signed."
             echo "CSC_LINK=$MAC_CSC_LINK" >> "$GITHUB_ENV"
             echo "CSC_KEY_PASSWORD=$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
-            echo "APPLE_ID=$APPLE_ID" >> "$GITHUB_ENV"
-            echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD" >> "$GITHUB_ENV"
-            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
           else
             echo "No signing certificate; building unsigned."
             echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
@@ -71,6 +67,29 @@ jobs:
         run: npx electron-builder --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Notarize + staple the signed DMGs with Apple using an App Store Connect API
+      # key (no app-specific password needed). Skips cleanly when the key is absent.
+      - name: Notarize and staple macOS DMGs
+        if: matrix.os == 'macos-latest'
+        env:
+          MAC_NOTARY_KEY: ${{ secrets.MAC_NOTARY_KEY }}
+          MAC_NOTARY_KEY_ID: ${{ secrets.MAC_NOTARY_KEY_ID }}
+          MAC_NOTARY_ISSUER: ${{ secrets.MAC_NOTARY_ISSUER }}
+        run: |
+          if [ -z "$MAC_NOTARY_KEY" ]; then
+            echo "No notary key; skipping notarization (build is signed but not notarized)."
+            exit 0
+          fi
+          KEYFILE="$RUNNER_TEMP/notary_key.p8"
+          printf '%s' "$MAC_NOTARY_KEY" | base64 --decode > "$KEYFILE"
+          for dmg in release/*.dmg; do
+            echo "Notarizing $dmg"
+            xcrun notarytool submit "$dmg" \
+              --key "$KEYFILE" --key-id "$MAC_NOTARY_KEY_ID" --issuer "$MAC_NOTARY_ISSUER" --wait
+            xcrun stapler staple "$dmg"
+          done
+          rm -f "$KEYFILE"
 
       - name: Attach installers to the release
         if: startsWith(github.ref, 'refs/tags/')
