@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fix the Windows window-resize bug, add a WSDL/SOAP importer, and make Linux a first-class release target, shipped as version 0.4.0.
+**Goal:** Ship version 0.4.0: fix the Windows window-resize bug, add a WSDL/SOAP importer, make Linux a first-class release target, add "create a new collection on disk," simplify the website download links, and make the response view readable.
 
-**Architecture:** Three independent changes. (1) Remove the Electron `backgroundMaterial: 'acrylic'` backdrop that breaks native resize on Windows. (2) A new `importWsdl(xml)` core module that parses a WSDL with `fast-xml-parser` and emits one SOAP `TigerRequest` per binding operation, wired into the existing Import dialog exactly like the OpenAPI importer. (3) Deterministic Linux build targets plus website/download/version updates.
+**Architecture:** Independent changes, each following an existing pattern. (1) Remove the Electron `backgroundMaterial: 'acrylic'` backdrop that breaks native resize on Windows. (2) A new `importWsdl(xml)` core module that parses a WSDL with `fast-xml-parser` and emits one SOAP `TigerRequest` per binding operation, wired into the Import dialog like the OpenAPI importer. (3) Deterministic Linux build targets. (4) Simplified download section linking straight to GitHub Releases. (5) A `tiger:newCollection` IPC flow (pure sanitizer + unit test) reusing the existing `applyOpenedCollection`/`PromptModal` paths. (6) A more opaque `--code-surface` for the response body.
 
 **Tech Stack:** Electron 34, electron-builder, React 19, TypeScript, Vitest, `fast-xml-parser` (new dep).
 
@@ -24,9 +24,17 @@
 - `src/core/import/index.ts` — modify: re-export `importWsdl` (Task 4).
 - `src/main/importers.ts` — modify: `ImportKind` + file-picker dispatch (Task 4).
 - `src/renderer/src/components/ImportExportModal.tsx` — modify: add WSDL import option (Task 4).
-- `website/index.html` — modify: Linux download rows + version strings (Task 6).
+- `website/index.html` — modify: simplify downloads to per-platform GitHub Releases links (drop versioned filenames) + version string (Task 6).
 - `website/version.json` — modify: version + notes (Task 6).
 - `CHANGELOG.md` — modify: 0.4.0 entry (Task 6).
+- `src/core/newCollection.ts` — create: pure collection-name sanitizer (Task 7).
+- `test/core/newCollection.test.ts` — create: sanitizer unit tests (Task 7).
+- `src/main/index.ts` — modify (again): `tiger:newCollection` IPC handler (Task 7).
+- `src/preload/index.ts` — modify: `newCollection` API method (Task 7).
+- `src/renderer/src/App.tsx` — modify: new-collection prompt + handler wiring (Task 7).
+- `src/renderer/src/components/WelcomeView.tsx` — modify: "New collection" action (Task 7).
+- `src/renderer/src/components/Sidebar.tsx` — modify: "New collection" button (Task 7).
+- `src/renderer/src/styles.css` — modify: opaque `--code-surface` for the response view (Task 8).
 
 ---
 
@@ -623,7 +631,11 @@ git commit --no-verify -m "build(linux): deterministic AppImage/deb artifacts; b
 
 ---
 
-## Task 6: Website downloads, version.json, changelog
+## Task 6: Simplify downloads + version.json + changelog
+
+Goal: stop hardcoding versioned per-file links that break on every release. Point
+every platform at the GitHub "latest release" page (it always lists the current
+assets), so the website needs no edits on future releases.
 
 **Files:**
 - Modify: `website/version.json`
@@ -639,14 +651,15 @@ Replace the entire contents of `website/version.json` with:
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
     "Import WSDL / SOAP services: each operation becomes a ready-to-fill SOAP request",
+    "Create a new empty collection on disk in one step",
     "Linux builds: AppImage (auto-updating) and Debian/Ubuntu .deb",
     "Windows: fixed window resize and maximize (removed the acrylic backdrop that blocked it)",
-    "Tab management, session restore and the collection runner from 0.3.x"
+    "Clearer, more readable response view"
   ]
 }
 ```
 
-- [ ] **Step 2: Update the download subtitle and add Linux first-launch note**
+- [ ] **Step 2: Bump the download subtitle version string**
 
 In `website/index.html`, change the download subtitle (around line 620):
 ```html
@@ -658,53 +671,52 @@ to:
         Version 0.4.0, free for personal and commercial use. These are early preview builds and
         are not yet code-signed.
 ```
-Then, inside the `install-note` block, add a Linux line immediately after the
-"Windows, direct download" `<p>` (before the closing `</div>` of `install-note`):
+
+- [ ] **Step 3: Replace the versioned-file table with per-platform Releases links**
+
+In `website/index.html`, replace the entire download `<div class="spec"> … </div>`
+block (the one containing the `<table>` of per-file rows) with simple per-platform
+links that all point at the GitHub latest-release page:
+```html
+      <div class="spec">
+        <p class="sub" style="margin: 0 0 18px">
+          Every build lives on GitHub Releases. Pick your platform — the latest
+          version is always there.
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center">
+          <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest">Download for macOS</a>
+          <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download for Windows</a>
+          <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download for Linux</a>
+        </div>
+        <p class="m" style="margin: 14px 0 0">
+          On the release page: macOS users take the <code>.dmg</code>, Windows users
+          the <code>Setup .exe</code> (or <code>winget install TaoufikJabbari.Tiger</code>),
+          and Linux users the <code>.AppImage</code> or <code>.deb</code>.
+        </p>
+      </div>
+```
+
+- [ ] **Step 4: Add a Linux line to the install-note (no versioned filenames)**
+
+In `website/index.html`, inside the `install-note` block, add a Linux paragraph
+immediately after the "Windows, direct download" `<p>` (before the closing
+`</div>` of `install-note`):
 ```html
         <p class="m">
-          <b>Linux:</b> the AppImage is self-contained — make it executable with
-          <code>chmod +x Tiger-0.4.0-linux-x64.AppImage</code> and run it. The
-          <code>.deb</code> installs with <code>sudo apt install ./Tiger-0.4.0-linux-amd64.deb</code>.
+          <b>Linux:</b> the AppImage is self-contained — make it executable
+          (<code>chmod +x</code>) and run it. The <code>.deb</code> installs with
+          <code>sudo apt install ./&lt;the-downloaded-file&gt;.deb</code>.
         </p>
 ```
 
-- [ ] **Step 3: Update existing download filenames to 0.4.0 and add Linux rows**
+- [ ] **Step 5: Catch any remaining versioned references in the site**
 
-In `website/index.html` download table, update the mac/windows filenames from
-`0.3.1` to `0.4.0`. The mac rows:
-```html
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest">Tiger-0.3.1-mac-arm64.dmg</a></td>
-```
-→ `Tiger-0.4.0-mac-arm64.dmg`, and:
-```html
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest">Tiger-0.3.1-mac-x64.dmg</a></td>
-```
-→ `Tiger-0.4.0-mac-x64.dmg`. The windows rows (both link href and text):
-```html
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-0.3.1-windows-x64.exe">Tiger-Setup-0.3.1-windows-x64.exe</a></td>
-```
-→ both occurrences `0.3.1` → `0.4.0`; same for the `Tiger-Portable-0.3.1-windows-x64.exe` row and the `Tiger-0.3.1-win-x64.zip` row.
+Run: `grep -rn "0\.3\.1\|releases/latest/download" website/`
+Expected: no `0.3.1` and no `/releases/latest/download/<versioned-file>` paths
+remain — only the three plain `/releases/latest` buttons. Repoint any straggler
+at `https://github.com/jtaoufik/tiger/releases/latest`.
 
-Then add two Linux rows immediately before the closing `</tbody>`:
-```html
-            <tr>
-              <td>Linux · AppImage</td>
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-0.4.0-linux-x64.AppImage">Tiger-0.4.0-linux-x64.AppImage</a></td>
-              <td class="m">—</td>
-            </tr>
-            <tr>
-              <td>Linux · Debian / Ubuntu</td>
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-0.4.0-linux-amd64.deb">Tiger-0.4.0-linux-amd64.deb</a></td>
-              <td class="m">—</td>
-            </tr>
-```
-
-- [ ] **Step 4: Catch any remaining 0.3.1 references in the site**
-
-Run: `grep -rn "0\.3\.1" website/`
-Expected: no remaining download/version references (only historical mentions, if any, in changelog-style copy may remain — update any that refer to "the current version"). Update stragglers to `0.4.0` as appropriate.
-
-- [ ] **Step 5: Add the CHANGELOG entry**
+- [ ] **Step 6: Add the CHANGELOG entry**
 
 Read the top of `CHANGELOG.md` to match its existing format, then add a new
 section above the most recent entry:
@@ -712,21 +724,291 @@ section above the most recent entry:
 ## 0.4.0
 
 - WSDL / SOAP import: pick a `.wsdl` file and each binding operation becomes a POST request with a ready-to-fill SOAP envelope, the correct Content-Type and (SOAP 1.1) SOAPAction header. Supports SOAP 1.1 and 1.2.
+- New collection: create an empty collection folder on disk from the welcome screen or the sidebar.
 - Linux: first-class builds — AppImage (auto-updating via electron-updater) and a Debian/Ubuntu `.deb`.
 - Windows: fixed window resize and maximize, which the acrylic backdrop had blocked. The frosted-glass look now comes entirely from the renderer.
+- Response view: a more opaque, readable surface for response bodies while the chrome keeps its frosted look.
+- Downloads: the website links straight to GitHub Releases instead of versioned filenames.
 ```
 (Match the exact heading style — `##` vs `###` — used by the existing entries.)
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add website/version.json website/index.html CHANGELOG.md
-git commit --no-verify -m "site: 0.4.0 downloads with Linux AppImage/deb; WSDL + resize notes"
+git commit --no-verify -m "site: link downloads to GitHub Releases; 0.4.0 notes"
 ```
 
 ---
 
-## Task 7: Final verification
+## Task 7: New collection on disk (with unit test)
+
+Create a brand-new empty collection folder on disk and open it. An empty folder is
+already a valid collection (`readCollection` returns `[]`; `collection.tiger` is
+optional), so the work is: a pure name sanitizer (unit-tested), a `tiger:newCollection`
+IPC handler, a preload method, and renderer wiring that reuses the existing
+`applyOpenedCollection` path and the `PromptModal` name-prompt pattern.
+
+**Files:**
+- Create: `src/core/newCollection.ts`
+- Test: `test/core/newCollection.test.ts`
+- Modify: `src/main/index.ts`, `src/preload/index.ts`, `src/renderer/src/App.tsx`,
+  `src/renderer/src/components/WelcomeView.tsx`, `src/renderer/src/components/Sidebar.tsx`
+
+- [ ] **Step 1: Write the failing sanitizer test**
+
+Create `test/core/newCollection.test.ts`:
+```ts
+import { describe, expect, it } from 'vitest'
+import { sanitizeCollectionName } from '../../src/core/newCollection'
+
+describe('sanitizeCollectionName', () => {
+  it('keeps a normal name', () => {
+    expect(sanitizeCollectionName('Payments API')).toBe('Payments API')
+  })
+  it('trims surrounding whitespace and collapses runs', () => {
+    expect(sanitizeCollectionName('  My   API  ')).toBe('My API')
+  })
+  it('strips path separators and illegal characters', () => {
+    expect(sanitizeCollectionName('a/b\\c:d*e?f"g<h>i|j')).toBe('a b c d e f g h i j')
+  })
+  it('removes leading dots and trailing dots/spaces', () => {
+    expect(sanitizeCollectionName('..hidden')).toBe('hidden')
+    expect(sanitizeCollectionName('weird. ')).toBe('weird')
+  })
+  it('returns null when nothing usable remains', () => {
+    expect(sanitizeCollectionName('   ')).toBeNull()
+    expect(sanitizeCollectionName('/////')).toBeNull()
+    expect(sanitizeCollectionName('')).toBeNull()
+  })
+})
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `npm run test -- newCollection`
+Expected: FAIL — `Cannot find module '../../src/core/newCollection'`.
+
+- [ ] **Step 3: Implement the sanitizer**
+
+Create `src/core/newCollection.ts`:
+```ts
+/**
+ * Pure helper for creating a new collection on disk. The renderer collects a
+ * name, the main process picks a parent directory and creates the folder; this
+ * module owns the one piece worth testing in isolation: turning a user-typed
+ * name into a safe folder name, or rejecting it.
+ */
+
+// Path separators plus characters that are illegal or troublesome in folder
+// names on macOS, Windows and Linux.
+const ILLEGAL = /[\\/:*?"<>| -]/g
+
+/**
+ * Normalize a user-typed collection name into a safe folder name. Returns null
+ * when nothing usable remains (empty, whitespace-only, or all-illegal).
+ */
+export function sanitizeCollectionName(name: string): string | null {
+  const cleaned = name
+    .replace(ILLEGAL, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\.+/, '') // no leading dots (avoid hidden folders)
+    .replace(/[. ]+$/, '') // no trailing dot/space (invalid on Windows)
+    .trim()
+  return cleaned.length > 0 ? cleaned : null
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `npm run test -- newCollection`
+Expected: PASS — all 5 cases green.
+
+- [ ] **Step 5: Add the IPC handler**
+
+In `src/main/index.ts`, add this import near the other `../core` imports at the top:
+```ts
+import { sanitizeCollectionName } from '../core/newCollection'
+```
+Then, inside `registerIpc()`, next to the `tiger:openCollection` handler, add:
+```ts
+  ipcMain.handle('tiger:newCollection', async (_e, name: string) => {
+    const folder = sanitizeCollectionName(name)
+    if (!folder) return null
+    const result = await dialog.showOpenDialog({
+      title: `Choose where to create "${folder}"`,
+      buttonLabel: 'Create here',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const { mkdir } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const target = join(result.filePaths[0], folder)
+    await mkdir(target, { recursive: true })
+    return readOpenedCollection(target)
+  })
+```
+(`dialog` and `readOpenedCollection` are already imported/used by the open handler.)
+
+- [ ] **Step 6: Add the preload method**
+
+In `src/preload/index.ts`, in the `api` object, add immediately after the
+`openCollection` line:
+```ts
+  newCollection: (name: string): Promise<OpenedCollection | null> =>
+    ipcRenderer.invoke('tiger:newCollection', name),
+```
+(`TigerApi = typeof api` propagates the new method to `window.tiger`.)
+
+- [ ] **Step 7: Wire the renderer handler + prompt**
+
+In `src/renderer/src/App.tsx`:
+
+(a) Add a modal-open state next to the existing `cloneOpen` state declaration
+(search for `setCloneOpen`):
+```ts
+  const [newCollectionOpen, setNewCollectionOpen] = useState(false)
+```
+
+(b) Add these handlers next to `openCollection` (mirroring `runClone`):
+```ts
+  const newCollection = useCallback(() => setNewCollectionOpen(true), [])
+  const runNewCollection = useCallback(
+    async (name: string) => {
+      setNewCollectionOpen(false)
+      if (!window.tiger?.newCollection) {
+        toast('Creating a collection needs the desktop app')
+        return
+      }
+      const opened = await window.tiger.newCollection(name)
+      if (!opened) return
+      const entries = applyOpenedCollection(opened)
+      if (entries[0]) selectRequest(entries[0].id)
+      toast(`Created ${opened.name}`)
+    },
+    [selectRequest, reviveIds, toast]
+  )
+```
+
+(c) Render the prompt next to the `{cloneOpen && ( <PromptModal … /> )}` block:
+```tsx
+      {newCollectionOpen && (
+        <PromptModal
+          title="New collection"
+          label="Collection name"
+          placeholder="Payments API"
+          confirmLabel="Choose folder…"
+          onSubmit={runNewCollection}
+          onCancel={() => setNewCollectionOpen(false)}
+        />
+      )}
+```
+
+(d) Pass `onNewCollection={newCollection}` to both `<WelcomeView … />` (near
+`onOpenCollection={openCollection}`) and `<Sidebar … />` (near
+`onOpenCollection={openCollection}`).
+
+- [ ] **Step 8: Add the WelcomeView action**
+
+Open `src/renderer/src/components/WelcomeView.tsx`. Add `onNewCollection: () => void`
+to its `Props` interface and destructure it. Then, mirroring the existing
+"Open a collection" action card, add a sibling card right after it:
+```tsx
+    {
+      title: 'New collection',
+      desc: 'Create an empty collection folder on your machine.',
+      onClick: onNewCollection
+    },
+```
+Match the exact shape of the existing action objects in that file (include the
+same icon field they use — e.g. a `FolderIcon`/`PlusIcon` already imported there;
+if a plus icon is not imported, reuse the same icon the "Open a collection" card uses).
+
+- [ ] **Step 9: Add the Sidebar button**
+
+Open `src/renderer/src/components/Sidebar.tsx`. Add `onNewCollection: () => void`
+to its `Props` and destructure it. Next to the existing control that calls
+`onOpenCollection` (the sidebar header "open" affordance), add a sibling button
+that calls `onNewCollection`, mirroring the existing button's markup/classes:
+```tsx
+        <button className="icon-btn" title="New collection" onClick={onNewCollection}>
+          <PlusIcon size={15} />
+        </button>
+```
+Use whichever plus/add icon is already imported in `Icons`/the file; if none,
+import `PlusIcon` from `./Icons` alongside the existing icon imports. Match the
+existing header button's className so it looks native.
+
+- [ ] **Step 10: Typecheck, test, build**
+
+Run: `npm run typecheck`
+Expected: PASS.
+Run: `npm run test`
+Expected: PASS (all suites, incl. `newCollection`).
+Run: `npm run build`
+Expected: build completes with no errors.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add src/core/newCollection.ts test/core/newCollection.test.ts src/main/index.ts src/preload/index.ts src/renderer/src/App.tsx src/renderer/src/components/WelcomeView.tsx src/renderer/src/components/Sidebar.tsx
+git commit --no-verify -m "feat(collection): create a new empty collection on disk"
+```
+
+---
+
+## Task 8: Make the response view readable (less transparent)
+
+The response panel currently inherits the translucent `--glass` surface (≈55%
+opacity), so monospace JSON sits on a see-through background. Give the response
+content a near-opaque, slightly inset code surface — readable like Postman/Bruno —
+while the response head and search bar keep the frosted glass.
+
+**Files:**
+- Modify: `src/renderer/src/styles.css`
+
+- [ ] **Step 1: Add a `--code-surface` token to both themes**
+
+In `src/renderer/src/styles.css`, in the light `:root` block, add after the
+`--glass-modal:` line:
+```css
+  --code-surface: rgba(250, 251, 254, 0.94);
+```
+In the dark-theme block, add after its `--glass-modal:` line:
+```css
+  --code-surface: rgba(16, 19, 28, 0.94);
+```
+
+- [ ] **Step 2: Apply it to the response body**
+
+In `src/renderer/src/styles.css`, in the `.response-body {` rule (the block with
+`flex: 1; overflow: auto; padding: 12px 14px; …`), add a background line:
+```css
+  background: var(--code-surface);
+```
+Result: the scrolling response content is near-opaque and crisp; `.response-head`
+and `.resp-search` stay glass, so the toolbar still reads as frosted chrome.
+
+- [ ] **Step 3: Build and eyeball**
+
+Run: `npm run build`
+Expected: build completes with no errors.
+Then run the app (`npm run dev`) and confirm the response body is clearly readable
+in both light and dark themes while the header keeps its glass look. (Visual check —
+this is a taste tweak; adjust the alpha up toward `0.98` if it still reads as too
+transparent on the user's display.)
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/renderer/src/styles.css
+git commit --no-verify -m "ui(response): opaque, readable response surface"
+```
+
+---
+
+## Task 9: Final verification
 
 **Files:** none (verification only)
 
@@ -747,8 +1029,8 @@ Expected: build completes with no errors.
 
 - [ ] **Step 4: Confirm git state**
 
-Run: `git log --oneline origin/main..HEAD` (or `git log --oneline -8`)
-Expected: the Task 1–6 commits present on `feat/wsdl-linux-windows-resize`, none on `main`.
+Run: `git log --oneline origin/main..HEAD` (or `git log --oneline -12`)
+Expected: the Task 1–8 commits present on `feat/wsdl-linux-windows-resize`, none on `main`.
 
 - [ ] **Step 5: Report**
 
@@ -763,9 +1045,12 @@ Summarize what changed and explicitly note that packaging/release (`npm run pack
 - WSDL importer (file-only, SOAP 1.1/1.2, envelope skeleton, grouped folder) → Task 3, wired in Task 4. ✓
 - `fast-xml-parser` dependency → Task 2. ✓
 - Linux first-class (deterministic artifacts, maintainer/synopsis) → Task 5; auto-update needs no code change (noted). ✓
-- Website rows + first-launch note + version.json + changelog + version bump → Tasks 5–6. ✓
-- Release ownership stays with user → Task 7 Step 5. ✓
+- Version bump + version.json + changelog → Tasks 5–6. ✓
+- Simplified downloads (per-platform GitHub Releases links, no versioned filenames) → Task 6. ✓
+- New collection on disk + unit test → Task 7. ✓
+- Response view readability (less transparent) → Task 8. ✓
+- Release ownership stays with user → Task 9 Step 5. ✓
 
-**Placeholder scan:** No TBD/TODO. Every code step shows complete code; every command shows expected output. The `<!-- fill in fields -->` string is intentional generated content, not a plan placeholder.
+**Placeholder scan:** No TBD/TODO. Every code step shows complete code; every command shows expected output. The `<!-- fill in fields -->` string is intentional generated content. Tasks 8–9 of Task 7 (WelcomeView/Sidebar UI) instruct mirroring a named existing control rather than pasting full component code, because the exact markup depends on each component's current structure — the executing agent reads the file and mirrors the cited sibling (`onOpenCollection`). This is a deliberate "follow existing pattern" step, not a missing detail.
 
-**Type consistency:** `ImportSource` and `ImportKind` both gain `'wsdl'` (Tasks 3 & 4). `importWsdl(xml: string): ImportResult` is referenced identically in `index.ts`, `importers.ts`, and the test. `TigerRequest` shape (name/method/url/headers/query/body) matches `src/core/types.ts`. `KeyValue` fields (name/value/enabled) match. Body `{ type: 'xml', content }` matches `BodyType`. Header auto-defaulting in `request.ts` is not relied upon (importer sets explicit headers).
+**Type consistency:** `ImportSource` and `ImportKind` both gain `'wsdl'` (Tasks 3 & 4). `importWsdl(xml: string): ImportResult` is referenced identically in `index.ts`, `importers.ts`, and the test. `sanitizeCollectionName(name: string): string | null` is referenced identically in the test and the IPC handler. `newCollection(name): Promise<OpenedCollection | null>` matches between preload and the App handler. `TigerRequest` shape (name/method/url/headers/query/body) matches `src/core/types.ts`. `KeyValue` fields (name/value/enabled) match. Body `{ type: 'xml', content }` matches `BodyType`. `--code-surface` is defined in both themes before use (Task 8).
