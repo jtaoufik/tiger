@@ -4,743 +4,99 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>Tiger · The API client for teams: Git-based, offline, free to start</title>
-  <meta name="description" content="Tiger is a Postman alternative for engineering teams: collections live in your Git repos, requests stay on your machines, and your team starts free." />
+  <title>Tiger · The git-native API client — docs</title>
+  <meta name="description" content="Tiger is a free, open source, git-native API client. Collections are plain-text .tiger files, requests run entirely on your machine, and a built-in MCP server lets AI drive your API. Documentation, guides and comparisons." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/" />
   <meta name="robots" content="index, follow" />
-  <link rel="icon" type="image/png" href="./icon.png" />
-  <link rel="apple-touch-icon" href="./icon.png" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <link rel="apple-touch-icon" href="/tiger/icon.png" />
 
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://jtaoufik.github.io/tiger/" />
-  <meta property="og:title" content="Tiger · The API client for teams" />
-  <meta property="og:description" content="Collections in your Git repos. Requests that stay on your machines. No accounts to provision. Free to get started for any team size." />
+  <meta property="og:title" content="Tiger · The git-native API client" />
+  <meta property="og:description" content="Plain-text collections in your Git repo. Requests that never leave your machine. No account. A built-in MCP server. Free and open source." />
   <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Tiger · The API client for teams" />
-  <meta name="twitter:description" content="Git-based API collections, fully offline, free to start. Imports your Postman collections in minutes." />
+  <meta name="twitter:title" content="Tiger · The git-native API client" />
+  <meta name="twitter:description" content="Plain-text collections in your Git repo. Requests that never leave your machine. No account. Free and open source." />
   <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/icon.png" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
 
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Tiger",
-        "operatingSystem": "macOS, Windows",
-        "applicationCategory": "DeveloperApplication",
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "description": "A local-first API client for engineering teams. Collections are plain text files in Git, requests run entirely on your own machines, and importers cover Postman, Insomnia, Bruno and OpenAPI.",
-        "url": "https://jtaoufik.github.io/tiger/",
-        "image": "https://jtaoufik.github.io/tiger/icon.png"
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Where does our API data live?",
-            "acceptedAnswer": { "@type": "Answer", "text": "On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure." }
-          },
-          {
-            "@type": "Question",
-            "name": "Can we use it commercially, and what does it cost per seat?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Tiger is free to download and use today, including for commercial work. Advanced team features may become paid in a future release; pricing will be announced before anything changes for existing users." }
-          },
-          {
-            "@type": "Question",
-            "name": "How do we migrate off Postman or Insomnia?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too, and collections export back to Postman or OpenAPI 3.0." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does it work behind our corporate proxy?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. HTTP, HTTPS and SOCKS proxies are supported, SSL verification can be switched off when developing against self-signed or internal certificates, and redirects and timeouts are configurable." }
-          },
-          {
-            "@type": "Question",
-            "name": "How does the team collaborate without a sync server?",
-            "acceptedAnswer": { "@type": "Answer", "text": "With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone." }
-          },
-          {
-            "@type": "Question",
-            "name": "How do we deploy it company-wide?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Standard installers per platform: DMG for macOS and NSIS installer or portable EXE for Windows. Push them with your existing deployment tooling. No accounts or license keys to provision. Linux and ZIP builds are available on request." }
-          }
-        ]
-      }
-    ]
+    "@type": "SoftwareApplication",
+    "name": "Tiger",
+    "operatingSystem": "macOS, Windows, Linux",
+    "applicationCategory": "DeveloperApplication",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "description": "A free, open source, git-native API client. Collections are plain-text .tiger files in your repo, requests run entirely on your machine, and a built-in MCP server lets AI assistants drive your API. Imports Postman, Insomnia, Bruno, OpenAPI and WSDL/SOAP.",
+    "url": "https://jtaoufik.github.io/tiger/",
+    "image": "https://jtaoufik.github.io/tiger/icon.png"
   }
   </script>
-
-  <style>
-    :root {
-      --ink: #faf6ee;
-      --ink-2: #f4eee2;
-      --surface: #ffffff;
-      --surface-2: #fffaf2;
-      --line: rgba(36, 24, 8, 0.09);
-      --line-strong: rgba(36, 24, 8, 0.17);
-      --cream: #241c12;
-      --dim: #6e6151;
-      --faint: #9a8c79;
-      --orange: #f26b0a;
-      --orange-hot: #ff8c33;
-      --orange-deep: #c75500;
-      --good: #1e9e63;
-      --bad: #d8472e;
-      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-      --disp: "Bricolage Grotesque", -apple-system, sans-serif;
-      --stripe: repeating-linear-gradient(
-        -55deg,
-        var(--orange) 0 8px,
-        transparent 8px 22px
-      );
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background: var(--ink);
-      color: var(--cream);
-      font-family: var(--disp);
-      font-size: 16.5px;
-      line-height: 1.65;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-    body::before {
-      content: "";
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(1000px 600px at 8% -5%, rgba(242, 107, 10, 0.09), transparent 60%),
-        radial-gradient(900px 700px at 105% 15%, rgba(242, 107, 10, 0.05), transparent 55%);
-    }
-    body::after {
-      content: "";
-      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.22;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.7 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-    }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
-
-    ::selection { background: var(--orange); color: #fff; }
-    a { color: var(--orange-hot); }
-    :focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
-
-    /* ---------- type helpers ---------- */
-    .eyebrow {
-      font-family: var(--mono); font-size: 12px; font-weight: 600;
-      letter-spacing: 0.18em; text-transform: uppercase; color: var(--orange);
-      display: inline-flex; align-items: center; gap: 10px;
-    }
-    .eyebrow::before {
-      content: ""; width: 26px; height: 10px;
-      background: var(--stripe); background-size: 200% 100%;
-    }
-    h2 {
-      font-size: clamp(30px, 4.4vw, 44px); font-weight: 700;
-      letter-spacing: -0.02em; line-height: 1.08; margin: 14px 0 14px;
-    }
-    .sub { color: var(--dim); max-width: 640px; margin: 0 0 36px; font-size: 17px; }
-    .m { font-family: var(--mono); }
-
-    /* ---------- header ---------- */
-    header.site {
-      display: flex; align-items: center; gap: 12px; padding: 26px 0;
-    }
-    header.site img { width: 38px; height: 38px; }
-    header.site .name {
-      font-weight: 800; font-size: 21px; letter-spacing: -0.02em;
-    }
-    header.site nav { margin-left: auto; display: flex; gap: 26px; flex-wrap: wrap; align-items: center; }
-    header.site nav a {
-      font-family: var(--mono); font-size: 13px; color: var(--dim);
-      text-decoration: none; transition: color 0.15s;
-    }
-    header.site nav a:hover { color: var(--orange-hot); }
-    .gh-btn {
-      font-family: var(--mono); font-size: 13px; font-weight: 600;
-      color: var(--cream) !important; text-decoration: none;
-      border: 1px solid var(--line-strong); border-radius: 10px;
-      padding: 8px 16px; transition: border-color 0.15s, background 0.15s;
-    }
-    .gh-btn:hover { border-color: var(--orange); background: rgba(255, 122, 24, 0.08); }
-
-    /* ---------- hero ---------- */
-    .hero {
-      display: grid; grid-template-columns: 1.05fr 0.95fr;
-      gap: 48px; align-items: center; padding: 64px 0 84px; position: relative;
-    }
-    @media (max-width: 920px) { .hero { grid-template-columns: 1fr; padding-top: 36px; } }
-    .hero h1 {
-      font-size: clamp(40px, 6.2vw, 68px); font-weight: 800;
-      line-height: 1.02; letter-spacing: -0.03em; margin: 20px 0 22px;
-    }
-    .hero h1 em {
-      font-style: normal; color: var(--orange);
-      position: relative; white-space: nowrap;
-    }
-    .hero h1 em::after {
-      content: ""; position: absolute; left: 0; right: 0; bottom: 4px; height: 10px;
-      background: var(--stripe); opacity: 0.35; z-index: -1;
-    }
-    .hero .lead { color: var(--dim); font-size: 19px; max-width: 480px; margin: 0 0 34px; }
-    .cta { display: flex; gap: 14px; flex-wrap: wrap; }
-    .btn {
-      font-family: var(--mono); font-weight: 600; font-size: 14.5px;
-      text-decoration: none; padding: 15px 28px; border-radius: 12px;
-      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-    }
-    .btn.primary {
-      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
-      color: #1a0d02; box-shadow: 0 10px 36px rgba(255, 122, 24, 0.35);
-    }
-    .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(255, 122, 24, 0.45); }
-    .btn.ghost {
-      color: var(--cream); border: 1px solid var(--line-strong);
-    }
-    .btn.ghost:hover { background: rgba(255, 173, 96, 0.07); }
-    .trust {
-      display: flex; gap: 22px; flex-wrap: wrap; margin-top: 36px;
-      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
-    }
-    .trust b { color: var(--dim); font-weight: 600; }
-
-    /* hero code windows */
-    .stage { position: relative; min-height: 480px; }
-    @media (max-width: 920px) { .stage { min-height: 0; } }
-    .win {
-      background: linear-gradient(180deg, #241b10, #1a130a);
-      border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0,0,0,0.4);
-      overflow: hidden;
-    }
-    .win .bar {
-      display: flex; align-items: center; gap: 8px;
-      padding: 11px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-    }
-    .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: #786b58; opacity: 0.5; }
-    .win .bar i:first-child { background: var(--bad); opacity: 0.9; }
-    .win .bar i:nth-child(2) { background: #ffc24d; opacity: 0.9; }
-    .win .bar i:nth-child(3) { background: var(--good); opacity: 0.9; }
-    .win .bar .file {
-      margin-left: 10px; font-family: var(--mono); font-size: 12px; color: #b3a58e;
-    }
-    .win pre {
-      margin: 0; padding: 18px 20px; font-family: var(--mono);
-      font-size: 12.5px; line-height: 1.7; overflow: hidden;
-      white-space: pre; text-overflow: ellipsis;
-    }
-    .shot {
-      display: block; width: 100%; border-radius: 14px;
-      border: 1px solid var(--line-strong);
-      box-shadow: 0 30px 80px rgba(70, 45, 10, 0.28);
-      transform: rotate(-1.2deg); position: relative; z-index: 2;
-    }
-    .win-b {
-      position: absolute; right: -14px; bottom: -36px; width: 62%; z-index: 3;
-      transform: rotate(1.6deg);
-    }
-    @media (max-width: 920px) { .win-b { position: static; width: 100%; margin-top: 16px; transform: none; } }
-    .k { color: #ff8c33; font-weight: 600; }
-    .key { color: #f3ead9; }
-    .v { color: #b3a58e; }
-    .var { color: #ffb066; }
-    .cm { color: #786b58; }
-
-    /* ---------- ticker strip ---------- */
-    .strip {
-      border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
-      padding: 26px 0; margin: 10px 0 30px;
-    }
-    .strip .row {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; text-align: center;
-    }
-    @media (max-width: 760px) { .strip .row { grid-template-columns: repeat(2, 1fr); row-gap: 26px; } }
-    .stat .n {
-      font-weight: 800; font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -0.02em;
-      color: var(--cream);
-    }
-    .stat .n span { color: var(--orange); }
-    .stat .l { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
-
-    /* ---------- sections ---------- */
-    section { padding: 72px 0; }
-
-    .bento {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-    }
-    @media (max-width: 920px) { .bento { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 620px) { .bento { grid-template-columns: 1fr; } }
-    .cell {
-      position: relative; overflow: hidden;
-      background: linear-gradient(180deg, var(--surface-2), var(--surface));
-      border: 1px solid var(--line); border-radius: 16px; padding: 26px;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-    .cell:hover { transform: translateY(-4px); border-color: var(--line-strong); }
-    .cell::after {
-      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: var(--stripe); opacity: 0; transition: opacity 0.2s;
-    }
-    .cell:hover::after { opacity: 1; }
-    .cell.wide { grid-column: span 2; }
-    @media (max-width: 620px) { .cell.wide { grid-column: span 1; } }
-    .cell .num {
-      font-family: var(--mono); font-size: 12px; color: var(--orange);
-      letter-spacing: 0.14em;
-    }
-    .cell h3 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 8px; }
-    .cell p { margin: 0; color: var(--dim); font-size: 14.5px; line-height: 1.6; }
-
-    .tree {
-      margin-top: 18px; font-family: var(--mono); font-size: 13px; line-height: 1.9;
-      color: var(--dim); border-left: 1px solid var(--line-strong); padding-left: 16px;
-    }
-    .tree .dir { color: var(--orange-hot); }
-    .tree .badge {
-      font-size: 10.5px; color: var(--good); border: 1px solid rgba(111, 214, 155, 0.35);
-      border-radius: 5px; padding: 1px 7px; margin-left: 8px;
-    }
-
-    /* ---------- compare ---------- */
-    .spec {
-      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
-      background: var(--surface);
-    }
-    .spec table { width: 100%; border-collapse: collapse; font-size: 15px; }
-    .spec th {
-      font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--faint); text-align: left;
-      padding: 16px 22px; border-bottom: 1px solid var(--line-strong);
-    }
-    .spec td { padding: 15px 22px; border-bottom: 1px solid var(--line); }
-    .spec tr:last-child td { border-bottom: none; }
-    .spec tbody tr { transition: background 0.15s; }
-    .spec tbody tr:hover { background: rgba(255, 122, 24, 0.04); }
-    .spec td:first-child { color: var(--cream); font-weight: 600; }
-    .yes { color: var(--good); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
-    .no { color: var(--bad); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
-    .mid { color: #c8a043; font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
-
-    /* ---------- migrate ---------- */
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
-    @media (max-width: 920px) { .split { grid-template-columns: 1fr; } }
-    .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
-    .chips span {
-      font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--dim);
-      border: 1px solid var(--line-strong); border-radius: 9px; padding: 8px 15px;
-      transition: color 0.15s, border-color 0.15s;
-    }
-    .chips span:hover { color: var(--orange-hot); border-color: var(--orange); }
-    .split .copy p { color: var(--dim); font-size: 15.5px; }
-
-    /* ---------- faq ---------- */
-    .faq details {
-      border-bottom: 1px solid var(--line); padding: 4px 0;
-    }
-    .faq details:first-of-type { border-top: 1px solid var(--line); }
-    .faq summary {
-      display: flex; align-items: baseline; gap: 18px; cursor: pointer;
-      padding: 20px 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em;
-      list-style: none; transition: color 0.15s;
-    }
-    .faq summary::-webkit-details-marker { display: none; }
-    .faq summary:hover { color: var(--orange-hot); }
-    .faq summary .ix {
-      font-family: var(--mono); font-size: 12.5px; color: var(--orange); flex-shrink: 0;
-    }
-    .faq summary .pm {
-      margin-left: auto; font-family: var(--mono); color: var(--faint);
-      transition: transform 0.2s; flex-shrink: 0;
-    }
-    .faq details[open] .pm { transform: rotate(45deg); color: var(--orange); }
-    .faq details p { margin: 0 0 22px 44px; color: var(--dim); max-width: 720px; font-size: 15.5px; }
-
-    /* ---------- final cta ---------- */
-    .finale {
-      position: relative; text-align: center; padding: 96px 24px; margin: 40px 0 0;
-      border-top: 1px solid var(--line);
-      overflow: hidden;
-    }
-    .finale::before {
-      content: ""; position: absolute; inset: auto -10% -70% -10%; height: 200px;
-      background: var(--stripe); opacity: 0.06; transform: rotate(-2deg);
-    }
-    .finale h2 { font-size: clamp(34px, 5.4vw, 58px); margin-bottom: 14px; }
-    .finale .sub { margin: 0 auto 36px; }
-
-    footer {
-      padding: 34px 0 56px; color: var(--faint);
-      font-family: var(--mono); font-size: 12.5px; text-align: center;
-    }
-    footer a { color: var(--orange-hot); text-decoration: none; }
-
-    /* ---------- motion ---------- */
-    @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
-    .hero > div > * { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-    .hero > div > *:nth-child(2) { animation-delay: 0.08s; }
-    .hero > div > *:nth-child(3) { animation-delay: 0.16s; }
-    .hero > div > *:nth-child(4) { animation-delay: 0.24s; }
-    .hero > div > *:nth-child(5) { animation-delay: 0.32s; }
-    .stage { animation: rise 0.9s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-    .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.7s, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
-    .reveal.in { opacity: 1; transform: none; }
-    @media (prefers-reduced-motion: reduce) {
-      *, .hero > div > *, .stage { animation: none !important; transition: none !important; }
-      .reveal { opacity: 1; transform: none; }
-    }
-    .install-note {
-      margin: 18px 0 4px; padding: 16px 18px; border-radius: 12px;
-      background: var(--surface-2); border: 1px solid var(--line-strong);
-      max-width: 720px;
-    }
-    .install-note b { color: var(--cream); }
-    .install-note p { margin: 8px 0 0; font-size: 14.5px; color: var(--dim); }
-    .install-note code {
-      font-family: var(--mono); font-size: 12.5px;
-      background: rgba(36, 24, 8, 0.06); padding: 2px 6px; border-radius: 5px;
-      color: var(--cream); white-space: nowrap;
-    }
-  </style>
 </head>
 <body>
-  <div class="wrap">
-
-    <header class="site">
-      <img src="./icon.png" alt="Tiger logo, an orange cat" />
-      <span class="name">Tiger</span>
-      <nav aria-label="Main">
-        <a href="#teams">Why teams switch</a>
-        <a href="#compare">Compare</a>
-        <a href="#migrate">Migration</a>
-        <a href="#faq">FAQ</a>
-        <a class="gh-btn" href="#download">Download ↓</a>
-      </nav>
-    </header>
-
+  <article data-no-toc>
     <section class="hero">
-      <div>
-        <span class="eyebrow">Free to start · Local-first · Built for teams</span>
-        <h1>API collections that live <em>in your repos</em>, not in someone else's cloud</h1>
-        <p class="lead">
-          Tiger stores every request as a plain text file your team reviews like code.
-          No vendor cloud, no accounts to provision, and your data stays on machines you control.
-        </p>
-        <div class="cta">
-          <a class="btn primary" href="#download">Download Tiger</a>
-          <a class="btn ghost" href="#compare">See the comparison</a>
-        </div>
-        <div class="trust">
-          <span><b>$0</b> per seat, forever</span>
-          <span><b>0</b> accounts, no telemetry of request data</span>
-        </div>
-      </div>
-
-      <div class="stage" aria-hidden="true">
-        <img class="shot" src="./screenshot.png" alt="The Tiger app: collection sidebar, request editor and response panel" />
-        <div class="win win-b">
-          <div class="bar"><i></i><i></i><i></i><span class="file">git log --oneline</span></div>
-<pre><span class="v">a3f81c2</span> <span class="key">fix: invoice auth to oauth2</span>
-<span class="v">9b04e77</span> <span class="key">add refunds collection</span>
-<span class="v">512fd09</span> <span class="key">review: tighten timeout</span></pre>
-        </div>
+      <span class="pill">Free &amp; open source</span>
+      <h1>The git-native API client</h1>
+      <p class="lead">
+        Tiger keeps your API collections as plain-text <code>.tiger</code> files in your
+        own Git repo, runs every request on your machine, and ships a built-in MCP server
+        so AI assistants can drive your API. No account, no cloud, no lock-in.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="/tiger/docs/getting-started/">Get started →</a>
+        <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download</a>
+        <a class="btn" href="https://github.com/jtaoufik/tiger">Star on GitHub</a>
       </div>
     </section>
 
-    <div class="strip reveal">
-      <div class="row">
-        <div class="stat"><div class="n">0</div><div class="l">accounts required</div></div>
-        <div class="stat"><div class="n">100<span>%</span></div><div class="l">offline capable</div></div>
-        <div class="stat"><div class="n">4<span>+</span></div><div class="l">import formats</div></div>
-        <div class="stat"><div class="n">2</div><div class="l">platforms, one build</div></div>
-      </div>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/getting-started/">
+        <div class="t">What is Tiger</div>
+        <div class="d">The five-minute tour of how Tiger works and who it's for.</div>
+      </a>
+      <a class="card" href="/tiger/docs/install/">
+        <div class="t">Install</div>
+        <div class="d">macOS, Windows and Linux builds, plus winget.</div>
+      </a>
+      <a class="card" href="/tiger/docs/first-request/">
+        <div class="t">Your first request</div>
+        <div class="d">Create a collection, send a request, save it to Git.</div>
+      </a>
+      <a class="card" href="/tiger/docs/importing/">
+        <div class="t">Importing</div>
+        <div class="d">Postman, Insomnia, Bruno, OpenAPI, WSDL/SOAP and curl.</div>
+      </a>
+      <a class="card" href="/tiger/docs/mcp/">
+        <div class="t">MCP server</div>
+        <div class="d">Let Claude and other assistants run your saved requests.</div>
+      </a>
+      <a class="card" href="/tiger/compare/">
+        <div class="t">Tiger vs the field</div>
+        <div class="d">How Tiger compares to Postman, Bruno, Insomnia and Hoppscotch.</div>
+      </a>
     </div>
 
-    <section id="teams" class="reveal">
-      <span class="eyebrow">Why teams switch</span>
-      <h2>Collections become an engineering asset</h2>
-      <p class="sub">
-        Cloud API clients made collections a SaaS subscription. Tiger makes them
-        versioned, reviewed and owned by your team.
-      </p>
-      <div class="bento">
-        <div class="cell wide">
-          <span class="num">01</span>
-          <h3>Collaboration through Git, not a sync server</h3>
-          <p>Collections are folders of .tiger files; every request is a reviewable plain-text file. Branch them, diff them in pull requests, and onboard new engineers with git clone. Request chaining via capture blocks lets one request feed its response values into the next.</p>
-          <div class="tree">
-<span class="dir">payments/</span><br/>
-├── create-invoice.tiger<span class="badge">+12 −3</span><br/>
-├── refund.tiger<br/>
-└── <span class="dir">environments/</span> staging.tiger · prod.tiger
-          </div>
-        </div>
-        <div class="cell">
-          <span class="num">02</span>
-          <h3>TLS you control end to end</h3>
-          <p>Import client certificates and custom CA bundles for mutual TLS. An SSL verification switch covers development against self-signed or internal certificates.</p>
-        </div>
-        <div class="cell">
-          <span class="num">03</span>
-          <h3>Request tabs and per-request docs</h3>
-          <p>Open multiple requests in parallel tabs without losing your place. Attach markdown documentation to any request so context travels with the collection, not a separate wiki.</p>
-        </div>
-        <div class="cell">
-          <span class="num">04</span>
-          <h3>Auth your APIs actually use</h3>
-          <p>OAuth 2.0 client credentials with automatic token exchange, Bearer, Basic and API keys. Secrets resolve from environment files you keep out of Git. Dynamic variables like {{$uuid}} and {{$timestamp}} generate fresh values on every send.</p>
-        </div>
-        <div class="cell">
-          <span class="num">05</span>
-          <h3>GraphQL, SOAP and REST</h3>
-          <p>GraphQL body editor with schema introspection, SOAP envelope bodies, and standard REST. JSON prettify and minify helpers keep response payloads readable without leaving the app.</p>
-        </div>
-        <div class="cell">
-          <span class="num">06</span>
-          <h3>AI-ready with MCP</h3>
-          <p>Tiger ships a Model Context Protocol server, so Claude and other MCP clients can list, inspect and run your collections in agentic workflows without any extra tooling.</p>
-        </div>
-        <div class="cell">
-          <span class="num">07</span>
-          <h3>Persistent cookie jar</h3>
-          <p>Cookies set by one request are available to subsequent ones automatically. The cookie jar is per-environment, so staging and production sessions never bleed into each other.</p>
-        </div>
-        <div class="cell">
-          <span class="num">08</span>
-          <h3>Built-in performance runs</h3>
-          <p>Fire any request hundreds of times with bounded concurrency and read back p50 and p95 latency right inside the client. No separate monitor subscription needed.</p>
-        </div>
-        <div class="cell">
-          <span class="num">09</span>
-          <h3>Bring your whole toolkit</h3>
-          <p>Import Postman, Insomnia, Bruno, OpenAPI or Swagger, or paste a curl command. Export back to Postman v2.1 or OpenAPI 3.0. REST, SOAP, GraphQL, multipart file uploads, and code generation for curl, fetch and Python.</p>
-        </div>
-      </div>
-    </section>
+    <h2>Why Tiger</h2>
+    <ul>
+      <li><strong>Git-native.</strong> Collections are human-readable text files. Diff them, branch them, review them in a PR.</li>
+      <li><strong>Local-first &amp; private.</strong> No backend and no telemetry of your traffic — requests, tokens and responses stay on your machine.</li>
+      <li><strong>No account.</strong> Download and go. Free for personal and commercial use.</li>
+      <li><strong>Broad import support.</strong> Bring collections over from Postman, Insomnia, Bruno, OpenAPI, WSDL/SOAP or a curl command.</li>
+      <li><strong>Built for AI.</strong> The bundled MCP server exposes your saved requests as tools any MCP client can call.</li>
+      <li><strong>Cross-platform.</strong> Native desktop builds for macOS, Windows and Linux.</li>
+    </ul>
 
-    <section id="compare" class="reveal">
-      <span class="eyebrow">Compare</span>
-      <h2>Tiger vs Postman vs Bruno</h2>
-      <p class="sub">Factual differences that matter to a platform or security review.</p>
-      <div class="spec">
-        <table>
-          <thead>
-            <tr><th scope="col">Capability</th><th scope="col">Tiger</th><th scope="col">Postman</th><th scope="col">Bruno</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Collections stored as plain files in Git</td><td class="yes">Yes</td><td class="mid">Cloud workspace (local collections available on paid plan)</td><td class="yes">Yes</td></tr>
-            <tr><td>Account required</td><td class="yes">Never</td><td class="mid">Required for most features</td><td class="yes">Never</td></tr>
-            <tr><td>Works fully offline</td><td class="yes">Yes</td><td class="mid">Limited without cloud sync</td><td class="yes">Yes</td></tr>
-            <tr><td>Built-in performance runs</td><td class="yes">Yes</td><td class="mid">Paid-tier monitors</td><td class="no">No</td></tr>
-            <tr><td>One-button team sync with plain language</td><td class="yes">Yes, via Git</td><td class="mid">n/a, uses cloud sync</td><td class="mid">Manual Git workflow</td></tr>
-            <tr><td>MCP server for AI clients</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
-            <tr><td>Free to start</td><td class="yes">Yes</td><td class="mid">Freemium</td><td class="yes">Yes</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="migrate" class="reveal">
-      <div class="split">
-        <div class="copy">
-          <span class="eyebrow">Migration</span>
-          <h2>Move the whole team in an afternoon</h2>
-          <p>
-            Import your existing Postman collections (v2.0 and v2.1), Insomnia v4 exports,
-            Bruno folders, and OpenAPI 3 or Swagger 2 documents. Folders, headers, query
-            parameters and bodies carry over, with variable references preserved. Environment
-            values and auth settings are entered once in Tiger, then live in files your team shares.
-          </p>
-          <p>
-            Exports work too: whole collections back to Postman v2.1 or OpenAPI 3.0, single
-            requests as .tiger files or curl commands. You are never locked in, not even to Tiger.
-          </p>
-          <div class="chips" role="list">
-            <span role="listitem">Postman</span>
-            <span role="listitem">Insomnia</span>
-            <span role="listitem">Bruno</span>
-            <span role="listitem">OpenAPI 3</span>
-            <span role="listitem">Swagger 2</span>
-            <span role="listitem">curl paste</span>
-            <span role="listitem">REST &amp; SOAP</span>
-          </div>
-        </div>
-        <div class="win">
-          <div class="bar"><i></i><i></i><i></i><span class="file">environments / staging.tiger</span></div>
-<pre><span class="k">meta</span> {
-  <span class="key">name</span>: <span class="v">staging</span>
-}
-
-<span class="k">vars</span> {
-  <span class="key">baseUrl</span>: <span class="v">https://api.staging.acme.dev</span>
-  <span class="key">idp</span>: <span class="v">https://id.staging.acme.dev</span>
-  <span class="key">clientId</span>: <span class="v">acme-ci</span>
-  <span class="cm">~clientSecret: kept-out-of-git</span>
-}</pre>
-        </div>
-      </div>
-    </section>
-
-    <section id="security" class="reveal">
-      <span class="eyebrow">Security</span>
-      <h2>A posture you can verify, not trust</h2>
-      <p class="sub">
-        There is no server side: no vendor storage of your request data, no DPA to sign for
-        API payloads, no vendor breach-notification clause to negotiate.
-      </p>
-      <div class="bento">
-        <div class="cell">
-          <span class="num">A</span>
-          <h3>Request data stays on the machine</h3>
-          <p>Request definitions, history and settings are stored locally. Your API calls go to your APIs and nowhere else.</p>
-        </div>
-        <div class="cell">
-          <span class="num">B</span>
-          <h3>Minimal moving parts</h3>
-          <p>No accounts, no background sync, no server side. The only network calls are your API requests, an optional update check and analytics you control.</p>
-        </div>
-        <div class="cell">
-          <span class="num">C</span>
-          <h3>Analytics you own</h3>
-          <p>Anonymous app events only, sent solely to a GA4 property you configure yourselves. Out of the box nothing is sent anywhere, and one switch in Settings turns the feature off entirely.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="download" class="reveal">
-      <span class="eyebrow">Download</span>
-      <h2>Get Tiger for your platform</h2>
-      <p class="sub">
-        Version 0.4.0, free for personal and commercial use. These are early preview builds and
-        are not yet code-signed.
-      </p>
-      <div class="install-note">
-        <b>First launch on a fresh machine</b>
-        <p class="m">
-          <b>macOS:</b> signed with a Developer ID and notarized by Apple, so it opens normally.
-        </p>
-        <p class="m">
-          <b>Windows, recommended:</b> install with the built-in package manager, no
-          SmartScreen prompt: <code>winget install TaoufikJabbari.Tiger</code>
-        </p>
-        <p class="m">
-          <b>Windows, direct download:</b> the installer is not yet code-signed, so
-          SmartScreen may warn. Click <b>More info</b>, then <b>Run anyway</b>. Tiger is
-          applying to the <a href="https://signpath.org/">SignPath Foundation</a> for free
-          open source code signing.
-        </p>
-        <p class="m">
-          <b>Linux:</b> the AppImage is self-contained — make it executable
-          (<code>chmod +x</code>) and run it. The <code>.deb</code> installs with
-          <code>sudo apt install ./&lt;the-downloaded-file&gt;.deb</code>.
-        </p>
-      </div>
-      <div class="spec">
-        <p class="sub" style="margin: 0 0 18px">
-          Every build lives on GitHub Releases. Pick your platform — the latest
-          version is always there.
-        </p>
-        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center">
-          <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest">Download for macOS</a>
-          <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download for Windows</a>
-          <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download for Linux</a>
-        </div>
-        <p class="m" style="margin: 14px 0 0">
-          On the release page: macOS users take the <code>.dmg</code>, Windows users
-          the <code>Setup .exe</code> (or <code>winget install TaoufikJabbari.Tiger</code>),
-          and Linux users the <code>.AppImage</code> or <code>.deb</code>.
-        </p>
-      </div>
-    </section>
-
-    <section id="faq" class="reveal">
-      <span class="eyebrow">FAQ</span>
-      <h2>Questions engineering leaders ask</h2>
-      <div class="faq">
-        <details>
-          <summary><span class="ix">01</span>Where does our API data live?<span class="pm">+</span></summary>
-          <p>On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure.</p>
-        </details>
-        <details>
-          <summary><span class="ix">02</span>Can we use it commercially, and what does it cost per seat?<span class="pm">+</span></summary>
-          <p>Tiger is free to download and use today, including for commercial work. Advanced team features may become paid in a future release; pricing will be announced before anything changes for existing users.</p>
-        </details>
-        <details>
-          <summary><span class="ix">03</span>How do we migrate off Postman or Insomnia?<span class="pm">+</span></summary>
-          <p>Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too, and collections export back to Postman or OpenAPI 3.0.</p>
-        </details>
-        <details>
-          <summary><span class="ix">04</span>Does it work behind our corporate proxy?<span class="pm">+</span></summary>
-          <p>Yes. HTTP, HTTPS and SOCKS proxies are supported, SSL verification can be switched off when developing against self-signed or internal certificates, and redirects and timeouts are configurable.</p>
-        </details>
-        <details>
-          <summary><span class="ix">05</span>How does the team collaborate without a sync server?<span class="pm">+</span></summary>
-          <p>With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone.</p>
-        </details>
-        <details>
-          <summary><span class="ix">06</span>How do we deploy it company-wide?<span class="pm">+</span></summary>
-          <p>Standard installers per platform: DMG for macOS and NSIS installer or portable EXE for Windows. Push them with your existing deployment tooling. No accounts or license keys to provision. Linux and ZIP builds are available on request.</p>
-        </details>
-      </div>
-    </section>
-
-    <section class="finale reveal">
-      <span class="eyebrow" style="justify-content:center;">Get started</span>
-      <h2>Put your collections<br/>back in the repo</h2>
-      <p class="sub">Free to get started. Import your Postman collections and see them in your next pull request.</p>
-      <div class="cta" style="justify-content:center;">
-        <a class="btn primary" href="#download">Download Tiger</a>
-        <a class="btn ghost" href="#faq">Read the FAQ</a>
-      </div>
-    </section>
-
-    <section class="reveal" style="margin-bottom:40px;">
-      <h2>Learn more</h2>
-      <div class="bento">
-        <a class="cell" href="./alternatives/postman/" style="text-decoration:none;color:inherit;">
-          <h3>Free Postman alternative</h3>
-          <p>Why teams are leaving Postman in 2026, and how Tiger compares.</p>
-        </a>
-        <a class="cell" href="./guides/postman-to-tiger/" style="text-decoration:none;color:inherit;">
-          <h3>Postman to Tiger migration guide</h3>
-          <p>Move your collections over in a few steps. No account needed.</p>
-        </a>
-        <a class="cell" href="./use-cases/mcp-api-client/" style="text-decoration:none;color:inherit;">
-          <h3>Let AI run your requests (MCP)</h3>
-          <p>Connect Claude or Cursor to your collections with the built-in MCP server.</p>
-        </a>
-        <a class="cell" href="./compare/tiger-vs-postman/" style="text-decoration:none;color:inherit;">
-          <h3>Tiger vs Postman</h3>
-          <p>A side-by-side, honest feature comparison.</p>
-        </a>
-        <a class="cell" href="./compare/tiger-vs-bruno/" style="text-decoration:none;color:inherit;">
-          <h3>Tiger vs Bruno</h3>
-          <p>Two git-native API clients compared, fairly.</p>
-        </a>
-      </div>
-    </section>
-
-    <footer>
-      <p>© 2026 Tiger. Free and open source under the MIT license. &nbsp;&middot;&nbsp;
-        <a href="https://buymeacoffee.com/tigerapi">Buy me a coffee</a> &nbsp;&middot;&nbsp;
-        <a href="https://www.linkedin.com/in/taoufik-jabbari">Taoufik Jabbari</a>
-      </p>
-    </footer>
-
-  </div>
-
-  <script>
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add('in')),
-      { threshold: 0.12 }
-    );
-    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
-  </script>
+    <div class="callout note">
+      <span class="ic">›</span>
+      <p>New here? Start with <a href="/tiger/docs/getting-started/">What is Tiger</a>, then send
+      <a href="/tiger/docs/first-request/">your first request</a>.</p>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
 </body>
 </html>
