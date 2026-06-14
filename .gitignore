@@ -19,3 +19,10 @@ coverage/
 # Local env
 .env
 .env.local
+
+# Editor / AI assistant artifacts
+.claude/
+CLAUDE.md
+.cursor/
+.aider*
+.specstory/
