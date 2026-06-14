@@ -14,6 +14,7 @@ import {
 interface Props {
   version: string
   onOpenCollection: () => void
+  onNewCollection: () => void
   onClone: () => void
   onImportExport: () => void
   onNewRequest: () => void
@@ -28,6 +29,7 @@ interface Props {
 export function WelcomeView({
   version,
   onOpenCollection,
+  onNewCollection,
   onClone,
   onImportExport,
   onNewRequest,
@@ -43,6 +45,12 @@ export function WelcomeView({
       title: 'Open a collection',
       desc: 'Any folder of .tiger files, straight from disk.',
       onClick: onOpenCollection
+    },
+    {
+      icon: <PlusIcon size={20} />,
+      title: 'New collection',
+      desc: 'Create an empty collection folder on your machine.',
+      onClick: onNewCollection
     },
     {
       icon: <GitBranchIcon size={20} />,

@@ -16,6 +16,8 @@ export type OpenedCollection = OpenedCollectionPayload
 
 const api = {
   openCollection: (): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openCollection'),
+  newCollection: (name: string): Promise<OpenedCollection | null> =>
+    ipcRenderer.invoke('tiger:newCollection', name),
   openPath: (root: string): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openPath', root),
   reload: (root: string): Promise<RequestEntry[]> => ipcRenderer.invoke('tiger:reload', root),
   readFile: (path: string): Promise<string> => ipcRenderer.invoke('tiger:readFile', path),

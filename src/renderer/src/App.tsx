@@ -275,6 +275,7 @@ export default function App() {
   const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null)
   const [cloneOpen, setCloneOpen] = useState(false)
+  const [newCollectionOpen, setNewCollectionOpen] = useState(false)
   const [runnerScope, setRunnerScope] = useState<{ colId: string; path?: string[] } | null>(null)
   const [inspect, setInspect] = useState<
     { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
@@ -1084,6 +1085,23 @@ export default function App() {
     const entries = applyOpenedCollection(opened)
     if (entries[0]) selectRequest(entries[0].id)
   }, [selectRequest, reviveIds])
+
+  const newCollection = useCallback(() => setNewCollectionOpen(true), [])
+  const runNewCollection = useCallback(
+    async (name: string) => {
+      setNewCollectionOpen(false)
+      if (!window.tiger?.newCollection) {
+        toast('Creating a collection needs the desktop app')
+        return
+      }
+      const opened = await window.tiger.newCollection(name)
+      if (!opened) return
+      const entries = applyOpenedCollection(opened)
+      if (entries[0]) selectRequest(entries[0].id)
+      toast(`Created ${opened.name}`)
+    },
+    [selectRequest, applyOpenedCollection, toast]
+  )
 
   const importFromCurl = useCallback(
     async (command: string) => {
@@ -2001,6 +2019,7 @@ export default function App() {
           syncStates={gitStates}
           onSelect={selectRequest}
           onOpenCollection={openCollection}
+          onNewCollection={newCollection}
           onClone={cloneCollection}
           onImportExport={() => setModal('io')}
           onNewRequest={newRequest}
@@ -2038,6 +2057,7 @@ export default function App() {
           <WelcomeView
             version={appVersion}
             onOpenCollection={openCollection}
+            onNewCollection={newCollection}
             onClone={cloneCollection}
             onImportExport={() => setModal('io')}
             onNewRequest={() => {
@@ -2336,6 +2356,16 @@ export default function App() {
           confirmLabel="Clone"
           onSubmit={runClone}
           onCancel={() => setCloneOpen(false)}
+        />
+      )}
+      {newCollectionOpen && (
+        <PromptModal
+          title="New collection"
+          label="Collection name"
+          placeholder="Payments API"
+          confirmLabel="Choose folder…"
+          onSubmit={runNewCollection}
+          onCancel={() => setNewCollectionOpen(false)}
         />
       )}
       {confirmCloseId && (

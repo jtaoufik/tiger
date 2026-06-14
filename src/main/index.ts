@@ -32,6 +32,7 @@ import {
   gitSync,
   repoNameFromUrl
 } from './git'
+import { sanitizeCollectionName } from '../core/newCollection'
 import type { BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
@@ -100,6 +101,22 @@ function registerIpc(): void {
     })
     if (result.canceled || !result.filePaths[0]) return null
     return readOpenedCollection(result.filePaths[0])
+  })
+
+  ipcMain.handle('tiger:newCollection', async (_e, name: string) => {
+    const folder = sanitizeCollectionName(name)
+    if (!folder) return null
+    const result = await dialog.showOpenDialog({
+      title: `Choose where to create "${folder}"`,
+      buttonLabel: 'Create here',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const { mkdir } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const target = join(result.filePaths[0], folder)
+    await mkdir(target, { recursive: true })
+    return readOpenedCollection(target)
   })
 
   // Dialog-less open for session restore; null when the root is gone.
