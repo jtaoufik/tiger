@@ -95,13 +95,6 @@
             "arm64",
             "x64"
           ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
         }
       ],
       "hardenedRuntime": true,
@@ -120,12 +113,6 @@
         },
         {
           "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
           "arch": [
             "x64"
           ]
