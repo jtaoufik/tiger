@@ -6,6 +6,7 @@
   --glass-strong: rgba(255, 255, 255, 0.74);
   --glass-hover: rgba(255, 255, 255, 0.85);
   --glass-modal: rgba(252, 253, 255, 0.94);
+  --code-surface: rgba(250, 251, 254, 0.94);
   --border: rgba(28, 38, 72, 0.1);
   --border-strong: rgba(28, 38, 72, 0.16);
   --text: #1a2233;
@@ -36,6 +37,7 @@
   --glass-strong: rgba(38, 43, 58, 0.72);
   --glass-hover: rgba(48, 54, 72, 0.8);
   --glass-modal: rgba(30, 34, 46, 0.96);
+  --code-surface: rgba(16, 19, 28, 0.94);
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
   --text: #e7ebf5;
@@ -472,6 +474,7 @@ button {
   line-height: 1.55;
   white-space: pre;
   user-select: text;
+  background: var(--code-surface);
 }
 
 .empty {
