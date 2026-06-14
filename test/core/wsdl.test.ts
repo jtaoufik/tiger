@@ -88,6 +88,7 @@ describe('importWsdl (SOAP 1.1)', () => {
     expect(op.request.body.content).toContain('http://schemas.xmlsoap.org/soap/envelope/')
     expect(op.request.body.content).toContain('xmlns:tns="http://example.com/weather"')
     expect(op.request.body.content).toContain('<tns:GetWeather>')
+    // No <types> schema here, so the body falls back to a placeholder comment.
     expect(op.request.body.content).toContain('<!-- fill in fields -->')
   })
 })
@@ -108,7 +109,67 @@ describe('importWsdl (SOAP 1.2)', () => {
   })
 })
 
-// Dual-binding WSDL: one portType, one SOAP 1.1 binding and one SOAP 1.2 binding.
+// A document/literal service whose <types> schema declares the operation's
+// parameters. They must be expanded into the request body so it is sendable.
+const withParams = `<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://example.com/temp"
+                  name="TempService"
+                  targetNamespace="http://example.com/temp">
+  <wsdl:types>
+    <xs:schema targetNamespace="http://example.com/temp">
+      <xs:element name="CelsiusToFahrenheit">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="nCelsius" type="xs:decimal"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:schema>
+  </wsdl:types>
+  <wsdl:message name="C2FIn">
+    <wsdl:part name="parameters" element="tns:CelsiusToFahrenheit"/>
+  </wsdl:message>
+  <wsdl:portType name="TempPort">
+    <wsdl:operation name="CelsiusToFahrenheit">
+      <wsdl:input message="tns:C2FIn"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="TempBinding" type="tns:TempPort">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+    <wsdl:operation name="CelsiusToFahrenheit">
+      <soap:operation soapAction="" style="document"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="TempService">
+    <wsdl:port name="TempPort" binding="tns:TempBinding">
+      <soap:address location="https://example.com/temp.wso"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>`
+
+describe('importWsdl (parameter expansion)', () => {
+  it('expands the operation parameters into the body from the <types> schema', () => {
+    const [op] = importWsdl(withParams).requests
+    expect(op.request.body.content).toContain('<tns:CelsiusToFahrenheit>')
+    expect(op.request.body.content).toContain('<tns:nCelsius></tns:nCelsius>')
+    // With real params expanded, there is no placeholder comment.
+    expect(op.request.body.content).not.toContain('<!-- fill in fields -->')
+  })
+
+  it('still sends a (mandatory) SOAPAction header even when soapAction is empty', () => {
+    const [op] = importWsdl(withParams).requests
+    const headers = Object.fromEntries(op.request.headers.map((h) => [h.name, h.value]))
+    expect(headers['Content-Type']).toBe('text/xml; charset=utf-8')
+    expect(headers['SOAPAction']).toBe('""')
+  })
+})
+
+// Dual-binding WSDL: one portType, a SOAP 1.1 binding and a SOAP 1.2 binding.
+// The importer should emit a single (SOAP 1.1) set of operations, not duplicates.
 const dualBinding = `<?xml version="1.0" encoding="utf-8"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
@@ -148,73 +209,61 @@ const dualBinding = `<?xml version="1.0" encoding="utf-8"?>
   </wsdl:service>
 </wsdl:definitions>`
 
-describe('importWsdl (dual binding — per-binding SOAP version detection)', () => {
-  it('correctly tags the 1.1 binding with text/xml and SOAPAction, the 1.2 binding with application/soap+xml and no SOAPAction', () => {
+describe('importWsdl (dual binding)', () => {
+  it('emits a single SOAP 1.1 set of operations, not 1.1 + 1.2 duplicates', () => {
     const result = importWsdl(dualBinding)
-    expect(result.requests).toHaveLength(2)
-    const [op11, op12] = result.requests
-    const h11 = Object.fromEntries(op11.request.headers.map((h) => [h.name, h.value]))
-    const h12 = Object.fromEntries(op12.request.headers.map((h) => [h.name, h.value]))
-
-    // SOAP 1.1 binding
-    expect(h11['Content-Type']).toBe('text/xml; charset=utf-8')
-    expect(h11['SOAPAction']).toBe('"http://example.com/dual/Hello"')
-
-    // SOAP 1.2 binding
-    expect(h12['Content-Type']).toContain('application/soap+xml')
-    expect(h12['SOAPAction']).toBeUndefined()
+    expect(result.requests).toHaveLength(1)
+    const [op] = result.requests
+    expect(op.request.name).toBe('Hello')
+    expect(op.request.url).toBe('https://example.com/dual11.svc')
+    const headers = Object.fromEntries(op.request.headers.map((h) => [h.name, h.value]))
+    expect(headers['Content-Type']).toBe('text/xml; charset=utf-8')
+    expect(headers['SOAPAction']).toBe('"http://example.com/dual/Hello"')
   })
 })
 
-// No-soapAction: operation with soapAction="" should produce no SOAPAction header.
-const soap11NoAction = `<?xml version="1.0" encoding="utf-8"?>
+// A SOAP service that also exposes a non-SOAP HTTP GET binding (common for .asmx
+// services). The HTTP binding must be ignored - it is not a SOAP request.
+const withHttpBinding = `<?xml version="1.0" encoding="utf-8"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-                  xmlns:tns="http://example.com/noaction"
-                  name="NoActionService"
-                  targetNamespace="http://example.com/noaction">
-  <wsdl:message name="PingIn">
-    <wsdl:part name="parameters" element="tns:Ping"/>
-  </wsdl:message>
-  <wsdl:portType name="NoActionPort">
-    <wsdl:operation name="Ping">
-      <wsdl:input message="tns:PingIn"/>
-    </wsdl:operation>
+                  xmlns:http="http://schemas.xmlsoap.org/wsdl/http/"
+                  xmlns:tns="http://example.com/mix"
+                  name="MixService"
+                  targetNamespace="http://example.com/mix">
+  <wsdl:message name="OpIn"><wsdl:part name="parameters" element="tns:Op"/></wsdl:message>
+  <wsdl:portType name="MixPort">
+    <wsdl:operation name="Op"><wsdl:input message="tns:OpIn"/></wsdl:operation>
   </wsdl:portType>
-  <wsdl:binding name="NoActionBinding" type="tns:NoActionPort">
+  <wsdl:binding name="MixSoap" type="tns:MixPort">
     <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
-    <wsdl:operation name="Ping">
-      <soap:operation soapAction="" style="document"/>
+    <wsdl:operation name="Op">
+      <soap:operation soapAction="urn:Op" style="document"/>
       <wsdl:input><soap:body use="literal"/></wsdl:input>
     </wsdl:operation>
   </wsdl:binding>
-  <wsdl:service name="NoActionService">
-    <wsdl:port name="NoActionPort" binding="tns:NoActionBinding">
-      <soap:address location="https://example.com/noaction.svc"/>
+  <wsdl:binding name="MixHttpGet" type="tns:MixPort">
+    <http:binding verb="GET"/>
+    <wsdl:operation name="Op"><http:operation location="/Op"/></wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="MixService">
+    <wsdl:port name="SoapPort" binding="tns:MixSoap">
+      <soap:address location="https://example.com/mix.asmx"/>
+    </wsdl:port>
+    <wsdl:port name="HttpPort" binding="tns:MixHttpGet">
+      <http:address location="https://example.com/mix.asmx"/>
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>`
 
-describe('importWsdl (empty SOAPAction)', () => {
-  it('omits the SOAPAction header when soapAction is empty', () => {
-    const result = importWsdl(soap11NoAction)
+describe('importWsdl (non-SOAP binding)', () => {
+  it('ignores HTTP GET/POST bindings and only emits SOAP requests', () => {
+    const result = importWsdl(withHttpBinding)
     expect(result.requests).toHaveLength(1)
     const [op] = result.requests
+    expect(op.request.method).toBe('post')
     const headers = Object.fromEntries(op.request.headers.map((h) => [h.name, h.value]))
-    expect(headers['Content-Type']).toBe('text/xml; charset=utf-8')
-    expect(headers['SOAPAction']).toBeUndefined()
-  })
-
-  it('omits the SOAPAction header when no soap:operation child is present', () => {
-    // No soapAction attribute at all — soapAction will be ''
-    const noOpChild = soap11NoAction.replace(
-      '<soap:operation soapAction="" style="document"/>',
-      ''
-    )
-    const result = importWsdl(noOpChild)
-    const [op] = result.requests
-    const names = op.request.headers.map((h) => h.name)
-    expect(names).not.toContain('SOAPAction')
+    expect(headers['SOAPAction']).toBe('"urn:Op"')
   })
 })
 

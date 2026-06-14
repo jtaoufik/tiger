@@ -1,9 +1,10 @@
 /**
- * Import a WSDL 1.1 / 1.2 document. Each binding operation becomes a POST
- * request whose body is a SOAP envelope skeleton (the request element wrapped
- * around a "fill in fields" placeholder) and whose headers carry the right
- * Content-Type and, for SOAP 1.1, the SOAPAction. Deep XSD-to-sample expansion
- * is intentionally out of scope; the envelope is a skeleton the user completes.
+ * Import a WSDL 1.1 / 1.2 document. Each operation of a single SOAP binding
+ * (SOAP 1.1 preferred, falling back to 1.2) becomes a POST request: a SOAP
+ * envelope whose body carries the operation's input element with its parameters
+ * expanded from the WSDL's <types> schema (one level), plus the right
+ * Content-Type and, for SOAP 1.1, the mandatory SOAPAction header. Non-SOAP
+ * (HTTP GET/POST) bindings are ignored.
  */
 
 import { XMLParser } from 'fast-xml-parser'
@@ -21,7 +22,10 @@ function localName(key: string): string {
   return i === -1 ? key : key.slice(i + 1)
 }
 
-const SOAP12_NS = /wsdl\/soap12|2003\/05\/soap-envelope/
+/** The local part of a QName value such as "tns:GetWeather" -> "GetWeather". */
+function localPart(qname: string): string {
+  return localName(qname)
+}
 
 /** Raw attribute by exact (possibly prefixed) name, e.g. 'xmlns:soap12'. */
 function rawAttr(node: Node, exact: string): string | undefined {
@@ -42,21 +46,6 @@ function childKey(node: Node, name: string): string | undefined {
 function prefixOf(key: string): string {
   const i = key.indexOf(':')
   return i === -1 ? '' : key.slice(0, i)
-}
-
-/** Is this <binding> a SOAP 1.2 binding? Resolve its soap-binding child's namespace. */
-function bindingIsSoap12(definitions: Node, binding: Node, docFallback: boolean): boolean {
-  const key = childKey(binding, 'binding') // the soap:binding / soap12:binding child
-  if (!key) return docFallback
-  const prefix = prefixOf(key)
-  const lookup = prefix ? `xmlns:${prefix}` : 'xmlns'
-  const ns = rawAttr(binding, lookup) ?? rawAttr(definitions, lookup)
-  return ns ? SOAP12_NS.test(ns) : docFallback
-}
-
-/** The local part of a QName value such as "tns:GetWeather" -> "GetWeather". */
-function localPart(qname: string): string {
-  return localName(qname)
 }
 
 /** First child value whose element local name matches `name`. */
@@ -89,36 +78,86 @@ function attr(node: Node, name: string): string | undefined {
   return undefined
 }
 
-function findEndpoint(services: Node[]): string | undefined {
+/**
+ * Classify a <binding> by the namespace of its binding-extension child:
+ * SOAP 1.1, SOAP 1.2, or other (e.g. an HTTP GET/POST binding we skip).
+ */
+function bindingKind(definitions: Node, binding: Node): 'soap11' | 'soap12' | 'other' {
+  const key = childKey(binding, 'binding')
+  if (!key) return 'other'
+  const prefix = prefixOf(key)
+  const lookup = prefix ? `xmlns:${prefix}` : 'xmlns'
+  const ns = rawAttr(binding, lookup) ?? rawAttr(definitions, lookup) ?? ''
+  if (/soap12/.test(ns)) return 'soap12'
+  if (/wsdl\/soap\//.test(ns)) return 'soap11'
+  return 'other'
+}
+
+/**
+ * Map each top-level schema element's local name to the names of its direct
+ * child elements (the operation parameters), read from the WSDL <types> schema.
+ * Document/literal services wrap each operation in such an element.
+ */
+function buildElementParams(definitions: Node): Map<string, string[]> {
+  const map = new Map<string, string[]>()
+  const types = child(definitions, 'types')
+  if (!types) return map
+  for (const schema of children(types, 'schema')) {
+    for (const el of children(schema, 'element')) {
+      const name = attr(el, 'name')
+      if (!name) continue
+      const ct = children(el, 'complexType')[0]
+      const seq = ct && (children(ct, 'sequence')[0] ?? children(ct, 'all')[0])
+      const params = seq
+        ? (children(seq, 'element')
+            .map((c) => attr(c, 'name'))
+            .filter((n): n is string => !!n))
+        : []
+      map.set(name, params)
+    }
+  }
+  return map
+}
+
+/** The endpoint URL. Prefer the port bound to `bindingName`; else the first. */
+function findEndpoint(services: Node[], bindingName?: string): string | undefined {
+  let fallback: string | undefined
   for (const svc of services) {
     for (const port of children(svc, 'port')) {
       const address = children(port, 'address')[0]
       const loc = address && attr(address, 'location')
-      if (loc) return loc
+      if (!loc) continue
+      if (fallback === undefined) fallback = loc
+      if (bindingName && localPart(attr(port, 'binding') ?? '') === bindingName) return loc
     }
   }
-  return undefined
+  return fallback
 }
 
 function buildSoapRequest(opts: {
   opName: string
   requestElement: string
+  params: string[]
   endpoint: string
   targetNs: string
   soapAction: string
   soap12: boolean
 }): TigerRequest {
-  const { opName, requestElement, endpoint, targetNs, soapAction, soap12 } = opts
+  const { opName, requestElement, params, endpoint, targetNs, soapAction, soap12 } = opts
   const envelopeNs = soap12
     ? 'http://www.w3.org/2003/05/soap-envelope'
     : 'http://schemas.xmlsoap.org/soap/envelope/'
+
+  const inner = params.length
+    ? params.map((p) => `      <tns:${p}></tns:${p}>`).join('\n')
+    : '      <!-- fill in fields -->'
 
   const content =
     `<soap:Envelope xmlns:soap="${envelopeNs}"\n` +
     `               xmlns:tns="${targetNs}">\n` +
     `  <soap:Body>\n` +
     `    <tns:${requestElement}>\n` +
-    `      <!-- fill in fields -->\n` +
+    `${inner}\n` +
     `    </tns:${requestElement}>\n` +
     `  </soap:Body>\n` +
     `</soap:Envelope>\n`
@@ -133,9 +172,8 @@ function buildSoapRequest(opts: {
     })
   } else {
     headers.push({ name: 'Content-Type', value: 'text/xml; charset=utf-8', enabled: true })
-    if (soapAction) {
-      headers.push({ name: 'SOAPAction', value: `"${soapAction}"`, enabled: true })
-    }
+    // The SOAPAction header is mandatory in SOAP 1.1, even with an empty value.
+    headers.push({ name: 'SOAPAction', value: `"${soapAction}"`, enabled: true })
   }
 
   return {
@@ -154,13 +192,11 @@ export function importWsdl(xml: string): ImportResult {
   if (!definitions) return { name: 'WSDL', source: 'wsdl', requests: [] }
 
   const targetNs = attr(definitions, 'targetNamespace') ?? ''
-  const docSoap12 =
-    /schemas\.xmlsoap\.org\/wsdl\/soap12|www\.w3\.org\/2003\/05\/soap-envelope/.test(xml)
-
   const services = children(definitions, 'service')
   const serviceName =
     (services[0] && attr(services[0], 'name')) || attr(definitions, 'name') || 'WSDL'
-  const endpoint = findEndpoint(services) ?? '{{baseUrl}}'
+
+  const elementParams = buildElementParams(definitions)
 
   // message name -> request element local name (document/literal style)
   const messageElement = new Map<string, string>()
@@ -182,18 +218,36 @@ export function importWsdl(xml: string): ImportResult {
     }
   }
 
+  // Use a single SOAP binding so operations are not duplicated: prefer SOAP 1.1
+  // (most compatible), fall back to 1.2. Non-SOAP bindings (HTTP GET/POST) are
+  // skipped - they are not SOAP requests.
+  const soapBindings = children(definitions, 'binding')
+    .map((binding) => ({ binding, kind: bindingKind(definitions, binding) }))
+    .filter((b) => b.kind !== 'other')
+  const chosen = soapBindings.find((b) => b.kind === 'soap11') ?? soapBindings[0]
+
   const requests: ImportedRequest[] = []
-  for (const binding of children(definitions, 'binding')) {
-    const soap12 = bindingIsSoap12(definitions, binding, docSoap12)
-    for (const op of children(binding, 'operation')) {
+  if (chosen) {
+    const soap12 = chosen.kind === 'soap12'
+    const endpoint = findEndpoint(services, attr(chosen.binding, 'name')) ?? '{{baseUrl}}'
+    for (const op of children(chosen.binding, 'operation')) {
       const opName = attr(op, 'name')
       if (!opName) continue
       const soapOp = children(op, 'operation').find((o) => attr(o, 'soapAction') !== undefined)
       const soapAction = soapOp ? (attr(soapOp, 'soapAction') ?? '') : ''
       const requestElement = messageElement.get(inputMessage.get(opName) ?? '') ?? opName
+      const params = elementParams.get(requestElement) ?? []
       requests.push({
         path: [serviceName],
-        request: buildSoapRequest({ opName, requestElement, endpoint, targetNs, soapAction, soap12 })
+        request: buildSoapRequest({
+          opName,
+          requestElement,
+          params,
+          endpoint,
+          targetNs,
+          soapAction,
+          soap12
+        })
       })
     }
   }
