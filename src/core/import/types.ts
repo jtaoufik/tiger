@@ -6,7 +6,7 @@ export interface ImportedRequest {
   request: TigerRequest
 }
 
-export type ImportSource = 'postman' | 'bruno' | 'openapi' | 'insomnia'
+export type ImportSource = 'postman' | 'bruno' | 'openapi' | 'insomnia' | 'wsdl'
 
 export interface ImportResult {
   name: string
