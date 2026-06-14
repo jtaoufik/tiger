@@ -53,7 +53,9 @@ function createWindow(): void {
     // Real OS-level translucency where the platform supports it; the renderer
     // also paints a CSS glass fallback so it looks right everywhere.
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
-    backgroundMaterial: process.platform === 'win32' ? 'acrylic' : undefined,
+    // No Windows `backgroundMaterial: 'acrylic'`: the DWM acrylic backdrop breaks
+    // native edge-resize and maximize on Windows 11. The renderer paints a CSS
+    // glass layer instead, and `backgroundColor` above covers the window base.
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false
