@@ -21,6 +21,39 @@ function localName(key: string): string {
   return i === -1 ? key : key.slice(i + 1)
 }
 
+const SOAP12_NS = /wsdl\/soap12|2003\/05\/soap-envelope/
+
+/** Raw attribute by exact (possibly prefixed) name, e.g. 'xmlns:soap12'. */
+function rawAttr(node: Node, exact: string): string | undefined {
+  const v = node?.[`@_${exact}`]
+  return v == null ? undefined : String(v)
+}
+
+/** The actual child key (with prefix) whose local name matches. */
+function childKey(node: Node, name: string): string | undefined {
+  if (!node || typeof node !== 'object') return undefined
+  for (const key of Object.keys(node)) {
+    if (key.startsWith('@_')) continue
+    if (localName(key) === name) return key
+  }
+  return undefined
+}
+
+function prefixOf(key: string): string {
+  const i = key.indexOf(':')
+  return i === -1 ? '' : key.slice(0, i)
+}
+
+/** Is this <binding> a SOAP 1.2 binding? Resolve its soap-binding child's namespace. */
+function bindingIsSoap12(definitions: Node, binding: Node, docFallback: boolean): boolean {
+  const key = childKey(binding, 'binding') // the soap:binding / soap12:binding child
+  if (!key) return docFallback
+  const prefix = prefixOf(key)
+  const lookup = prefix ? `xmlns:${prefix}` : 'xmlns'
+  const ns = rawAttr(binding, lookup) ?? rawAttr(definitions, lookup)
+  return ns ? SOAP12_NS.test(ns) : docFallback
+}
+
 /** The local part of a QName value such as "tns:GetWeather" -> "GetWeather". */
 function localPart(qname: string): string {
   return localName(qname)
@@ -100,7 +133,9 @@ function buildSoapRequest(opts: {
     })
   } else {
     headers.push({ name: 'Content-Type', value: 'text/xml; charset=utf-8', enabled: true })
-    headers.push({ name: 'SOAPAction', value: `"${soapAction}"`, enabled: true })
+    if (soapAction) {
+      headers.push({ name: 'SOAPAction', value: `"${soapAction}"`, enabled: true })
+    }
   }
 
   return {
@@ -119,7 +154,7 @@ export function importWsdl(xml: string): ImportResult {
   if (!definitions) return { name: 'WSDL', source: 'wsdl', requests: [] }
 
   const targetNs = attr(definitions, 'targetNamespace') ?? ''
-  const soap12 =
+  const docSoap12 =
     /schemas\.xmlsoap\.org\/wsdl\/soap12|www\.w3\.org\/2003\/05\/soap-envelope/.test(xml)
 
   const services = children(definitions, 'service')
@@ -149,6 +184,7 @@ export function importWsdl(xml: string): ImportResult {
 
   const requests: ImportedRequest[] = []
   for (const binding of children(definitions, 'binding')) {
+    const soap12 = bindingIsSoap12(definitions, binding, docSoap12)
     for (const op of children(binding, 'operation')) {
       const opName = attr(op, 'name')
       if (!opName) continue
