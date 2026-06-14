@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Variables &amp; environments · Tiger docs</title>
+  <meta name="description" content="Use {{variable}} interpolation across URLs, headers, query params, bodies and auth. Switch named environments to change the entire variable set in one click." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/variables/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Variables &amp; environments" />
+  <meta property="og:description" content="Use {{variable}} interpolation across URLs, headers, query params, bodies and auth. Switch named environments to change the entire variable set in one click." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Concepts › Variables &amp; environments</div>
+    <h1>Variables &amp; environments</h1>
+    <p class="lead">
+      Write <code>{{variable}}</code> anywhere in a URL, header, query parameter, body or
+      auth field and Tiger replaces it with the value from the active environment before
+      sending. Switching environments changes every value at once — no edits to individual
+      requests required.
+    </p>
+
+    <h2>How interpolation works</h2>
+    <p>
+      When you send a request Tiger reads the active environment, builds a flat map of
+      variable names to their values, and then substitutes every <code>{{name}}</code>
+      token it finds in the request's URL, headers, query parameters, body text and auth
+      fields. Unknown tokens — names that do not exist in the active environment — are left
+      untouched so Tiger can highlight them as unresolved in the UI.
+    </p>
+    <p>
+      Substitution happens recursively up to ten levels deep, which means a variable's
+      value can itself reference another variable:
+    </p>
+    <pre><code>vars {
+  api:     /v2
+  baseUrl: https://api.example.com{{api}}
+}</code></pre>
+    <p>
+      Here <code>{{baseUrl}}</code> in a request URL resolves to
+      <code>https://api.example.com/v2</code>. Circular references stop expanding after
+      the depth limit is reached, leaving the remaining token literal rather than looping
+      forever.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        Interpolation applies to every text field Tiger sends: URL, each header value,
+        each query-parameter value, the body (regardless of body type), Bearer token,
+        Basic username and password, API key value, and every OAuth 2.0 field. Variable
+        names inside <code>{{…}}</code> may contain letters, digits, underscores, hyphens
+        and dots.
+      </p>
+    </div>
+
+    <h2>Environments</h2>
+    <p>
+      An environment is a named set of variables stored as a <code>.tiger</code> file
+      inside the collection's <code>environments/</code> subfolder. Each collection can
+      have as many environments as you need — for example <em>dev</em>, <em>staging</em>
+      and <em>production</em>.
+    </p>
+
+    <h3>File format</h3>
+    <p>
+      An environment file has a <code>meta</code> block that gives it its display name and
+      a <code>vars</code> block that lists key/value pairs, one per line:
+    </p>
+    <pre><code>meta {
+  name: dev
+}
+
+vars {
+  baseUrl: https://api.test.example.com
+  apiVersion: v2
+  timeout: 5000
+}</code></pre>
+    <p>
+      Secret variables (see below) go in a separate <code>vars:secret</code> block in the
+      same file:
+    </p>
+    <pre><code>meta {
+  name: dev
+}
+
+vars {
+  baseUrl: https://api.test.example.com
+  apiVersion: v2
+}
+
+vars:secret {
+  apiKey: sk-dev-abc123
+  clientSecret: dev-secret-xyz
+}</code></pre>
+    <p>
+      The file is plain text and safe to commit. Secret values are stored as-is — they are
+      only <em>masked in the Tiger UI</em>, not encrypted on disk. Keep this in mind for
+      production credentials; the common pattern is to keep a
+      <code>production.tiger</code> environment out of version control via
+      <code>.gitignore</code> while committing the others.
+    </p>
+
+    <h3>Folder layout</h3>
+    <p>A typical collection on disk looks like this:</p>
+    <pre><code>my-api/
+  collection.tiger
+  create-post.tiger
+  get-posts.tiger
+  environments/
+    dev.tiger
+    staging.tiger
+    production.tiger   # add to .gitignore if it has real secrets</code></pre>
+
+    <h3>Switching the active environment</h3>
+    <p>
+      The environment picker sits in the top-right corner of the Tiger window. Click it to
+      open a dropdown of every environment in the current collection's
+      <code>environments/</code> folder. Selecting one makes it active immediately — the
+      URL bar updates to reflect the resolved value of any variables it contains, and the
+      next send uses the new values.
+    </p>
+    <p>
+      You can also have <em>no active environment</em>. In that state, all
+      <code>{{variable}}</code> tokens remain unresolved and Tiger shows an unresolved-
+      variable warning under the URL bar.
+    </p>
+
+    <h3>Disabling individual variables</h3>
+    <p>
+      Prefix any variable line with <code>~</code> to disable it without deleting it. A
+      disabled variable is excluded from the interpolation map; any request that references
+      its name treats it as unresolved:
+    </p>
+    <pre><code>vars {
+  baseUrl: https://api.example.com
+  ~debugHeader: 1
+}</code></pre>
+    <p>
+      This mirrors the same <code>~</code> convention used to disable individual request
+      headers and query parameters.
+    </p>
+
+    <h2>Secret (hidden) variables</h2>
+    <p>
+      Variables in a <code>vars:secret</code> block are marked as secret. In the Tiger UI
+      their values are masked with dots rather than shown in plain text. They are otherwise
+      normal variables: they interpolate into requests the same way, appear in the
+      environment editor (masked), and are serialised into the same file.
+    </p>
+    <pre><code>vars:secret {
+  apiKey: sk-live-...
+  clientSecret: s3cr3t
+}</code></pre>
+    <div class="callout warn">
+      <span class="ic">!</span>
+      <p>
+        Secret masking is a UI convenience, not encryption. The raw value is stored in
+        plain text in the <code>.tiger</code> file. For credentials that must not be
+        committed to Git, use a <code>production.tiger</code> file excluded by
+        <code>.gitignore</code>, or substitute them from your shell's environment at CI
+        time.
+      </p>
+    </div>
+
+    <h2>Dynamic variables</h2>
+    <p>
+      Tiger provides four built-in variables prefixed with <code>$</code>. They are
+      resolved at send time and re-evaluated on every occurrence — each
+      <code>{{$uuid}}</code> in the same request gets a different value:
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Resolves to</th>
+            <th>Example output</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>{{$uuid}}</code></td>
+            <td>A random UUID v4</td>
+            <td><code>a3bb189e-8bf9-3888-9912-ace4e6543002</code></td>
+          </tr>
+          <tr>
+            <td><code>{{$timestamp}}</code></td>
+            <td>Current Unix time in seconds</td>
+            <td><code>1718359200</code></td>
+          </tr>
+          <tr>
+            <td><code>{{$isoTimestamp}}</code></td>
+            <td>Current ISO 8601 date-time string</td>
+            <td><code>2026-06-14T10:00:00.000Z</code></td>
+          </tr>
+          <tr>
+            <td><code>{{$randomInt}}</code></td>
+            <td>Random integer 0–999999</td>
+            <td><code>417823</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Dynamic variables do not need to be defined in any environment — they work whether
+      an environment is active or not. The <code>findMissingVars</code> check in Tiger
+      also skips <code>$</code>-prefixed tokens, so they never appear as unresolved
+      warnings.
+    </p>
+    <p>A practical use: generate a unique correlation ID on every send without any setup:</p>
+    <pre><code>post {
+  url: {{baseUrl}}/orders
+}
+
+headers {
+  X-Request-Id: {{$uuid}}
+  X-Sent-At:   {{$isoTimestamp}}
+}</code></pre>
+
+    <h2>Where variables can appear</h2>
+    <p>
+      Interpolation runs on every text field that Tiger sends over the wire. There is no
+      field that is off-limits:
+    </p>
+    <ul>
+      <li><strong>URL</strong> — including the scheme, host, path segments and any inline query string.</li>
+      <li><strong>Query parameters</strong> — both the name column and the value column of each row.</li>
+      <li><strong>Headers</strong> — the value column of each header row (not the header name).</li>
+      <li><strong>Body</strong> — any body type: JSON, XML, plain text, form-encoded, GraphQL query and variables, multipart field values.</li>
+      <li><strong>Auth fields</strong> — Bearer token, Basic username and password, API key value, OAuth 2.0 token URL, client ID, client secret and scope.</li>
+    </ul>
+
+    <h2>Unresolved-variable warning</h2>
+    <p>
+      If the URL bar contains a token that is not present in the active environment (or if
+      no environment is active), Tiger displays a yellow warning strip directly below the
+      URL bar listing the missing names. The request can still be sent — Tiger passes the
+      literal <code>{{token}}</code> string — but the warning helps you catch missing
+      configuration before a confusing 404 or 401.
+    </p>
+    <pre><code>https://{{baseUrl}}/users    ← warns: baseUrl is not defined</code></pre>
+
+    <h2>Variables set by scripts</h2>
+    <p>
+      Pre-request and post-response scripts can set variables at runtime using the
+      <code>tiger.setVariable(name, value)</code> API. A value set this way is written
+      into the active environment for the remainder of the session and is available to the
+      next request in a collection runner run. This is how request chaining via response
+      captures works under the hood.
+    </p>
+    <pre><code>// post-response script: extract a token and store it
+const body = JSON.parse(tiger.response.body)
+tiger.setVariable('authToken', body.access_token)</code></pre>
+    <p>
+      A complementary lower-level mechanism is the <code>capture</code> block in the
+      <code>.tiger</code> file format, which does the same thing declaratively without
+      writing a script. See <a href="/tiger/docs/scripts/">Request chaining &amp;
+      captures</a> for the full picture.
+    </p>
+
+    <h2>Full environment file reference</h2>
+    <pre><code>meta {
+  name: staging
+}
+
+vars {
+  baseUrl:    https://staging.example.com
+  apiVersion: v2
+  pageSize:   50
+  ~debugMode: true    # disabled; won't be substituted
+}
+
+vars:secret {
+  apiKey:       sk-staging-abc123
+  clientSecret: stg-secret-xyz
+}</code></pre>
+    <p>Field-by-field breakdown:</p>
+    <ul>
+      <li><code>meta.name</code> — the display name shown in the environment picker.</li>
+      <li><code>vars { … }</code> — plain (visible) variables, one <code>key: value</code> pair per line.</li>
+      <li><code>vars:secret { … }</code> — masked variables; values are hidden in the Tiger UI but stored as plain text on disk.</li>
+      <li>A <code>~</code> prefix on any line disables that variable without removing it.</li>
+    </ul>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Request chaining &amp; captures</div>
+        <div class="d">Write a response value into a variable and use it in the next request.</div>
+      </a>
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Scripts &amp; assertions</div>
+        <div class="d">Pre-request and post-response JavaScript, including tiger.setVariable.</div>
+      </a>
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">The .tiger format</div>
+        <div class="d">Full syntax reference for request and environment files.</div>
+      </a>
+      <a class="card" href="/tiger/docs/runner/">
+        <div class="t">Collection runner</div>
+        <div class="d">Run a folder of requests in sequence with live pass/fail verdicts.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

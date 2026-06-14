@@ -30,6 +30,27 @@ Tiger is an open source API client where every request is a plain `.tiger` text 
 
 On top of the git-friendly storage model, Tiger adds a glass UI with light and dark themes, a full importer suite, an MCP server so AI assistants (Claude, Cursor) can run requests directly, and a request chaining system to capture response values into variables for the next call.
 
+## How Tiger compares
+
+Tiger is built around a different set of priorities than most API clients -- here is how those priorities translate in practice.
+
+| Feature | Tiger | Postman | Bruno | Insomnia | Hoppscotch |
+|---|---|---|---|---|---|
+| Local-first / offline | Yes | Partial -- cloud workspace required for most features | Yes | Partial -- cloud sync optional but nudged | Partial -- self-host or web app |
+| Plain-text & git-native | Yes -- one `.tiger` file per request | No -- proprietary cloud or JSON export | Yes -- `.bru` files | No | No |
+| No account required | Yes | No | Yes | No | Partial -- self-host avoids it |
+| Free / per-seat price | Free (MIT) | Free tier; paid from $14/mo per user | Free (MIT) | Free tier; paid from $8/mo per user | Free (MIT, self-host) |
+| Open source | Yes | No | Yes | Partial -- core open, cloud closed | Yes |
+| Built-in MCP server | Yes | No | No | No | No |
+| SOAP / WSDL import | Yes -- operations become ready-to-send POST requests | Yes | No | No | No |
+| OpenAPI & Postman import | Yes | Yes | Yes -- Bruno import only | Yes | Yes |
+| Pre / post scripting | Yes | Yes | Yes | Yes | Partial |
+| Collection runner | Yes | Paid tiers | Yes | Yes | Partial |
+| Native macOS / Windows / Linux | Yes | Yes | Yes | Yes | No -- web app |
+| No traffic telemetry | Yes -- requests never leave your machine | No | Yes | No | Partial -- depends on hosting |
+
+Full breakdown: https://jtaoufik.github.io/tiger/compare/
+
 ## Why Tiger
 
 - **Collections as plain text in Git.** A collection is a folder of `.tiger` files. Diff them, branch them, and review API changes in pull requests. Every field is human-readable.

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Git workflow · Tiger docs</title>
+  <meta name="description" content="Tiger's built-in Git panel: status, diff, commit, pull, push, branches, log, discard, sync, and reviewing API changes in pull requests." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/git/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Git workflow" />
+  <meta property="og:description" content="Tiger's built-in Git panel: status, diff, commit, pull, push, branches, log, discard, sync, and reviewing API changes in pull requests." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Git workflow</div>
+    <h1>Git workflow</h1>
+    <p class="lead">
+      Because every request is a plain-text <code>.tiger</code> file on disk, the collection
+      folder is a normal Git repository. Tiger surfaces the most common Git operations
+      directly in its sidebar panel so you never have to leave the app to version-control
+      your API definitions.
+    </p>
+
+    <h2>Why Git and API clients belong together</h2>
+    <p>
+      Requests evolve alongside the services they test. An endpoint gets a new required
+      header, a payload schema changes, authentication switches from API key to OAuth. With
+      most API clients those changes are opaque: the tool syncs its own binary format to a
+      private cloud and there is no history you can inspect or discuss. Tiger takes the
+      opposite approach: each change to a request is a line change in a text file, so your
+      normal diff, blame, and code-review workflow applies directly.
+    </p>
+    <p>
+      A Tiger collection stored in a shared Git repository gives a team a single source of
+      truth for how the API is called, with a full audit trail and the ability to propose
+      and review changes before they land on main.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Tiger shells out to the <code>git</code> binary that is already on your
+      <code>PATH</code>. SSH agent forwarding, credential helpers, GPG signing, and any
+      other configuration you have set up in your terminal all work automatically.</p>
+    </div>
+
+    <h2>The Git panel</h2>
+    <p>
+      Select a collection in the sidebar and open its Git panel (the icon that looks like a
+      branch, or via the collection context menu) to see the current state of the repository.
+      The panel shows:
+    </p>
+    <ul>
+      <li>The current branch name.</li>
+      <li>How many commits the local branch is <strong>ahead</strong> of or <strong>behind</strong> the upstream.</li>
+      <li>A list of every changed file and its status — modified, added, deleted, or untracked.</li>
+    </ul>
+    <p>
+      Status is polled every 60 seconds passively. The passive poll deliberately does not
+      contact the network: ahead/behind counts are computed from refs already on disk.
+      Network-touching operations (fetch, pull, push, sync) only run when you explicitly
+      trigger them.
+    </p>
+
+    <h2>Supported operations</h2>
+
+    <h3>Status</h3>
+    <p>
+      Lists every file that differs from the last commit, together with a short status
+      code (<code>M</code> modified, <code>A</code> added, <code>D</code> deleted,
+      <code>??</code> untracked). The count of changed files appears as a badge on the
+      collection in the sidebar so you can see at a glance that there is unsaved work.
+    </p>
+
+    <h3>Diff</h3>
+    <p>
+      Click any file in the changed-files list to open a unified diff view. The diff
+      covers both staged and unstaged changes. Untracked files appear with a
+      <code>new file (untracked)</code> marker so nothing is silently hidden.
+    </p>
+    <p>
+      Because <code>.tiger</code> files are structured plain text, the diff is readable
+      without special tooling. A field change like updating a base URL from staging to
+      production looks exactly like what it is:
+    </p>
+    <pre><code>-  baseUrl: https://staging.api.example.com
++  baseUrl: https://api.example.com</code></pre>
+
+    <h3>Commit</h3>
+    <p>
+      Enter a commit message and press Commit. Tiger stages every changed and untracked
+      file in the collection folder (<code>git add -A</code>) and then creates the commit.
+      There is no partial staging UI; the intent is that a commit records a coherent
+      snapshot of the collection. If you need fine-grained staging, use your terminal
+      alongside Tiger — the two operate on the same working tree.
+    </p>
+
+    <h3>Pull</h3>
+    <p>
+      Pulls the upstream branch with <code>--ff-only</code>. This means the operation
+      succeeds only when no local commits exist that are not already on the remote, keeping
+      the history linear. If the pull cannot fast-forward (because you have local commits
+      and the remote has diverged), Tiger reports the conflict and suggests using Sync
+      instead.
+    </p>
+
+    <h3>Push</h3>
+    <p>
+      Pushes the current branch to its configured upstream remote. If no upstream is set
+      yet, use <strong>Set remote</strong> first (see below). Push uses your system Git
+      credentials, so SSH keys, macOS Keychain entries, and Git credential helpers all
+      work without additional setup.
+    </p>
+
+    <h3>Fetch</h3>
+    <p>
+      Refreshes the remote-tracking refs so the ahead/behind counts in the status panel
+      reflect the real state of the remote. Fetch does not modify your working tree or
+      local branch. It is triggered automatically as part of Sync but can also be run
+      on its own from the panel menu.
+    </p>
+
+    <h3>Branches and checkout</h3>
+    <p>
+      The branch picker in the Git panel shows all local branches and the current branch.
+      Select a branch to check it out. You can also create a new branch by typing a name
+      that does not yet exist in the picker — Tiger runs <code>git checkout -b
+      &lt;name&gt;</code> and switches to it immediately.
+    </p>
+    <p>
+      Switching branches changes the files on disk, so the collection view updates to
+      reflect the requests on the new branch. This is useful for keeping a
+      <code>main</code> branch with approved requests and a feature branch where new
+      endpoints are drafted.
+    </p>
+
+    <h3>Log</h3>
+    <p>
+      The log view shows the most recent 20 commits: short hash, subject line, author
+      name, and a human-readable relative timestamp (<em>2 days ago</em>,
+      <em>3 weeks ago</em>). The log is read-only; to inspect a specific commit in detail
+      use your terminal or a Git GUI alongside Tiger.
+    </p>
+
+    <h3>Discard</h3>
+    <p>
+      Discards all uncommitted changes to tracked files by running
+      <code>git reset -- .</code> followed by <code>git checkout -- .</code>. Untracked
+      files (files that have never been committed) are left in place. Tiger shows a
+      confirmation prompt before discarding because the operation is not reversible without
+      a prior stash.
+    </p>
+
+    <div class="callout warn">
+      <span class="ic">!</span>
+      <p>Discard permanently removes uncommitted edits to tracked files. It does not
+      touch untracked files. There is no undo inside Tiger; commit or stash first if
+      you might want those changes back.</p>
+    </div>
+
+    <h3>Init</h3>
+    <p>
+      If you opened a plain folder that is not yet a Git repository, the Git panel shows
+      an <strong>Initialize repository</strong> button. This runs <code>git init</code>
+      in the collection root. After initialization the full Git panel becomes available.
+      You can then add a remote and push to share the collection with your team.
+    </p>
+
+    <h3>Set remote</h3>
+    <p>
+      Paste a repository URL (HTTPS or SSH) into the Set remote field to connect the local
+      repository to a remote. If an <code>origin</code> remote already exists, Tiger
+      updates its URL; otherwise it adds a new <code>origin</code>. After setting the URL
+      Tiger immediately publishes the current branch with
+      <code>git push -u origin HEAD</code> so future push and pull operations know their
+      upstream.
+    </p>
+    <p>Accepted URL formats:</p>
+    <ul>
+      <li><code>https://github.com/org/repo.git</code></li>
+      <li><code>git@github.com:org/repo.git</code></li>
+      <li><code>ssh://git@gitlab.com/org/repo.git</code></li>
+    </ul>
+
+    <h3>Clone</h3>
+    <p>
+      From the sidebar welcome screen, choose <strong>Clone a repository</strong>, paste a
+      URL, and pick a parent directory. Tiger runs <code>git clone</code> and then opens
+      the resulting folder as a collection. This is the recommended way to bring a shared
+      team collection onto a new machine.
+    </p>
+
+    <h3>Sync</h3>
+    <p>
+      Sync is a single-button operation designed for teams that want a simple
+      "share and receive" workflow without thinking about pull vs push order. It does the
+      following in sequence:
+    </p>
+    <ol>
+      <li>If there are any uncommitted changes, commits them with the message you typed
+      (defaulting to <em>Update collection</em>).</li>
+      <li>Runs <code>git fetch</code> to refresh the remote-tracking refs.</li>
+      <li>Pulls the upstream branch using a merge strategy
+      (<code>git pull --no-rebase</code>) so the operation tolerates both sides having
+      new commits.</li>
+      <li>Pushes the local branch to the remote.</li>
+    </ol>
+    <p>
+      If the merge step hits a conflict, Tiger aborts the in-progress merge so the working
+      tree is never left in a half-merged state. It reports a clear message telling you to
+      open the folder in your editor, resolve the conflict markers, and then sync again.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>Sync is the right operation for day-to-day team sharing. Use plain Pull only
+      when you know you have no local commits and want a strict fast-forward.</p>
+    </div>
+
+    <h2>Reviewing API changes in a pull request</h2>
+    <p>
+      Because every request is a text file, opening a pull request against a Tiger
+      collection on GitHub, GitLab, or Bitbucket gives reviewers a meaningful diff in
+      the platform's own review UI. Here is a typical workflow:
+    </p>
+    <ol>
+      <li>
+        <strong>Create a feature branch.</strong> In the Tiger Git panel, type the new
+        branch name in the branch picker and press Enter. Tiger creates and checks it out.
+      </li>
+      <li>
+        <strong>Add or modify requests.</strong> Work normally inside Tiger — add a new
+        endpoint, change a header, update the body schema. Each change lands in the
+        corresponding <code>.tiger</code> file on disk.
+      </li>
+      <li>
+        <strong>Commit.</strong> Write a descriptive message such as
+        <em>Add POST /orders endpoint with auth header</em> and commit from the panel.
+      </li>
+      <li>
+        <strong>Push.</strong> Push the branch to the remote. If this is the first push
+        of the branch, Tiger sets the upstream automatically.
+      </li>
+      <li>
+        <strong>Open a pull request</strong> on your Git host. Reviewers see line-level
+        diffs like the one below and can comment on specific fields.
+      </li>
+    </ol>
+    <pre><code>--- a/orders/create-order.tiger
++++ b/orders/create-order.tiger
+ post {
+-  url: {{baseUrl}}/v1/orders
++  url: {{baseUrl}}/v2/orders
+ }
+
+ headers {
++  X-Idempotency-Key: {{idempotencyKey}}
+   Content-Type: application/json
+ }</code></pre>
+    <p>
+      A reviewer can check out the branch locally, open the collection in Tiger, run the
+      requests against a staging environment, and leave comments — the same loop they
+      follow for code review. Once approved the branch is merged and the change is part of
+      the permanent history of the collection.
+    </p>
+
+    <h2>Authentication and credentials</h2>
+    <p>
+      Tiger never manages Git credentials itself. It shells out to the system
+      <code>git</code> binary with <code>GIT_TERMINAL_PROMPT=0</code>, which prevents Git
+      from trying to open an interactive password prompt inside the app. All credential
+      resolution happens through the helpers you have already configured:
+    </p>
+    <ul>
+      <li>SSH keys and your <code>ssh-agent</code> are used automatically for SSH remotes.</li>
+      <li>macOS Keychain, Windows Credential Manager, and the Git credential store work
+      for HTTPS remotes.</li>
+      <li>If a push or pull fails with an authentication error, configure the credential
+      helper in your terminal first, then retry from Tiger.</li>
+    </ul>
+
+    <h2>Merge conflicts</h2>
+    <p>
+      Tiger does not have a merge conflict editor. When a pull or sync produces conflicts,
+      Tiger aborts the merge and tells you which step failed. Open the collection folder
+      in your editor of choice (VS Code, Neovim, etc.), resolve the standard
+      <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> conflict markers in the
+      <code>.tiger</code> files, save the files, and then commit the resolution from Tiger
+      or your terminal. After the commit, sync again to push the resolved state to the
+      remote.
+    </p>
+    <p>
+      Because the format is structured plain text, conflict markers appear inline with the
+      field values and are easy to read:
+    </p>
+    <pre><code>headers {
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+  Authorization: Bearer {{stagingToken}}
+=======
+  Authorization: Bearer {{productionToken}}
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; origin/main
+}</code></pre>
+
+    <h2>Working without a remote</h2>
+    <p>
+      Git is not required to use Tiger, and a remote is not required to use Git inside
+      Tiger. If you initialize a repository but do not add a remote, commit and log
+      operations work fully locally. Sync reports <em>Changes saved locally (no team
+      remote configured)</em> and returns successfully. Push and pull are the only
+      operations that require a configured remote.
+    </p>
+
+    <h2>Limitations</h2>
+    <ul>
+      <li>There is no partial staging (no interactive <code>git add -p</code>). Every
+      commit captures the entire working tree. Use your terminal for cherry-picked
+      staging.</li>
+      <li>The log view is limited to the 20 most recent commits. For full history, use
+      your terminal or a dedicated Git GUI.</li>
+      <li>There is no stash UI. Use <code>git stash</code> in the terminal when you need
+      to set aside changes temporarily.</li>
+      <li>Submodules are not supported.</li>
+      <li>Tiger requires <code>git</code> to be on <code>PATH</code>. On macOS, install
+      the Xcode Command Line Tools (<code>xcode-select --install</code>) or Homebrew
+      Git. On Windows, install Git for Windows.</li>
+    </ul>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">The .tiger format</div>
+        <div class="d">Plain-text request files that produce meaningful diffs.</div>
+      </a>
+      <a class="card" href="/tiger/docs/collections/">
+        <div class="t">Collections</div>
+        <div class="d">How collection folders, environment folders, and request files are organized on disk.</div>
+      </a>
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments and variables</div>
+        <div class="d">Named variable sets stored in the same repository as your requests.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

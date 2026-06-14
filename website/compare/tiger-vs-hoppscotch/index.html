@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tiger vs Hoppscotch · Tiger docs</title>
+  <meta name="description" content="A fair, feature-by-feature comparison of Tiger and Hoppscotch: storage model, offline support, Git integration, MCP server, auth, and more." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/compare/tiger-vs-hoppscotch/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Tiger vs Hoppscotch" />
+  <meta property="og:description" content="A fair, feature-by-feature comparison of Tiger and Hoppscotch: storage model, offline support, Git integration, MCP server, auth, and more." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Compare › Tiger vs Hoppscotch</div>
+    <h1>Tiger vs Hoppscotch</h1>
+    <p class="lead">
+      Both Tiger and Hoppscotch are open source and free to use. Hoppscotch is a
+      lightweight web and PWA client with optional self-hosting; Tiger is a native desktop
+      application that stores every request as a plain-text file in a Git repository.
+      This page compares them honestly so you can pick the right tool for your workflow.
+    </p>
+
+    <h2>At a glance</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="col-tiger">Tiger 0.4.0</th>
+            <th>Hoppscotch</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Open source</td>
+            <td class="col-tiger"><span class="yes">Yes</span> (MIT)</td>
+            <td><span class="yes">Yes</span> (MIT)</td>
+          </tr>
+          <tr>
+            <td>Runs in the browser</td>
+            <td class="col-tiger"><span class="no">No</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Native desktop app</td>
+            <td class="col-tiger"><span class="yes">Yes</span> (macOS, Windows, Linux)</td>
+            <td><span class="partial">Partial</span> (Electron wrapper around the web app)</td>
+          </tr>
+          <tr>
+            <td>Account required</td>
+            <td class="col-tiger"><span class="no">No</span></td>
+            <td><span class="no">No</span> (optional for sync)</td>
+          </tr>
+          <tr>
+            <td>Collections stored as plain text on disk</td>
+            <td class="col-tiger"><span class="yes">Yes</span> (.tiger files)</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>Built-in Git (commit, branch, push, pull)</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>Self-hostable backend</td>
+            <td class="col-tiger"><span class="no">No</span> (no backend)</td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Offline — fully functional without internet</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="partial">Partial</span> (PWA caches the shell; sync needs a connection)</td>
+          </tr>
+          <tr>
+            <td>Team workspaces</td>
+            <td class="col-tiger"><span class="no">No</span> (teams share via Git)</td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>MCP server for AI assistants</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>Pre/post-request scripts</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Response captures (chaining)</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Collection runner with test verdicts</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>GraphQL</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>WebSocket / SSE</td>
+            <td class="col-tiger"><span class="no">No</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>WSDL / SOAP import</td>
+            <td class="col-tiger"><span class="yes">Yes</span> (new in 0.4.0)</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>OAuth 2.0 (client credentials)</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Client certificates (mTLS)</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="partial">Partial</span></td>
+          </tr>
+          <tr>
+            <td>Import from Postman / Insomnia / Bruno</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="partial">Partial</span></td>
+          </tr>
+          <tr>
+            <td>Import from OpenAPI / Swagger</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Performance / load runner</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>Cookie jar</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Code generation (curl, fetch)</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Storage and ownership</h2>
+    <p>
+      This is the sharpest difference between the two tools. Hoppscotch stores collections
+      in its own backend — either the hosted cloud or a self-hosted instance you run. Data
+      moves through a server, which makes real-time collaboration and multi-device sync
+      straightforward. The trade-off is that your request definitions live outside your
+      codebase.
+    </p>
+    <p>
+      Tiger has no server at all. A collection is a folder on your disk. Every request is a
+      <code>.tiger</code> file you can open in any text editor:
+    </p>
+    <pre><code>meta {
+  name: Get user
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users/{{userId}}
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Accept: application/json
+}
+
+capture {
+  email: body.email
+}</code></pre>
+    <p>
+      Because collections are files, you version them with Git, branch them for feature
+      work, open pull requests when an endpoint changes, and resolve conflicts in the same
+      editor you use for code. Tiger also ships a built-in Git panel — status, diff, commit,
+      push, pull, branch, checkout, log, and clone — so you never have to leave the app to
+      keep the repository in sync.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>If your API definitions already live next to application code in a monorepo, Tiger
+      lets you put the <code>.tiger</code> files in the same repository without any extra
+      tooling or service to maintain.</p>
+    </div>
+
+    <h2>Native desktop versus web-first</h2>
+    <p>
+      Hoppscotch was designed from the start as a web application. It runs in any modern
+      browser with no install step, which makes it easy to share with teammates who are not
+      developers. A PWA install and a desktop app (built on Electron around the same web
+      UI) are also available.
+    </p>
+    <p>
+      Tiger is a native Electron application built around a native file system and a native
+      Git integration. It is not accessible from a browser tab. Downloads for macOS (Apple
+      Silicon and Intel), Windows (installer or winget), and Linux (AppImage and .deb) are
+      on the GitHub Releases page. The trade-off is that you need to install it — the
+      payoff is that it works completely offline and keeps all data on disk.
+    </p>
+
+    <h2>Team collaboration</h2>
+    <p>
+      Hoppscotch has a first-class team workspace concept: invite members, set roles, and
+      share collections without anyone needing to think about Git. That is a genuine
+      advantage for teams who do not use version control for API definitions today, or who
+      include non-developer members who only need to run requests.
+    </p>
+    <p>
+      Tiger's collaboration model is Git. Anyone who can clone the repository and open the
+      folder gets the full collection. Changes flow through pull requests and code reviews.
+      There are no seats to manage and no workspace billing, but everyone on the team needs
+      to be comfortable with a basic Git workflow.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>Tiger does not have user accounts or role-based access control. If you need
+      fine-grained permissions (read-only members, admin controls, audit logs), Hoppscotch's
+      self-hosted enterprise edition is built for that.</p>
+    </div>
+
+    <h2>MCP server</h2>
+    <p>
+      Tiger ships a standalone binary called <code>tiger-mcp</code> that exposes a
+      collection as a set of tools any MCP-compatible AI client can call. Register the
+      server in your AI client's configuration:
+    </p>
+    <pre><code>{
+  "mcpServers": {
+    "tiger": {
+      "command": "node",
+      "args": [
+        "/path/to/tiger/out/mcp/server.mjs",
+        "/path/to/your/collection"
+      ]
+    }
+  }
+}</code></pre>
+    <p>
+      The assistant gets four tools: <code>list_requests</code>,
+      <code>list_environments</code>, <code>get_request</code>, and
+      <code>run_request</code>. Every response includes the status code, timing, response
+      headers, and a body. Requests are executed locally by Tiger's own HTTP engine —
+      nothing passes through a third-party service. Hoppscotch does not offer an MCP
+      server.
+    </p>
+
+    <h2>WebSocket and Server-Sent Events</h2>
+    <p>
+      Hoppscotch supports WebSocket connections and Server-Sent Events as dedicated request
+      types, which is useful when working on real-time APIs. Tiger currently handles HTTP
+      and HTTPS requests only; WebSocket support is not available in 0.4.0.
+    </p>
+
+    <h2>WSDL and SOAP</h2>
+    <p>
+      Tiger 0.4.0 added a WSDL importer. Point it at a <code>.wsdl</code> or
+      <code>.xml</code> file and each binding operation becomes a POST request with a
+      pre-filled SOAP envelope body, the correct <code>Content-Type</code>, and — for SOAP
+      1.1 — a <code>SOAPAction</code> header. SOAP 1.2 is also supported. Hoppscotch does
+      not have a WSDL importer, so SOAP requests require manual configuration.
+    </p>
+
+    <h2>Performance runner</h2>
+    <p>
+      Tiger includes a performance tab on every request that fires <em>N</em> requests at a
+      configurable concurrency level and reports min, max, average, p50, and p95 timings.
+      Hoppscotch does not have a built-in performance or load-testing mode.
+    </p>
+
+    <h2>Privacy and telemetry</h2>
+    <p>
+      Tiger sends anonymous usage analytics by default — events like "app opened" or
+      "request sent" with method and HTTP status bucket only. URLs, hostnames, header
+      values, and bodies are never recorded. You can turn analytics off entirely in
+      Settings under Privacy. There is no account, no user ID, and no persistent identifier
+      beyond a random app-local value.
+    </p>
+    <p>
+      Hoppscotch's privacy posture depends on the deployment. The hosted version sends data
+      to Hoppscotch's servers by design. Self-hosting keeps data inside your own
+      infrastructure, though the backend is a service you have to operate.
+    </p>
+
+    <h2>When to choose Hoppscotch</h2>
+    <ul>
+      <li>Your team works across mixed environments (browsers, tablets, shared machines) and needs no-install access.</li>
+      <li>You want real-time collaborative workspaces with role-based access control without configuring Git.</li>
+      <li>You need WebSocket or SSE support today.</li>
+      <li>You are already running a self-hosted Hoppscotch instance and your team is used to it.</li>
+    </ul>
+
+    <h2>When to choose Tiger</h2>
+    <ul>
+      <li>You want API definitions versioned in Git alongside application code.</li>
+      <li>Your team reviews endpoint changes in pull requests, the same way you review code changes.</li>
+      <li>You need to work fully offline — on a plane, in a data centre with no outbound internet, or on a network with strict egress rules.</li>
+      <li>You want to give an AI assistant (Claude, Cursor) direct access to run requests from your collection via the MCP server.</li>
+      <li>You are migrating a SOAP/WSDL service and want import support rather than building envelopes by hand.</li>
+      <li>You do not want to run or maintain any backend service.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Both tools can coexist. Some teams use Hoppscotch for quick exploratory requests
+      shared across browsers, and Tiger for the authoritative collection that lives in the
+      repository and feeds the MCP server.</p>
+    </div>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/compare/tiger-vs-postman/">
+        <div class="t">Tiger vs Postman</div>
+        <div class="d">How Tiger compares to Postman on storage, cost, and offline support.</div>
+      </a>
+      <a class="card" href="/tiger/compare/tiger-vs-bruno/">
+        <div class="t">Tiger vs Bruno</div>
+        <div class="d">Both are git-native and open source. See how they differ in format and features.</div>
+      </a>
+      <a class="card" href="/tiger/docs/getting-started/">
+        <div class="t">What is Tiger?</div>
+        <div class="d">An overview of Tiger's core ideas: plain-text files, Git-native storage, local-first.</div>
+      </a>
+      <a class="card" href="/tiger/docs/mcp/">
+        <div class="t">MCP server</div>
+        <div class="d">Connect Tiger to Claude, Cursor, or any MCP-compatible AI assistant.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

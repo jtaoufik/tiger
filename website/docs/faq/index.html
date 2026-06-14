@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAQ · Tiger docs</title>
+  <meta name="description" content="Answers to common questions about Tiger: data residency, pricing, open source license, platform support, proxy setup, SOAP/WSDL, and migrating from Postman or Insomnia." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/faq/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="FAQ" />
+  <meta property="og:description" content="Answers to common questions about Tiger: data residency, pricing, open source license, platform support, proxy setup, SOAP/WSDL, and migrating from Postman or Insomnia." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Where does our API data live?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is Tiger open source?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Tiger is released under the MIT license. The full source is on GitHub at https://github.com/jtaoufik/tiger."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can we use it commercially, and what does it cost per seat?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tiger is free to download and use, including for commercial work. Advanced team features may become paid in a future release; pricing will be announced before anything changes for existing users."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Which platforms does Tiger run on?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tiger runs natively on macOS (Apple Silicon and Intel), Windows (installer and portable EXE, also available via winget), and Linux (AppImage and .deb for Debian/Ubuntu). All three platforms receive the same feature set."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Tiger phone home? Does it collect my request data?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tiger never records or transmits URLs, hostnames, header values, request bodies or response data. It sends only lightweight usage events (app opened, request sent with method and HTTP status bucket, collection imported with source and count) to help prioritize development. The only identifier is a random app-local ID. You can turn analytics off at any time in Settings under Privacy."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do we migrate off Postman or Insomnia?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too, and collections export back to Postman or OpenAPI 3.0."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Tiger support SOAP and WSDL?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, starting with version 0.4.0. Pick a .wsdl file in the import dialog and each binding operation becomes a POST request with a ready-to-fill SOAP envelope body, the correct Content-Type header, and (for SOAP 1.1) a SOAPAction header. Both SOAP 1.1 and SOAP 1.2 are supported."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does it work behind our corporate proxy?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. HTTP, HTTPS and SOCKS proxies are supported. SSL verification can be switched off when developing against self-signed or internal certificates. Custom CA bundles and client certificate authentication via PEM pair or PFX/PKCS12 file are also available. Redirects and timeouts are configurable per request."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does the team collaborate without a sync server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do updates work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tiger checks for new releases on GitHub automatically and shows a changelog notification when one is available. On macOS and Linux (AppImage) the update can be installed in-app via electron-updater. On Windows you can also install updates via winget. You can always download the latest build directly from the GitHub Releases page."
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Reference › FAQ</div>
+    <h1>FAQ</h1>
+    <p class="lead">Answers to the most common questions about Tiger: where your data lives, licensing, platforms, migrating from other tools, SOAP support, proxy setup, and how updates work.</p>
+
+    <h2>Privacy and data</h2>
+
+    <h3>Where does our API data live?</h3>
+    <p>
+      On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend,
+      no sync service and no accounts. Request definitions, environment values, tokens and
+      response data never leave your infrastructure.
+    </p>
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Because a collection is a folder of plain <code>.tiger</code> files, you can store it on
+      any Git host you already trust — GitHub, GitLab, Gitea, a self-hosted bare repo — without
+      Tiger ever touching it.</p>
+    </div>
+
+    <h3>Does Tiger phone home or collect my request data?</h3>
+    <p>
+      Tiger never records or transmits URLs, hostnames, header values, request bodies or response
+      payloads. It sends only lightweight usage events to help prioritize development:
+    </p>
+    <ul>
+      <li>App opened</li>
+      <li>Request sent (HTTP method and status-code bucket only — for example "POST 2xx")</li>
+      <li>Collection imported (source and count of requests, no names or URLs)</li>
+    </ul>
+    <p>
+      The only identifier is a random app-local ID generated on first launch. There is no user
+      account, no email address, and no way to tie events back to a person.
+    </p>
+    <p>
+      You can turn analytics off at any time: open <strong>Settings</strong> and disable the
+      toggle under <strong>Privacy</strong>. The setting takes effect immediately.
+    </p>
+
+    <h2>Licensing and cost</h2>
+
+    <h3>Is Tiger open source?</h3>
+    <p>
+      Yes. Tiger is released under the <strong>MIT license</strong>. The full source code is
+      available at <a href="https://github.com/jtaoufik/tiger" target="_blank" rel="noopener">github.com/jtaoufik/tiger</a>.
+      You can read it, fork it, modify it, and distribute it under the terms of that license.
+    </p>
+
+    <h3>Can we use it commercially? What does it cost per seat?</h3>
+    <p>
+      Tiger is free to download and use, including for commercial work. There are no seats, no
+      license keys, and no registration. Advanced team features may become paid in a future
+      release; pricing will be announced before anything changes for existing users.
+    </p>
+    <div class="callout note">
+      <span class="ic">✓</span>
+      <p>If Tiger saves you from a paid plan, consider <a href="https://buymeacoffee.com/tigerapi" target="_blank" rel="noopener">buying a coffee</a>. It funds new features and keeps the project independent.</p>
+    </div>
+
+    <h2>Platforms and installation</h2>
+
+    <h3>Which operating systems does Tiger run on?</h3>
+    <p>
+      Tiger runs natively on macOS, Windows and Linux. All three platforms receive the same
+      feature set.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th>Available builds</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>macOS</td>
+            <td>Universal DMG (Apple Silicon + Intel)</td>
+            <td>Right-click the app and choose Open on first launch (builds are not yet notarized)</td>
+          </tr>
+          <tr>
+            <td>Windows</td>
+            <td>NSIS installer, portable EXE, <code>winget</code></td>
+            <td><code>winget install TaoufikJabbari.Tiger</code></td>
+          </tr>
+          <tr>
+            <td>Linux</td>
+            <td>AppImage, <code>.deb</code> (Debian/Ubuntu)</td>
+            <td>AppImage supports in-app auto-update via electron-updater</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Downloads are on the <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">GitHub Releases page</a>.
+    </p>
+
+    <h3>How do updates work?</h3>
+    <p>
+      Tiger checks for new releases on GitHub automatically at startup and shows a changelog
+      notification when one is available. On macOS and Linux (AppImage) the update can be
+      applied in-app via electron-updater without leaving the application. On Windows you can
+      let the in-app updater handle it, or run <code>winget upgrade TaoufikJabbari.Tiger</code>.
+      You can also always download the latest build directly from the releases page.
+    </p>
+
+    <h2>Migrating from other tools</h2>
+
+    <h3>How do we migrate off Postman?</h3>
+    <p>
+      In Postman, export each collection as <strong>Collection v2.0</strong> or
+      <strong>Collection v2.1</strong> JSON. Then in Tiger open the import dialog
+      (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd>
+      on Windows/Linux) and pick that file.
+    </p>
+    <p>What carries over:</p>
+    <ul>
+      <li>Folder hierarchy and request order</li>
+      <li>Request method, URL, headers and query parameters</li>
+      <li>Body (JSON, form, raw, GraphQL)</li>
+      <li>Auth settings (Bearer, Basic, API key)</li>
+      <li><code>{{variable}}</code> references in all fields</li>
+    </ul>
+    <p>
+      Environment variables are not embedded in Postman exports — you will enter them once in
+      a Tiger environment file. OAuth 2.0 tokens are not exported by Postman either; configure
+      them in Tiger's auth panel after import.
+    </p>
+    <p>
+      Collections can be exported back to Postman v2.1 format from the collection's context
+      menu if you ever need to move in the other direction.
+    </p>
+
+    <h3>How do we migrate off Insomnia?</h3>
+    <p>
+      In Insomnia, use <strong>Application &gt; Export Data &gt; All</strong> and save as
+      a v4 JSON export. Import that file in Tiger. Folders, requests, headers, query params,
+      bodies and auth all transfer. Environment groups become Tiger environment files.
+    </p>
+
+    <h3>How do we migrate from Bruno?</h3>
+    <p>
+      Point Tiger's importer at the Bruno collection folder (the directory containing
+      <code>.bru</code> files). Tiger reads the folder structure directly — no export step
+      needed in Bruno.
+    </p>
+
+    <h3>Can we import from an OpenAPI or Swagger spec?</h3>
+    <p>
+      Yes. Tiger imports OpenAPI 3 (JSON or YAML) and Swagger 2 (JSON or YAML) specs. Each
+      path + method combination becomes a request, with parameters mapped to query params and
+      headers as appropriate and example request bodies pre-filled where the spec provides them.
+      Collections can also be exported to OpenAPI 3.0 from the collection context menu.
+    </p>
+
+    <h3>Can I import a curl command?</h3>
+    <p>
+      Yes. Paste a <code>curl</code> command into the import dialog and Tiger converts it into
+      a request, preserving the method, URL, headers (<code>-H</code>), request body
+      (<code>-d</code> / <code>--data</code>), and basic auth (<code>-u</code>).
+    </p>
+
+    <h2>SOAP and WSDL</h2>
+
+    <h3>Does Tiger support SOAP APIs?</h3>
+    <p>
+      Yes, starting in version 0.4.0. Tiger can import a <code>.wsdl</code> file and turn
+      each binding operation into a ready-to-use POST request. The generated request includes:
+    </p>
+    <ul>
+      <li>A pre-filled SOAP envelope body with placeholder values for each input element</li>
+      <li>A <code>Content-Type</code> header set to <code>text/xml; charset=utf-8</code> (SOAP 1.1)
+          or <code>application/soap+xml; charset=utf-8</code> (SOAP 1.2)</li>
+      <li>A <code>SOAPAction</code> header populated from the WSDL binding (SOAP 1.1 only)</li>
+    </ul>
+    <p>
+      Both SOAP 1.1 and SOAP 1.2 are detected automatically on a per-operation basis. After
+      import you replace the placeholder values in the envelope with <code>{{variable}}</code>
+      references or literal values before sending.
+    </p>
+    <p>
+      You can also send SOAP requests without a WSDL: create a request, set the method to POST,
+      set the body type to XML, and paste your envelope directly.
+    </p>
+
+    <h2>Networking and corporate environments</h2>
+
+    <h3>Does it work behind a corporate proxy?</h3>
+    <p>
+      Yes. Tiger supports HTTP, HTTPS and SOCKS proxies. Configure the proxy address in
+      <strong>Settings &gt; Network</strong>. Proxy settings apply to all requests.
+    </p>
+
+    <h3>Our internal APIs use self-signed or private CA certificates. Can we still use Tiger?</h3>
+    <p>
+      Yes. You have two options:
+    </p>
+    <ul>
+      <li>
+        <strong>Disable SSL verification</strong> — toggle it off per request or globally in
+        Settings. Useful for development environments where you control both sides.
+      </li>
+      <li>
+        <strong>Custom CA bundle</strong> — import your organization's root certificate as a PEM
+        file in Settings. All requests will trust that CA without disabling verification entirely.
+      </li>
+    </ul>
+    <p>
+      Client certificate authentication (mTLS) is also supported. Add a PEM key/cert pair or
+        a PFX/PKCS12 file in the request's auth panel.
+    </p>
+
+    <h3>How do we deploy Tiger company-wide?</h3>
+    <p>
+      Use the standard installers. On macOS, distribute the DMG via your MDM (Jamf, Mosyle,
+      Kandji). On Windows, use the NSIS installer with your existing software deployment
+      tooling, or deploy through <code>winget</code>. On Linux, the AppImage is self-contained;
+      the <code>.deb</code> integrates with <code>apt</code>. There are no license keys or
+      accounts to provision.
+    </p>
+
+    <h2>Collaboration</h2>
+
+    <h3>How does a team collaborate without a sync server?</h3>
+    <p>
+      With the Git workflow you already run. Collections are plain text files, so sharing is
+      a repository, review is a pull request, and history is <code>git log</code>. New
+      engineers get everything with <code>git clone</code>. Conflicts are rare (one request
+      per file) and resolve cleanly in any text editor or merge tool.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Tiger has a built-in Git panel (status, diff, commit, push, pull, branch, clone)
+      so you can manage the collection repo without leaving the app.</p>
+    </div>
+
+    <h3>Can two people edit the same request at the same time?</h3>
+    <p>
+      Tiger does not provide real-time collaborative editing. Because each request is a separate
+      file, two people modifying different requests in the same collection will not conflict.
+      Two people modifying the same <code>.tiger</code> file simultaneously will produce a
+      normal Git merge conflict, which they resolve with standard tools.
+    </p>
+
+    <h2>More questions</h2>
+    <p>
+      Check the pages below for deeper detail on specific topics, or open a
+      <a href="https://github.com/jtaoufik/tiger/discussions" target="_blank" rel="noopener">GitHub Discussion</a>
+      if your question is not covered here.
+    </p>
+
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/importing/">
+        <div class="t">Importing</div>
+        <div class="d">Full guide to importing from Postman, Insomnia, Bruno, OpenAPI, WSDL and curl.</div>
+      </a>
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">.tiger format</div>
+        <div class="d">How collections are stored on disk and what each block means.</div>
+      </a>
+      <a class="card" href="/tiger/docs/git/">
+        <div class="t">Git integration</div>
+        <div class="d">Commit, push, branch and collaborate using the built-in Git panel.</div>
+      </a>
+      <a class="card" href="/tiger/docs/mcp/">
+        <div class="t">MCP server</div>
+        <div class="d">Expose your saved requests as tools for Claude, Cursor and other AI assistants.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

@@ -3,655 +3,375 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <title>Tiger vs Bruno: Git-Native API Clients Compared</title>
-  <meta name="description" content="Tiger and Bruno both keep API collections in Git. Tiger adds an MCP server for AI assistants, SOAP, request chaining and built-in performance runs. Compare them." />
-  <link rel="canonical" href="https://jtaoufik.github.io/tiger/compare/tiger-vs-bruno" />
-  <meta name="robots" content="index, follow" />
-  <link rel="icon" type="image/png" href="../../icon.png" />
-  <link rel="apple-touch-icon" href="../../icon.png" />
-
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://jtaoufik.github.io/tiger/compare/tiger-vs-bruno" />
-  <meta property="og:title" content="Tiger vs Bruno: Git-Native API Clients Compared" />
-  <meta property="og:description" content="Tiger and Bruno both keep API collections in Git. Tiger adds an MCP server for AI assistants, SOAP, request chaining and built-in performance runs. Compare them." />
+  <title>Tiger vs Bruno · Tiger docs</title>
+  <meta name="description" content="Tiger and Bruno are both open-source, offline, git-native API clients. Compare them honestly: MCP server, WSDL/SOAP, mTLS, performance runs, community, and more." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/compare/tiger-vs-bruno/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Tiger vs Bruno" />
+  <meta property="og:description" content="Tiger and Bruno are both open-source, offline, git-native API clients. Compare them honestly: MCP server, WSDL/SOAP, mTLS, performance runs, community, and more." />
   <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Tiger vs Bruno: Git-Native API Clients Compared" />
-  <meta name="twitter:description" content="Tiger and Bruno both keep API collections in Git. Tiger adds an MCP server for AI assistants, SOAP, request chaining and built-in performance runs." />
-  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/icon.png" />
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebPage",
-        "name": "Tiger vs Bruno: Git-Native API Clients Compared",
-        "url": "https://jtaoufik.github.io/tiger/compare/tiger-vs-bruno",
-        "description": "Tiger and Bruno both keep API collections in Git. Tiger adds an MCP server for AI assistants, SOAP, request chaining and built-in performance runs. Compare them.",
-        "breadcrumb": {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Tiger", "item": "https://jtaoufik.github.io/tiger/" },
-            { "@type": "ListItem", "position": 2, "name": "Compare", "item": "https://jtaoufik.github.io/tiger/compare/tiger-vs-bruno" }
-          ]
-        }
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Can Tiger import Bruno collections?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. Tiger reads Bruno's .bru folder structure directly. Collections, environments, headers, query parameters and request bodies carry over. Variable references in double-brace syntax are preserved."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does Bruno have an MCP server for AI assistants?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Not at the time of writing. Bruno does not ship a Model Context Protocol server. Tiger includes one, so AI clients such as Claude can list, inspect and send requests in your collections without any extra tooling."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does Tiger support Bruno's .bru file format?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Tiger imports .bru collections but stores requests in its own plain-text .tiger format, which is also version-control friendly. You can export back to Postman v2.1 or curl from Tiger."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Which tool has a bigger community?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Bruno has a significantly larger community. It launched in 2022, has tens of thousands of GitHub stars and a broad ecosystem of community-built extensions and integrations. Tiger is newer and smaller, but adds capabilities Bruno does not currently have."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Can both Tiger and Bruno run performance tests?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Tiger has built-in performance runs: fire any request hundreds of times with bounded concurrency and read p50 and p95 latency inside the client. Bruno does not include a built-in performance runner; you would need an external tool such as k6 or wrk."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does Bruno support SOAP requests?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Bruno focuses on REST and GraphQL and does not have a dedicated SOAP body editor. Tiger includes a SOAP envelope body type alongside REST and GraphQL, which matters for teams working with legacy enterprise services."
-            }
-          }
-        ]
-      }
-    ]
-  }
-  </script>
-
-  <style>
-    :root {
-      --ink: #faf6ee;
-      --ink-2: #f4eee2;
-      --surface: #ffffff;
-      --surface-2: #fffaf2;
-      --line: rgba(36, 24, 8, 0.09);
-      --line-strong: rgba(36, 24, 8, 0.17);
-      --cream: #241c12;
-      --dim: #6e6151;
-      --faint: #9a8c79;
-      --orange: #f26b0a;
-      --orange-hot: #ff8c33;
-      --orange-deep: #c75500;
-      --good: #1e9e63;
-      --bad: #d8472e;
-      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-      --disp: "Bricolage Grotesque", -apple-system, sans-serif;
-      --stripe: repeating-linear-gradient(
-        -55deg,
-        var(--orange) 0 8px,
-        transparent 8px 22px
-      );
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background: var(--ink);
-      color: var(--cream);
-      font-family: var(--disp);
-      font-size: 16.5px;
-      line-height: 1.65;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-    body::before {
-      content: "";
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(1000px 600px at 8% -5%, rgba(242, 107, 10, 0.09), transparent 60%),
-        radial-gradient(900px 700px at 105% 15%, rgba(242, 107, 10, 0.05), transparent 55%);
-    }
-    body::after {
-      content: "";
-      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.22;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.7 0 0 0 0 0.4 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-    }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
-
-    ::selection { background: var(--orange); color: #fff; }
-    a { color: var(--orange-hot); }
-    :focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
-
-    /* ---------- type helpers ---------- */
-    .eyebrow {
-      font-family: var(--mono); font-size: 12px; font-weight: 600;
-      letter-spacing: 0.18em; text-transform: uppercase; color: var(--orange);
-      display: inline-flex; align-items: center; gap: 10px;
-    }
-    .eyebrow::before {
-      content: ""; width: 26px; height: 10px;
-      background: var(--stripe); background-size: 200% 100%;
-    }
-    h1 {
-      font-size: clamp(34px, 5.2vw, 56px); font-weight: 800;
-      line-height: 1.05; letter-spacing: -0.03em; margin: 18px 0 20px;
-    }
-    h2 {
-      font-size: clamp(28px, 4vw, 40px); font-weight: 700;
-      letter-spacing: -0.02em; line-height: 1.08; margin: 14px 0 14px;
-    }
-    h3 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 8px; }
-    .sub { color: var(--dim); max-width: 680px; margin: 0 0 36px; font-size: 17px; }
-    .lead { color: var(--dim); font-size: 18px; max-width: 720px; margin: 0 0 32px; }
-    .m { font-family: var(--mono); }
-
-    /* ---------- header ---------- */
-    header.site {
-      display: flex; align-items: center; gap: 12px; padding: 26px 0;
-    }
-    header.site img { width: 38px; height: 38px; }
-    header.site .name {
-      font-weight: 800; font-size: 21px; letter-spacing: -0.02em;
-    }
-    header.site nav { margin-left: auto; display: flex; gap: 26px; flex-wrap: wrap; align-items: center; }
-    header.site nav a {
-      font-family: var(--mono); font-size: 13px; color: var(--dim);
-      text-decoration: none; transition: color 0.15s;
-    }
-    header.site nav a:hover { color: var(--orange-hot); }
-    .gh-btn {
-      font-family: var(--mono); font-size: 13px; font-weight: 600;
-      color: var(--cream) !important; text-decoration: none;
-      border: 1px solid var(--line-strong); border-radius: 10px;
-      padding: 8px 16px; transition: border-color 0.15s, background 0.15s;
-    }
-    .gh-btn:hover { border-color: var(--orange); background: rgba(255, 122, 24, 0.08); }
-
-    /* ---------- page hero ---------- */
-    .page-hero {
-      padding: 64px 0 72px;
-    }
-    .page-hero .breadcrumb {
-      font-family: var(--mono); font-size: 12.5px; color: var(--faint);
-      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
-    }
-    .page-hero .breadcrumb a { color: var(--faint); text-decoration: none; }
-    .page-hero .breadcrumb a:hover { color: var(--orange-hot); }
-    .page-hero .breadcrumb .sep { opacity: 0.5; }
-
-    /* ---------- btn ---------- */
-    .btn {
-      font-family: var(--mono); font-weight: 600; font-size: 14.5px;
-      text-decoration: none; padding: 15px 28px; border-radius: 12px;
-      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-      display: inline-block;
-    }
-    .btn.primary {
-      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
-      color: #1a0d02; box-shadow: 0 10px 36px rgba(255, 122, 24, 0.35);
-    }
-    .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(255, 122, 24, 0.45); }
-    .btn.ghost {
-      color: var(--cream); border: 1px solid var(--line-strong);
-    }
-    .btn.ghost:hover { background: rgba(255, 173, 96, 0.07); }
-    .cta { display: flex; gap: 14px; flex-wrap: wrap; }
-
-    /* ---------- sections ---------- */
-    section { padding: 64px 0; }
-
-    /* ---------- spec table ---------- */
-    .spec {
-      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
-      background: var(--surface);
-    }
-    .spec table { width: 100%; border-collapse: collapse; font-size: 15px; }
-    .spec th {
-      font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--faint); text-align: left;
-      padding: 16px 22px; border-bottom: 1px solid var(--line-strong);
-    }
-    .spec td { padding: 15px 22px; border-bottom: 1px solid var(--line); vertical-align: top; }
-    .spec tr:last-child td { border-bottom: none; }
-    .spec tbody tr { transition: background 0.15s; }
-    .spec tbody tr:hover { background: rgba(255, 122, 24, 0.04); }
-    .spec td:first-child { color: var(--cream); font-weight: 600; width: 36%; }
-    .spec td:not(:first-child) { color: var(--dim); font-size: 14.5px; }
-    .yes { color: var(--good); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
-    .no { color: var(--bad); font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
-    .mid { color: #c8a043; font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
-    .tag-tiger {
-      display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 600;
-      background: rgba(242, 107, 10, 0.12); color: var(--orange);
-      border: 1px solid rgba(242, 107, 10, 0.28); border-radius: 6px;
-      padding: 1px 8px; margin-left: 8px; vertical-align: middle;
-    }
-    .tag-bruno {
-      display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 600;
-      background: rgba(30, 158, 99, 0.10); color: var(--good);
-      border: 1px solid rgba(30, 158, 99, 0.28); border-radius: 6px;
-      padding: 1px 8px; margin-left: 8px; vertical-align: middle;
-    }
-
-    /* ---------- choose block ---------- */
-    .choose-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
-    }
-    @media (max-width: 760px) { .choose-grid { grid-template-columns: 1fr; } }
-    .choose-card {
-      background: linear-gradient(180deg, var(--surface-2), var(--surface));
-      border: 1px solid var(--line); border-radius: 16px; padding: 28px 28px 26px;
-    }
-    .choose-card.tiger-card { border-color: rgba(242, 107, 10, 0.25); }
-    .choose-card.bruno-card { border-color: rgba(30, 158, 99, 0.20); }
-    .choose-card .label {
-      font-family: var(--mono); font-size: 11.5px; font-weight: 600;
-      letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 16px;
-    }
-    .choose-card.tiger-card .label { color: var(--orange); }
-    .choose-card.bruno-card .label { color: var(--good); }
-    .choose-card ul {
-      margin: 0; padding: 0; list-style: none;
-    }
-    .choose-card ul li {
-      font-size: 15px; color: var(--dim); padding: 7px 0;
-      border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 10px;
-    }
-    .choose-card ul li:last-child { border-bottom: none; }
-    .choose-card ul li::before {
-      content: ""; width: 6px; height: 6px; border-radius: 50%; margin-top: 8px; flex-shrink: 0;
-    }
-    .choose-card.tiger-card ul li::before { background: var(--orange); }
-    .choose-card.bruno-card ul li::before { background: var(--good); }
-
-    /* ---------- bento cells ---------- */
-    .bento {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-    }
-    @media (max-width: 920px) { .bento { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 620px) { .bento { grid-template-columns: 1fr; } }
-    .cell {
-      position: relative; overflow: hidden;
-      background: linear-gradient(180deg, var(--surface-2), var(--surface));
-      border: 1px solid var(--line); border-radius: 16px; padding: 26px;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-    .cell:hover { transform: translateY(-4px); border-color: var(--line-strong); }
-    .cell::after {
-      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: var(--stripe); opacity: 0; transition: opacity 0.2s;
-    }
-    .cell:hover::after { opacity: 1; }
-    .cell .num {
-      font-family: var(--mono); font-size: 12px; color: var(--orange);
-      letter-spacing: 0.14em;
-    }
-    .cell h3 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 8px; }
-    .cell p { margin: 0; color: var(--dim); font-size: 14.5px; line-height: 1.6; }
-    .cell.wide { grid-column: span 2; }
-    @media (max-width: 620px) { .cell.wide { grid-column: span 1; } }
-
-    /* ---------- faq ---------- */
-    .faq details {
-      border-bottom: 1px solid var(--line); padding: 4px 0;
-    }
-    .faq details:first-of-type { border-top: 1px solid var(--line); }
-    .faq summary {
-      display: flex; align-items: baseline; gap: 18px; cursor: pointer;
-      padding: 20px 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em;
-      list-style: none; transition: color 0.15s;
-    }
-    .faq summary::-webkit-details-marker { display: none; }
-    .faq summary:hover { color: var(--orange-hot); }
-    .faq summary .ix {
-      font-family: var(--mono); font-size: 12.5px; color: var(--orange); flex-shrink: 0;
-    }
-    .faq summary .pm {
-      margin-left: auto; font-family: var(--mono); color: var(--faint);
-      transition: transform 0.2s; flex-shrink: 0;
-    }
-    .faq details[open] .pm { transform: rotate(45deg); color: var(--orange); }
-    .faq details p { margin: 0 0 22px 44px; color: var(--dim); max-width: 720px; font-size: 15.5px; }
-
-    /* ---------- finale cta ---------- */
-    .finale {
-      position: relative; text-align: center; padding: 96px 24px; margin: 40px 0 0;
-      border-top: 1px solid var(--line);
-      overflow: hidden;
-    }
-    .finale::before {
-      content: ""; position: absolute; inset: auto -10% -70% -10%; height: 200px;
-      background: var(--stripe); opacity: 0.06; transform: rotate(-2deg);
-    }
-    .finale h2 { font-size: clamp(30px, 4.8vw, 50px); margin-bottom: 14px; }
-    .finale .sub { margin: 0 auto 36px; }
-    .mit-note {
-      font-family: var(--mono); font-size: 12.5px; color: var(--faint); margin-top: 20px;
-    }
-
-    footer {
-      padding: 34px 0 56px; color: var(--faint);
-      font-family: var(--mono); font-size: 12.5px; text-align: center;
-    }
-    footer a { color: var(--orange-hot); text-decoration: none; }
-
-    /* ---------- motion ---------- */
-    @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
-    .page-hero > * { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-    .page-hero > *:nth-child(2) { animation-delay: 0.07s; }
-    .page-hero > *:nth-child(3) { animation-delay: 0.14s; }
-    .page-hero > *:nth-child(4) { animation-delay: 0.21s; }
-    .page-hero > *:nth-child(5) { animation-delay: 0.28s; }
-    .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.7s, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
-    .reveal.in { opacity: 1; transform: none; }
-    @media (prefers-reduced-motion: reduce) {
-      *, .page-hero > * { animation: none !important; transition: none !important; }
-      .reveal { opacity: 1; transform: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="/tiger/styles.css" />
 </head>
 <body>
-  <div class="wrap">
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Compare › Tiger vs Bruno</div>
+    <h1>Tiger vs Bruno</h1>
+    <p class="lead">
+      Tiger and Bruno share the same founding conviction: API collections belong in your Git
+      repository, not in a vendor's cloud. Both are MIT-licensed, fully offline, and require
+      no account. This page lays out where they differ, fairly and without marketing spin,
+      so you can choose the right tool for your team.
+    </p>
 
-    <header class="site">
-      <img src="../../icon.png" alt="Tiger logo, an orange cat" />
-      <span class="name">Tiger</span>
-      <nav aria-label="Main">
-        <a href="../../#teams">Why teams switch</a>
-        <a href="../../#compare">Compare</a>
-        <a href="../../#migrate">Migration</a>
-        <a href="../../#faq">FAQ</a>
-        <a class="gh-btn" href="../../#download">Download ↓</a>
-      </nav>
-    </header>
+    <h2>What they have in common</h2>
+    <p>
+      Before the differences, the common ground is substantial. Both tools store every request
+      as a human-readable plain-text file — <code>.tiger</code> for Tiger,
+      <code>.bru</code> for Bruno — inside a normal folder on disk. That folder is a Git
+      repository, so requests get versioned, branched, diffed, and reviewed alongside code.
+      Neither product requires an account, neither phones home with your request data, and
+      both run natively on macOS and Windows (Tiger also ships first-class Linux builds as of
+      0.4.0). Both support REST, GraphQL, <code>{{variable}}</code> interpolation, named
+      environments, OAuth 2.0, pre- and post-request JavaScript, and collection-level
+      runners.
+    </p>
 
-    <div class="page-hero">
-      <div class="breadcrumb">
-        <a href="../../">Tiger</a>
-        <span class="sep">/</span>
-        <a href="../../compare/tiger-vs-bruno">Tiger vs Bruno</a>
-      </div>
-      <span class="eyebrow">Compare</span>
-      <h1>Tiger vs Bruno: Git-Native API Clients Compared</h1>
-      <p class="lead">
-        Tiger and Bruno share the same starting conviction: API collections belong in your
-        Git repository, not in a vendor's cloud. Both are account-free, offline-capable and
-        open source. Bruno is excellent, well-established and has a large community. This
-        page covers the differences honestly so you can choose the right tool for your team.
+    <div class="callout note">
+      <span class="ic">✓</span>
+      <p>
+        Tiger can import a Bruno collection folder directly. Collections, environments,
+        headers, query parameters, bodies, and variable references all carry over. Tiger
+        stores the imported requests in its own <code>.tiger</code> format afterward.
       </p>
-      <div class="cta">
-        <a class="btn primary" href="../../#download">Download Tiger</a>
-        <a class="btn ghost" href="https://www.usebruno.com/" rel="noopener noreferrer" target="_blank">Bruno website</a>
-      </div>
     </div>
 
-    <section id="table" class="reveal">
-      <span class="eyebrow">Feature table</span>
-      <h2>Side by side</h2>
-      <p class="sub">Both tools store collections as plain files in Git and require no account. The table below focuses on where they differ.</p>
-      <div class="spec">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Capability</th>
-              <th scope="col">Tiger</th>
-              <th scope="col">Bruno</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Collections stored as plain files in Git</td>
-              <td><span class="yes">Yes</span> &mdash; .tiger files</td>
-              <td><span class="yes">Yes</span> &mdash; .bru files</td>
-            </tr>
-            <tr>
-              <td>Account required</td>
-              <td><span class="yes">Never</span></td>
-              <td><span class="yes">Never</span></td>
-            </tr>
-            <tr>
-              <td>Works fully offline</td>
-              <td><span class="yes">Yes</span></td>
-              <td><span class="yes">Yes</span></td>
-            </tr>
-            <tr>
-              <td>License</td>
-              <td><span class="yes">MIT</span></td>
-              <td><span class="yes">MIT</span></td>
-            </tr>
-            <tr>
-              <td>MCP server for AI clients <span class="tag-tiger">Tiger only</span></td>
-              <td><span class="yes">Yes</span> &mdash; Claude and other MCP clients can list and run requests</td>
-              <td><span class="no">No</span></td>
-            </tr>
-            <tr>
-              <td>SOAP / XML body editor <span class="tag-tiger">Tiger only</span></td>
-              <td><span class="yes">Yes</span> &mdash; dedicated SOAP envelope body type</td>
-              <td><span class="no">No</span> &mdash; REST and GraphQL only</td>
-            </tr>
-            <tr>
-              <td>Built-in performance runs <span class="tag-tiger">Tiger only</span></td>
-              <td><span class="yes">Yes</span> &mdash; p50 + p95 latency, bounded concurrency, no subscription</td>
-              <td><span class="no">No</span> &mdash; requires an external tool (k6, wrk, etc.)</td>
-            </tr>
-            <tr>
-              <td>Request chaining via capture <span class="tag-tiger">Tiger only</span></td>
-              <td><span class="yes">Yes</span> &mdash; capture response values and pass them to the next request</td>
-              <td><span class="mid">Scripts only</span> &mdash; possible via pre/post-request JavaScript</td>
-            </tr>
-            <tr>
-              <td>Team sync</td>
-              <td><span class="yes">Git</span> &mdash; one-button commit + push in the UI</td>
-              <td><span class="mid">Git</span> &mdash; manual workflow outside the app</td>
-            </tr>
-            <tr>
-              <td>GraphQL with schema introspection</td>
-              <td><span class="yes">Yes</span></td>
-              <td><span class="yes">Yes</span></td>
-            </tr>
-            <tr>
-              <td>OAuth 2.0 client credentials</td>
-              <td><span class="yes">Yes</span></td>
-              <td><span class="yes">Yes</span></td>
-            </tr>
-            <tr>
-              <td>Import from Bruno</td>
-              <td><span class="yes">Yes</span></td>
-              <td><span class="yes">Native format</span></td>
-            </tr>
-            <tr>
-              <td>Import from Postman / Insomnia / OpenAPI</td>
-              <td><span class="yes">Yes</span></td>
-              <td><span class="yes">Yes</span></td>
-            </tr>
-            <tr>
-              <td>Maturity and community <span class="tag-bruno">Bruno leads</span></td>
-              <td><span class="mid">Newer</span> &mdash; smaller community, active development</td>
-              <td><span class="yes">Established</span> &mdash; tens of thousands of GitHub stars, launched 2022</td>
-            </tr>
-            <tr>
-              <td>Scripting ecosystem <span class="tag-bruno">Bruno leads</span></td>
-              <td><span class="mid">Built-in capture + variables</span></td>
-              <td><span class="yes">Broad</span> &mdash; JavaScript pre/post-request scripts, assertions, community plugins</td>
-            </tr>
-            <tr>
-              <td>Collection file format documentation <span class="tag-bruno">Bruno leads</span></td>
-              <td><span class="mid">Internal</span></td>
-              <td><span class="yes">Documented .bru spec</span> &mdash; ecosystem of third-party tooling built on it</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <h2>Side-by-side comparison</h2>
 
-    <section id="tiger-advantages" class="reveal">
-      <span class="eyebrow">Where Tiger differs</span>
-      <h2>What Tiger brings to a Git-native workflow</h2>
-      <p class="sub">These are the capabilities Tiger has that Bruno does not currently ship.</p>
-      <div class="bento">
-        <div class="cell">
-          <span class="num">01</span>
-          <h3>MCP server for AI clients</h3>
-          <p>Tiger ships a Model Context Protocol server. AI clients such as Claude can discover your collections, inspect request definitions, and send requests in agentic workflows without any extra tooling or scripts.</p>
-        </div>
-        <div class="cell">
-          <span class="num">02</span>
-          <h3>SOAP and XML bodies</h3>
-          <p>Tiger has a dedicated SOAP envelope body editor alongside REST and GraphQL. Teams maintaining legacy enterprise integrations or XML-based services get first-class support without reaching for a separate client.</p>
-        </div>
-        <div class="cell">
-          <span class="num">03</span>
-          <h3>Built-in performance runs</h3>
-          <p>Fire any request hundreds of times with bounded concurrency and read back p50 and p95 latency right inside the app. No monitor subscription, no external runner to configure.</p>
-        </div>
-        <div class="cell">
-          <span class="num">04</span>
-          <h3>Request chaining via capture blocks</h3>
-          <p>Declare a capture block on any request to pull values from the response and inject them into subsequent requests automatically. Useful for multi-step flows like auth, resource creation and teardown.</p>
-        </div>
-        <div class="cell">
-          <span class="num">05</span>
-          <h3>One-button Git sync in the UI</h3>
-          <p>Tiger surfaces a plain-language commit-and-push flow inside the app so the whole team can participate in version control without opening a terminal or a Git GUI.</p>
-        </div>
-        <div class="cell">
-          <span class="num">06</span>
-          <h3>Persistent per-environment cookie jar</h3>
-          <p>Cookies set by one request are available to the next automatically. The jar is scoped per environment so staging and production sessions never overlap.</p>
-        </div>
-      </div>
-    </section>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th class="col-tiger">Tiger 0.4.0</th>
+            <th>Bruno</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>License</td>
+            <td class="col-tiger"><span class="yes">MIT</span></td>
+            <td><span class="yes">MIT</span></td>
+          </tr>
+          <tr>
+            <td>Collections as plain text in Git</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — <code>.tiger</code> files</td>
+            <td><span class="yes">Yes</span> — <code>.bru</code> files</td>
+          </tr>
+          <tr>
+            <td>Account required</td>
+            <td class="col-tiger"><span class="yes">Never</span></td>
+            <td><span class="yes">Never</span></td>
+          </tr>
+          <tr>
+            <td>macOS / Windows / Linux native builds</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — all three</td>
+            <td><span class="partial">Partial</span> — macOS + Windows; Linux via community builds</td>
+          </tr>
+          <tr>
+            <td>MCP server for AI clients</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — <code>tiger-mcp</code> binary ships with the app; exposes <code>list_requests</code>, <code>list_environments</code>, <code>get_request</code>, <code>run_request</code> tools</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>WSDL / SOAP import</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — each binding operation becomes a POST with a ready-to-fill SOAP envelope; SOAP 1.1 + 1.2 (added in 0.4.0)</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>Client certificates (mTLS)</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — PEM pair or PFX/PKCS12, plus custom CA bundle</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>Performance / load runs</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — configurable N requests with concurrency; reports min, max, avg, p50, p95</td>
+            <td><span class="no">No</span> — requires an external tool such as k6 or wrk</td>
+          </tr>
+          <tr>
+            <td>Response captures for request chaining</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — declarative <code>capture</code> block in the <code>.tiger</code> file; no scripting required</td>
+            <td><span class="partial">Scripts</span> — possible via pre/post-request JavaScript; no dedicated capture syntax</td>
+          </tr>
+          <tr>
+            <td>Collection runner with pass/fail assertions</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — live verdicts, stop button, capture chaining across requests</td>
+            <td><span class="partial">Limited</span> — basic runner; assertion support is less complete</td>
+          </tr>
+          <tr>
+            <td>Built-in Git UI (commit, push, pull, diff, branch)</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — commit, push, pull, diff, branch, checkout, clone, discard, log, sync inside the app</td>
+            <td><span class="no">No</span> — Git operations happen outside the app</td>
+          </tr>
+          <tr>
+            <td>Response search (Cmd/Ctrl+F)</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — highlight + match cycling</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>HTML and image response preview</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — sandboxed HTML frame; inline image preview</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>Multipart file upload</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — per-row file picker; <code>@file:</code> paths in <code>.tiger</code></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Dynamic variables (<code>{{$uuid}}</code>, <code>{{$timestamp}}</code>, etc.)</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="partial">Partial</span></td>
+          </tr>
+          <tr>
+            <td>Pre/post-request JavaScript</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>GraphQL with variables pane</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>OAuth 2.0 client credentials</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Import: Postman v2.0/2.1, Insomnia v4, OpenAPI 3 / Swagger 2, Bruno, curl, WSDL</td>
+            <td class="col-tiger"><span class="yes">All six</span></td>
+            <td><span class="partial">Most</span> — Postman, Insomnia, OpenAPI, curl; not WSDL</td>
+          </tr>
+          <tr>
+            <td>Export: Postman v2.1, OpenAPI 3.0, curl, fetch</td>
+            <td class="col-tiger"><span class="yes">All four</span></td>
+            <td><span class="partial">Partial</span></td>
+          </tr>
+          <tr>
+            <td>Community and ecosystem</td>
+            <td class="col-tiger"><span class="partial">Newer</span> — smaller community; active development</td>
+            <td><span class="yes">Established</span> — launched 2022; tens of thousands of GitHub stars; broad plugin ecosystem</td>
+          </tr>
+          <tr>
+            <td>CLI runner</td>
+            <td class="col-tiger"><span class="no">No</span> — desktop only</td>
+            <td><span class="yes">Yes</span> — <code>@usebruno/cli</code> runs collections in CI</td>
+          </tr>
+          <tr>
+            <td>Documented file format spec</td>
+            <td class="col-tiger"><span class="partial">Internal</span> — readable but not formally published</td>
+            <td><span class="yes">Documented</span> — published <code>.bru</code> spec; third-party tooling built on it</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-    <section id="choose" class="reveal">
-      <span class="eyebrow">Decision guide</span>
-      <h2>Choose Bruno if... / Choose Tiger if...</h2>
-      <p class="sub">Both tools are solid. The right choice depends on what your team values most.</p>
-      <div class="choose-grid">
-        <div class="choose-card bruno-card">
-          <div class="label">Choose Bruno if...</div>
-          <ul>
-            <li>You want a tool with years of real-world use and a large public community to draw on.</li>
-            <li>Your workflow depends on JavaScript pre- and post-request scripting with a mature assertion library.</li>
-            <li>Your team already uses the .bru file format and has tooling built around it.</li>
-            <li>You want the broadest possible plugin and integration ecosystem today.</li>
-            <li>Your requests are REST or GraphQL only, with no SOAP requirement.</li>
-            <li>You prefer a tool with documented file format specifications.</li>
-          </ul>
-        </div>
-        <div class="choose-card tiger-card">
-          <div class="label">Choose Tiger if...</div>
-          <ul>
-            <li>You want AI clients (Claude, Cursor, etc.) to read and send your API requests via MCP.</li>
-            <li>Your team maintains SOAP or XML-based services alongside REST APIs.</li>
-            <li>You want built-in load and performance runs without wiring up a separate tool.</li>
-            <li>You need request chaining via declarative capture blocks rather than scripts.</li>
-            <li>You want Git commits and pushes accessible inside the API client for non-terminal users.</li>
-            <li>You are migrating from Bruno and want full import support with no data loss.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+    <h2>Where Tiger goes further</h2>
 
-    <section id="faq" class="reveal">
-      <span class="eyebrow">FAQ</span>
-      <h2>Common questions</h2>
-      <div class="faq">
-        <details>
-          <summary><span class="ix">01</span>Can Tiger import Bruno collections?<span class="pm">+</span></summary>
-          <p>Yes. Tiger reads Bruno's .bru folder structure directly. Collections, environments, headers, query parameters and request bodies carry over. Variable references in double-brace syntax are preserved.</p>
-        </details>
-        <details>
-          <summary><span class="ix">02</span>Does Bruno have an MCP server for AI assistants?<span class="pm">+</span></summary>
-          <p>Not at the time of writing. Bruno does not ship a Model Context Protocol server. Tiger includes one, so AI clients such as Claude can list, inspect and send requests in your collections without any extra tooling.</p>
-        </details>
-        <details>
-          <summary><span class="ix">03</span>Does Tiger support Bruno's .bru file format?<span class="pm">+</span></summary>
-          <p>Tiger imports .bru collections but stores requests in its own plain-text .tiger format, which is also version-control friendly. You can export back to Postman v2.1 or curl from Tiger.</p>
-        </details>
-        <details>
-          <summary><span class="ix">04</span>Which tool has a bigger community?<span class="pm">+</span></summary>
-          <p>Bruno has a significantly larger community. It launched in 2022, has tens of thousands of GitHub stars and a broad ecosystem of community-built extensions and integrations. Tiger is newer and smaller, but adds capabilities Bruno does not currently have.</p>
-        </details>
-        <details>
-          <summary><span class="ix">05</span>Can both Tiger and Bruno run performance tests?<span class="pm">+</span></summary>
-          <p>Tiger has built-in performance runs: fire any request hundreds of times with bounded concurrency and read p50 and p95 latency inside the client. Bruno does not include a built-in performance runner; you would need an external tool such as k6 or wrk.</p>
-        </details>
-        <details>
-          <summary><span class="ix">06</span>Does Bruno support SOAP requests?<span class="pm">+</span></summary>
-          <p>Bruno focuses on REST and GraphQL and does not have a dedicated SOAP body editor. Tiger includes a SOAP envelope body type alongside REST and GraphQL, which matters for teams working with legacy enterprise services.</p>
-        </details>
-      </div>
-    </section>
+    <h3>Built-in MCP server</h3>
+    <p>
+      Tiger ships a Model Context Protocol server (<code>tiger-mcp</code>) that exposes your
+      saved requests as tools for any MCP-compatible AI client. Claude Desktop, Cursor, and
+      others can call <code>list_requests</code>, <code>list_environments</code>,
+      <code>get_request</code>, and <code>run_request</code> against your collection without
+      leaving the chat. The server reads your collection from disk; your request data goes
+      nowhere except to the API you are calling.
+    </p>
+    <p>
+      Configure it in <code>claude_desktop_config.json</code> like this:
+    </p>
+    <pre><code>{
+  "mcpServers": {
+    "tiger": {
+      "command": "node",
+      "args": [
+        "/path/to/tiger/out/mcp/server.mjs",
+        "/path/to/your/collection"
+      ]
+    }
+  }
+}</code></pre>
 
-    <section class="finale reveal">
-      <span class="eyebrow" style="justify-content:center;">Get started</span>
-      <h2>Try Tiger alongside Bruno</h2>
-      <p class="sub">Import your Bruno collections in minutes. Both tools keep your data in Git and neither requires an account.</p>
-      <div class="cta" style="justify-content:center;">
-        <a class="btn primary" href="../../#download">Download Tiger</a>
-        <a class="btn ghost" href="../../#faq">Read the FAQ</a>
-      </div>
-      <p class="mit-note">Free and open source (MIT). No accounts, no telemetry of your request data.</p>
-    </section>
+    <h3>WSDL / SOAP import (new in 0.4.0)</h3>
+    <p>
+      Point Tiger at a <code>.wsdl</code> file and it parses the binding operations and
+      generates one POST request per operation. Each request arrives with:
+    </p>
+    <ul>
+      <li>A ready-to-fill SOAP envelope in the body, pre-populated with the correct
+          element names for that operation.</li>
+      <li><code>Content-Type: text/xml; charset=utf-8</code> (SOAP 1.1) or
+          <code>application/soap+xml</code> (SOAP 1.2).</li>
+      <li>The <code>SOAPAction</code> header set to the correct URI for SOAP 1.1 operations.</li>
+    </ul>
+    <p>
+      For teams that maintain legacy enterprise services alongside modern REST APIs, this
+      means everything lives in one client rather than keeping a separate SOAP tool.
+    </p>
 
-    <footer>
+    <h3>Client certificates and mTLS</h3>
+    <p>
+      Tiger accepts a custom CA bundle for self-signed or internal PKI certificates, and
+      supports client certificate authentication via either a PEM key/cert pair or a PFX /
+      PKCS12 file. This covers mutual TLS scenarios common in financial services, healthcare,
+      and internal microservice meshes. Bruno does not currently ship this capability.
+    </p>
+
+    <h3>Performance runs</h3>
+    <p>
+      Select any request, open the <strong>Perf</strong> tab, set the number of iterations
+      and a concurrency level, and Tiger fires the requests and reports min, max, avg, p50,
+      and p95 latency inline. No external tool, no subscription. Bruno has no equivalent;
+      you would reach for k6 or wrk.
+    </p>
+
+    <h3>Declarative response captures</h3>
+    <p>
+      Tiger's <code>capture</code> block in the <code>.tiger</code> format lets you pull a
+      value from any response — status code, a response header, or a JSON path like
+      <code>body.data[0].id</code> — and write it into an environment variable for the
+      next request. This is declared in the file, not in a script, so it shows up in diffs
+      and reviews without requiring anyone to read JavaScript:
+    </p>
+    <pre><code>capture {
+  token: body.access_token
+  userId: body.user.id
+}</code></pre>
+    <p>
+      Bruno can achieve the same result through a post-request script, but there is no
+      dedicated syntax, so the intent is less visible in code review.
+    </p>
+
+    <h3>Built-in Git UI</h3>
+    <p>
+      Tiger surfaces Git operations — status, diff, commit, push, pull, branch, checkout,
+      clone, discard, log, and sync — inside the app. Team members who do not use a terminal
+      can still participate in version control without a separate GUI client.
+    </p>
+
+    <h2>Where Bruno goes further</h2>
+
+    <h3>CLI runner for CI</h3>
+    <p>
+      Bruno ships <code>@usebruno/cli</code>, a standalone Node package that runs a
+      collection from the command line. This makes it straightforward to add API test suites
+      to a CI pipeline without any desktop app. Tiger is desktop-only; there is no
+      equivalent CLI runner today.
+    </p>
+
+    <h3>Community and ecosystem</h3>
+    <p>
+      Bruno launched in 2022 and has tens of thousands of GitHub stars. The ecosystem includes
+      community-built plugins, integrations, and third-party tooling built on the documented
+      <code>.bru</code> file format. If you need to find a ready-made solution for an unusual
+      workflow, the Bruno community is a larger pool to draw from.
+    </p>
+
+    <h3>JavaScript scripting maturity</h3>
+    <p>
+      Bruno's pre- and post-request scripting, assertions, and test output have had more
+      time to mature and accumulate community examples. Both tools run sandboxed JavaScript,
+      but Bruno's ecosystem of documented patterns for complex scripting scenarios is broader.
+    </p>
+
+    <h2>Which should you choose?</h2>
+
+    <p><strong>Choose Tiger if any of these apply:</strong></p>
+    <ul>
+      <li>You want AI clients (Claude, Cursor) to discover and run requests from your
+          collection via MCP without extra tooling.</li>
+      <li>Your team works with SOAP or WSDL-described services alongside REST APIs.</li>
+      <li>You need client certificate (mTLS) authentication.</li>
+      <li>You want built-in load and latency profiling without wiring up a separate runner.</li>
+      <li>You want declarative request chaining that reads clearly in a pull request diff.</li>
+      <li>You want Git commits and pushes accessible inside the API client for the whole
+          team, including those who do not use a terminal.</li>
+      <li>You are running Linux and want an officially supported first-class build.</li>
+      <li>You are migrating from Bruno and want full import support with no data loss.</li>
+    </ul>
+
+    <p><strong>Choose Bruno if any of these apply:</strong></p>
+    <ul>
+      <li>You need a CLI runner to execute API test suites in CI without a desktop app.</li>
+      <li>You want a tool with years of real-world use and a large public community.</li>
+      <li>Your workflow depends on JavaScript scripting with a mature assertion library and
+          abundant community examples.</li>
+      <li>Your team already has tooling built around the documented <code>.bru</code> format.</li>
+      <li>Your requests are REST and GraphQL only, with no SOAP or mTLS requirement.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
       <p>
-        &copy; 2026 Tiger. Free and open source under the MIT license.
-        &nbsp;&middot;&nbsp;
-        <a href="../../">Home</a>
-        &nbsp;&middot;&nbsp;
-        <a href="../../compare/tiger-vs-postman">Tiger vs Postman</a>
-        &nbsp;&middot;&nbsp;
-        <a href="../../alternatives/postman">Postman alternatives</a>
-        &nbsp;&middot;&nbsp;
-        <a href="../../guides/postman-to-tiger">Postman to Tiger guide</a>
-        &nbsp;&middot;&nbsp;
-        <a href="../../use-cases/mcp-api-client">MCP API client</a>
-       &nbsp;&middot;&nbsp;
-        <a href="https://buymeacoffee.com/tigerapi">Buy me a coffee</a> &nbsp;&middot;&nbsp;
-        <a href="https://www.linkedin.com/in/taoufik-jabbari">Taoufik Jabbari</a>
+        Tiger imports Bruno collections directly. If you want to try Tiger without abandoning
+        your existing collection, open Tiger, choose <strong>Import</strong>, pick your Bruno
+        folder, and your requests will be ready in seconds.
       </p>
-    </footer>
+    </div>
 
-  </div>
+    <h2>Frequently asked questions</h2>
 
-  <script>
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add('in')),
-      { threshold: 0.12 }
-    );
-    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
-  </script>
+    <h3>Does Tiger export back to Bruno's format?</h3>
+    <p>
+      Not currently. Tiger exports to Postman v2.1, OpenAPI 3.0, curl, and JavaScript fetch.
+      If you need to move work back to Bruno, exporting to Postman v2.1 and then importing
+      that into Bruno is the most complete path.
+    </p>
+
+    <h3>Do both tools support secret variables?</h3>
+    <p>
+      Yes. In Tiger, marking a variable as secret masks its value in the UI so it does not
+      appear in screenshots or screen shares. The value is still stored in the environments
+      file on disk, so how you handle that file in Git (gitignore, secrets manager, etc.)
+      is your responsibility — the same is true in Bruno.
+    </p>
+
+    <h3>Which tool is better for a team?</h3>
+    <p>
+      Both store collections in Git, which is the most durable basis for team collaboration.
+      Tiger's built-in Git UI lowers the bar for team members who do not use the terminal.
+      Bruno's CLI runner is valuable if your team wants collection tests to run automatically
+      in CI. The right answer depends on which gap matters more to your team.
+    </p>
+
+    <h3>Is Tiger's MCP server safe to use?</h3>
+    <p>
+      The MCP server reads your collection from disk and sends requests to the URLs defined
+      in your collection, exactly as if you pressed Send yourself. It does not send your
+      collection data to any third party. The AI client sees the request definition and the
+      response; your API credentials stay in your environment files on your machine.
+    </p>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/importing/">
+        <div class="t">Importing collections</div>
+        <div class="d">How to import from Bruno, Postman, Insomnia, OpenAPI, WSDL, and curl.</div>
+      </a>
+      <a class="card" href="/tiger/docs/mcp/">
+        <div class="t">MCP server</div>
+        <div class="d">Connect Tiger to Claude, Cursor, or any MCP-compatible AI client.</div>
+      </a>
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments and variables</div>
+        <div class="d">Named environments, secret values, and {{variable}} interpolation.</div>
+      </a>
+      <a class="card" href="/tiger/compare/tiger-vs-postman/">
+        <div class="t">Tiger vs Postman</div>
+        <div class="d">How Tiger compares to Postman on features, pricing, and privacy.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
 </body>
 </html>

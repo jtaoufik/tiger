@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The .tiger format · Tiger docs</title>
+  <meta name="description" content="How Tiger stores requests as plain-text .tiger files: block syntax, all block types, collection.tiger, folder.tiger, and the environments/ folder." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/tiger-format/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="The .tiger format" />
+  <meta property="og:description" content="How Tiger stores requests as plain-text .tiger files: block syntax, all block types, collection.tiger, folder.tiger, and the environments/ folder." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Concepts › The .tiger format</div>
+    <h1>The .tiger format</h1>
+    <p class="lead">
+      Every Tiger request is a plain-text <code>.tiger</code> file you own. The format is
+      human-readable, diff-friendly, and designed so that a collection of requests works
+      exactly like a folder of source code in Git.
+    </p>
+
+    <h2>Overview</h2>
+    <p>
+      A <code>.tiger</code> file is a sequence of named blocks. Each block looks like
+      <code>blockname { … }</code>, optionally with a subtype after a colon:
+      <code>body:json { … }</code>. Blocks can appear in any order. Brace matching is
+      depth-aware, so JSON bodies with nested <code>{}</code> are parsed correctly without
+      any escaping.
+    </p>
+    <p>
+      Tiger's serializer is deterministic: re-saving an unchanged request writes the same
+      bytes every time, so commits in Git only show meaningful edits.
+    </p>
+
+    <h2>A complete request file</h2>
+    <p>
+      The example below covers every block a request file can contain. In practice most
+      requests only use a handful of them.
+    </p>
+<pre><code>meta {
+  name: Create post
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/posts
+}
+
+query {
+  draft: true
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  ~X-Debug: 1
+}
+
+body:json {
+  {
+    "title": "Hello from Tiger",
+    "body": "Roar",
+    "userId": {{userId}}
+  }
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+capture {
+  postId: body.id
+  etag: header.ETag
+}
+
+script:pre {
+  tiger.env.set("timestamp", Date.now().toString());
+}
+
+script:post {
+  tiger.test("status is 201", () => tiger.expect(tiger.response.status).toBe(201));
+  tiger.test("id present", () => tiger.expect(tiger.response.body.id).toBeDefined());
+}
+
+docs {
+  Creates a new post. Requires an active bearer token in {{accessToken}}.
+  The returned `id` is captured into `postId` for downstream requests.
+}
+</code></pre>
+
+    <h2>Block reference</h2>
+
+    <h3>meta</h3>
+    <p>
+      Holds metadata about the request. <code>name</code> is the display label shown in
+      the sidebar. <code>seq</code> is an optional integer that controls the order Tiger
+      uses when running the collection; lower numbers run first.
+    </p>
+<pre><code>meta {
+  name: Get user profile
+  seq: 3
+}
+</code></pre>
+
+    <h3>Method block</h3>
+    <p>
+      Exactly one block named after an HTTP method must be present. Supported names are
+      <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>,
+      <code>delete</code>, <code>head</code>, and <code>options</code>. The block
+      contains a single <code>url:</code> key.
+    </p>
+<pre><code>get {
+  url: {{baseUrl}}/users/{{id}}
+}
+</code></pre>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        The method block name is always lowercase in the file even though Tiger displays
+        it in uppercase in the UI.
+      </p>
+    </div>
+
+    <h3>query</h3>
+    <p>
+      URL query parameters as <code>key: value</code> lines. Tiger appends them to the
+      URL before sending. <code>{{variable}}</code> interpolation works in both keys
+      and values. A leading <code>~</code> disables the row without deleting it.
+    </p>
+<pre><code>query {
+  page: 1
+  limit: 50
+  ~debug: true
+}
+</code></pre>
+
+    <h3>headers</h3>
+    <p>
+      Request headers as <code>key: value</code> lines. A leading <code>~</code>
+      disables the row; the line is preserved in the file and shown greyed-out in the
+      editor so it can be re-enabled without retyping.
+    </p>
+<pre><code>headers {
+  Accept: application/json
+  X-Correlation-ID: {{$uuid}}
+  ~X-Debug: 1
+}
+</code></pre>
+
+    <h3>body</h3>
+    <p>
+      The request body. The subtype after the colon selects the body type and drives the
+      <code>Content-Type</code> header when auto-detection is active:
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Subtype</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>body:json</code></td><td>JSON body; Tiger syntax-highlights and formats it.</td></tr>
+          <tr><td><code>body:xml</code></td><td>XML or SOAP body.</td></tr>
+          <tr><td><code>body:text</code></td><td>Plain text.</td></tr>
+          <tr><td><code>body:form</code></td><td>URL-encoded form (<code>application/x-www-form-urlencoded</code>); each line is a <code>key: value</code> pair.</td></tr>
+          <tr><td><code>body:multipart</code></td><td>Multipart form data; file rows use the value prefix <code>@file:</code> followed by an absolute path.</td></tr>
+          <tr><td><code>body:graphql</code></td><td>GraphQL query string. Variables live in a separate <code>graphqlvars</code> block.</td></tr>
+        </tbody>
+      </table>
+    </div>
+<pre><code>body:json {
+  {
+    "title": "Hello",
+    "published": true
+  }
+}
+</code></pre>
+    <p>For GraphQL, the query and variables are separate blocks:</p>
+<pre><code>body:graphql {
+  query GetUser($id: ID!) {
+    user(id: $id) {
+      name
+      email
+    }
+  }
+}
+
+graphqlvars {
+  {
+    "id": "{{userId}}"
+  }
+}
+</code></pre>
+
+    <h3>auth</h3>
+    <p>
+      Per-request authentication. The subtype selects the scheme. If this block is
+      absent, the request inherits the default auth from its folder or collection. An
+      explicit <code>auth:none</code> opts out even when a collection default is set.
+    </p>
+<pre><code>auth:bearer {
+  token: {{accessToken}}
+}
+</code></pre>
+<pre><code>auth:basic {
+  username: alice
+  password: {{basicPassword}}
+}
+</code></pre>
+<pre><code>auth:apikey {
+  key: X-API-Key
+  value: {{apiKey}}
+  in: header
+}
+</code></pre>
+    <p>
+      The <code>in</code> field for <code>auth:apikey</code> accepts <code>header</code>
+      (default) or <code>query</code>.
+    </p>
+<pre><code>auth:oauth2 {
+  grant_type: client_credentials
+  token_url: {{tokenUrl}}
+  client_id: {{clientId}}
+  client_secret: {{clientSecret}}
+  scope: read write
+}
+</code></pre>
+
+    <h3>capture</h3>
+    <p>
+      Extracts values from the response and writes them into environment variables. Each
+      line maps a variable name to a source path. The path prefix selects where to read
+      from:
+    </p>
+    <ul>
+      <li><code>body.path.to.field</code> — a JSON path into the response body.</li>
+      <li><code>header.HeaderName</code> — a response header value.</li>
+      <li><code>status</code> — the HTTP status code as a string.</li>
+    </ul>
+<pre><code>capture {
+  postId: body.id
+  etag: header.ETag
+  lastStatus: status
+}
+</code></pre>
+    <p>
+      Captured values are available as <code>{{postId}}</code>, <code>{{etag}}</code>,
+      and so on in every subsequent request within the same runner run or manual send
+      session.
+    </p>
+
+    <h3>script:pre and script:post</h3>
+    <p>
+      Sandboxed JavaScript that runs before the request is sent (<code>script:pre</code>)
+      or after the response arrives (<code>script:post</code>). Post-scripts can define
+      test assertions that appear in the Tests panel with pass/fail verdicts.
+    </p>
+<pre><code>script:pre {
+  tiger.env.set("nonce", crypto.randomUUID());
+}
+</code></pre>
+<pre><code>script:post {
+  tiger.test("status 200", () => tiger.expect(tiger.response.status).toBe(200));
+  tiger.test("has id", () => tiger.expect(tiger.response.body.id).toBeDefined());
+}
+</code></pre>
+    <p>See <a href="/tiger/docs/scripts/">Pre/post scripts</a> for the full API.</p>
+
+    <h3>docs</h3>
+    <p>
+      Free-form documentation for the request, written in plain text or Markdown. Tiger
+      renders this in the request's Docs tab. Useful for noting what a request does,
+      what variables it expects, or how to interpret the response.
+    </p>
+<pre><code>docs {
+  Fetches a paginated list of posts for the given userId.
+  Requires `baseUrl` and `userId` to be set in the active environment.
+}
+</code></pre>
+
+    <h2>Disabled rows</h2>
+    <p>
+      Any key/value line in <code>headers</code>, <code>query</code>,
+      <code>vars</code>, and <code>capture</code> blocks can be disabled by prefixing
+      it with a tilde (<code>~</code>). Tiger skips the row when sending but keeps it in
+      the file so it can be re-enabled later without retyping.
+    </p>
+<pre><code>headers {
+  Accept: application/json
+  ~X-Internal-Trace: 1
+}
+</code></pre>
+    <p>
+      The tilde is visible in Git diffs, making it easy to see which parameters were
+      toggled on or off without a line ever being deleted.
+    </p>
+
+    <h2>Variable interpolation</h2>
+    <p>
+      <code>{{variableName}}</code> placeholders are resolved against the active
+      environment at send time. They work in the URL, query params, headers, body, auth
+      fields, and captures. Tiger also provides built-in dynamic variables that are
+      re-evaluated on every send:
+    </p>
+    <ul>
+      <li><code>{{$uuid}}</code> — a random UUID v4.</li>
+      <li><code>{{$timestamp}}</code> — Unix timestamp in seconds.</li>
+      <li><code>{{$isoTimestamp}}</code> — ISO 8601 UTC datetime string.</li>
+      <li><code>{{$randomInt}}</code> — a random integer between 0 and 1000.</li>
+    </ul>
+
+    <h2>Collection layout on disk</h2>
+    <p>
+      A Tiger collection is an ordinary folder. The only convention is:
+    </p>
+    <ul>
+      <li>Each request is a <code>.tiger</code> file anywhere in the tree.</li>
+      <li>Sub-folders group requests; Tiger shows them in the sidebar as folders.</li>
+      <li>An optional <code>collection.tiger</code> at the root holds collection-level settings (display name, default auth, documentation).</li>
+      <li>An optional <code>folder.tiger</code> inside any sub-folder holds folder-level settings (display name, default auth, documentation) — identical format to <code>collection.tiger</code>.</li>
+      <li>An <code>environments/</code> sub-folder holds one <code>.tiger</code> environment file per named environment.</li>
+    </ul>
+    <p>A typical layout looks like this:</p>
+<pre><code>my-api/
+  collection.tiger          # collection settings (optional)
+  environments/
+    dev.tiger
+    staging.tiger
+    production.tiger
+  auth/
+    folder.tiger            # folder settings (optional)
+    login.tiger
+    refresh-token.tiger
+  posts/
+    list-posts.tiger
+    create-post.tiger
+    get-post.tiger
+  users/
+    list-users.tiger
+    get-user.tiger
+</code></pre>
+
+    <h2>collection.tiger and folder.tiger</h2>
+    <p>
+      Both files share the same block format. They can contain a <code>meta</code>
+      block (display name), an <code>auth</code> block (default auth inherited by
+      requests that do not set their own), and a <code>docs</code> block.
+    </p>
+<pre><code>meta {
+  name: My API
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  Internal REST API. All endpoints require a bearer token unless marked public.
+  Set `baseUrl` and `accessToken` in the active environment before running.
+}
+</code></pre>
+    <p>
+      Auth inheritance follows the order: request auth &gt; folder auth &gt; collection
+      auth. A request with an explicit <code>auth:none</code> block sends no auth even
+      when a collection default is set.
+    </p>
+
+    <h2>Environment files</h2>
+    <p>
+      Each file in the <code>environments/</code> folder is a named variable set. The
+      filename is used as the fallback identifier, but the <code>meta.name</code> value
+      is what Tiger displays in the environment picker.
+    </p>
+<pre><code>meta {
+  name: dev
+}
+
+vars {
+  baseUrl: http://localhost:8080
+  userId: 42
+}
+
+vars:secret {
+  accessToken: eyJhbGciOiJIUzI1...
+}
+</code></pre>
+    <p>
+      Non-secret variables live in the <code>vars</code> block. Secret variables live in
+      <code>vars:secret</code>; Tiger masks their values in the UI but still writes
+      them to disk in the same file. For secrets you do not want committed, add the file
+      to <code>.gitignore</code> or store the value in a separate environment file that
+      is gitignored.
+    </p>
+    <p>
+      Like all other blocks, the <code>~</code> prefix disables individual variable
+      rows.
+    </p>
+
+    <h2>Comments</h2>
+    <p>
+      Lines starting with <code>#</code> or <code>//</code> are ignored inside any
+      key/value block (<code>headers</code>, <code>query</code>, <code>vars</code>,
+      <code>capture</code>, and so on). Comments are not currently preserved through a
+      save/reload cycle; Tiger omits them when it serializes.
+    </p>
+<pre><code>headers {
+  # Authentication
+  Authorization: Bearer {{accessToken}}
+  # Tracing (disabled)
+  ~X-Request-ID: {{$uuid}}
+}
+</code></pre>
+
+    <h2>Why plain text</h2>
+    <p>
+      Storing requests as plain text means every workflow that works on code also works
+      on your API collection:
+    </p>
+    <ul>
+      <li><strong>Diff:</strong> a changed base URL, an added header, or a tweaked body field shows up as a readable line-level diff in <code>git diff</code> and on GitHub.</li>
+      <li><strong>Merge conflicts:</strong> two branches that edited different requests produce no conflict. Two branches that changed the same field produce a normal text conflict resolvable in any editor.</li>
+      <li><strong>Code review:</strong> API changes can be reviewed in a pull request alongside the code that implements them.</li>
+      <li><strong>Search:</strong> <code>grep</code>, <code>ripgrep</code>, and editor search work on the collection without any plugin.</li>
+      <li><strong>Portability:</strong> the folder opens in Tiger on any platform. It can also be read, edited, and committed by scripts or CI jobs that do not have Tiger installed.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        You can open any folder as a collection, including a folder that is already
+        a Git repository containing application code. Tiger will pick up any
+        <code>.tiger</code> files it finds and leave everything else alone.
+      </p>
+    </div>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments</div>
+        <div class="d">Named variable sets, secret masking, and switching between environments.</div>
+      </a>
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Pre/post scripts</div>
+        <div class="d">The scripting API for dynamic setup, assertions, and test verdicts.</div>
+      </a>
+      <a class="card" href="/tiger/docs/collections/">
+        <div class="t">Collections</div>
+        <div class="d">Creating, opening, cloning, and organizing collections in Tiger.</div>
+      </a>
+      <a class="card" href="/tiger/docs/variables/">
+        <div class="t">Variables</div>
+        <div class="d">How {{variable}} interpolation works and built-in dynamic variables.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

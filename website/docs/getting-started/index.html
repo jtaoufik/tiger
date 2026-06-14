@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What is Tiger? · Tiger docs</title>
+  <meta name="description" content="Tiger is a free, open source, git-native API client. Learn how it stores collections as plain-text files, runs requests locally, and fits an engineering team's workflow." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/getting-started/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="What is Tiger?" />
+  <meta property="og:description" content="A free, open source, git-native API client: plain-text collections, local-first requests, and a built-in MCP server." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Getting started › What is Tiger</div>
+    <h1>What is Tiger?</h1>
+    <p class="lead">
+      Tiger is a free, open source desktop API client. It does what Postman, Insomnia and
+      Bruno do — build, send and organize HTTP requests — but it stores everything as
+      plain-text files in your own Git repository and runs entirely on your machine.
+    </p>
+
+    <h2>The idea</h2>
+    <p>
+      Most API clients keep your collections in a proprietary cloud behind an account. Tiger
+      keeps them as readable <code>.tiger</code> files in a folder you own. That folder is a
+      normal Git repository, so your requests get versioned, branched, diffed and reviewed
+      like any other code your team writes.
+    </p>
+    <p>There is no backend, no sync service and no sign-in. Requests, tokens and responses never leave your computer.</p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Because a collection is just a folder of text files, you can commit it, open a pull
+      request against it, and resolve merge conflicts in your normal editor.</p>
+    </div>
+
+    <h2>What you get</h2>
+    <ul>
+      <li><strong>Requests &amp; collections</strong> — organize requests into folders, with headers, query params, bodies and auth.</li>
+      <li><strong>Environments &amp; variables</strong> — swap base URLs and secrets with <code>{{variable}}</code> interpolation.</li>
+      <li><strong>Scripting &amp; chaining</strong> — pre/post scripts and response captures pass values from one request to the next.</li>
+      <li><strong>A collection runner</strong> — run a whole folder and see pass/fail verdicts.</li>
+      <li><strong>Importing</strong> — bring collections from Postman, Insomnia, Bruno, OpenAPI, <strong>WSDL/SOAP</strong> or a curl command.</li>
+      <li><strong>A built-in MCP server</strong> — expose your saved requests as tools that AI assistants can call.</li>
+    </ul>
+
+    <h2>Who it's for</h2>
+    <p>
+      Tiger fits developers and teams who want their API definitions to live in version
+      control, who care about keeping request data on their own infrastructure, and who would
+      rather not manage seats and accounts. It runs natively on macOS, Windows and Linux.
+    </p>
+
+    <h2>Next steps</h2>
+    <ul>
+      <li><a href="/tiger/docs/install/">Install Tiger</a> on your platform.</li>
+      <li>Send <a href="/tiger/docs/first-request/">your first request</a>.</li>
+      <li>Learn about <a href="/tiger/docs/tiger-format/">the .tiger format</a> that makes it all git-native.</li>
+    </ul>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your first request · Tiger docs</title>
+  <meta name="description" content="Create a collection, add a request, fill in headers and a body, send it, read the response, save the .tiger file, and commit it with built-in Git." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/first-request/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Your first request" />
+  <meta property="og:description" content="Create a collection, add a request, fill in headers and a body, send it, read the response, save the .tiger file, and commit it with built-in Git." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Getting started › Your first request</div>
+    <h1>Your first request</h1>
+    <p class="lead">
+      This guide walks through the full loop from a blank workspace to a committed
+      <code>.tiger</code> file: create a collection, add a request, send it, inspect the
+      response, save, and commit with Tiger's built-in Git panel.
+    </p>
+
+    <h2>Step 1 — Open or create a collection</h2>
+    <p>
+      A collection in Tiger is a plain folder on disk. Every request you create inside it
+      becomes a <code>.tiger</code> text file. There are three ways to start:
+    </p>
+
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/collections/">
+        <div class="t">New collection</div>
+        <div class="d">Tiger creates a fresh empty folder on disk and opens it in the sidebar. Pick a location and a name in the dialog that appears.</div>
+      </a>
+      <a class="card" href="/tiger/docs/collections/">
+        <div class="t">Open a folder</div>
+        <div class="d">Point Tiger at any existing folder. If it already contains <code>.tiger</code> files they appear immediately; if it is empty you get a blank collection ready for new requests.</div>
+      </a>
+      <a class="card" href="/tiger/docs/git/">
+        <div class="t">Clone a repo</div>
+        <div class="d">Paste a Git remote URL, choose a local path, and Tiger clones the repo and opens the resulting folder as a collection.</div>
+      </a>
+    </div>
+
+    <p>
+      After any of these steps the collection appears in the left sidebar with its name
+      at the top and any folders or requests nested below it.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        If you just installed Tiger and want to explore the format first, look for the
+        <code>examples/jsonplaceholder</code> folder in the Tiger repository. Open it as a
+        collection to see a real set of <code>.tiger</code> files in action.
+      </p>
+    </div>
+
+    <h2>Step 2 — Add a request</h2>
+    <p>
+      With a collection open, press <kbd>Cmd</kbd>+<kbd>T</kbd> (macOS) or
+      <kbd>Ctrl</kbd>+<kbd>T</kbd> (Windows / Linux) to create a new request tab, or click
+      the <strong>+</strong> icon next to the collection name in the sidebar. A new untitled
+      request opens as an editor tab.
+    </p>
+    <p>Two things to set right away:</p>
+    <ol>
+      <li>
+        <strong>Method</strong> — click the method badge on the left of the URL bar (defaults
+        to <code>GET</code>) and choose the HTTP method you need: GET, POST, PUT, PATCH,
+        DELETE, HEAD, or OPTIONS.
+      </li>
+      <li>
+        <strong>URL</strong> — click into the URL field and type the endpoint. You can use
+        a literal URL or a <code>{{variable}}</code> placeholder. A warning appears under
+        the bar for any variable that is not defined in the active environment.
+      </li>
+    </ol>
+
+    <p>For a quick sanity check, try the public JSONPlaceholder API:</p>
+    <pre><code>GET https://jsonplaceholder.typicode.com/posts/1</code></pre>
+
+    <h2>Step 3 — Add headers, query params, and a body</h2>
+    <p>
+      Below the URL bar a set of tabs lets you configure every part of the request.
+      You only need to fill in what the endpoint actually requires — all tabs are optional.
+    </p>
+
+    <h3>Query params</h3>
+    <p>
+      Switch to the <strong>Params</strong> tab and add key/value rows. Tiger appends them
+      to the URL as a query string. Uncheck a row to disable it without deleting it (the
+      <code>~</code> prefix in the saved file marks disabled lines).
+    </p>
+
+    <h3>Headers</h3>
+    <p>
+      Switch to the <strong>Headers</strong> tab and add rows in the same way. A
+      <code>Content-Type</code> header is added automatically when you choose a structured
+      body type, so you usually do not need to set it by hand.
+    </p>
+
+    <h3>Authentication</h3>
+    <p>
+      The <strong>Auth</strong> tab covers the most common schemes: Bearer token, Basic
+      (username + password), API key (sent as a header or a query parameter), and OAuth 2.0
+      client credentials. Tiger resolves <code>{{variable}}</code> references in every auth
+      field, so you can store tokens in an environment instead of hard-coding them.
+      See <a href="/tiger/docs/requests-auth/">Authentication</a> for the full reference.
+    </p>
+
+    <h3>Request body</h3>
+    <p>
+      The <strong>Body</strong> tab offers several body types. Pick the one that matches
+      the endpoint:
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Body type</th>
+            <th>When to use</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>json</code></td><td>REST APIs that consume <code>application/json</code>. A format button and invalid-JSON indicator are shown in the editor.</td></tr>
+          <tr><td><code>xml</code></td><td>SOAP and other XML APIs. Raw XML editor with no auto-wrapping.</td></tr>
+          <tr><td><code>form</code></td><td>URL-encoded form submissions (<code>application/x-www-form-urlencoded</code>).</td></tr>
+          <tr><td><code>multipart</code></td><td>File uploads and mixed field/file payloads (<code>multipart/form-data</code>). Each row can be a text value or a file picker.</td></tr>
+          <tr><td><code>graphql</code></td><td>GraphQL queries and mutations. A separate variables pane sits alongside the query editor.</td></tr>
+          <tr><td><code>text</code></td><td>Plain text or any content type not covered above.</td></tr>
+          <tr><td><code>none</code></td><td>No body (GET, HEAD, DELETE with no payload).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      For a POST request to JSONPlaceholder, switch to <strong>Body</strong>, choose
+      <strong>json</strong>, and enter:
+    </p>
+    <pre><code>{
+  "title": "Hello from Tiger",
+  "body": "My first request",
+  "userId": 1
+}</code></pre>
+
+    <div class="callout note">
+      <span class="ic">✓</span>
+      <p>
+        Dynamic variables like <code>{{$uuid}}</code>, <code>{{$timestamp}}</code>,
+        <code>{{$isoTimestamp}}</code>, and <code>{{$randomInt}}</code> are re-evaluated on
+        every send, so you can use them to generate unique IDs or timestamps without any
+        scripting.
+      </p>
+    </div>
+
+    <h2>Step 4 — Send and read the response</h2>
+    <p>
+      Click <strong>Send</strong> (or press <kbd>Cmd</kbd>+<kbd>Enter</kbd> /
+      <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to fire the request. The response panel on the right
+      fills in immediately.
+    </p>
+    <p>The response panel shows:</p>
+    <ul>
+      <li><strong>Status</strong> — the HTTP status code and reason phrase, color-coded (green for 2xx, yellow for 3xx/4xx, red for 5xx).</li>
+      <li><strong>Timing</strong> — total round-trip time. Hover over it for a breakdown: DNS lookup, TCP handshake, TLS negotiation, time to first byte (TTFB), and download time.</li>
+      <li><strong>Size</strong> — response body size after transfer.</li>
+      <li><strong>Headers</strong> — switch to the Headers sub-tab to inspect every response header.</li>
+      <li><strong>Body</strong> — JSON is syntax-highlighted and pretty-printed by default. Toggle between Pretty and Raw with the button in the panel, or turn on word-wrap. HTML responses can be previewed in a sandboxed frame; images are shown inline.</li>
+    </ul>
+    <p>
+      To search inside a large response body, press <kbd>Cmd</kbd>+<kbd>F</kbd> /
+      <kbd>Ctrl</kbd>+<kbd>F</kbd> while the response panel is focused. Matches are
+      highlighted and you can cycle through them.
+    </p>
+    <p>
+      If the request fails (network error, timeout, or certificate problem) the error is
+      shown instead of a status code. You can cancel a slow in-flight request with the
+      <strong>Cancel</strong> button that replaces Send while a request is running.
+    </p>
+
+    <h2>Step 5 — Save the request</h2>
+    <p>
+      Press <kbd>Cmd</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>S</kbd>, or click
+      <strong>Save</strong> in the toolbar. Tiger writes a <code>.tiger</code> file to disk
+      inside the collection folder. The filename is derived from the request name; you can
+      rename it by double-clicking the name in the sidebar (or pressing <kbd>F2</kbd>).
+    </p>
+    <p>
+      The saved file is plain text and readable in any editor. For the POST example above it
+      would look like this:
+    </p>
+    <pre><code>meta {
+  name: Create post
+  seq: 1
+}
+
+post {
+  url: https://jsonplaceholder.typicode.com/posts
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Hello from Tiger",
+    "body": "My first request",
+    "userId": 1
+  }
+}</code></pre>
+
+    <p>
+      A <code>~</code> prefix on any line disables that header or param without removing it
+      from the file. The format is designed to produce clean, readable diffs when you change
+      a URL, add a header, or update a body field.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        Give requests meaningful names before saving. The name appears in the sidebar, in
+        the tab strip, in the collection runner, and in the MCP tool list that AI clients
+        see. A name like <strong>Create post</strong> is more useful than
+        <strong>POST /posts</strong>.
+      </p>
+    </div>
+
+    <h2>Step 6 — Commit with built-in Git</h2>
+    <p>
+      If your collection folder is a Git repository, Tiger shows a Git status indicator in
+      the sidebar next to the collection name (a count of uncommitted changes and
+      ahead/behind counts for the remote). Click the Git icon to open the Git panel.
+    </p>
+    <p>From the Git panel you can:</p>
+    <ul>
+      <li>See a <strong>diff</strong> of every changed <code>.tiger</code> file.</li>
+      <li>Stage files, write a commit message, and <strong>commit</strong>.</li>
+      <li><strong>Pull</strong> and <strong>push</strong> to the configured remote.</li>
+      <li>Create or switch <strong>branches</strong>.</li>
+      <li>View the commit <strong>log</strong>.</li>
+      <li><strong>Discard</strong> local changes to revert a file to its last committed state.</li>
+    </ul>
+    <p>
+      If the collection folder is not yet a Git repository, use <strong>Init</strong> in
+      the Git panel to initialize one, then <strong>Set remote</strong> to add an origin
+      and start pushing.
+    </p>
+    <p>
+      The diff for the new request file above would be clean and readable in any Git host's
+      pull request view — which is exactly what makes the <code>.tiger</code> format useful
+      for team workflows.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">✓</span>
+      <p>
+        You can also use your external Git client or the command line instead of Tiger's
+        built-in panel. Tiger does not lock the folder — it is just a folder of text files.
+      </p>
+    </div>
+
+    <h2>Quick-reference: keyboard shortcuts</h2>
+    <p>
+      Press <kbd>Cmd</kbd>+<kbd>/</kbd> / <kbd>Ctrl</kbd>+<kbd>/</kbd> at any time to open
+      the full shortcuts overlay. The most useful ones while building requests:
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>macOS</th>
+            <th>Windows / Linux</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>New request tab</td><td><kbd>Cmd</kbd>+<kbd>T</kbd></td><td><kbd>Ctrl</kbd>+<kbd>T</kbd></td></tr>
+          <tr><td>Send request</td><td><kbd>Cmd</kbd>+<kbd>Enter</kbd></td><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td></tr>
+          <tr><td>Save request</td><td><kbd>Cmd</kbd>+<kbd>S</kbd></td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
+          <tr><td>Close tab</td><td><kbd>Cmd</kbd>+<kbd>W</kbd></td><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td></tr>
+          <tr><td>Jump to tab 1–9</td><td><kbd>Cmd</kbd>+<kbd>1</kbd>–<kbd>9</kbd></td><td><kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>9</kbd></td></tr>
+          <tr><td>Command palette</td><td><kbd>Cmd</kbd>+<kbd>K</kbd></td><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td></tr>
+          <tr><td>Search in response</td><td><kbd>Cmd</kbd>+<kbd>F</kbd></td><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td></tr>
+          <tr><td>Shortcuts overlay</td><td><kbd>Cmd</kbd>+<kbd>/</kbd></td><td><kbd>Ctrl</kbd>+<kbd>/</kbd></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>What to explore next</h2>
+    <ul>
+      <li><a href="/tiger/docs/environments/">Environments and variables</a> — swap base URLs and tokens without editing each request.</li>
+      <li><a href="/tiger/docs/requests-auth/">Authentication</a> — Bearer, Basic, API key, and OAuth 2.0 client credentials.</li>
+      <li><a href="/tiger/docs/tiger-format/">The .tiger format</a> — the full file format reference, including captures and scripts.</li>
+      <li><a href="/tiger/docs/importing/">Importing</a> — bring in a Postman collection, OpenAPI spec, or curl command.</li>
+    </ul>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

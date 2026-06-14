@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCP server · Tiger docs</title>
+  <meta name="description" content="Tiger bundles an MCP server (tiger-mcp) that exposes your saved requests as callable tools for Claude Desktop, Claude Code, and other MCP clients." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/mcp/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="MCP server" />
+  <meta property="og:description" content="Tiger bundles an MCP server (tiger-mcp) that exposes your saved requests as callable tools for Claude Desktop, Claude Code, and other MCP clients." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › MCP server</div>
+    <h1>MCP server</h1>
+    <p class="lead">
+      Tiger ships a standalone binary called <code>tiger-mcp</code> that implements the
+      <a href="https://modelcontextprotocol.io/" rel="noopener">Model Context Protocol</a>.
+      Point it at a collection folder and any MCP-capable client — Claude Desktop, Claude
+      Code, Cursor, or your own agent — can list, inspect, and execute your saved requests
+      without leaving the chat.
+    </p>
+
+    <h2>How it works</h2>
+    <p>
+      The MCP server is a stdio process. The client launches it as a child process, sends
+      JSON-RPC messages over stdin, and reads responses from stdout. Tiger uses this channel
+      to advertise four tools backed by the same collection files and environment system
+      you use inside the app. Nothing is uploaded or proxied: every request travels directly
+      from the <code>tiger-mcp</code> process to your API.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">✓</span>
+      <p>The server is purely local. Your request payloads, URLs, headers, and response
+      bodies are never sent to any third-party service. The AI client sees only what the
+      tool returns — the same response your browser would see.</p>
+    </div>
+
+    <h2>The four tools</h2>
+    <p>
+      Once registered, the MCP server advertises these tools to the connected client:
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tool name</th>
+            <th>Inputs</th>
+            <th>What it returns</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>list_requests</code></td>
+            <td><em>none</em></td>
+            <td>All requests in the collection, each with its relative path and display name.</td>
+          </tr>
+          <tr>
+            <td><code>list_environments</code></td>
+            <td><em>none</em></td>
+            <td>All environment names defined in the collection's <code>environments/</code> folder.</td>
+          </tr>
+          <tr>
+            <td><code>get_request</code></td>
+            <td><code>path</code> — relative path to the <code>.tiger</code> file</td>
+            <td>The full parsed request as JSON: method, URL template, headers, body, auth, captures, and scripts.</td>
+          </tr>
+          <tr>
+            <td><code>run_request</code></td>
+            <td><code>path</code> — relative path to the <code>.tiger</code> file<br /><code>environment</code> (optional) — environment name to resolve <code>{{variables}}</code><br /><code>timeoutMs</code> (optional) — request timeout in milliseconds</td>
+            <td>HTTP response: status code, response headers, timing, and the response body.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The AI client can discover every available endpoint by calling
+      <code>list_requests</code>, inspect the details of a specific one with
+      <code>get_request</code>, and fire it — with full variable substitution from any
+      saved environment — using <code>run_request</code>.
+    </p>
+
+    <h2>Specifying the collection</h2>
+    <p>
+      The server needs to know which collection folder to serve. Pass it as the first
+      argument on the command line, or set the <code>TIGER_COLLECTION</code> environment
+      variable. If neither is provided it defaults to the current working directory.
+    </p>
+    <pre><code># Argument form
+tiger-mcp /path/to/your/collection
+
+# Environment-variable form
+TIGER_COLLECTION=/path/to/your/collection tiger-mcp</code></pre>
+
+    <h2>Setting up Claude Desktop</h2>
+    <p>
+      Open <code>claude_desktop_config.json</code> (on macOS this is
+      <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>) and
+      add a <code>tiger</code> entry under <code>mcpServers</code>:
+    </p>
+    <pre><code>{
+  "mcpServers": {
+    "tiger": {
+      "command": "tiger-mcp",
+      "args": ["/path/to/your/collection"]
+    }
+  }
+}</code></pre>
+    <p>
+      If <code>tiger-mcp</code> is not on your <code>PATH</code>, use the full path to
+      the binary instead. After saving the file, quit and relaunch Claude Desktop. The
+      four Tiger tools will appear in the tool picker.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>You can register more than one collection by adding additional keys under
+      <code>mcpServers</code>, each pointing the binary at a different folder. Give them
+      distinct names, for example <code>tiger-internal</code> and
+      <code>tiger-public</code>, so the AI client can tell them apart.</p>
+    </div>
+
+    <h2>Setting up Claude Code</h2>
+    <p>
+      In a project-level <code>.claude/settings.json</code> (or your user-level settings),
+      add the server under the <code>mcpServers</code> key:
+    </p>
+    <pre><code>{
+  "mcpServers": {
+    "tiger": {
+      "command": "tiger-mcp",
+      "args": ["/path/to/your/collection"]
+    }
+  }
+}</code></pre>
+    <p>
+      Claude Code picks up the configuration on the next session start. You can also run
+      <kbd>/mcp</kbd> from within a session to inspect which servers are connected.
+    </p>
+
+    <h2>Running via npx (no global install)</h2>
+    <p>
+      If you have cloned the Tiger repository and want to run the MCP server without
+      installing it globally, build the server bundle once and invoke it through Node:
+    </p>
+    <pre><code># Build the MCP bundle (one time, from the Tiger repo root)
+npm run build:mcp
+
+# Then register it in your MCP client config like this:
+{
+  "mcpServers": {
+    "tiger": {
+      "command": "node",
+      "args": [
+        "/path/to/tiger/out/mcp/server.mjs",
+        "/path/to/your/collection"
+      ]
+    }
+  }
+}</code></pre>
+    <p>
+      The build step writes <code>out/mcp/server.mjs</code>, a self-contained ESM bundle
+      with no dependency on the rest of the Tiger renderer or Electron runtime.
+    </p>
+
+    <h2>Using environments with run_request</h2>
+    <p>
+      If your requests use <code>{{variable}}</code> placeholders — for a base URL, an
+      auth token, or any other value — pass the environment name when calling
+      <code>run_request</code>:
+    </p>
+    <pre><code>// Tool call from an AI client
+run_request({
+  "path": "auth/get-token.tiger",
+  "environment": "staging"
+})</code></pre>
+    <p>
+      The server resolves all variables from the named environment before sending the
+      request. Secret values (marked as hidden in the app) are applied but never echoed
+      back in the tool's return value.
+    </p>
+    <p>
+      Use <code>list_environments</code> first to discover which environment names are
+      available in the collection.
+    </p>
+
+    <h2>Example session</h2>
+    <p>
+      The following illustrates what a typical AI-assisted workflow looks like once the
+      server is wired up.
+    </p>
+    <pre><code>// 1. Discover what's in the collection
+list_requests()
+// → [ { path: "users/list-users.tiger", name: "List users" },
+//     { path: "users/create-user.tiger", name: "Create user" },
+//     { path: "auth/get-token.tiger", name: "Get token" } ]
+
+// 2. Inspect the request you care about
+get_request({ path: "users/create-user.tiger" })
+// → { method: "POST", url: "{{baseUrl}}/users",
+//     headers: { "Content-Type": "application/json" },
+//     body: { type: "json", content: "{ \"name\": \"...\", \"email\": \"...\" }" },
+//     auth: { type: "bearer", token: "{{token}}" }, ... }
+
+// 3. Run it against the staging environment
+run_request({ path: "users/create-user.tiger", environment: "staging" })
+// → { status: 201, timing: { total: 142 },
+//     headers: { "content-type": "application/json" },
+//     body: { "id": "usr_01hx...", "name": "...", "email": "..." } }</code></pre>
+
+    <h2>What the binary ships with</h2>
+    <p>
+      When you download Tiger, the <code>tiger-mcp</code> binary is bundled inside the
+      application package and unpacked from the Electron asar archive at runtime, so it
+      is always available at the same version as the app itself. The binary entry point is
+      registered in <code>package.json</code> under the <code>bin</code> field
+      (<code>"tiger-mcp": "out/mcp/server.mjs"</code>), meaning a global
+      <code>npm install -g tiger-api-client</code> also places <code>tiger-mcp</code> on
+      your <code>PATH</code>.
+    </p>
+
+    <div class="callout warn">
+      <span class="ic">!</span>
+      <p>The MCP server executes requests using the same Node.js HTTP stack as the app.
+      It does not share the app's cookie jar or any in-memory session state. Captured
+      variables from a <code>run_request</code> call are returned in the response but are
+      not automatically written back to the on-disk environment file.</p>
+    </div>
+
+    <h2>Privacy</h2>
+    <p>
+      The MCP server never phones home. It reads files from the collection folder you
+      specify and sends HTTP requests to whatever host your <code>.tiger</code> files
+      point at — that's all. The AI client receives only the tool return value (status,
+      headers, body). Tiger's optional anonymous analytics cover the desktop app only;
+      <code>tiger-mcp</code> emits no analytics of its own.
+    </p>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/collections/">
+        <div class="t">Collections</div>
+        <div class="d">How .tiger files are organized on disk and why that makes them git-friendly.</div>
+      </a>
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments</div>
+        <div class="d">Named variable sets and how to reference them when calling run_request.</div>
+      </a>
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Scripts &amp; chaining</div>
+        <div class="d">Pre/post-request JavaScript and response captures for variable chaining.</div>
+      </a>
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">.tiger format</div>
+        <div class="d">The plain-text file format that the MCP server reads.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>
