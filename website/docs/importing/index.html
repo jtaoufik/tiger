@@ -63,7 +63,7 @@
             <td>WSDL / SOAP <code>.wsdl</code> / <code>.xml</code></td>
             <td class="col-tiger"><span class="yes">Yes</span></td>
             <td class="col-tiger"><span class="no">No</span></td>
-            <td>New in 0.4.0 — each binding operation becomes a POST</td>
+            <td>New in 0.4.0 - each binding operation becomes a POST</td>
           </tr>
           <tr>
             <td>curl command (paste)</td>
@@ -92,8 +92,8 @@
     <ul>
       <li>Folder hierarchy (nested item groups become Tiger sub-folders)</li>
       <li>Request name, method, URL, query parameters, and headers</li>
-      <li>Body — <code>raw</code> (JSON or text), URL-encoded form, GraphQL</li>
-      <li><code>{{variable}}</code> references — Postman uses the same syntax as Tiger, so they round-trip cleanly</li>
+      <li>Body - <code>raw</code> (JSON or text), URL-encoded form, GraphQL</li>
+      <li><code>{{variable}}</code> references - Postman uses the same syntax as Tiger, so they round-trip cleanly</li>
       <li>Disabled items (Postman's <code>disabled: true</code> maps to Tiger's <code>~</code> prefix)</li>
     </ul>
     <p>
@@ -111,7 +111,7 @@
       Insomnia stores all resources in a flat array keyed by internal IDs.
       Tiger resolves the parent chain of each <code>request_group</code> to reconstruct the
       original folder hierarchy. Body types supported: JSON, XML, plain text, GraphQL,
-      and URL-encoded form. Insomnia's <code>{{variables}}</code> syntax differs slightly —
+      and URL-encoded form. Insomnia's <code>{{variables}}</code> syntax differs slightly -
       review and remap them in Tiger's environment editor after importing.
     </p>
 
@@ -163,10 +163,10 @@
       Tiger parses common flags including:
     </p>
     <ul>
-      <li><code>-X</code> / <code>--request</code> — HTTP method</li>
-      <li><code>-H</code> / <code>--header</code> — request headers (one per flag)</li>
-      <li><code>-d</code> / <code>--data</code> / <code>--data-raw</code> / <code>--data-binary</code> — request body</li>
-      <li><code>-u</code> / <code>--user</code> — Basic auth credentials</li>
+      <li><code>-X</code> / <code>--request</code> - HTTP method</li>
+      <li><code>-H</code> / <code>--header</code> - request headers (one per flag)</li>
+      <li><code>-d</code> / <code>--data</code> / <code>--data-raw</code> / <code>--data-binary</code> - request body</li>
+      <li><code>-u</code> / <code>--user</code> - Basic auth credentials</li>
       <li>The bare URL (with or without <code>--url</code>)</li>
     </ul>
     <p>
@@ -188,8 +188,8 @@
 
     <h2>WSDL / SOAP import <span class="pill">New in 0.4.0</span></h2>
     <p>
-      WSDL import converts a SOAP service description into a set of Tiger requests — one per
-      binding operation — ready to fill in and send. Both SOAP 1.1 and SOAP 1.2 are supported.
+      WSDL import converts a SOAP service description into a set of Tiger requests - one per
+      binding operation - ready to fill in and send. Both SOAP 1.1 and SOAP 1.2 are supported.
     </p>
 
     <h3>How to import a WSDL file</h3>
@@ -209,17 +209,17 @@
     </p>
     <ul>
       <li>
-        <strong>URL</strong> — the service endpoint extracted from the
+        <strong>URL</strong> - the service endpoint extracted from the
         <code>&lt;soap:address location&gt;</code> attribute. If no address is found, the
         URL is set to <code>{{baseUrl}}</code>.
       </li>
       <li>
-        <strong>Body (XML)</strong> — a SOAP envelope skeleton with the correct namespace
+        <strong>Body (XML)</strong> - a SOAP envelope skeleton with the correct namespace
         for the protocol version and a placeholder element for the operation's input message.
         Fill in the element's children to complete the call.
       </li>
       <li>
-        <strong>Headers</strong> — set automatically based on the protocol version:
+        <strong>Headers</strong> - set automatically based on the protocol version:
         <ul>
           <li>
             SOAP 1.1: <code>Content-Type: text/xml; charset=utf-8</code> plus a
@@ -274,7 +274,7 @@ SOAPAction: "http://www.webserviceX.NET/GetWeather"</code></pre>
     </p>
     <ul>
       <li>Recreates the full folder hierarchy as nested Postman item groups</li>
-      <li>Converts each Tiger body type — JSON, XML, text, GraphQL, form — to its Postman
+      <li>Converts each Tiger body type - JSON, XML, text, GraphQL, form - to its Postman
           equivalent</li>
       <li>Embeds the currently active environment's variables as collection-level variables,
           so the exported file is self-contained</li>
@@ -327,10 +327,10 @@ SOAPAction: "http://www.webserviceX.NET/GetWeather"</code></pre>
     <ul>
       <li>Open a terminal in the collection folder and run <code>git init</code> (or use
           Tiger's built-in Git panel) to start version-controlling it.</li>
-      <li>Add an environment with the base URL and any secrets the requests need — see
+      <li>Add an environment with the base URL and any secrets the requests need - see
           <a href="/tiger/docs/environments/">Environments</a>.</li>
       <li>Use <code>{{variable}}</code> references to replace hard-coded hostnames and tokens
-          — see <a href="/tiger/docs/variables/">Variables</a>.</li>
+          - see <a href="/tiger/docs/variables/">Variables</a>.</li>
       <li>Rename, move, and organize requests in the sidebar using drag-and-drop or
           double-click to rename.</li>
     </ul>

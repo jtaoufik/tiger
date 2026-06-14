@@ -19,7 +19,7 @@
     <p class="lead">
       Tiger ships a built-in Model Context Protocol server. Point any MCP-compatible AI
       assistant at your collection and it can list, inspect and execute your requests
-      without leaving its own interface — entirely on your machine, no account required.
+      without leaving its own interface - entirely on your machine, no account required.
     </p>
 
     <h2>What is MCP?</h2>
@@ -44,6 +44,26 @@
         disk, a local MCP process can reach them without any cloud intermediary.
       </p>
     </div>
+
+    <h2>Common use cases</h2>
+    <p>
+      The value is letting an assistant work with the requests your team already maintains in
+      Git - with their real URLs, auth, variables and environments - instead of guessing or
+      pasting curl into the chat. Typical uses:
+    </p>
+    <ul>
+      <li><strong>Agentic testing and debugging</strong> - "run the <code>create-user</code>
+      request against staging and explain why it returns 401."</li>
+      <li><strong>Chained workflows</strong> - "call <code>login</code>, take the token, then
+      run <code>/me</code>," combining <code>run_request</code> with Tiger's
+      <a href="/tiger/docs/scripts/">response captures</a>.</li>
+      <li><strong>AI coding sessions</strong> - in Claude Code or Cursor, the model exercises
+      your real endpoints through curated, environment-aware requests while it writes code.</li>
+      <li><strong>Onboarding and exploration</strong> - "list the requests and summarize what
+      this API does" on an unfamiliar collection.</li>
+      <li><strong>Smoke checks and triage</strong> - have the assistant run the health-check
+      requests and report anything that is not 2xx.</li>
+    </ul>
 
     <h2>The four MCP tools</h2>
     <p>
@@ -92,7 +112,7 @@
       same <code>mcpServers</code> block works in any MCP-compatible client (Cursor, etc.).
     </p>
 
-    <h3>Step 1 — Build the MCP server</h3>
+    <h3>Step 1 - Build the MCP server</h3>
     <p>
       If you are running Tiger from source, build the server once:
     </p>
@@ -104,7 +124,7 @@
       <code>resources/out/mcp/server.mjs</code> on Windows.
     </p>
 
-    <h3>Step 2 — Register Tiger in your AI client's config</h3>
+    <h3>Step 2 - Register Tiger in your AI client's config</h3>
     <p>
       Open Claude Desktop's config file. On macOS it lives at:
     </p>
@@ -130,22 +150,22 @@
       your machine is out of scope.
     </p>
 
-    <h3>Step 3 — Restart the AI client</h3>
+    <h3>Step 3 - Restart the AI client</h3>
     <p>
       Restart Claude Desktop after saving the config. The four Tiger tools will appear in
       the model's available tool list on the next conversation. You can verify they loaded
-      by asking the model "What Tiger tools do you have?" — it will enumerate
+      by asking the model "What Tiger tools do you have?" - it will enumerate
       <code>list_requests</code>, <code>get_request</code>, <code>run_request</code> and
       <code>list_environments</code>.
     </p>
 
-    <h3>Step 4 — Ask your assistant to work with the API</h3>
+    <h3>Step 4 - Ask your assistant to work with the API</h3>
     <p>
       The model can now list every request in your collection, read any request's full
       definition including headers, body schema and variable references, and fire a request
       against your target environment. Results (status, timing, response headers and a
       pretty-printed body) flow back into its context window so it can interpret the
-      response, chain follow-up requests, or surface errors — all without you switching
+      response, chain follow-up requests, or surface errors - all without you switching
       windows.
     </p>
 
@@ -181,7 +201,7 @@
       The MCP server runs as a local process on your machine. There is no Tiger cloud
       service. Communication is only between your AI client and the local Node.js process.
       When <code>run_request</code> fires an HTTP call, that request travels directly from
-      your machine to the target API — the same network path as pressing Send in the Tiger
+      your machine to the target API - the same network path as pressing Send in the Tiger
       UI. No proxy or intermediary is added.
     </p>
 

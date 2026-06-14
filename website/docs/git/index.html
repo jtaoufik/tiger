@@ -54,7 +54,7 @@
     <ul>
       <li>The current branch name.</li>
       <li>How many commits the local branch is <strong>ahead</strong> of or <strong>behind</strong> the upstream.</li>
-      <li>A list of every changed file and its status — modified, added, deleted, or untracked.</li>
+      <li>A list of every changed file and its status - modified, added, deleted, or untracked.</li>
     </ul>
     <p>
       Status is polled every 60 seconds passively. The passive poll deliberately does not
@@ -93,7 +93,7 @@
       file in the collection folder (<code>git add -A</code>) and then creates the commit.
       There is no partial staging UI; the intent is that a commit records a coherent
       snapshot of the collection. If you need fine-grained staging, use your terminal
-      alongside Tiger — the two operate on the same working tree.
+      alongside Tiger - the two operate on the same working tree.
     </p>
 
     <h3>Pull</h3>
@@ -125,7 +125,7 @@
     <p>
       The branch picker in the Git panel shows all local branches and the current branch.
       Select a branch to check it out. You can also create a new branch by typing a name
-      that does not yet exist in the picker — Tiger runs <code>git checkout -b
+      that does not yet exist in the picker - Tiger runs <code>git checkout -b
       &lt;name&gt;</code> and switches to it immediately.
     </p>
     <p>
@@ -146,7 +146,7 @@
     <h3>Discard</h3>
     <p>
       Discards all uncommitted changes to tracked files by running
-      <code>git reset -- .</code> followed by <code>git checkout -- .</code>. Untracked
+      <code>git reset - .</code> followed by <code>git checkout - .</code>. Untracked
       files (files that have never been committed) are left in place. Tiger shows a
       confirmation prompt before discarding because the operation is not reversible without
       a prior stash.
@@ -230,7 +230,7 @@
         branch name in the branch picker and press Enter. Tiger creates and checks it out.
       </li>
       <li>
-        <strong>Add or modify requests.</strong> Work normally inside Tiger — add a new
+        <strong>Add or modify requests.</strong> Work normally inside Tiger - add a new
         endpoint, change a header, update the body schema. Each change lands in the
         corresponding <code>.tiger</code> file on disk.
       </li>
@@ -260,7 +260,7 @@
  }</code></pre>
     <p>
       A reviewer can check out the branch locally, open the collection in Tiger, run the
-      requests against a staging environment, and leave comments — the same loop they
+      requests against a staging environment, and leave comments - the same loop they
       follow for code review. Once approved the branch is merged and the change is part of
       the permanent history of the collection.
     </p>

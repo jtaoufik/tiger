@@ -19,7 +19,7 @@
     <p class="lead">
       Write <code>{{variable}}</code> anywhere in a URL, header, query parameter, body or
       auth field and Tiger replaces it with the value from the active environment before
-      sending. Switching environments changes every value at once — no edits to individual
+      sending. Switching environments changes every value at once - no edits to individual
       requests required.
     </p>
 
@@ -28,7 +28,7 @@
       When you send a request Tiger reads the active environment, builds a flat map of
       variable names to their values, and then substitutes every <code>{{name}}</code>
       token it finds in the request's URL, headers, query parameters, body text and auth
-      fields. Unknown tokens — names that do not exist in the active environment — are left
+      fields. Unknown tokens - names that do not exist in the active environment - are left
       untouched so Tiger can highlight them as unresolved in the UI.
     </p>
     <p>
@@ -61,7 +61,7 @@
     <p>
       An environment is a named set of variables stored as a <code>.tiger</code> file
       inside the collection's <code>environments/</code> subfolder. Each collection can
-      have as many environments as you need — for example <em>dev</em>, <em>staging</em>
+      have as many environments as you need - for example <em>dev</em>, <em>staging</em>
       and <em>production</em>.
     </p>
 
@@ -97,7 +97,7 @@ vars:secret {
   clientSecret: dev-secret-xyz
 }</code></pre>
     <p>
-      The file is plain text and safe to commit. Secret values are stored as-is — they are
+      The file is plain text and safe to commit. Secret values are stored as-is - they are
       only <em>masked in the Tiger UI</em>, not encrypted on disk. Keep this in mind for
       production credentials; the common pattern is to keep a
       <code>production.tiger</code> environment out of version control via
@@ -119,7 +119,7 @@ vars:secret {
     <p>
       The environment picker sits in the top-right corner of the Tiger window. Click it to
       open a dropdown of every environment in the current collection's
-      <code>environments/</code> folder. Selecting one makes it active immediately — the
+      <code>environments/</code> folder. Selecting one makes it active immediately - the
       URL bar updates to reflect the resolved value of any variables it contains, and the
       next send uses the new values.
     </p>
@@ -169,7 +169,7 @@ vars:secret {
     <h2>Dynamic variables</h2>
     <p>
       Tiger provides four built-in variables prefixed with <code>$</code>. They are
-      resolved at send time and re-evaluated on every occurrence — each
+      resolved at send time and re-evaluated on every occurrence - each
       <code>{{$uuid}}</code> in the same request gets a different value:
     </p>
     <div class="table-wrap">
@@ -199,14 +199,14 @@ vars:secret {
           </tr>
           <tr>
             <td><code>{{$randomInt}}</code></td>
-            <td>Random integer 0–999999</td>
+            <td>Random integer 0-999999</td>
             <td><code>417823</code></td>
           </tr>
         </tbody>
       </table>
     </div>
     <p>
-      Dynamic variables do not need to be defined in any environment — they work whether
+      Dynamic variables do not need to be defined in any environment - they work whether
       an environment is active or not. The <code>findMissingVars</code> check in Tiger
       also skips <code>$</code>-prefixed tokens, so they never appear as unresolved
       warnings.
@@ -227,19 +227,19 @@ headers {
       field that is off-limits:
     </p>
     <ul>
-      <li><strong>URL</strong> — including the scheme, host, path segments and any inline query string.</li>
-      <li><strong>Query parameters</strong> — both the name column and the value column of each row.</li>
-      <li><strong>Headers</strong> — the value column of each header row (not the header name).</li>
-      <li><strong>Body</strong> — any body type: JSON, XML, plain text, form-encoded, GraphQL query and variables, multipart field values.</li>
-      <li><strong>Auth fields</strong> — Bearer token, Basic username and password, API key value, OAuth 2.0 token URL, client ID, client secret and scope.</li>
+      <li><strong>URL</strong> - including the scheme, host, path segments and any inline query string.</li>
+      <li><strong>Query parameters</strong> - both the name column and the value column of each row.</li>
+      <li><strong>Headers</strong> - the value column of each header row (not the header name).</li>
+      <li><strong>Body</strong> - any body type: JSON, XML, plain text, form-encoded, GraphQL query and variables, multipart field values.</li>
+      <li><strong>Auth fields</strong> - Bearer token, Basic username and password, API key value, OAuth 2.0 token URL, client ID, client secret and scope.</li>
     </ul>
 
     <h2>Unresolved-variable warning</h2>
     <p>
       If the URL bar contains a token that is not present in the active environment (or if
       no environment is active), Tiger displays a yellow warning strip directly below the
-      URL bar listing the missing names. The request can still be sent — Tiger passes the
-      literal <code>{{token}}</code> string — but the warning helps you catch missing
+      URL bar listing the missing names. The request can still be sent - Tiger passes the
+      literal <code>{{token}}</code> string - but the warning helps you catch missing
       configuration before a confusing 404 or 401.
     </p>
     <pre><code>https://{{baseUrl}}/users    ← warns: baseUrl is not defined</code></pre>
@@ -280,9 +280,9 @@ vars:secret {
 }</code></pre>
     <p>Field-by-field breakdown:</p>
     <ul>
-      <li><code>meta.name</code> — the display name shown in the environment picker.</li>
-      <li><code>vars { … }</code> — plain (visible) variables, one <code>key: value</code> pair per line.</li>
-      <li><code>vars:secret { … }</code> — masked variables; values are hidden in the Tiger UI but stored as plain text on disk.</li>
+      <li><code>meta.name</code> - the display name shown in the environment picker.</li>
+      <li><code>vars { … }</code> - plain (visible) variables, one <code>key: value</code> pair per line.</li>
+      <li><code>vars:secret { … }</code> - masked variables; values are hidden in the Tiger UI but stored as plain text on disk.</li>
       <li>A <code>~</code> prefix on any line disables that variable without removing it.</li>
     </ul>
 

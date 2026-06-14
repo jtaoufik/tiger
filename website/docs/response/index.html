@@ -31,9 +31,9 @@
     <h3>Status pill</h3>
     <p>
       The status code and reason phrase appear in a coloured pill. Responses in the
-      <code>2xx</code> range are rendered with a success colour; everything else — client
+      <code>2xx</code> range are rendered with a success colour; everything else - client
       errors, server errors, redirects that were followed but produced a final
-      non-<code>2xx</code> code — is rendered with an error colour. The pill maps
+      non-<code>2xx</code> code - is rendered with an error colour. The pill maps
       directly to the <code>ok</code> flag computed in <code>src/core/response.ts</code>
       (<code>status &gt;= 200 &amp;&amp; status &lt; 300</code>).
     </p>
@@ -96,7 +96,7 @@
     <h3>Size chip</h3>
     <p>
       The body size is shown in human-readable units: bytes up to 1 KB, then KB or MB.
-      The figure is the byte length of the response body as received after decoding —
+      The figure is the byte length of the response body as received after decoding -
       computed with <code>TextEncoder</code> to get an accurate UTF-8 byte count rather
       than a character count.
     </p>
@@ -129,7 +129,7 @@
     <p>
       When the <code>Content-Type</code> is <code>text/html</code>, the body tab offers a
       <strong>Preview / Raw</strong> toggle. In Preview mode the HTML is rendered inside a
-      sandboxed <code>&lt;iframe&gt;</code> with no permissions granted — scripts,
+      sandboxed <code>&lt;iframe&gt;</code> with no permissions granted - scripts,
       forms, popups and same-origin access are all blocked. This lets you inspect
       templated pages and email HTML without executing anything. Switch to Raw to see the
       markup as plain text.
@@ -157,7 +157,7 @@
       Press <kbd>Cmd</kbd>+<kbd>F</kbd> (macOS) or <kbd>Ctrl</kbd>+<kbd>F</kbd> (Windows /
       Linux) while a response is on screen to open the search bar. You can also click the
       magnifying-glass icon in the header bar. Tiger runs the search over the text that
-      is currently visible — the pretty-printed JSON in Pretty mode, or the raw bytes in
+      is currently visible - the pretty-printed JSON in Pretty mode, or the raw bytes in
       Raw mode.
     </p>
     <p>How the search works:</p>
@@ -166,7 +166,7 @@
       <li>Press <kbd>Enter</kbd> to move to the next match, <kbd>Shift</kbd>+<kbd>Enter</kbd> to go back.</li>
       <li>The counter in the search bar shows the current position as <code>n/total</code>. A trailing <code>+</code> means matches were truncated to keep the UI responsive on very long bodies.</li>
       <li>Press <kbd>Esc</kbd> or click the close button to dismiss the bar. Highlights disappear immediately.</li>
-      <li>The search is case-insensitive plain text — not a regular expression.</li>
+      <li>The search is case-insensitive plain text - not a regular expression.</li>
     </ul>
 
     <div class="callout tip">
@@ -202,7 +202,7 @@
     <p>
       When the request has a post-request script that calls <code>test()</code>, a Tests
       tab appears alongside Body, Headers and Cookies. The label shows the pass/fail ratio
-      — for example <strong>Tests (3/4)</strong>. Each row carries a
+      - for example <strong>Tests (3/4)</strong>. Each row carries a
       <code>PASS</code> or <code>FAIL</code> badge, the test name, and any error message
       from a failing assertion.
     </p>
@@ -215,17 +215,17 @@
     <h2>Toolbar actions</h2>
     <p>The icon buttons on the right side of the header bar are always visible regardless of which tab is active:</p>
     <ul>
-      <li><strong>Copy</strong> — copies the raw response body text to the clipboard. The icon briefly changes to a checkmark to confirm.</li>
-      <li><strong>Save to file</strong> — opens a save dialog (or triggers a browser download fallback) to write the raw body to disk. JSON responses are suggested as <code>response.json</code>; everything else as <code>response.txt</code>.</li>
-      <li><strong>Wrap</strong> (body tab only) — toggles word wrap on the body text. Useful for wide JSON or XML that overflows horizontally.</li>
-      <li><strong>Search</strong> (body tab only) — opens the in-response search bar, same as <kbd>Cmd/Ctrl</kbd>+<kbd>F</kbd>.</li>
+      <li><strong>Copy</strong> - copies the raw response body text to the clipboard. The icon briefly changes to a checkmark to confirm.</li>
+      <li><strong>Save to file</strong> - opens a save dialog (or triggers a browser download fallback) to write the raw body to disk. JSON responses are suggested as <code>response.json</code>; everything else as <code>response.txt</code>.</li>
+      <li><strong>Wrap</strong> (body tab only) - toggles word wrap on the body text. Useful for wide JSON or XML that overflows horizontally.</li>
+      <li><strong>Search</strong> (body tab only) - opens the in-response search bar, same as <kbd>Cmd/Ctrl</kbd>+<kbd>F</kbd>.</li>
     </ul>
 
     <h2>Empty and error states</h2>
     <p>
       Before any request is sent the panel shows a neutral placeholder. While a request
       is in flight a "Sending…" status pill appears. If the request fails at the network
-      level — a DNS failure, a connection refusal, a timeout — the panel shows a
+      level - a DNS failure, a connection refusal, a timeout - the panel shows a
       "Request failed" pill and the underlying error message in monospace text. HTTP
       error responses (4xx, 5xx) are not network failures: they are displayed normally
       with a red status pill.

@@ -16,7 +16,7 @@
   <article>
     <div class="breadcrumb"><a href="/tiger/">Docs</a> › Guides › Postman to Tiger migration</div>
     <h1>Postman &rarr; Tiger migration</h1>
-    <p class="lead">Export your Postman collection, import it into Tiger, set your environments once, and commit. Your whole team is up and running in under an hour — no cloud account, no per-seat fee.</p>
+    <p class="lead">Export your Postman collection, import it into Tiger, set your environments once, and commit. Your whole team is up and running in under an hour - no cloud account, no per-seat fee.</p>
 
     <h2>Before you start</h2>
     <p>You need:</p>
@@ -30,19 +30,19 @@
       <p>Tiger accepts both Postman Collection v2.0 and v2.1 JSON. v2.1 is preferred because it preserves more metadata, including descriptions and disabled items.</p>
     </div>
 
-    <h2>Step 1 — Export your Postman collection</h2>
+    <h2>Step 1 - Export your Postman collection</h2>
     <p>
       Open Postman and locate the collection in the left sidebar. Right-click the collection name and choose <strong>Export</strong>. In the dialog, select <strong>Collection v2.1 (Recommended)</strong> and click Export. Save the <code>.json</code> file somewhere convenient on your machine.
     </p>
     <p>
-      Repeat for every collection you want to bring over. If you have named environments, export them too from <strong>Environments</strong> in the sidebar — you will not import them directly into Tiger, but having them open for reference makes re-entering values faster.
+      Repeat for every collection you want to bring over. If you have named environments, export them too from <strong>Environments</strong> in the sidebar - you will not import them directly into Tiger, but having them open for reference makes re-entering values faster.
     </p>
     <div class="callout tip">
       <span class="ic">✓</span>
-      <p>The exported <code>.json</code> should have a top-level <code>"info"</code> key containing a <code>"schema"</code> field. If your file does not match this shape it may be a workspace export rather than a single collection export — go back and export the collection individually.</p>
+      <p>The exported <code>.json</code> should have a top-level <code>"info"</code> key containing a <code>"schema"</code> field. If your file does not match this shape it may be a workspace export rather than a single collection export - go back and export the collection individually.</p>
     </div>
 
-    <h2>Step 2 — Install Tiger</h2>
+    <h2>Step 2 - Install Tiger</h2>
     <p>
       Download the installer for your platform from the <a href="https://github.com/jtaoufik/tiger/releases/latest">GitHub Releases page</a>. Native builds are available for macOS (Apple Silicon and Intel DMG), Windows (installer and portable EXE), and Linux (AppImage).
     </p>
@@ -52,7 +52,7 @@
     </div>
     <p>Tiger requires no account, no license key, and no internet connection to run. Launch it once to confirm it starts.</p>
 
-    <h2>Step 3 — Import the Postman JSON</h2>
+    <h2>Step 3 - Import the Postman JSON</h2>
     <p>
       In Tiger, open <strong>Import / Export</strong> from the sidebar (or the File menu) and choose <strong>Postman</strong> as the source format. Drop your exported <code>.json</code> file onto the import dialog or click <strong>Browse</strong> and navigate to it.
     </p>
@@ -87,9 +87,9 @@ body:json {
       Variable references like <code>{{baseUrl}}</code> and <code>{{accessToken}}</code> are preserved verbatim. You will fill in the actual values in the next step.
     </p>
 
-    <h2>Step 4 — Set up environments and auth</h2>
+    <h2>Step 4 - Set up environments and auth</h2>
     <p>
-      Tiger does not import environment <em>values</em> from Postman — secrets and tokens should not travel in an exported JSON file. Open <strong>Settings &gt; Environments</strong> in Tiger, create an environment for each context you need (for example, <em>staging</em> and <em>production</em>), and fill in the variable values.
+      Tiger does not import environment <em>values</em> from Postman - secrets and tokens should not travel in an exported JSON file. Open <strong>Settings &gt; Environments</strong> in Tiger, create an environment for each context you need (for example, <em>staging</em> and <em>production</em>), and fill in the variable values.
     </p>
     <p>Environment files live in an <code>environments/</code> subfolder inside your collection folder and look like this:</p>
 <pre><code>meta {
@@ -108,16 +108,16 @@ vars {
     <h3>Auth types</h3>
     <p>Tiger supports the following auth types, all configurable per-request or at the collection level:</p>
     <ul>
-      <li><strong>Bearer token</strong> — paste the token into an environment variable and reference it with <code>{{token}}</code>.</li>
-      <li><strong>Basic auth</strong> — username and password fields, interpolated from variables.</li>
-      <li><strong>API key</strong> — send as a header or as a query parameter.</li>
-      <li><strong>OAuth 2.0 client credentials</strong> — enter the token URL, client ID and client secret once; Tiger fetches and refreshes the token automatically.</li>
+      <li><strong>Bearer token</strong> - paste the token into an environment variable and reference it with <code>{{token}}</code>.</li>
+      <li><strong>Basic auth</strong> - username and password fields, interpolated from variables.</li>
+      <li><strong>API key</strong> - send as a header or as a query parameter.</li>
+      <li><strong>OAuth 2.0 client credentials</strong> - enter the token URL, client ID and client secret once; Tiger fetches and refreshes the token automatically.</li>
     </ul>
     <p>
       For requests that used Postman's OAuth 2.0 flow, switch to Tiger's native <code>auth:oauth2</code> configuration instead of scripting the token exchange manually.
     </p>
 
-    <h2>Step 5 — Commit the collection to Git</h2>
+    <h2>Step 5 - Commit the collection to Git</h2>
     <p>
       Your imported collection is now a plain folder of <code>.tiger</code> files on disk. Add it to your team repository:
     </p>
@@ -126,7 +126,7 @@ git add api-collections/
 git commit -m "import: add payments collection from Postman"
 git push</code></pre>
     <p>
-      From this point on, adding a request is a commit, changing an endpoint URL is a diff, and reviewing auth changes is a pull request. Engineers joining the team clone once and get the full collection immediately — no shared Postman workspace, no invitation email, no seat count.
+      From this point on, adding a request is a commit, changing an endpoint URL is a diff, and reviewing auth changes is a pull request. Engineers joining the team clone once and get the full collection immediately - no shared Postman workspace, no invitation email, no seat count.
     </p>
 
     <h2>What carries over and what to redo</h2>
@@ -180,7 +180,7 @@ git push</code></pre>
           <tr>
             <td>Environment variable values</td>
             <td class="col-tiger"><span class="partial">Re-enter once</span></td>
-            <td>Values are not imported. Create environments in Tiger and fill them in — takes a few minutes per environment.</td>
+            <td>Values are not imported. Create environments in Tiger and fill them in - takes a few minutes per environment.</td>
           </tr>
           <tr>
             <td>Auth credentials (tokens, API keys)</td>
@@ -206,10 +206,10 @@ git push</code></pre>
       Postman pre-request scripts that inject dynamic values are often unnecessary in Tiger. Tiger evaluates the following built-in variables on every send:
     </p>
     <ul>
-      <li><code>{{$uuid}}</code> — a fresh random UUID v4.</li>
-      <li><code>{{$timestamp}}</code> — current Unix timestamp in seconds.</li>
-      <li><code>{{$isoTimestamp}}</code> — current date-time in ISO 8601 format.</li>
-      <li><code>{{$randomInt}}</code> — a random integer between 0 and 1000.</li>
+      <li><code>{{$uuid}}</code> - a fresh random UUID v4.</li>
+      <li><code>{{$timestamp}}</code> - current Unix timestamp in seconds.</li>
+      <li><code>{{$isoTimestamp}}</code> - current date-time in ISO 8601 format.</li>
+      <li><code>{{$randomInt}}</code> - a random integer between 0 and 1000.</li>
     </ul>
     <p>For logic beyond these built-ins, Tiger supports pre/post-request JavaScript. Write a script in the request's <strong>Pre-request</strong> tab to set environment variables before the request is sent.</p>
 
@@ -222,7 +222,7 @@ git push</code></pre>
   authHeader: header.X-Request-Id
 }</code></pre>
     <p>
-      Each capture reads a value from the response — by JSON path, by header name, or as the raw status code — and writes it into an environment variable. The next request in the collection runner picks it up automatically via <code>{{orderId}}</code>.
+      Each capture reads a value from the response - by JSON path, by header name, or as the raw status code - and writes it into an environment variable. The next request in the collection runner picks it up automatically via <code>{{orderId}}</code>.
     </p>
 
     <h2>Troubleshooting</h2>
@@ -239,7 +239,7 @@ git push</code></pre>
 
     <h3>OAuth flow does not complete</h3>
     <p>
-      For OAuth 2.0 client credentials flows there is no redirect URI — confirm the token URL and client credentials are entered in the environment, not hard-coded in the request. For authorization code flows, check that your auth server allows the redirect URI Tiger registers.
+      For OAuth 2.0 client credentials flows there is no redirect URI - confirm the token URL and client credentials are entered in the environment, not hard-coded in the request. For authorization code flows, check that your auth server allows the redirect URI Tiger registers.
     </p>
 
     <h3>SSL certificate errors on internal services</h3>

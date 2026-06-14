@@ -26,8 +26,8 @@
     <h2>What they have in common</h2>
     <p>
       Before the differences, the common ground is substantial. Both tools store every request
-      as a human-readable plain-text file — <code>.tiger</code> for Tiger,
-      <code>.bru</code> for Bruno — inside a normal folder on disk. That folder is a Git
+      as a human-readable plain-text file - <code>.tiger</code> for Tiger,
+      <code>.bru</code> for Bruno - inside a normal folder on disk. That folder is a Git
       repository, so requests get versioned, branched, diffed, and reviewed alongside code.
       Neither product requires an account, neither phones home with your request data, and
       both run natively on macOS and Windows (Tiger also ships first-class Linux builds as of
@@ -64,8 +64,8 @@
           </tr>
           <tr>
             <td>Collections as plain text in Git</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — <code>.tiger</code> files</td>
-            <td><span class="yes">Yes</span> — <code>.bru</code> files</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - <code>.tiger</code> files</td>
+            <td><span class="yes">Yes</span> - <code>.bru</code> files</td>
           </tr>
           <tr>
             <td>Account required</td>
@@ -74,57 +74,57 @@
           </tr>
           <tr>
             <td>macOS / Windows / Linux native builds</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — all three</td>
-            <td><span class="partial">Partial</span> — macOS + Windows; Linux via community builds</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - all three</td>
+            <td><span class="partial">Partial</span> - macOS + Windows; Linux via community builds</td>
           </tr>
           <tr>
             <td>MCP server for AI clients</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — <code>tiger-mcp</code> binary ships with the app; exposes <code>list_requests</code>, <code>list_environments</code>, <code>get_request</code>, <code>run_request</code> tools</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - <code>tiger-mcp</code> binary ships with the app; exposes <code>list_requests</code>, <code>list_environments</code>, <code>get_request</code>, <code>run_request</code> tools</td>
             <td><span class="no">No</span></td>
           </tr>
           <tr>
             <td>WSDL / SOAP import</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — each binding operation becomes a POST with a ready-to-fill SOAP envelope; SOAP 1.1 + 1.2 (added in 0.4.0)</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - each binding operation becomes a POST with a ready-to-fill SOAP envelope; SOAP 1.1 + 1.2 (added in 0.4.0)</td>
             <td><span class="no">No</span></td>
           </tr>
           <tr>
             <td>Client certificates (mTLS)</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — PEM pair or PFX/PKCS12, plus custom CA bundle</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - PEM pair or PFX/PKCS12, plus custom CA bundle</td>
             <td><span class="no">No</span></td>
           </tr>
           <tr>
             <td>Performance / load runs</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — configurable N requests with concurrency; reports min, max, avg, p50, p95</td>
-            <td><span class="no">No</span> — requires an external tool such as k6 or wrk</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - configurable N requests with concurrency; reports min, max, avg, p50, p95</td>
+            <td><span class="no">No</span> - requires an external tool such as k6 or wrk</td>
           </tr>
           <tr>
             <td>Response captures for request chaining</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — declarative <code>capture</code> block in the <code>.tiger</code> file; no scripting required</td>
-            <td><span class="partial">Scripts</span> — possible via pre/post-request JavaScript; no dedicated capture syntax</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - declarative <code>capture</code> block in the <code>.tiger</code> file; no scripting required</td>
+            <td><span class="partial">Scripts</span> - possible via pre/post-request JavaScript; no dedicated capture syntax</td>
           </tr>
           <tr>
             <td>Collection runner with pass/fail assertions</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — live verdicts, stop button, capture chaining across requests</td>
-            <td><span class="partial">Limited</span> — basic runner; assertion support is less complete</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - live verdicts, stop button, capture chaining across requests</td>
+            <td><span class="partial">Limited</span> - basic runner; assertion support is less complete</td>
           </tr>
           <tr>
             <td>Built-in Git UI (commit, push, pull, diff, branch)</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — commit, push, pull, diff, branch, checkout, clone, discard, log, sync inside the app</td>
-            <td><span class="no">No</span> — Git operations happen outside the app</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - commit, push, pull, diff, branch, checkout, clone, discard, log, sync inside the app</td>
+            <td><span class="no">No</span> - Git operations happen outside the app</td>
           </tr>
           <tr>
             <td>Response search (Cmd/Ctrl+F)</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — highlight + match cycling</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - highlight + match cycling</td>
             <td><span class="no">No</span></td>
           </tr>
           <tr>
             <td>HTML and image response preview</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — sandboxed HTML frame; inline image preview</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - sandboxed HTML frame; inline image preview</td>
             <td><span class="no">No</span></td>
           </tr>
           <tr>
             <td>Multipart file upload</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — per-row file picker; <code>@file:</code> paths in <code>.tiger</code></td>
+            <td class="col-tiger"><span class="yes">Yes</span> - per-row file picker; <code>@file:</code> paths in <code>.tiger</code></td>
             <td><span class="yes">Yes</span></td>
           </tr>
           <tr>
@@ -150,7 +150,7 @@
           <tr>
             <td>Import: Postman v2.0/2.1, Insomnia v4, OpenAPI 3 / Swagger 2, Bruno, curl, WSDL</td>
             <td class="col-tiger"><span class="yes">All six</span></td>
-            <td><span class="partial">Most</span> — Postman, Insomnia, OpenAPI, curl; not WSDL</td>
+            <td><span class="partial">Most</span> - Postman, Insomnia, OpenAPI, curl; not WSDL</td>
           </tr>
           <tr>
             <td>Export: Postman v2.1, OpenAPI 3.0, curl, fetch</td>
@@ -159,18 +159,18 @@
           </tr>
           <tr>
             <td>Community and ecosystem</td>
-            <td class="col-tiger"><span class="partial">Newer</span> — smaller community; active development</td>
-            <td><span class="yes">Established</span> — launched 2022; tens of thousands of GitHub stars; broad plugin ecosystem</td>
+            <td class="col-tiger"><span class="partial">Newer</span> - smaller community; active development</td>
+            <td><span class="yes">Established</span> - launched 2022; tens of thousands of GitHub stars; broad plugin ecosystem</td>
           </tr>
           <tr>
             <td>CLI runner</td>
-            <td class="col-tiger"><span class="no">No</span> — desktop only</td>
-            <td><span class="yes">Yes</span> — <code>@usebruno/cli</code> runs collections in CI</td>
+            <td class="col-tiger"><span class="no">No</span> - desktop only</td>
+            <td><span class="yes">Yes</span> - <code>@usebruno/cli</code> runs collections in CI</td>
           </tr>
           <tr>
             <td>Documented file format spec</td>
-            <td class="col-tiger"><span class="partial">Internal</span> — readable but not formally published</td>
-            <td><span class="yes">Documented</span> — published <code>.bru</code> spec; third-party tooling built on it</td>
+            <td class="col-tiger"><span class="partial">Internal</span> - readable but not formally published</td>
+            <td><span class="yes">Documented</span> - published <code>.bru</code> spec; third-party tooling built on it</td>
           </tr>
         </tbody>
       </table>
@@ -238,8 +238,8 @@
     <h3>Declarative response captures</h3>
     <p>
       Tiger's <code>capture</code> block in the <code>.tiger</code> format lets you pull a
-      value from any response — status code, a response header, or a JSON path like
-      <code>body.data[0].id</code> — and write it into an environment variable for the
+      value from any response - status code, a response header, or a JSON path like
+      <code>body.data[0].id</code> - and write it into an environment variable for the
       next request. This is declared in the file, not in a script, so it shows up in diffs
       and reviews without requiring anyone to read JavaScript:
     </p>
@@ -254,8 +254,8 @@
 
     <h3>Built-in Git UI</h3>
     <p>
-      Tiger surfaces Git operations — status, diff, commit, push, pull, branch, checkout,
-      clone, discard, log, and sync — inside the app. Team members who do not use a terminal
+      Tiger surfaces Git operations - status, diff, commit, push, pull, branch, checkout,
+      clone, discard, log, and sync - inside the app. Team members who do not use a terminal
       can still participate in version control without a separate GUI client.
     </p>
 
@@ -333,7 +333,7 @@
       Yes. In Tiger, marking a variable as secret masks its value in the UI so it does not
       appear in screenshots or screen shares. The value is still stored in the environments
       file on disk, so how you handle that file in Git (gitignore, secrets manager, etc.)
-      is your responsibility — the same is true in Bruno.
+      is your responsibility - the same is true in Bruno.
     </p>
 
     <h3>Which tool is better for a team?</h3>

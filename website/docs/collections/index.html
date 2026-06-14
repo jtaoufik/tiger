@@ -19,7 +19,7 @@
     <p class="lead">
       A collection is an ordinary folder on your disk. Every request inside it is a
       plain-text <code>.tiger</code> file, subfolders nest arbitrarily, and the whole
-      tree is version-controlled with Git — no proprietary database, no account.
+      tree is version-controlled with Git - no proprietary database, no account.
     </p>
 
     <h2>What a collection looks like on disk</h2>
@@ -53,11 +53,11 @@
     <div class="callout tip">
       <span class="ic">✓</span>
       <p>Because the files are plain text, you can rename, move, duplicate or
-      delete requests from your file manager or terminal — Tiger picks up the
+      delete requests from your file manager or terminal - Tiger picks up the
       changes the next time you open the collection.</p>
     </div>
 
-    <h2>collection.tiger — collection settings</h2>
+    <h2>collection.tiger - collection settings</h2>
     <p>
       Placing a <code>collection.tiger</code> file at the root lets you store
       collection-level settings. The file is optional; Tiger opens the folder
@@ -65,11 +65,11 @@
     </p>
     <p>Three things can go in <code>collection.tiger</code>:</p>
     <ul>
-      <li><strong>A display name</strong> — overrides the folder name in the sidebar.</li>
-      <li><strong>A default auth</strong> — inherited by every request in the collection
+      <li><strong>A display name</strong> - overrides the folder name in the sidebar.</li>
+      <li><strong>A default auth</strong> - inherited by every request in the collection
           unless the request sets its own auth (including an explicit <code>auth:none</code>
           to opt out of inheritance).</li>
-      <li><strong>Free-form documentation</strong> — a <code>docs</code> block that holds
+      <li><strong>Free-form documentation</strong> - a <code>docs</code> block that holds
           Markdown notes shown on the collection page.</li>
     </ul>
 
@@ -93,7 +93,7 @@ docs {
       regardless of the collection default.
     </p>
 
-    <h2>folder.tiger — folder-level settings</h2>
+    <h2>folder.tiger - folder-level settings</h2>
     <p>
       A <code>folder.tiger</code> file inside any subfolder stores the same three fields
       as <code>collection.tiger</code>: a display name, a default auth for requests inside
@@ -107,19 +107,19 @@ docs {
     </p>
     <ul>
       <li>
-        <strong>New collection</strong> — click the <code>+</code> button in the sidebar
+        <strong>New collection</strong> - click the <code>+</code> button in the sidebar
         header (or use the welcome screen). Tiger prompts you to pick a parent directory,
         creates an empty folder there, and immediately opens it. The folder starts with no
         files; add your first request with the <code>+</code> button on the collection
         header in the sidebar.
       </li>
       <li>
-        <strong>Open a folder</strong> — click the folder icon in the sidebar header to
+        <strong>Open a folder</strong> - click the folder icon in the sidebar header to
         open any existing directory. Tiger reads it as a collection whether or not it
         already contains <code>.tiger</code> files.
       </li>
       <li>
-        <strong>Clone from Git</strong> — click the branch icon to clone a remote
+        <strong>Clone from Git</strong> - click the branch icon to clone a remote
         repository directly inside Tiger. After the clone finishes, the collection opens
         automatically.
       </li>
@@ -130,7 +130,7 @@ docs {
       collapsible section in the sidebar.
     </p>
 
-    <h2>Sidebar — the full action set</h2>
+    <h2>Sidebar - the full action set</h2>
     <p>
       Everything you need to manage a collection is in the sidebar, accessible from the
       row buttons or the right-click context menu.
@@ -279,10 +279,10 @@ docs {
       status chips:
     </p>
     <ul>
-      <li>A number — uncommitted changes in the working tree.</li>
-      <li>An up arrow with a count — commits ahead of the remote (ready to push).</li>
-      <li>A down arrow with a count — commits behind the remote (available to pull).</li>
-      <li>A check mark — the working tree is clean and in sync with the remote.</li>
+      <li>A number - uncommitted changes in the working tree.</li>
+      <li>An up arrow with a count - commits ahead of the remote (ready to push).</li>
+      <li>A down arrow with a count - commits behind the remote (available to pull).</li>
+      <li>A check mark - the working tree is clean and in sync with the remote.</li>
     </ul>
     <p>
       Clicking any chip opens the Git panel for that collection. The full Git workflow
@@ -309,9 +309,9 @@ docs {
         </thead>
         <tbody>
           <tr>
-            <td>Switch to tab 1–9</td>
-            <td><kbd>Cmd</kbd>+<kbd>1</kbd> – <kbd>9</kbd></td>
-            <td><kbd>Ctrl</kbd>+<kbd>1</kbd> – <kbd>9</kbd></td>
+            <td>Switch to tab 1-9</td>
+            <td><kbd>Cmd</kbd>+<kbd>1</kbd> - <kbd>9</kbd></td>
+            <td><kbd>Ctrl</kbd>+<kbd>1</kbd> - <kbd>9</kbd></td>
           </tr>
           <tr>
             <td>Close current tab</td>
@@ -396,7 +396,7 @@ capture {
 
     <p>
       A <code>~</code> prefix on a header or query-param line disables it without deleting
-      it — handy for commenting out a value during debugging. The <code>capture</code>
+      it - handy for commenting out a value during debugging. The <code>capture</code>
       block writes a value from the response into an environment variable for the next
       request in a chain.
     </p>
@@ -416,8 +416,8 @@ capture {
       <li>Insomnia v4 exports</li>
       <li>Bruno folder of <code>.bru</code> files</li>
       <li>OpenAPI 3 and Swagger 2 specs (<code>.json</code> or <code>.yaml</code>)</li>
-      <li>WSDL / SOAP (<code>.wsdl</code> or <code>.xml</code>) — each binding operation becomes a POST with a ready-to-fill SOAP envelope (new in 0.4.0)</li>
-      <li>A pasted curl command — creates a single request</li>
+      <li>WSDL / SOAP (<code>.wsdl</code> or <code>.xml</code>) - each binding operation becomes a POST with a ready-to-fill SOAP envelope (new in 0.4.0)</li>
+      <li>A pasted curl command - creates a single request</li>
     </ul>
     <p>
       Click the Import / Export icon (double-arrow) in the sidebar header to open the

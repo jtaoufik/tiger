@@ -55,7 +55,7 @@
     <h2>URL and query parameters</h2>
     <p>
       Type the full URL in the URL bar. Use <code>{{variable}}</code> placeholders anywhere
-      in the URL — they are resolved against the active environment before the request is
+      in the URL - they are resolved against the active environment before the request is
       sent:
     </p>
     <pre><code>get {
@@ -118,7 +118,7 @@
         <tbody>
           <tr>
             <td><code>none</code></td>
-            <td class="col-tiger">—</td>
+            <td class="col-tiger">-</td>
             <td>No body is sent. Default for new requests.</td>
           </tr>
           <tr>
@@ -309,7 +309,7 @@ graphql:vars {
       string, after any explicit query params you have set.
     </p>
 
-    <h3>OAuth 2.0 — client credentials</h3>
+    <h3>OAuth 2.0 - client credentials</h3>
     <p>
       Tiger supports the <strong>client_credentials</strong> grant type. Fill in the token
       URL, client ID, client secret and scope, then click <strong>Get token</strong>. Tiger
@@ -370,12 +370,12 @@ graphql:vars {
           <tr>
             <td><code>json</code></td>
             <td class="col-tiger"><code>application/json</code></td>
-            <td>Yes — add Content-Type to the Headers tab</td>
+            <td>Yes - add Content-Type to the Headers tab</td>
           </tr>
           <tr>
             <td><code>xml</code></td>
             <td class="col-tiger"><code>text/xml</code></td>
-            <td>Yes — e.g. set <code>application/soap+xml</code> for SOAP 1.2</td>
+            <td>Yes - e.g. set <code>application/soap+xml</code> for SOAP 1.2</td>
           </tr>
           <tr>
             <td><code>text</code></td>
@@ -395,12 +395,12 @@ graphql:vars {
           <tr>
             <td><code>multipart</code></td>
             <td class="col-tiger"><code>multipart/form-data; boundary=...</code></td>
-            <td>No — Tiger must set the boundary</td>
+            <td>No - Tiger must set the boundary</td>
           </tr>
           <tr>
             <td><code>none</code></td>
-            <td class="col-tiger">—</td>
-            <td>—</td>
+            <td class="col-tiger">-</td>
+            <td>-</td>
           </tr>
         </tbody>
       </table>
@@ -414,7 +414,7 @@ graphql:vars {
 
     <h2>Disabling rows without deleting them</h2>
     <p>
-      Every table row — headers, query params, form fields, multipart fields — has a checkbox
+      Every table row - headers, query params, form fields, multipart fields - has a checkbox
       in the UI. In the <code>.tiger</code> file the same concept is represented by a
       <code>~</code> prefix on the line. Disabled rows are saved and restored between
       sessions. Use this to keep useful headers or params around while testing different

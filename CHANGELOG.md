@@ -7,7 +7,7 @@ All notable changes to Tiger are documented here. The update checker reads
 
 - WSDL / SOAP import: pick a `.wsdl` file and each binding operation becomes a POST request with a ready-to-fill SOAP envelope, the correct Content-Type and (SOAP 1.1) SOAPAction header. Supports SOAP 1.1 and 1.2.
 - New collection: create an empty collection folder on disk from the welcome screen or the sidebar.
-- Linux: first-class builds — AppImage (auto-updating via electron-updater) and a Debian/Ubuntu `.deb`.
+- Linux: first-class builds - AppImage and a Debian/Ubuntu `.deb`, built in CI.
 - Windows: fixed window resize and maximize, which the acrylic backdrop had blocked. The frosted-glass look now comes entirely from the renderer.
 - Response view: a more opaque, readable surface for response bodies while the chrome keeps its frosted look.
 - Downloads: the website links straight to GitHub Releases instead of versioned filenames.

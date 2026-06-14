@@ -20,7 +20,7 @@
       The collection runner executes every request in a folder (or an entire collection) one after
       another. Pre-request scripts fire before each send, captures thread response values into
       variables for the next request, and post-response script assertions produce per-request
-      pass/fail verdicts — all shown live as the run progresses.
+      pass/fail verdicts - all shown live as the run progresses.
     </p>
 
     <h2>Opening the runner</h2>
@@ -31,7 +31,7 @@
       if you click the collection root, every request in the collection runs.
     </p>
     <p>
-      Requests are executed in the order they appear in the sidebar — the same order controlled by
+      Requests are executed in the order they appear in the sidebar - the same order controlled by
       the <code>seq</code> field in each <code>.tiger</code> file. Drag requests in the sidebar to
       change that order before running.
     </p>
@@ -81,7 +81,7 @@
 
     <h2>Live results panel</h2>
     <p>
-      As each request settles the runner panel updates immediately — you do not wait for the whole
+      As each request settles the runner panel updates immediately - you do not wait for the whole
       run to finish before seeing results. Each row shows:
     </p>
     <ul>
@@ -99,7 +99,7 @@
     <h2>Writing assertions</h2>
     <p>
       Assertions live in the post-response script. The scripting API is the same as for individual
-      requests — see <a href="/tiger/docs/scripts/">Scripting</a> for the full reference. The key
+      requests - see <a href="/tiger/docs/scripts/">Scripting</a> for the full reference. The key
       method for the runner is <code>tiger.test</code>:
     </p>
     <pre><code>// Post-response script on any request
@@ -123,7 +123,7 @@ tiger.test("responds under 500 ms", () => {
     <p>
       Scripts run in a sandboxed <code>Function</code> scope. They cannot access
       <code>fetch</code>, <code>require</code>, <code>process</code>, DOM globals, or any other
-      ambient host API — only the <code>tiger</code> object and <code>console.log</code> (output
+      ambient host API - only the <code>tiger</code> object and <code>console.log</code> (output
       appears in the script console, not the terminal).
     </p>
 
@@ -203,22 +203,22 @@ capture {
     </p>
     <ol>
       <li>
-        <strong>Request 1 — POST /items</strong>: create a resource. Capture <code>body.id</code>
+        <strong>Request 1 - POST /items</strong>: create a resource. Capture <code>body.id</code>
         into <code>createdId</code>. Assert status 201 and that <code>id</code> is present.
       </li>
       <li>
-        <strong>Request 2 — GET /items/{{createdId}}</strong>: fetch the resource. Assert status
+        <strong>Request 2 - GET /items/{{createdId}}</strong>: fetch the resource. Assert status
         200 and that the returned <code>name</code> matches what was sent.
       </li>
       <li>
-        <strong>Request 3 — PUT /items/{{createdId}}</strong>: update it. Assert status 200 and
+        <strong>Request 3 - PUT /items/{{createdId}}</strong>: update it. Assert status 200 and
         that the updated field reflects the change.
       </li>
       <li>
-        <strong>Request 4 — DELETE /items/{{createdId}}</strong>: delete it. Assert status 204.
+        <strong>Request 4 - DELETE /items/{{createdId}}</strong>: delete it. Assert status 204.
       </li>
       <li>
-        <strong>Request 5 — GET /items/{{createdId}}</strong>: confirm deletion. Assert status 404.
+        <strong>Request 5 - GET /items/{{createdId}}</strong>: confirm deletion. Assert status 404.
       </li>
     </ol>
     <p>
@@ -230,7 +230,7 @@ capture {
     <div class="callout note">
       <span class="ic">i</span>
       <p>
-        Variable state accumulated during a run is discarded when the run finishes — it does not
+        Variable state accumulated during a run is discarded when the run finishes - it does not
         persist back to the active environment. This keeps runner runs repeatable: the environment
         you started with is the environment you have after the run ends.
       </p>

@@ -239,9 +239,9 @@ graphqlvars {
       from:
     </p>
     <ul>
-      <li><code>body.path.to.field</code> — a JSON path into the response body.</li>
-      <li><code>header.HeaderName</code> — a response header value.</li>
-      <li><code>status</code> — the HTTP status code as a string.</li>
+      <li><code>body.path.to.field</code> - a JSON path into the response body.</li>
+      <li><code>header.HeaderName</code> - a response header value.</li>
+      <li><code>status</code> - the HTTP status code as a string.</li>
     </ul>
 <pre><code>capture {
   postId: body.id
@@ -309,10 +309,10 @@ graphqlvars {
       re-evaluated on every send:
     </p>
     <ul>
-      <li><code>{{$uuid}}</code> — a random UUID v4.</li>
-      <li><code>{{$timestamp}}</code> — Unix timestamp in seconds.</li>
-      <li><code>{{$isoTimestamp}}</code> — ISO 8601 UTC datetime string.</li>
-      <li><code>{{$randomInt}}</code> — a random integer between 0 and 1000.</li>
+      <li><code>{{$uuid}}</code> - a random UUID v4.</li>
+      <li><code>{{$timestamp}}</code> - Unix timestamp in seconds.</li>
+      <li><code>{{$isoTimestamp}}</code> - ISO 8601 UTC datetime string.</li>
+      <li><code>{{$randomInt}}</code> - a random integer between 0 and 1000.</li>
     </ul>
 
     <h2>Collection layout on disk</h2>
@@ -323,7 +323,7 @@ graphqlvars {
       <li>Each request is a <code>.tiger</code> file anywhere in the tree.</li>
       <li>Sub-folders group requests; Tiger shows them in the sidebar as folders.</li>
       <li>An optional <code>collection.tiger</code> at the root holds collection-level settings (display name, default auth, documentation).</li>
-      <li>An optional <code>folder.tiger</code> inside any sub-folder holds folder-level settings (display name, default auth, documentation) — identical format to <code>collection.tiger</code>.</li>
+      <li>An optional <code>folder.tiger</code> inside any sub-folder holds folder-level settings (display name, default auth, documentation) - identical format to <code>collection.tiger</code>.</li>
       <li>An <code>environments/</code> sub-folder holds one <code>.tiger</code> environment file per named environment.</li>
     </ul>
     <p>A typical layout looks like this:</p>

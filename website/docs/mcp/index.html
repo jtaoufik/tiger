@@ -19,8 +19,8 @@
     <p class="lead">
       Tiger ships a standalone binary called <code>tiger-mcp</code> that implements the
       <a href="https://modelcontextprotocol.io/" rel="noopener">Model Context Protocol</a>.
-      Point it at a collection folder and any MCP-capable client — Claude Desktop, Claude
-      Code, Cursor, or your own agent — can list, inspect, and execute your saved requests
+      Point it at a collection folder and any MCP-capable client - Claude Desktop, Claude
+      Code, Cursor, or your own agent - can list, inspect, and execute your saved requests
       without leaving the chat.
     </p>
 
@@ -37,8 +37,30 @@
       <span class="ic">✓</span>
       <p>The server is purely local. Your request payloads, URLs, headers, and response
       bodies are never sent to any third-party service. The AI client sees only what the
-      tool returns — the same response your browser would see.</p>
+      tool returns - the same response your browser would see.</p>
     </div>
+
+    <h2>What you'd use it for</h2>
+    <p>
+      The point is to let an AI assistant work with the requests your team already maintains
+      in Git - using the real URLs, auth, headers, variables and environments, instead of
+      guessing or pasting curl into the chat. Common uses:
+    </p>
+    <ul>
+      <li><strong>Agentic testing and debugging.</strong> "Run the <code>create-user</code>
+      request against staging and tell me why it returns 401." The assistant reads the
+      request, runs it, and reasons about the response.</li>
+      <li><strong>Chained workflows.</strong> "Call <code>login</code>, take the token, then
+      run <code>/me</code>." Pair <code>run_request</code> with Tiger's
+      <a href="/tiger/docs/scripts/">captures and variables</a> to thread values between calls.</li>
+      <li><strong>Inside an AI coding session.</strong> While building against your API in
+      Claude Code or Cursor, the model exercises your real endpoints through curated,
+      environment-aware requests instead of inventing URLs and headers.</li>
+      <li><strong>Read-only exploration.</strong> "List the requests and summarize what this
+      API does" - handy when onboarding onto an unfamiliar collection.</li>
+      <li><strong>Smoke checks and triage.</strong> Point an assistant at a collection and ask
+      it to run the health-check requests and flag anything that does not return 2xx.</li>
+    </ul>
 
     <h2>The four tools</h2>
     <p>
@@ -67,12 +89,12 @@
           </tr>
           <tr>
             <td><code>get_request</code></td>
-            <td><code>path</code> — relative path to the <code>.tiger</code> file</td>
+            <td><code>path</code> - relative path to the <code>.tiger</code> file</td>
             <td>The full parsed request as JSON: method, URL template, headers, body, auth, captures, and scripts.</td>
           </tr>
           <tr>
             <td><code>run_request</code></td>
-            <td><code>path</code> — relative path to the <code>.tiger</code> file<br /><code>environment</code> (optional) — environment name to resolve <code>{{variables}}</code><br /><code>timeoutMs</code> (optional) — request timeout in milliseconds</td>
+            <td><code>path</code> - relative path to the <code>.tiger</code> file<br /><code>environment</code> (optional) - environment name to resolve <code>{{variables}}</code><br /><code>timeoutMs</code> (optional) - request timeout in milliseconds</td>
             <td>HTTP response: status code, response headers, timing, and the response body.</td>
           </tr>
         </tbody>
@@ -82,8 +104,8 @@
     <p>
       The AI client can discover every available endpoint by calling
       <code>list_requests</code>, inspect the details of a specific one with
-      <code>get_request</code>, and fire it — with full variable substitution from any
-      saved environment — using <code>run_request</code>.
+      <code>get_request</code>, and fire it - with full variable substitution from any
+      saved environment - using <code>run_request</code>.
     </p>
 
     <h2>Specifying the collection</h2>
@@ -171,8 +193,8 @@ npm run build:mcp
 
     <h2>Using environments with run_request</h2>
     <p>
-      If your requests use <code>{{variable}}</code> placeholders — for a base URL, an
-      auth token, or any other value — pass the environment name when calling
+      If your requests use <code>{{variable}}</code> placeholders - for a base URL, an
+      auth token, or any other value - pass the environment name when calling
       <code>run_request</code>:
     </p>
     <pre><code>// Tool call from an AI client
@@ -237,7 +259,7 @@ run_request({ path: "users/create-user.tiger", environment: "staging" })
     <p>
       The MCP server never phones home. It reads files from the collection folder you
       specify and sends HTTP requests to whatever host your <code>.tiger</code> files
-      point at — that's all. The AI client receives only the tool return value (status,
+      point at - that's all. The AI client receives only the tool return value (status,
       headers, body). Tiger's optional anonymous analytics cover the desktop app only;
       <code>tiger-mcp</code> emits no analytics of its own.
     </p>

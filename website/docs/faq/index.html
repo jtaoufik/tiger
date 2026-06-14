@@ -117,7 +117,7 @@
     <div class="callout tip">
       <span class="ic">✓</span>
       <p>Because a collection is a folder of plain <code>.tiger</code> files, you can store it on
-      any Git host you already trust — GitHub, GitLab, Gitea, a self-hosted bare repo — without
+      any Git host you already trust - GitHub, GitLab, Gitea, a self-hosted bare repo - without
       Tiger ever touching it.</p>
     </div>
 
@@ -128,7 +128,7 @@
     </p>
     <ul>
       <li>App opened</li>
-      <li>Request sent (HTTP method and status-code bucket only — for example "POST 2xx")</li>
+      <li>Request sent (HTTP method and status-code bucket only - for example "POST 2xx")</li>
       <li>Collection imported (source and count of requests, no names or URLs)</li>
     </ul>
     <p>
@@ -226,7 +226,7 @@
       <li><code>{{variable}}</code> references in all fields</li>
     </ul>
     <p>
-      Environment variables are not embedded in Postman exports — you will enter them once in
+      Environment variables are not embedded in Postman exports - you will enter them once in
       a Tiger environment file. OAuth 2.0 tokens are not exported by Postman either; configure
       them in Tiger's auth panel after import.
     </p>
@@ -245,7 +245,7 @@
     <h3>How do we migrate from Bruno?</h3>
     <p>
       Point Tiger's importer at the Bruno collection folder (the directory containing
-      <code>.bru</code> files). Tiger reads the folder structure directly — no export step
+      <code>.bru</code> files). Tiger reads the folder structure directly - no export step
       needed in Bruno.
     </p>
 
@@ -301,11 +301,11 @@
     </p>
     <ul>
       <li>
-        <strong>Disable SSL verification</strong> — toggle it off per request or globally in
+        <strong>Disable SSL verification</strong> - toggle it off per request or globally in
         Settings. Useful for development environments where you control both sides.
       </li>
       <li>
-        <strong>Custom CA bundle</strong> — import your organization's root certificate as a PEM
+        <strong>Custom CA bundle</strong> - import your organization's root certificate as a PEM
         file in Settings. All requests will trust that CA without disabling verification entirely.
       </li>
     </ul>

@@ -70,7 +70,7 @@
             <td><span class="yes">Yes</span></td>
           </tr>
           <tr>
-            <td>Offline — fully functional without internet</td>
+            <td>Offline - fully functional without internet</td>
             <td class="col-tiger"><span class="yes">Yes</span></td>
             <td><span class="partial">Partial</span> (PWA caches the shell; sync needs a connection)</td>
           </tr>
@@ -156,7 +156,7 @@
     <h2>Storage and ownership</h2>
     <p>
       This is the sharpest difference between the two tools. Hoppscotch stores collections
-      in its own backend — either the hosted cloud or a self-hosted instance you run. Data
+      in its own backend - either the hosted cloud or a self-hosted instance you run. Data
       moves through a server, which makes real-time collaboration and multi-device sync
       straightforward. The trade-off is that your request definitions live outside your
       codebase.
@@ -185,8 +185,8 @@ capture {
     <p>
       Because collections are files, you version them with Git, branch them for feature
       work, open pull requests when an endpoint changes, and resolve conflicts in the same
-      editor you use for code. Tiger also ships a built-in Git panel — status, diff, commit,
-      push, pull, branch, checkout, log, and clone — so you never have to leave the app to
+      editor you use for code. Tiger also ships a built-in Git panel - status, diff, commit,
+      push, pull, branch, checkout, log, and clone - so you never have to leave the app to
       keep the repository in sync.
     </p>
 
@@ -208,7 +208,7 @@ capture {
       Tiger is a native Electron application built around a native file system and a native
       Git integration. It is not accessible from a browser tab. Downloads for macOS (Apple
       Silicon and Intel), Windows (installer or winget), and Linux (AppImage and .deb) are
-      on the GitHub Releases page. The trade-off is that you need to install it — the
+      on the GitHub Releases page. The trade-off is that you need to install it - the
       payoff is that it works completely offline and keeps all data on disk.
     </p>
 
@@ -254,7 +254,7 @@ capture {
       The assistant gets four tools: <code>list_requests</code>,
       <code>list_environments</code>, <code>get_request</code>, and
       <code>run_request</code>. Every response includes the status code, timing, response
-      headers, and a body. Requests are executed locally by Tiger's own HTTP engine —
+      headers, and a body. Requests are executed locally by Tiger's own HTTP engine -
       nothing passes through a third-party service. Hoppscotch does not offer an MCP
       server.
     </p>
@@ -270,8 +270,8 @@ capture {
     <p>
       Tiger 0.4.0 added a WSDL importer. Point it at a <code>.wsdl</code> or
       <code>.xml</code> file and each binding operation becomes a POST request with a
-      pre-filled SOAP envelope body, the correct <code>Content-Type</code>, and — for SOAP
-      1.1 — a <code>SOAPAction</code> header. SOAP 1.2 is also supported. Hoppscotch does
+      pre-filled SOAP envelope body, the correct <code>Content-Type</code>, and - for SOAP
+      1.1 - a <code>SOAPAction</code> header. SOAP 1.2 is also supported. Hoppscotch does
       not have a WSDL importer, so SOAP requests require manual configuration.
     </p>
 
@@ -284,7 +284,7 @@ capture {
 
     <h2>Privacy and telemetry</h2>
     <p>
-      Tiger sends anonymous usage analytics by default — events like "app opened" or
+      Tiger sends anonymous usage analytics by default - events like "app opened" or
       "request sent" with method and HTTP status bucket only. URLs, hostnames, header
       values, and bodies are never recorded. You can turn analytics off entirely in
       Settings under Privacy. There is no account, no user ID, and no persistent identifier
@@ -308,7 +308,7 @@ capture {
     <ul>
       <li>You want API definitions versioned in Git alongside application code.</li>
       <li>Your team reviews endpoint changes in pull requests, the same way you review code changes.</li>
-      <li>You need to work fully offline — on a plane, in a data centre with no outbound internet, or on a network with strict egress rules.</li>
+      <li>You need to work fully offline - on a plane, in a data centre with no outbound internet, or on a network with strict egress rules.</li>
       <li>You want to give an AI assistant (Claude, Cursor) direct access to run requests from your collection via the MCP server.</li>
       <li>You are migrating a SOAP/WSDL service and want import support rather than building envelopes by hand.</li>
       <li>You do not want to run or maintain any backend service.</li>

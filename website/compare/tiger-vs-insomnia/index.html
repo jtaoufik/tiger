@@ -56,57 +56,57 @@
           <tr>
             <td>License</td>
             <td class="col-tiger"><span class="yes">MIT</span></td>
-            <td><span class="partial">Partial</span> — core Apache 2.0; product is cloud-leaning with proprietary layers</td>
+            <td><span class="partial">Partial</span> - core Apache 2.0; product is cloud-leaning with proprietary layers</td>
           </tr>
           <tr>
             <td>Collections stored as plain text in Git</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — one <code>.tiger</code> file per request; committed directly to your repo</td>
-            <td><span class="no">No</span> — stored in a local SQLite database by default; not diff-friendly</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - one <code>.tiger</code> file per request; committed directly to your repo</td>
+            <td><span class="no">No</span> - stored in a local SQLite database by default; not diff-friendly</td>
           </tr>
           <tr>
             <td>Account required</td>
-            <td class="col-tiger"><span class="yes">Never</span> — zero signup; every feature works offline</td>
-            <td><span class="partial">Partial</span> — a local scratch project works without sign-in; team sync and some features require an account</td>
+            <td class="col-tiger"><span class="yes">Never</span> - zero signup; every feature works offline</td>
+            <td><span class="partial">Partial</span> - a local scratch project works without sign-in; team sync and some features require an account</td>
           </tr>
           <tr>
             <td>Works fully offline</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — every feature available with no network connection</td>
-            <td><span class="partial">Partial</span> — core request sending is offline; cloud sync requires connectivity</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - every feature available with no network connection</td>
+            <td><span class="partial">Partial</span> - core request sending is offline; cloud sync requires connectivity</td>
           </tr>
           <tr>
             <td>Built-in Git panel</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — status, diff, commit, push, pull, branch, checkout, clone, log — all inside the app</td>
-            <td><span class="no">No</span> — no native Git UI; uses its own proprietary sync layer</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - status, diff, commit, push, pull, branch, checkout, clone, log - all inside the app</td>
+            <td><span class="no">No</span> - no native Git UI; uses its own proprietary sync layer</td>
           </tr>
           <tr>
             <td>MCP server for AI clients</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — built-in <code>tiger-mcp</code> binary; exposes <code>list_requests</code>, <code>list_environments</code>, <code>get_request</code>, <code>run_request</code> to Claude, Cursor, and others</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - built-in <code>tiger-mcp</code> binary; exposes <code>list_requests</code>, <code>list_environments</code>, <code>get_request</code>, <code>run_request</code> to Claude, Cursor, and others</td>
             <td><span class="no">No</span></td>
           </tr>
           <tr>
             <td>WSDL / SOAP import</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — each binding operation becomes a POST with a ready-to-fill SOAP envelope; SOAP 1.1 + 1.2 (added in 0.4.0)</td>
-            <td><span class="no">No</span> — raw XML bodies can be sent manually, but there is no WSDL importer</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - each binding operation becomes a POST with a ready-to-fill SOAP envelope; SOAP 1.1 + 1.2 (added in 0.4.0)</td>
+            <td><span class="no">No</span> - raw XML bodies can be sent manually, but there is no WSDL importer</td>
           </tr>
           <tr>
             <td>GraphQL</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — dedicated body type with a separate variables pane</td>
-            <td><span class="yes">Yes</span> — GraphQL supported with schema introspection</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - dedicated body type with a separate variables pane</td>
+            <td><span class="yes">Yes</span> - GraphQL supported with schema introspection</td>
           </tr>
           <tr>
             <td>Pre/post-request scripting</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — sandboxed JavaScript; assertions surface as pass/fail tests</td>
-            <td><span class="yes">Yes</span> — pre-request and after-response scripts supported</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - sandboxed JavaScript; assertions surface as pass/fail tests</td>
+            <td><span class="yes">Yes</span> - pre-request and after-response scripts supported</td>
           </tr>
           <tr>
             <td>Response captures (request chaining)</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — declarative <code>capture</code> block in the <code>.tiger</code> file; no scripting required</td>
-            <td><span class="yes">Yes</span> — response chaining via environment variable writes in scripts</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - declarative <code>capture</code> block in the <code>.tiger</code> file; no scripting required</td>
+            <td><span class="yes">Yes</span> - response chaining via environment variable writes in scripts</td>
           </tr>
           <tr>
             <td>Collection runner with test assertions</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — runs a collection or folder with live pass/fail verdicts and a stop button</td>
-            <td><span class="partial">Partial</span> — runner available via the separate <code>inso</code> CLI tool; desktop GUI runner is limited</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - runs a collection or folder with live pass/fail verdicts and a stop button</td>
+            <td><span class="partial">Partial</span> - runner available via the separate <code>inso</code> CLI tool; desktop GUI runner is limited</td>
           </tr>
           <tr>
             <td>OAuth 2.0 client credentials</td>
@@ -115,32 +115,32 @@
           </tr>
           <tr>
             <td>Client certificates (mTLS)</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — PEM pair or PFX/PKCS12, plus custom CA bundle</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - PEM pair or PFX/PKCS12, plus custom CA bundle</td>
             <td><span class="yes">Yes</span></td>
           </tr>
           <tr>
             <td>Built-in performance runs</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — configurable concurrency; min/max/avg/p50/p95 results locally</td>
-            <td><span class="no">No</span> — no built-in load or perf runner in the desktop app</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - configurable concurrency; min/max/avg/p50/p95 results locally</td>
+            <td><span class="no">No</span> - no built-in load or perf runner in the desktop app</td>
           </tr>
           <tr>
             <td>Plugin ecosystem</td>
-            <td class="col-tiger"><span class="no">Not yet</span> — no plugin API in 0.4.0; scripting covers most custom logic</td>
-            <td><span class="yes">Yes</span> — published npm plugin API with a community registry</td>
+            <td class="col-tiger"><span class="no">Not yet</span> - no plugin API in 0.4.0; scripting covers most custom logic</td>
+            <td><span class="yes">Yes</span> - published npm plugin API with a community registry</td>
           </tr>
           <tr>
             <td>Cloud team sync</td>
-            <td class="col-tiger"><span class="no">No</span> — Git is the sync layer; Tiger has no proprietary cloud</td>
-            <td><span class="yes">Yes</span> — cloud sync with project sharing on paid tiers</td>
+            <td class="col-tiger"><span class="no">No</span> - Git is the sync layer; Tiger has no proprietary cloud</td>
+            <td><span class="yes">Yes</span> - cloud sync with project sharing on paid tiers</td>
           </tr>
           <tr>
             <td>Import: Insomnia v4, Postman v2.0/2.1, OpenAPI 3 / Swagger 2, Bruno, curl, WSDL</td>
             <td class="col-tiger"><span class="yes">All six</span></td>
-            <td><span class="partial">Most</span> — Insomnia native format, Postman, OpenAPI; no WSDL importer</td>
+            <td><span class="partial">Most</span> - Insomnia native format, Postman, OpenAPI; no WSDL importer</td>
           </tr>
           <tr>
             <td>macOS / Windows / Linux native builds</td>
-            <td class="col-tiger"><span class="yes">Yes</span> — native builds for all three; Linux: AppImage + .deb</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - native builds for all three; Linux: AppImage + .deb</td>
             <td><span class="yes">Yes</span></td>
           </tr>
         </tbody>
@@ -152,7 +152,7 @@
       Insomnia stores collections in a local SQLite database. That database is not readable
       in a text editor, does not produce meaningful diffs, and cannot be reviewed in a pull
       request. Teams work around this by exporting to JSON periodically and committing the
-      snapshot — but that is manual, loses history fidelity, and produces large noisy diffs
+      snapshot - but that is manual, loses history fidelity, and produces large noisy diffs
       when many requests change at once.
     </p>
     <p>
@@ -192,8 +192,8 @@
 
     <h3>Built-in Git UI</h3>
     <p>
-      Tiger surfaces Git operations — status, diff, commit, push, pull, branch, checkout,
-      clone, discard, log, and sync — inside the app. Team members who do not use a
+      Tiger surfaces Git operations - status, diff, commit, push, pull, branch, checkout,
+      clone, discard, log, and sync - inside the app. Team members who do not use a
       terminal can still participate in version control without a separate GUI client.
       Insomnia uses its own proprietary sync layer instead.
     </p>
@@ -275,8 +275,8 @@
 
     <h3>Does Tiger require an account like Insomnia?</h3>
     <p>
-      No. Tiger has no account system at all. Every feature — collections, environments,
-      scripting, MCP server, collection runner — works without signing in, and nothing is
+      No. Tiger has no account system at all. Every feature - collections, environments,
+      scripting, MCP server, collection runner - works without signing in, and nothing is
       ever sent to a Tiger server. Requests, tokens, and response bodies stay on your machine.
     </p>
 

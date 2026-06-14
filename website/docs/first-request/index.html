@@ -22,7 +22,7 @@
       response, save, and commit with Tiger's built-in Git panel.
     </p>
 
-    <h2>Step 1 — Open or create a collection</h2>
+    <h2>Step 1 - Open or create a collection</h2>
     <p>
       A collection in Tiger is a plain folder on disk. Every request you create inside it
       becomes a <code>.tiger</code> text file. There are three ways to start:
@@ -57,7 +57,7 @@
       </p>
     </div>
 
-    <h2>Step 2 — Add a request</h2>
+    <h2>Step 2 - Add a request</h2>
     <p>
       With a collection open, press <kbd>Cmd</kbd>+<kbd>T</kbd> (macOS) or
       <kbd>Ctrl</kbd>+<kbd>T</kbd> (Windows / Linux) to create a new request tab, or click
@@ -67,12 +67,12 @@
     <p>Two things to set right away:</p>
     <ol>
       <li>
-        <strong>Method</strong> — click the method badge on the left of the URL bar (defaults
+        <strong>Method</strong> - click the method badge on the left of the URL bar (defaults
         to <code>GET</code>) and choose the HTTP method you need: GET, POST, PUT, PATCH,
         DELETE, HEAD, or OPTIONS.
       </li>
       <li>
-        <strong>URL</strong> — click into the URL field and type the endpoint. You can use
+        <strong>URL</strong> - click into the URL field and type the endpoint. You can use
         a literal URL or a <code>{{variable}}</code> placeholder. A warning appears under
         the bar for any variable that is not defined in the active environment.
       </li>
@@ -81,10 +81,10 @@
     <p>For a quick sanity check, try the public JSONPlaceholder API:</p>
     <pre><code>GET https://jsonplaceholder.typicode.com/posts/1</code></pre>
 
-    <h2>Step 3 — Add headers, query params, and a body</h2>
+    <h2>Step 3 - Add headers, query params, and a body</h2>
     <p>
       Below the URL bar a set of tabs lets you configure every part of the request.
-      You only need to fill in what the endpoint actually requires — all tabs are optional.
+      You only need to fill in what the endpoint actually requires - all tabs are optional.
     </p>
 
     <h3>Query params</h3>
@@ -155,7 +155,7 @@
       </p>
     </div>
 
-    <h2>Step 4 — Send and read the response</h2>
+    <h2>Step 4 - Send and read the response</h2>
     <p>
       Click <strong>Send</strong> (or press <kbd>Cmd</kbd>+<kbd>Enter</kbd> /
       <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to fire the request. The response panel on the right
@@ -163,11 +163,11 @@
     </p>
     <p>The response panel shows:</p>
     <ul>
-      <li><strong>Status</strong> — the HTTP status code and reason phrase, color-coded (green for 2xx, yellow for 3xx/4xx, red for 5xx).</li>
-      <li><strong>Timing</strong> — total round-trip time. Hover over it for a breakdown: DNS lookup, TCP handshake, TLS negotiation, time to first byte (TTFB), and download time.</li>
-      <li><strong>Size</strong> — response body size after transfer.</li>
-      <li><strong>Headers</strong> — switch to the Headers sub-tab to inspect every response header.</li>
-      <li><strong>Body</strong> — JSON is syntax-highlighted and pretty-printed by default. Toggle between Pretty and Raw with the button in the panel, or turn on word-wrap. HTML responses can be previewed in a sandboxed frame; images are shown inline.</li>
+      <li><strong>Status</strong> - the HTTP status code and reason phrase, color-coded (green for 2xx, yellow for 3xx/4xx, red for 5xx).</li>
+      <li><strong>Timing</strong> - total round-trip time. Hover over it for a breakdown: DNS lookup, TCP handshake, TLS negotiation, time to first byte (TTFB), and download time.</li>
+      <li><strong>Size</strong> - response body size after transfer.</li>
+      <li><strong>Headers</strong> - switch to the Headers sub-tab to inspect every response header.</li>
+      <li><strong>Body</strong> - JSON is syntax-highlighted and pretty-printed by default. Toggle between Pretty and Raw with the button in the panel, or turn on word-wrap. HTML responses can be previewed in a sandboxed frame; images are shown inline.</li>
     </ul>
     <p>
       To search inside a large response body, press <kbd>Cmd</kbd>+<kbd>F</kbd> /
@@ -180,7 +180,7 @@
       <strong>Cancel</strong> button that replaces Send while a request is running.
     </p>
 
-    <h2>Step 5 — Save the request</h2>
+    <h2>Step 5 - Save the request</h2>
     <p>
       Press <kbd>Cmd</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>S</kbd>, or click
       <strong>Save</strong> in the toolbar. Tiger writes a <code>.tiger</code> file to disk
@@ -228,7 +228,7 @@ body:json {
       </p>
     </div>
 
-    <h2>Step 6 — Commit with built-in Git</h2>
+    <h2>Step 6 - Commit with built-in Git</h2>
     <p>
       If your collection folder is a Git repository, Tiger shows a Git status indicator in
       the sidebar next to the collection name (a count of uncommitted changes and
@@ -250,7 +250,7 @@ body:json {
     </p>
     <p>
       The diff for the new request file above would be clean and readable in any Git host's
-      pull request view — which is exactly what makes the <code>.tiger</code> format useful
+      pull request view - which is exactly what makes the <code>.tiger</code> format useful
       for team workflows.
     </p>
 
@@ -258,7 +258,7 @@ body:json {
       <span class="ic">✓</span>
       <p>
         You can also use your external Git client or the command line instead of Tiger's
-        built-in panel. Tiger does not lock the folder — it is just a folder of text files.
+        built-in panel. Tiger does not lock the folder - it is just a folder of text files.
       </p>
     </div>
 
@@ -281,7 +281,7 @@ body:json {
           <tr><td>Send request</td><td><kbd>Cmd</kbd>+<kbd>Enter</kbd></td><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td></tr>
           <tr><td>Save request</td><td><kbd>Cmd</kbd>+<kbd>S</kbd></td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
           <tr><td>Close tab</td><td><kbd>Cmd</kbd>+<kbd>W</kbd></td><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td></tr>
-          <tr><td>Jump to tab 1–9</td><td><kbd>Cmd</kbd>+<kbd>1</kbd>–<kbd>9</kbd></td><td><kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>9</kbd></td></tr>
+          <tr><td>Jump to tab 1-9</td><td><kbd>Cmd</kbd>+<kbd>1</kbd>-<kbd>9</kbd></td><td><kbd>Ctrl</kbd>+<kbd>1</kbd>-<kbd>9</kbd></td></tr>
           <tr><td>Command palette</td><td><kbd>Cmd</kbd>+<kbd>K</kbd></td><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td></tr>
           <tr><td>Search in response</td><td><kbd>Cmd</kbd>+<kbd>F</kbd></td><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td></tr>
           <tr><td>Shortcuts overlay</td><td><kbd>Cmd</kbd>+<kbd>/</kbd></td><td><kbd>Ctrl</kbd>+<kbd>/</kbd></td></tr>
@@ -291,10 +291,10 @@ body:json {
 
     <h2>What to explore next</h2>
     <ul>
-      <li><a href="/tiger/docs/environments/">Environments and variables</a> — swap base URLs and tokens without editing each request.</li>
-      <li><a href="/tiger/docs/requests-auth/">Authentication</a> — Bearer, Basic, API key, and OAuth 2.0 client credentials.</li>
-      <li><a href="/tiger/docs/tiger-format/">The .tiger format</a> — the full file format reference, including captures and scripts.</li>
-      <li><a href="/tiger/docs/importing/">Importing</a> — bring in a Postman collection, OpenAPI spec, or curl command.</li>
+      <li><a href="/tiger/docs/environments/">Environments and variables</a> - swap base URLs and tokens without editing each request.</li>
+      <li><a href="/tiger/docs/requests-auth/">Authentication</a> - Bearer, Basic, API key, and OAuth 2.0 client credentials.</li>
+      <li><a href="/tiger/docs/tiger-format/">The .tiger format</a> - the full file format reference, including captures and scripts.</li>
+      <li><a href="/tiger/docs/importing/">Importing</a> - bring in a Postman collection, OpenAPI spec, or curl command.</li>
     </ul>
   </article>
   <script src="/tiger/nav.js"></script>

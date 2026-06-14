@@ -32,22 +32,22 @@ On top of the git-friendly storage model, Tiger adds a glass UI with light and d
 
 ## How Tiger compares
 
-Tiger is built around a different set of priorities than most API clients -- here is how those priorities translate in practice.
+Tiger is built around a different set of priorities than most API clients - here is how those priorities translate in practice.
 
 | Feature | Tiger | Postman | Bruno | Insomnia | Hoppscotch |
 |---|---|---|---|---|---|
-| Local-first / offline | Yes | Partial -- cloud workspace required for most features | Yes | Partial -- cloud sync optional but nudged | Partial -- self-host or web app |
-| Plain-text & git-native | Yes -- one `.tiger` file per request | No -- proprietary cloud or JSON export | Yes -- `.bru` files | No | No |
-| No account required | Yes | No | Yes | No | Partial -- self-host avoids it |
+| Local-first / offline | Yes | Partial - cloud workspace required for most features | Yes | Partial - cloud sync optional but nudged | Partial - self-host or web app |
+| Plain-text & git-native | Yes - one `.tiger` file per request | No - proprietary cloud or JSON export | Yes - `.bru` files | No | No |
+| No account required | Yes | No | Yes | No | Partial - self-host avoids it |
 | Free / per-seat price | Free (MIT) | Free tier; paid from $14/mo per user | Free (MIT) | Free tier; paid from $8/mo per user | Free (MIT, self-host) |
-| Open source | Yes | No | Yes | Partial -- core open, cloud closed | Yes |
+| Open source | Yes | No | Yes | Partial - core open, cloud closed | Yes |
 | Built-in MCP server | Yes | No | No | No | No |
-| SOAP / WSDL import | Yes -- operations become ready-to-send POST requests | Yes | No | No | No |
-| OpenAPI & Postman import | Yes | Yes | Yes -- Bruno import only | Yes | Yes |
+| SOAP / WSDL import | Yes - operations become ready-to-send POST requests | Yes | No | No | No |
+| OpenAPI & Postman import | Yes | Yes | Yes - Bruno import only | Yes | Yes |
 | Pre / post scripting | Yes | Yes | Yes | Yes | Partial |
 | Collection runner | Yes | Paid tiers | Yes | Yes | Partial |
-| Native macOS / Windows / Linux | Yes | Yes | Yes | Yes | No -- web app |
-| No traffic telemetry | Yes -- requests never leave your machine | No | Yes | No | Partial -- depends on hosting |
+| Native macOS / Windows / Linux | Yes | Yes | Yes | Yes | No - web app |
+| No traffic telemetry | Yes - requests never leave your machine | No | Yes | No | Partial - depends on hosting |
 
 Full breakdown: https://jtaoufik.github.io/tiger/compare/
 
@@ -169,6 +169,16 @@ Then register it in your AI client's config. For Claude Desktop, add this to `cl
 ```
 
 The assistant gets four tools: `list_requests`, `list_environments`, `get_request`, and `run_request`. Every response includes the status code, timing, response headers, and a pretty-printed body. Your collection stays on disk; nothing is sent to any third party.
+
+**What it's for** - letting an AI assistant work with the requests your team already keeps in Git, using the real URLs, auth, variables, and environments instead of guessing or pasting curl into the chat:
+
+- **Agentic testing & debugging** - "run the `create-user` request against staging and tell me why it 401s."
+- **Chained workflows** - "call `login`, take the token, then run `/me`" (pairs with Tiger's response captures).
+- **Inside an AI coding session** - in Claude Code or Cursor, the model exercises your real endpoints through curated, environment-aware requests.
+- **Read-only exploration** - "list the requests and summarize what this API does."
+- **Smoke checks** - point it at a collection and ask it to run the health checks and flag anything non-2xx.
+
+Full guide: <https://jtaoufik.github.io/tiger/docs/mcp/>
 
 ## Privacy
 

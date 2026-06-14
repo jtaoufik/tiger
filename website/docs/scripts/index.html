@@ -26,7 +26,7 @@
     <h2>Overview</h2>
     <p>
       Scripts and captures address two complementary needs. Captures handle the common
-      case of chaining requests — log in, grab the token, use it in the next call — using
+      case of chaining requests - log in, grab the token, use it in the next call - using
       a simple point-and-click table with no JavaScript. Scripts handle everything else:
       computing a dynamic header value, seeding a variable before sending, asserting on
       response shape, or logging intermediate values during a collection run.
@@ -74,7 +74,7 @@ tiger.log({ status: tiger.response?.status })</code></pre>
     <p>
       Output appears in the Script console pane below the editor. Objects are
       JSON-serialised. You can also use the browser-style <code>console.log(...)</code>
-      shorthand — it maps to the same output buffer.
+      shorthand - it maps to the same output buffer.
     </p>
 
     <h3>Response (post-response scripts only)</h3>
@@ -103,7 +103,7 @@ tiger.test('body has id', () => {
 
     <p>
       <code>tiger.test(name, fn)</code> registers a named assertion. The callback should
-      throw when the assertion fails — the easiest way is <code>tiger.expect(condition,
+      throw when the assertion fails - the easiest way is <code>tiger.expect(condition,
       message)</code>, which throws an <code>Error</code> with the given message when
       <code>condition</code> is falsy. Each test appears in the response panel as a
       green pass or red fail row, and in the collection runner's live verdict list.
@@ -194,7 +194,7 @@ tiger.setVar('rateLimitRemaining', rateLimit ?? '')</code></pre>
     <p>
       Tiger evaluates captures after the response arrives, in the same phase as the
       post-response script. Disabled rows and paths that do not resolve are silently
-      skipped — a failed capture never causes an error.
+      skipped - a failed capture never causes an error.
     </p>
 
     <h3>Path syntax</h3>
