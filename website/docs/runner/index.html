@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Collection runner · Tiger docs</title>
+  <meta name="description" content="Run a whole collection or folder sequentially, see live pass/fail verdicts, chain variables between requests, and stop mid-run at any time." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/runner/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Collection runner" />
+  <meta property="og:description" content="Run a whole collection or folder sequentially, see live pass/fail verdicts, chain variables between requests, and stop mid-run at any time." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Collection runner</div>
+    <h1>Collection runner</h1>
+    <p class="lead">
+      The collection runner executes every request in a folder (or an entire collection) one after
+      another. Pre-request scripts fire before each send, captures thread response values into
+      variables for the next request, and post-response script assertions produce per-request
+      pass/fail verdicts — all shown live as the run progresses.
+    </p>
+
+    <h2>Opening the runner</h2>
+    <p>
+      Click any folder or collection in the sidebar to open its page as a tab. The page has a
+      <strong>Run</strong> button in the toolbar. Clicking it opens the runner panel for that
+      scope: if you click a folder, only the requests inside that folder (and its subfolders) run;
+      if you click the collection root, every request in the collection runs.
+    </p>
+    <p>
+      Requests are executed in the order they appear in the sidebar — the same order controlled by
+      the <code>seq</code> field in each <code>.tiger</code> file. Drag requests in the sidebar to
+      change that order before running.
+    </p>
+
+    <h2>How a run works</h2>
+    <p>
+      The runner processes items sequentially, never in parallel. For each request:
+    </p>
+    <ol>
+      <li>
+        <strong>Pre-request script</strong> runs first (if the request has one). The script can
+        read and write variables using <code>tiger.setVar</code> / <code>tiger.getVar</code>. Any
+        variable it sets is available to the URL, headers, body and auth of this request and every
+        request that follows.
+      </li>
+      <li>
+        <strong>The request is sent</strong> with the current variable set applied via
+        <code>{{variable}}</code> interpolation.
+      </li>
+      <li>
+        <strong>Captures</strong> extract values from the response (status code, a header, or a
+        JSON body path) and write them into named variables. Those variables are available to all
+        subsequent requests in the same run.
+      </li>
+      <li>
+        <strong>Post-response script</strong> runs (if present). It can inspect
+        <code>tiger.response</code>, set more variables, and declare named assertions with
+        <code>tiger.test</code>.
+      </li>
+      <li>
+        The request is marked <strong>passed</strong> when the HTTP status is below 400 and every
+        <code>tiger.test</code> assertion in the post-response script passed. Requests with no
+        script tests pass on the status code alone.
+      </li>
+    </ol>
+    <p>
+      If a pre-request script throws, or a transport error occurs, the request is marked
+      <strong>failed</strong> with the error message and the runner moves on to the next item. The
+      shared variable state at the point of failure is preserved so subsequent requests still have
+      everything captured so far.
+    </p>
+    <p>
+      A <strong>Stop</strong> button is available while the run is in progress. Clicking it signals
+      the runner to skip remaining requests after the current one finishes. The summary reports how
+      many items were completed and marks the run as stopped.
+    </p>
+
+    <h2>Live results panel</h2>
+    <p>
+      As each request settles the runner panel updates immediately — you do not wait for the whole
+      run to finish before seeing results. Each row shows:
+    </p>
+    <ul>
+      <li>Request name and HTTP method.</li>
+      <li>HTTP status code and response time in milliseconds.</li>
+      <li>A <span class="pill">PASS</span> or <span class="pill">FAIL</span> badge.</li>
+      <li>Individual test names and their pass/fail state, when the request has script assertions.</li>
+      <li>The error message if a script or transport error aborted the request.</li>
+    </ul>
+    <p>
+      A summary bar at the top of the panel shows the running total of passed and failed requests
+      and updates after each item.
+    </p>
+
+    <h2>Writing assertions</h2>
+    <p>
+      Assertions live in the post-response script. The scripting API is the same as for individual
+      requests — see <a href="/tiger/docs/scripts/">Scripting</a> for the full reference. The key
+      method for the runner is <code>tiger.test</code>:
+    </p>
+    <pre><code>// Post-response script on any request
+tiger.test("status is 201", () => {
+  tiger.expect(tiger.response.status === 201, `got ${tiger.response.status}`)
+})
+
+tiger.test("response has an id", () => {
+  tiger.expect(tiger.response.json.id != null, "id is missing")
+})
+
+tiger.test("responds under 500 ms", () => {
+  tiger.expect(tiger.response.timeMs &lt; 500, `took ${tiger.response.timeMs} ms`)
+})</code></pre>
+
+    <p>
+      <code>tiger.test(name, fn)</code> registers a named assertion. If <code>fn</code> throws,
+      the test is recorded as failed with the thrown message. <code>tiger.expect(condition, message)</code>
+      is a convenience that throws when the condition is falsy.
+    </p>
+    <p>
+      Scripts run in a sandboxed <code>Function</code> scope. They cannot access
+      <code>fetch</code>, <code>require</code>, <code>process</code>, DOM globals, or any other
+      ambient host API — only the <code>tiger</code> object and <code>console.log</code> (output
+      appears in the script console, not the terminal).
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        A request with no post-response script is judged purely by status code. It passes when the
+        status is below 400 and fails otherwise. You only need to add <code>tiger.test</code> calls
+        when you want to assert something beyond "the server responded without an error."
+      </p>
+    </div>
+
+    <h2>Chaining requests with captures</h2>
+    <p>
+      The runner shares a single variable map across all requests in the run. Captures declared in
+      the <code>.tiger</code> file (or via the Captures tab in the editor) automatically feed that
+      map as each response arrives. A common pattern: authenticate first, capture the token, then
+      use it in every subsequent request.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Capture source</th>
+            <th>Syntax in the Captures tab</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>HTTP status code</td>
+            <td><code>status</code></td>
+            <td>Stores <code>200</code></td>
+          </tr>
+          <tr>
+            <td>Response header</td>
+            <td><code>header.&lt;name&gt;</code></td>
+            <td><code>header.x-request-id</code></td>
+          </tr>
+          <tr>
+            <td>JSON body path</td>
+            <td><code>body.&lt;path&gt;</code></td>
+            <td><code>body.data[0].id</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A minimal example using the <code>.tiger</code> format directly:</p>
+    <pre><code>meta {
+  name: Login
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/token
+}
+
+body:json {
+  { "client_id": "{{clientId}}", "client_secret": "{{clientSecret}}" }
+}
+
+capture {
+  accessToken: body.access_token
+}</code></pre>
+
+    <p>
+      The next request in the folder can reference <code>{{accessToken}}</code> in its
+      <code>auth:bearer</code> block or anywhere else. The runner writes the captured value
+      immediately after the response arrives, before the next request's pre-script runs.
+    </p>
+
+    <h2>A typical test workflow</h2>
+    <p>
+      A practical sequence for testing a REST resource lifecycle:
+    </p>
+    <ol>
+      <li>
+        <strong>Request 1 — POST /items</strong>: create a resource. Capture <code>body.id</code>
+        into <code>createdId</code>. Assert status 201 and that <code>id</code> is present.
+      </li>
+      <li>
+        <strong>Request 2 — GET /items/{{createdId}}</strong>: fetch the resource. Assert status
+        200 and that the returned <code>name</code> matches what was sent.
+      </li>
+      <li>
+        <strong>Request 3 — PUT /items/{{createdId}}</strong>: update it. Assert status 200 and
+        that the updated field reflects the change.
+      </li>
+      <li>
+        <strong>Request 4 — DELETE /items/{{createdId}}</strong>: delete it. Assert status 204.
+      </li>
+      <li>
+        <strong>Request 5 — GET /items/{{createdId}}</strong>: confirm deletion. Assert status 404.
+      </li>
+    </ol>
+    <p>
+      Run the folder. The live panel shows each row going green as the run progresses. If step 3
+      fails, steps 4 and 5 still run (the runner does not stop on failure by default), so you see
+      the full picture before investigating.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        Variable state accumulated during a run is discarded when the run finishes — it does not
+        persist back to the active environment. This keeps runner runs repeatable: the environment
+        you started with is the environment you have after the run ends.
+      </p>
+    </div>
+
+    <h2>Environment selection</h2>
+    <p>
+      The runner uses whichever environment is currently active in the environment selector at the
+      top of the window. Switch environments before clicking Run to target a different API base URL
+      or credential set. The runner takes a snapshot of the variable map at the moment the run
+      starts; changing the environment mid-run has no effect on the in-progress execution.
+    </p>
+
+    <h2>Stopping a run</h2>
+    <p>
+      Click <strong>Stop</strong> in the runner panel while a run is in progress. The runner
+      finishes the request currently in flight, then halts. The summary panel shows the partial
+      results and marks the run as stopped. You can re-run immediately using the same Run button.
+    </p>
+
+    <h2>Runner vs performance runner</h2>
+    <p>
+      The collection runner is for correctness: it runs each request once, in sequence, and grades
+      pass/fail. The <a href="/tiger/docs/response/">performance runner</a> is for load: it
+      fires N requests at a configurable concurrency level and reports min, max, avg, p50 and p95
+      timings. They are separate tools on the same collection/folder page.
+    </p>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Scripting</div>
+        <div class="d">Full reference for the tiger API, tiger.test, tiger.expect, response object and console.</div>
+      </a>
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Captures</div>
+        <div class="d">Extract values from a response and feed them into variables for the next request.</div>
+      </a>
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments</div>
+        <div class="d">Named variable sets, secret values and {{variable}} interpolation.</div>
+      </a>
+      <a class="card" href="/tiger/docs/response/">
+        <div class="t">Performance runner</div>
+        <div class="d">Fire N concurrent requests and get timing percentiles back.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

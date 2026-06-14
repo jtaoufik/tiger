@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tiger vs Insomnia · Tiger docs</title>
+  <meta name="description" content="Tiger and Insomnia are both cross-platform API clients. Tiger is free, MIT-licensed, git-native, and account-free. Insomnia is capable but cloud-leaning. Full feature matrix." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/compare/tiger-vs-insomnia/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Tiger vs Insomnia" />
+  <meta property="og:description" content="Tiger and Insomnia are both cross-platform API clients. Tiger is free, MIT-licensed, git-native, and account-free. Insomnia is capable but cloud-leaning. Full feature matrix." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Compare › Tiger vs Insomnia</div>
+    <h1>Tiger vs Insomnia</h1>
+    <p class="lead">
+      Insomnia is a capable API client with a free tier, cloud sync, and a plugin ecosystem.
+      Tiger keeps everything local: no account, no cloud, plain-text collections in Git, and
+      a built-in MCP server so AI assistants can run your requests directly.
+    </p>
+
+    <h2>Where they overlap</h2>
+    <p>
+      Both Tiger and Insomnia support REST, GraphQL, OAuth 2.0, pre- and post-request
+      JavaScript, named environments with <code>{{variable}}</code> interpolation, response
+      captures for request chaining, client certificate authentication (mTLS), multipart file
+      upload, and native builds on macOS, Windows, and Linux. Both can import Postman
+      and OpenAPI collections, and both let you set secret variables that are masked in the UI.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        Tiger imports Insomnia v4 export files (<code>.json</code>) directly. Open Tiger,
+        choose <strong>File &rarr; Import</strong>, select your Insomnia export, and every
+        request, folder, and environment is recreated on disk as <code>.tiger</code> files
+        in under a minute.
+      </p>
+    </div>
+
+    <h2>Side-by-side comparison</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th class="col-tiger">Tiger 0.4.0</th>
+            <th>Insomnia</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>License</td>
+            <td class="col-tiger"><span class="yes">MIT</span></td>
+            <td><span class="partial">Partial</span> — core Apache 2.0; product is cloud-leaning with proprietary layers</td>
+          </tr>
+          <tr>
+            <td>Collections stored as plain text in Git</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — one <code>.tiger</code> file per request; committed directly to your repo</td>
+            <td><span class="no">No</span> — stored in a local SQLite database by default; not diff-friendly</td>
+          </tr>
+          <tr>
+            <td>Account required</td>
+            <td class="col-tiger"><span class="yes">Never</span> — zero signup; every feature works offline</td>
+            <td><span class="partial">Partial</span> — a local scratch project works without sign-in; team sync and some features require an account</td>
+          </tr>
+          <tr>
+            <td>Works fully offline</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — every feature available with no network connection</td>
+            <td><span class="partial">Partial</span> — core request sending is offline; cloud sync requires connectivity</td>
+          </tr>
+          <tr>
+            <td>Built-in Git panel</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — status, diff, commit, push, pull, branch, checkout, clone, log — all inside the app</td>
+            <td><span class="no">No</span> — no native Git UI; uses its own proprietary sync layer</td>
+          </tr>
+          <tr>
+            <td>MCP server for AI clients</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — built-in <code>tiger-mcp</code> binary; exposes <code>list_requests</code>, <code>list_environments</code>, <code>get_request</code>, <code>run_request</code> to Claude, Cursor, and others</td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td>WSDL / SOAP import</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — each binding operation becomes a POST with a ready-to-fill SOAP envelope; SOAP 1.1 + 1.2 (added in 0.4.0)</td>
+            <td><span class="no">No</span> — raw XML bodies can be sent manually, but there is no WSDL importer</td>
+          </tr>
+          <tr>
+            <td>GraphQL</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — dedicated body type with a separate variables pane</td>
+            <td><span class="yes">Yes</span> — GraphQL supported with schema introspection</td>
+          </tr>
+          <tr>
+            <td>Pre/post-request scripting</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — sandboxed JavaScript; assertions surface as pass/fail tests</td>
+            <td><span class="yes">Yes</span> — pre-request and after-response scripts supported</td>
+          </tr>
+          <tr>
+            <td>Response captures (request chaining)</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — declarative <code>capture</code> block in the <code>.tiger</code> file; no scripting required</td>
+            <td><span class="yes">Yes</span> — response chaining via environment variable writes in scripts</td>
+          </tr>
+          <tr>
+            <td>Collection runner with test assertions</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — runs a collection or folder with live pass/fail verdicts and a stop button</td>
+            <td><span class="partial">Partial</span> — runner available via the separate <code>inso</code> CLI tool; desktop GUI runner is limited</td>
+          </tr>
+          <tr>
+            <td>OAuth 2.0 client credentials</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Client certificates (mTLS)</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — PEM pair or PFX/PKCS12, plus custom CA bundle</td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Built-in performance runs</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — configurable concurrency; min/max/avg/p50/p95 results locally</td>
+            <td><span class="no">No</span> — no built-in load or perf runner in the desktop app</td>
+          </tr>
+          <tr>
+            <td>Plugin ecosystem</td>
+            <td class="col-tiger"><span class="no">Not yet</span> — no plugin API in 0.4.0; scripting covers most custom logic</td>
+            <td><span class="yes">Yes</span> — published npm plugin API with a community registry</td>
+          </tr>
+          <tr>
+            <td>Cloud team sync</td>
+            <td class="col-tiger"><span class="no">No</span> — Git is the sync layer; Tiger has no proprietary cloud</td>
+            <td><span class="yes">Yes</span> — cloud sync with project sharing on paid tiers</td>
+          </tr>
+          <tr>
+            <td>Import: Insomnia v4, Postman v2.0/2.1, OpenAPI 3 / Swagger 2, Bruno, curl, WSDL</td>
+            <td class="col-tiger"><span class="yes">All six</span></td>
+            <td><span class="partial">Most</span> — Insomnia native format, Postman, OpenAPI; no WSDL importer</td>
+          </tr>
+          <tr>
+            <td>macOS / Windows / Linux native builds</td>
+            <td class="col-tiger"><span class="yes">Yes</span> — native builds for all three; Linux: AppImage + .deb</td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>The core difference: plain text vs a database</h2>
+    <p>
+      Insomnia stores collections in a local SQLite database. That database is not readable
+      in a text editor, does not produce meaningful diffs, and cannot be reviewed in a pull
+      request. Teams work around this by exporting to JSON periodically and committing the
+      snapshot — but that is manual, loses history fidelity, and produces large noisy diffs
+      when many requests change at once.
+    </p>
+    <p>
+      Tiger stores every request as one <code>.tiger</code> file. The folder is a normal
+      Git repository. Adding a request is a commit. Changing a base URL is a one-line diff.
+      Reviewing what changed between releases is a standard pull request. New team members
+      run <code>git clone</code> and have the full collection history immediately, with no
+      export step and no Tiger account.
+    </p>
+
+    <h2>Where Tiger goes further</h2>
+
+    <h3>Built-in MCP server</h3>
+    <p>
+      Tiger ships a Model Context Protocol server (<code>tiger-mcp</code>) that exposes
+      your saved requests as tools for any MCP-compatible AI client. Claude Desktop, Cursor,
+      and others can call <code>list_requests</code>, <code>list_environments</code>,
+      <code>get_request</code>, and <code>run_request</code> against your collection without
+      leaving the chat. Insomnia has no equivalent.
+    </p>
+
+    <h3>WSDL / SOAP import</h3>
+    <p>
+      Point Tiger at a <code>.wsdl</code> file and it parses the binding operations and
+      generates one POST request per operation, pre-filled with a SOAP envelope, the correct
+      <code>Content-Type</code> header (SOAP 1.1 and 1.2), and the <code>SOAPAction</code>
+      header for SOAP 1.1 services. Insomnia has no WSDL importer; you must construct the
+      XML envelope manually.
+    </p>
+
+    <h3>Git-native storage</h3>
+    <p>
+      Tiger stores every request as a plain-text <code>.tiger</code> file that you commit
+      to your own repository. API changes show up in pull request diffs. Insomnia stores
+      data in a local SQLite database that is opaque to <code>git diff</code>.
+    </p>
+
+    <h3>Built-in Git UI</h3>
+    <p>
+      Tiger surfaces Git operations — status, diff, commit, push, pull, branch, checkout,
+      clone, discard, log, and sync — inside the app. Team members who do not use a
+      terminal can still participate in version control without a separate GUI client.
+      Insomnia uses its own proprietary sync layer instead.
+    </p>
+
+    <h3>Performance runs</h3>
+    <p>
+      Select any request, open the <strong>Perf</strong> tab, configure iterations and
+      concurrency, and Tiger reports min, max, avg, p50, and p95 latency inline. Insomnia
+      has no built-in load or performance runner.
+    </p>
+
+    <h2>Where Insomnia goes further</h2>
+
+    <h3>Plugin ecosystem</h3>
+    <p>
+      Insomnia has a published npm plugin API and a community registry of extensions for
+      authentication helpers, response transformers, and more. Tiger's scripting covers a
+      lot of the same ground in 0.4.0, but if you depend on a specific Insomnia plugin,
+      check whether a pre- or post-request script can replace it before switching.
+    </p>
+
+    <h3>Cloud team sync</h3>
+    <p>
+      Insomnia's cloud sync lets teams share collections without setting up or maintaining
+      a Git remote. If your team does not already use Git for API definitions, Insomnia's
+      sync model requires less initial setup. Tiger assumes Git as a given.
+    </p>
+
+    <h3>Non-developer access</h3>
+    <p>
+      Insomnia's cloud UI can give QA engineers or product managers read access to
+      collections without the desktop app or a Git client. Tiger requires the desktop app
+      and a Git workflow, which may add friction for non-engineering audiences.
+    </p>
+
+    <h2>Which should you choose?</h2>
+
+    <p><strong>Choose Tiger if any of these apply:</strong></p>
+    <ul>
+      <li>You want API collections committed alongside code in Git, with readable diffs and pull-request reviews.</li>
+      <li>You want AI clients (Claude, Cursor) to discover and run requests via MCP without extra tooling.</li>
+      <li>You need WSDL / SOAP import for legacy enterprise services.</li>
+      <li>You want built-in load and latency profiling without wiring up a separate runner.</li>
+      <li>You want Git commits and pushes accessible inside the app for the whole team, including those who do not use a terminal.</li>
+      <li>You prefer MIT-licensed software with no proprietary cloud dependency at all.</li>
+    </ul>
+
+    <p><strong>Choose Insomnia if any of these apply:</strong></p>
+    <ul>
+      <li>You need cloud-based team sync without a self-managed Git workflow.</li>
+      <li>Non-engineer stakeholders need read access to collections via a web UI.</li>
+      <li>You rely on a specific community plugin that Tiger's scripting cannot replicate.</li>
+      <li>Your team is already invested in Insomnia's collaboration and workspace features.</li>
+    </ul>
+
+    <h2>Migrating from Insomnia to Tiger</h2>
+    <p>The full migration takes a few minutes for most collections:</p>
+    <ol>
+      <li>In Insomnia, open the collection and choose <strong>Export</strong> from the application menu. Select the Insomnia v4 format and save the <code>.json</code> file.</li>
+      <li>In Tiger, choose <strong>File &rarr; Import</strong> (or click Import on the welcome screen).</li>
+      <li>Select your <code>.json</code> export file. Tiger recreates every request, folder, and environment as <code>.tiger</code> files inside a new collection folder on disk.</li>
+      <li>Open the collection folder in your terminal and make an initial commit. From this point on, all changes are tracked normally.</li>
+      <li>If you had Insomnia environments, Tiger maps them to named environment files under <code>environments/</code>. Tiger uses the same double-brace <code>{{variable}}</code> syntax, so most values transfer without editing.</li>
+    </ol>
+    <p>
+      Secrets stored in Insomnia environments that are excluded from the export file will
+      need to be re-entered. Tiger marks environment values as secret when you toggle the
+      lock icon next to the field.
+    </p>
+
+    <h2>Frequently asked questions</h2>
+
+    <h3>Can Tiger import Insomnia collections?</h3>
+    <p>
+      Yes. Tiger imports Insomnia v4 export files (<code>.json</code>) directly. Open
+      Tiger, choose Import, select your Insomnia export, and every request, folder, and
+      environment is recreated as <code>.tiger</code> files on disk.
+    </p>
+
+    <h3>Does Tiger require an account like Insomnia?</h3>
+    <p>
+      No. Tiger has no account system at all. Every feature — collections, environments,
+      scripting, MCP server, collection runner — works without signing in, and nothing is
+      ever sent to a Tiger server. Requests, tokens, and response bodies stay on your machine.
+    </p>
+
+    <h3>How do teams collaborate in Tiger without cloud sync?</h3>
+    <p>
+      Collections are plain-text <code>.tiger</code> files on disk. You commit them to your
+      existing Git repository and share changes the same way you share code: branches, pull
+      requests, and <code>git clone</code>. Tiger also ships a built-in Git panel for status,
+      diff, commit, push, pull, and branch management without leaving the app.
+    </p>
+
+    <h3>Does Tiger support Insomnia's plugin-style custom templates?</h3>
+    <p>
+      Tiger does not have a plugin API in 0.4.0. Pre-request and post-response JavaScript
+      scripts cover most custom logic: you can generate dynamic values, modify the request
+      before it sends, and assert on response shape. Dynamic built-ins like
+      <code>{{$uuid}}</code>, <code>{{$timestamp}}</code>, and <code>{{$randomInt}}</code>
+      handle the most common template-tag use cases. For plugins that do something highly
+      specific, check whether a pre-request script achieves the same result before deciding.
+    </p>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/importing/">
+        <div class="t">Importing collections</div>
+        <div class="d">How to import from Insomnia, Postman, Bruno, OpenAPI, WSDL, and curl.</div>
+      </a>
+      <a class="card" href="/tiger/docs/mcp/">
+        <div class="t">MCP server</div>
+        <div class="d">Connect Tiger to Claude, Cursor, or any MCP-compatible AI client.</div>
+      </a>
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments and variables</div>
+        <div class="d">Named environments, secret values, and {{variable}} interpolation.</div>
+      </a>
+      <a class="card" href="/tiger/compare/tiger-vs-postman/">
+        <div class="t">Tiger vs Postman</div>
+        <div class="d">How Tiger compares to Postman on features, pricing, and privacy.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

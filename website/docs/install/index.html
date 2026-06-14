@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Install Tiger · Tiger docs</title>
+  <meta name="description" content="Download and install Tiger on macOS, Windows or Linux. Signed DMG, winget, AppImage and .deb — all builds on GitHub Releases." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/install/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Install Tiger" />
+  <meta property="og:description" content="Download and install Tiger on macOS, Windows or Linux. Signed DMG, winget, AppImage and .deb — all builds on GitHub Releases." />
+  <meta property="og:image" content="https://jtaodfik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Getting started › Install Tiger</div>
+    <h1>Install Tiger</h1>
+    <p class="lead">
+      Tiger runs natively on macOS, Windows and Linux. All builds are published to
+      <a href="https://github.com/jtaoufik/tiger/releases/latest">GitHub Releases</a>
+      and the app checks for updates automatically in the background.
+    </p>
+
+    <div class="card-grid">
+      <a class="card" href="#macos">
+        <div class="t">macOS</div>
+        <div class="d">Signed and notarized DMG. Apple Silicon and Intel.</div>
+      </a>
+      <a class="card" href="#windows">
+        <div class="t">Windows</div>
+        <div class="d">winget, Setup installer, or portable EXE.</div>
+      </a>
+      <a class="card" href="#linux">
+        <div class="t">Linux</div>
+        <div class="d">AppImage (auto-updating) or Debian/Ubuntu .deb.</div>
+      </a>
+    </div>
+
+    <h2 id="download">Download</h2>
+    <p>
+      All builds for the current release (v0.4.0) are on the GitHub Releases page.
+      Pick the package for your platform below, or go straight to the releases page
+      to see checksums and release notes.
+    </p>
+    <p>
+      <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">
+        View all downloads on GitHub Releases
+      </a>
+    </p>
+
+    <h2 id="macos">macOS</h2>
+    <p>
+      Tiger is distributed as a <strong>signed and notarized</strong> <code>.dmg</code> for
+      both Apple Silicon (arm64) and Intel (x64). Gatekeeper clears notarized apps on first
+      launch, so you can open the DMG and drag Tiger to <code>/Applications</code> like any
+      standard Mac application.
+    </p>
+
+    <h3>Install steps</h3>
+    <ol>
+      <li>
+        Go to <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">github.com/jtaoufik/tiger/releases/latest</a>
+        and download the <code>.dmg</code> that matches your chip:
+        <ul>
+          <li><code>Tiger-0.4.0-mac-arm64.dmg</code> — Apple Silicon (M1 and later)</li>
+          <li><code>Tiger-0.4.0-mac-x64.dmg</code> — Intel</li>
+        </ul>
+      </li>
+      <li>Open the downloaded <code>.dmg</code>.</li>
+      <li>Drag the Tiger icon to the <strong>Applications</strong> folder shortcut in the DMG window.</li>
+      <li>Eject the DMG and open Tiger from Launchpad or <code>/Applications</code>.</li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        Because Tiger is notarized by Apple, you do not need to right-click and choose
+        Open to bypass Gatekeeper. It launches normally on first double-click.
+      </p>
+    </div>
+
+    <h3>System requirements</h3>
+    <p>macOS 12 Monterey or later. Both Apple Silicon and Intel are natively supported.</p>
+
+    <h2 id="windows">Windows</h2>
+    <p>
+      Tiger is available for Windows x64 in three forms: a <strong>winget package</strong>
+      (recommended), a graphical <strong>Setup installer</strong> (NSIS), and a
+      <strong>portable EXE</strong> that needs no installation. A <code>.zip</code> archive
+      is also provided for manual extraction.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        The Windows builds are not yet code-signed. Installing via
+        <strong>winget skips the SmartScreen prompt</strong> entirely. If you use the Setup
+        EXE or portable EXE directly, Windows SmartScreen may show a warning the first time
+        you run the file. Click <strong>More info</strong> and then <strong>Run anyway</strong>
+        to continue. This is a known limitation and will be resolved once Windows code signing
+        is in place.
+      </p>
+    </div>
+
+    <h3>Option 1: winget (recommended)</h3>
+    <p>Open a terminal and run:</p>
+    <pre><code>winget install TaoufikJabbari.Tiger</code></pre>
+    <p>
+      winget downloads the verified package directly from the Windows Package Manager
+      community repository. No SmartScreen prompt appears. Tiger is added to your
+      Start menu and kept up to date by winget on subsequent <code>winget upgrade</code> runs.
+    </p>
+
+    <h3>Option 2: Setup installer</h3>
+    <ol>
+      <li>
+        Download <code>Tiger-Setup-0.4.0-windows-x64.exe</code> from the
+        <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">releases page</a>.
+      </li>
+      <li>
+        Run the installer. If SmartScreen appears, click <strong>More info</strong> then
+        <strong>Run anyway</strong>.
+      </li>
+      <li>
+        Follow the setup wizard. You can choose a custom install directory. Tiger is added
+        to your Start menu and a desktop shortcut is created.
+      </li>
+    </ol>
+
+    <h3>Option 3: Portable EXE</h3>
+    <p>
+      Download <code>Tiger-Portable-0.4.0-windows-x64.exe</code>. This is a self-contained
+      executable that you can run from any folder or USB drive without installing anything.
+      Right-click the file and choose <strong>Run as administrator</strong> if you need to
+      write to a restricted folder; otherwise run it directly. User data is stored in
+      <code>%APPDATA%\Tiger</code> regardless of where the EXE lives.
+    </p>
+
+    <h3>System requirements</h3>
+    <p>Windows 10 or later, x64 architecture.</p>
+
+    <h2 id="linux">Linux</h2>
+    <p>
+      Tiger ships two Linux packages: an <strong>AppImage</strong> and a
+      <strong>Debian/Ubuntu <code>.deb</code></strong>. Both are x64 only in this release.
+    </p>
+
+    <h3>Option 1: AppImage</h3>
+    <p>
+      The AppImage is a single portable file that runs on most x64 Linux distributions
+      without installing anything. It also supports <strong>background auto-updates</strong>
+      via electron-updater, so Tiger will notify you when a new version is available and
+      offer to download and apply it.
+    </p>
+    <ol>
+      <li>
+        Download <code>Tiger-0.4.0-linux-x64.AppImage</code> from the
+        <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">releases page</a>.
+      </li>
+      <li>Make it executable:
+        <pre><code>chmod +x Tiger-0.4.0-linux-x64.AppImage</code></pre>
+      </li>
+      <li>Run it:
+        <pre><code>./Tiger-0.4.0-linux-x64.AppImage</code></pre>
+      </li>
+    </ol>
+    <p>
+      To integrate it with your desktop environment, move the AppImage to
+      <code>~/.local/bin/</code> or any directory on your <code>$PATH</code> and create a
+      <code>.desktop</code> file pointing to it. Some distributions ship
+      <code>appimaged</code> or similar tools that handle this automatically when you place
+      an AppImage in <code>~/Applications</code>.
+    </p>
+
+    <h3>Option 2: Debian / Ubuntu .deb</h3>
+    <p>
+      The <code>.deb</code> package installs Tiger system-wide and integrates with apt.
+    </p>
+    <ol>
+      <li>
+        Download <code>Tiger-0.4.0-linux-amd64.deb</code> from the
+        <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">releases page</a>.
+      </li>
+      <li>Install it with apt (preferred over dpkg — it resolves dependencies automatically):
+        <pre><code>sudo apt install ./Tiger-0.4.0-linux-amd64.deb</code></pre>
+      </li>
+      <li>Launch Tiger from your application menu or run <code>tiger-api-client</code> in a terminal.</li>
+    </ol>
+    <p>
+      To uninstall: <code>sudo apt remove tiger-api-client</code>.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        The <code>.deb</code> package does not auto-update. Check the
+        <a href="https://github.com/jtaoufik/tiger/releases" target="_blank" rel="noopener">releases page</a>
+        for new versions, download the updated <code>.deb</code>, and re-run
+        <code>sudo apt install ./&lt;new-file&gt;.deb</code> to upgrade in place.
+        The AppImage auto-updates and is recommended if you want hands-free upgrades.
+      </p>
+    </div>
+
+    <h3>System requirements</h3>
+    <p>
+      x64 architecture. The AppImage is distribution-agnostic (glibc 2.17+).
+      The <code>.deb</code> targets Debian 11+ and Ubuntu 20.04+.
+    </p>
+
+    <h2 id="auto-update">Background auto-updates</h2>
+    <p>
+      Tiger checks for new releases at startup and periodically while running. When an update
+      is available, a notification appears in the bottom of the window. Clicking it downloads
+      the update in the background. On macOS and Windows the update installs the next time
+      you quit and reopen the app. On Linux, auto-updates work for the AppImage only; the
+      <code>.deb</code> package requires a manual download and reinstall.
+    </p>
+    <p>
+      Auto-update downloads come from
+      <a href="https://github.com/jtaoufik/tiger/releases" target="_blank" rel="noopener">GitHub Releases</a>.
+      No third-party update server is involved. You can also update manually at any time by
+      downloading the latest package from the releases page and replacing the existing install.
+    </p>
+
+    <h2 id="build-from-source">Build from source</h2>
+    <p>
+      Tiger is MIT-licensed and the full source is on GitHub. To build it yourself you need
+      Node.js 20+ and npm.
+    </p>
+    <pre><code>git clone https://github.com/jtaoufik/tiger.git
+cd tiger
+npm install
+npm run dev          # launch in development mode (hot-reload)
+npm run package      # build a distributable for your current platform</code></pre>
+    <p>
+      <code>npm run package</code> builds the Electron app and the MCP server binary, then
+      produces platform-appropriate packages in the <code>release/</code> folder.
+      See <a href="https://github.com/jtaoufik/tiger/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">CONTRIBUTING.md</a>
+      for the full development setup.
+    </p>
+
+    <h2 id="next">Next steps</h2>
+    <ul>
+      <li><a href="/tiger/docs/first-request/">Send your first request</a> — open a collection and make an HTTP call in under a minute.</li>
+      <li><a href="/tiger/docs/tiger-format/">The .tiger format</a> — understand how collections are stored as plain text on disk.</li>
+      <li><a href="/tiger/docs/importing/">Importing collections</a> — bring in existing work from Postman, Insomnia, Bruno, OpenAPI or a curl command.</li>
+      <li><a href="/tiger/docs/environments/">Environments and variables</a> — manage base URLs and secrets across dev, staging and production.</li>
+    </ul>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Importing &amp; exporting · Tiger docs</title>
+  <meta name="description" content="Import collections from Postman, Insomnia, Bruno, OpenAPI 3, Swagger 2, WSDL/SOAP, and curl into Tiger. Export to Postman v2.1 or OpenAPI 3.0." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/importing/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Importing &amp; exporting" />
+  <meta property="og:description" content="Import collections from Postman, Insomnia, Bruno, OpenAPI 3, Swagger 2, WSDL/SOAP, and curl into Tiger. Export to Postman v2.1 or OpenAPI 3.0." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Importing &amp; exporting</div>
+    <h1>Importing &amp; exporting</h1>
+    <p class="lead">
+      Tiger can import collections from Postman, Insomnia, Bruno, OpenAPI 3 / Swagger 2,
+      WSDL / SOAP, and pasted curl commands. It can also export a collection back to
+      Postman v2.1 or OpenAPI 3.0, so you can share with teammates who use other tools.
+    </p>
+
+    <h2>Supported formats</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Format</th>
+            <th class="col-tiger">Import</th>
+            <th class="col-tiger">Export</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Postman v2.0 / v2.1 <code>.json</code></td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td class="col-tiger"><span class="yes">Yes</span> (v2.1)</td>
+            <td><code>{{variables}}</code> carry over untouched</td>
+          </tr>
+          <tr>
+            <td>Insomnia v4 <code>.json</code></td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td class="col-tiger"><span class="no">No</span></td>
+            <td>Folder hierarchy rebuilt from parent IDs</td>
+          </tr>
+          <tr>
+            <td>Bruno folder of <code>.bru</code> files</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td class="col-tiger"><span class="no">No</span></td>
+            <td>Open the folder; each <code>.bru</code> file becomes a request</td>
+          </tr>
+          <tr>
+            <td>OpenAPI 3 / Swagger 2 <code>.json</code> / <code>.yaml</code></td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td class="col-tiger"><span class="yes">Yes</span> (OpenAPI 3.0)</td>
+            <td>Operations grouped by first tag or path segment</td>
+          </tr>
+          <tr>
+            <td>WSDL / SOAP <code>.wsdl</code> / <code>.xml</code></td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td class="col-tiger"><span class="no">No</span></td>
+            <td>New in 0.4.0 — each binding operation becomes a POST</td>
+          </tr>
+          <tr>
+            <td>curl command (paste)</td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td class="col-tiger"><span class="yes">Yes</span></td>
+            <td>Export is single-request code generation, not a file</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>How to import</h2>
+    <p>
+      All importers share the same entry point. Open the <strong>Import</strong> dialog from
+      the sidebar (the arrow-into-box icon next to "Collections") or from the welcome screen.
+      Then choose one of the sources below.
+    </p>
+
+    <h3>Postman (v2.0 / v2.1)</h3>
+    <p>
+      Export your Postman collection as a JSON file (<em>Collection &rarr; Export &rarr; Collection v2.1</em>).
+      In Tiger, choose <strong>Postman JSON</strong>, pick the file, and click Import.
+      Tiger reads both the v2.0 and v2.1 schema variants.
+    </p>
+    <p>What carries over:</p>
+    <ul>
+      <li>Folder hierarchy (nested item groups become Tiger sub-folders)</li>
+      <li>Request name, method, URL, query parameters, and headers</li>
+      <li>Body — <code>raw</code> (JSON or text), URL-encoded form, GraphQL</li>
+      <li><code>{{variable}}</code> references — Postman uses the same syntax as Tiger, so they round-trip cleanly</li>
+      <li>Disabled items (Postman's <code>disabled: true</code> maps to Tiger's <code>~</code> prefix)</li>
+    </ul>
+    <p>
+      You can also export the active environment alongside the collection: Tiger embeds the
+      environment's variables as Postman collection variables, so a single exported file
+      carries both requests and variable values.
+    </p>
+
+    <h3>Insomnia (v4)</h3>
+    <p>
+      In Insomnia, go to <em>Application &rarr; Preferences &rarr; Data &rarr; Export Data &rarr; All</em>
+      and save the JSON file. Choose <strong>Insomnia v4</strong> in Tiger and pick the file.
+    </p>
+    <p>
+      Insomnia stores all resources in a flat array keyed by internal IDs.
+      Tiger resolves the parent chain of each <code>request_group</code> to reconstruct the
+      original folder hierarchy. Body types supported: JSON, XML, plain text, GraphQL,
+      and URL-encoded form. Insomnia's <code>{{variables}}</code> syntax differs slightly —
+      review and remap them in Tiger's environment editor after importing.
+    </p>
+
+    <h3>Bruno</h3>
+    <p>
+      Bruno stores collections as folders of <code>.bru</code> files.
+      Choose <strong>Bruno folder</strong> in the import dialog, then pick the root folder of
+      the collection. Tiger walks the folder recursively; each <code>.bru</code> file becomes
+      a request, and sub-folders become Tiger folders.
+    </p>
+    <p>
+      Bruno's block format is a close cousin of Tiger's <code>.tiger</code> format, so most
+      fields map directly: method, URL, headers, query params, JSON / XML / form / GraphQL
+      bodies, and the <code>seq</code> ordering field.
+    </p>
+
+    <h3>OpenAPI 3 / Swagger 2</h3>
+    <p>
+      Tiger accepts OpenAPI 3.x and Swagger 2.0 documents in both JSON and YAML. Choose
+      <strong>OpenAPI / Swagger</strong>, pick the spec file, and click Import.
+    </p>
+    <p>What Tiger does with the spec:</p>
+    <ul>
+      <li>Each <code>path + method</code> combination becomes one request.</li>
+      <li>Requests are grouped into folders by their first <code>tag</code>. If an operation has
+          no tags, the first segment of the path is used as the folder name.</li>
+      <li>The operation's <code>summary</code> or <code>operationId</code> becomes the request name.</li>
+      <li>Query and header parameters are populated from the spec; if the parameter carries
+          an <code>example</code> value (or a schema-level example), it is used as the default.</li>
+      <li>For requests that include a <code>requestBody</code> with an <code>application/json</code>
+          content type, the body is pre-filled with the example if one exists, or an empty
+          <code>{}</code> object otherwise.</li>
+      <li>The base URL comes from the first entry in <code>servers</code> (OpenAPI 3) or from
+          <code>scheme + host + basePath</code> (Swagger 2). If neither is present, Tiger
+          uses <code>{{baseUrl}}</code> so you can set it in an environment.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>After importing an OpenAPI spec, create an environment with a <code>baseUrl</code>
+         variable pointing at your server. All imported requests will pick it up via
+         <code>{{baseUrl}}</code> interpolation.</p>
+    </div>
+
+    <h3>curl (paste)</h3>
+    <p>
+      Copy a curl command from a terminal, browser DevTools, or API docs, then choose
+      <strong>Paste curl</strong> in the import dialog and paste it in.
+      Tiger parses common flags including:
+    </p>
+    <ul>
+      <li><code>-X</code> / <code>--request</code> — HTTP method</li>
+      <li><code>-H</code> / <code>--header</code> — request headers (one per flag)</li>
+      <li><code>-d</code> / <code>--data</code> / <code>--data-raw</code> / <code>--data-binary</code> — request body</li>
+      <li><code>-u</code> / <code>--user</code> — Basic auth credentials</li>
+      <li>The bare URL (with or without <code>--url</code>)</li>
+    </ul>
+    <p>
+      If the body starts with <code>{</code> or <code>[</code>, or the <code>Content-Type</code>
+      header contains <code>json</code>, Tiger sets the body type to JSON automatically.
+      Otherwise the body is imported as plain text.
+    </p>
+    <p>
+      Multipart (<code>-F</code>) flags are recognized and skipped cleanly; their values will
+      not pollute other fields. Line continuations (<code>\</code> at end of line) are handled,
+      so multi-line DevTools curl exports paste without modification.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>Curl import creates a single request, not a collection. After importing you can
+         drag it into any open collection folder from the sidebar.</p>
+    </div>
+
+    <h2>WSDL / SOAP import <span class="pill">New in 0.4.0</span></h2>
+    <p>
+      WSDL import converts a SOAP service description into a set of Tiger requests — one per
+      binding operation — ready to fill in and send. Both SOAP 1.1 and SOAP 1.2 are supported.
+    </p>
+
+    <h3>How to import a WSDL file</h3>
+    <ol>
+      <li>Open the Import dialog from the sidebar.</li>
+      <li>Choose <strong>WSDL / SOAP</strong>.</li>
+      <li>Pick your <code>.wsdl</code> or <code>.xml</code> file.</li>
+      <li>Click <strong>Import</strong>. Tiger creates a collection named after the
+          <code>&lt;service&gt;</code> element (or the <code>definitions</code> root name as
+          a fallback). Each binding operation appears as a separate request inside it.</li>
+    </ol>
+
+    <h3>What each imported request looks like</h3>
+    <p>
+      For every <code>&lt;operation&gt;</code> inside a <code>&lt;binding&gt;</code>, Tiger
+      generates a POST request with:
+    </p>
+    <ul>
+      <li>
+        <strong>URL</strong> — the service endpoint extracted from the
+        <code>&lt;soap:address location&gt;</code> attribute. If no address is found, the
+        URL is set to <code>{{baseUrl}}</code>.
+      </li>
+      <li>
+        <strong>Body (XML)</strong> — a SOAP envelope skeleton with the correct namespace
+        for the protocol version and a placeholder element for the operation's input message.
+        Fill in the element's children to complete the call.
+      </li>
+      <li>
+        <strong>Headers</strong> — set automatically based on the protocol version:
+        <ul>
+          <li>
+            SOAP 1.1: <code>Content-Type: text/xml; charset=utf-8</code> plus a
+            <code>SOAPAction</code> header whose value is quoted as required by WS-I Basic
+            Profile (e.g. <code>"urn:GetWeather"</code>).
+          </li>
+          <li>
+            SOAP 1.2: <code>Content-Type: application/soap+xml; charset=utf-8</code>,
+            with the action folded in as a parameter
+            (<code>; action="urn:GetWeather"</code>) per RFC 7230.
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    <p>Example skeleton for a SOAP 1.1 <code>GetWeather</code> operation:</p>
+    <pre><code>&lt;soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:tns="http://www.webserviceX.NET"&gt;
+  &lt;soap:Body&gt;
+    &lt;tns:GetWeather&gt;
+      &lt;!-- fill in fields --&gt;
+    &lt;/tns:GetWeather&gt;
+  &lt;/soap:Body&gt;
+&lt;/soap:Envelope&gt;</code></pre>
+
+    <p>The matching headers generated for this request:</p>
+    <pre><code>Content-Type: text/xml; charset=utf-8
+SOAPAction: "http://www.webserviceX.NET/GetWeather"</code></pre>
+
+    <p>
+      Tiger detects whether a binding uses SOAP 1.2 by checking the namespace URI on the
+      <code>&lt;soap:binding&gt;</code> child element. Namespaces are resolved per-binding,
+      so a single WSDL that mixes SOAP 1.1 and 1.2 bindings will produce requests with
+      the correct Content-Type for each.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        Deep XSD-to-sample expansion is not performed. The envelope body is a skeleton
+        showing the top-level request element; you fill in the child fields. Complex types,
+        arrays, and optional elements are not pre-populated.
+      </p>
+    </div>
+
+    <h2>Exporting</h2>
+
+    <h3>Postman v2.1</h3>
+    <p>
+      Right-click any collection in the sidebar and choose <strong>Export &rarr; Postman v2.1</strong>.
+      Tiger writes a <code>.json</code> file that:
+    </p>
+    <ul>
+      <li>Recreates the full folder hierarchy as nested Postman item groups</li>
+      <li>Converts each Tiger body type — JSON, XML, text, GraphQL, form — to its Postman
+          equivalent</li>
+      <li>Embeds the currently active environment's variables as collection-level variables,
+          so the exported file is self-contained</li>
+    </ul>
+    <p>
+      The exported file is valid for direct import back into Tiger, Postman, or any tool
+      that accepts the Postman v2.1 schema.
+    </p>
+
+    <h3>OpenAPI 3.0</h3>
+    <p>
+      Right-click a collection and choose <strong>Export &rarr; OpenAPI 3.0</strong>.
+      Tiger produces an <code>openapi.json</code> file where:
+    </p>
+    <ul>
+      <li>Each request becomes an operation under its URL path (with the base URL or
+          <code>{{variable}}</code> prefix stripped to leave a clean path)</li>
+      <li>Query parameters and headers become OpenAPI <code>parameters</code> objects with
+          <code>example</code> values taken from the request</li>
+      <li>Request bodies are exported with the correct content type:
+          <code>application/json</code>, <code>application/xml</code>,
+          <code>text/plain</code>, or <code>application/x-www-form-urlencoded</code></li>
+      <li>The request name becomes the operation <code>summary</code> and
+          <code>operationId</code> (sanitized to a valid identifier)</li>
+      <li>Free-text documentation added to a request in Tiger becomes the operation
+          <code>description</code></li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        OpenAPI export is a useful way to generate a machine-readable contract from a
+        collection you built by hand. Import it into tools like Stoplight, Redocly, or
+        your CI pipeline's schema linter.
+      </p>
+    </div>
+
+    <h3>curl and fetch (single request)</h3>
+    <p>
+      From any open request, click the <strong>Code</strong> tab to generate a curl command
+      or a JavaScript <code>fetch</code> snippet for that single request. Variable references
+      are interpolated using the active environment before the snippet is rendered.
+    </p>
+
+    <h2>After importing</h2>
+    <p>
+      Imported collections land in a folder on disk just like any collection you create from
+      scratch. Once imported:
+    </p>
+    <ul>
+      <li>Open a terminal in the collection folder and run <code>git init</code> (or use
+          Tiger's built-in Git panel) to start version-controlling it.</li>
+      <li>Add an environment with the base URL and any secrets the requests need — see
+          <a href="/tiger/docs/environments/">Environments</a>.</li>
+      <li>Use <code>{{variable}}</code> references to replace hard-coded hostnames and tokens
+          — see <a href="/tiger/docs/variables/">Variables</a>.</li>
+      <li>Rename, move, and organize requests in the sidebar using drag-and-drop or
+          double-click to rename.</li>
+    </ul>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">The .tiger format</div>
+        <div class="d">How Tiger stores requests as plain text you can read, diff, and commit.</div>
+      </a>
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments</div>
+        <div class="d">Named variable sets with secret masking and {{variable}} interpolation.</div>
+      </a>
+      <a class="card" href="/tiger/docs/variables/">
+        <div class="t">Variables</div>
+        <div class="d">Static, secret, dynamic, and captured variables across requests.</div>
+      </a>
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Scripts &amp; chaining</div>
+        <div class="d">Capture response values into variables and write post-request assertions.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

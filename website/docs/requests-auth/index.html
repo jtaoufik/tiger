@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Requests &amp; auth · Tiger docs</title>
+  <meta name="description" content="Build HTTP requests in Tiger: methods, URL, headers, query params, every body type, and all auth schemes including OAuth2 client credentials." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/requests-auth/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Requests &amp; auth" />
+  <meta property="og:description" content="Build HTTP requests in Tiger: methods, URL, headers, query params, every body type, and all auth schemes including OAuth2 client credentials." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Requests &amp; auth</div>
+    <h1>Requests &amp; auth</h1>
+    <p class="lead">
+      Every Tiger request has a method, a URL, headers, query params, a body and an auth block.
+      All of those fields support <code>{{variable}}</code> interpolation, and Tiger sets
+      sensible <code>Content-Type</code> defaults automatically so you rarely have to think
+      about it.
+    </p>
+
+    <h2>HTTP methods</h2>
+    <p>
+      Tiger supports the seven methods you need day-to-day. Select the method from the
+      dropdown to the left of the URL bar:
+    </p>
+    <ul>
+      <li><code>GET</code></li>
+      <li><code>POST</code></li>
+      <li><code>PUT</code></li>
+      <li><code>PATCH</code></li>
+      <li><code>DELETE</code></li>
+      <li><code>HEAD</code></li>
+      <li><code>OPTIONS</code></li>
+    </ul>
+    <p>
+      <code>GET</code> and <code>HEAD</code> requests do not send a body. If a body type is
+      selected when you switch to one of those methods, the body editor is hidden and the
+      payload is not transmitted.
+    </p>
+    <p>
+      In the <code>.tiger</code> format the method is the block keyword:
+    </p>
+    <pre><code>get {
+  url: https://api.example.com/users
+}</code></pre>
+    <pre><code>post {
+  url: https://api.example.com/users
+}</code></pre>
+
+    <h2>URL and query parameters</h2>
+    <p>
+      Type the full URL in the URL bar. Use <code>{{variable}}</code> placeholders anywhere
+      in the URL — they are resolved against the active environment before the request is
+      sent:
+    </p>
+    <pre><code>get {
+  url: {{baseUrl}}/users/{{userId}}
+}</code></pre>
+    <p>
+      The <strong>Params</strong> tab below the URL bar is a table of key/value rows. Each
+      row has an enable/disable toggle (the <code>~</code> prefix in the file format). Tiger
+      appends enabled rows to the URL as a URL-encoded query string, preserving any
+      <code>?</code> and <code>#</code> that are already in the URL.
+    </p>
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>You can also type query params directly in the URL bar. Tiger reads them back and
+      displays them in the Params table, so both views stay in sync.</p>
+    </div>
+    <p>In the file format, query params live in a <code>query</code> block:</p>
+    <pre><code>query {
+  page: 1
+  limit: 20
+  ~debug: true
+}</code></pre>
+    <p>The <code>~debug</code> row is disabled and will not be appended to the URL.</p>
+
+    <h2>Headers</h2>
+    <p>
+      The <strong>Headers</strong> tab holds a key/value table with the same enable/disable
+      toggle as query params. Headers you add here are merged with any headers that the auth
+      block contributes. If you set a header whose name (case-insensitively) already exists
+      from the auth block, your explicit header wins and replaces it.
+    </p>
+    <pre><code>headers {
+  Accept: application/json
+  X-Request-ID: {{$uuid}}
+  ~X-Debug: 1
+}</code></pre>
+    <p>
+      Dynamic variables like <code>{{$uuid}}</code>, <code>{{$timestamp}}</code>,
+      <code>{{$isoTimestamp}}</code> and <code>{{$randomInt}}</code> are re-evaluated on
+      every send, so each request gets a fresh value.
+    </p>
+
+    <h2>Body types</h2>
+    <p>
+      Tiger offers seven body types. Switching the type in the UI updates the
+      <code>body:&lt;type&gt;</code> block tag in the <code>.tiger</code> file. When a type
+      has a conventional <code>Content-Type</code> value, Tiger sets it automatically unless
+      you have already added a <code>Content-Type</code> header yourself.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Body type</th>
+            <th class="col-tiger">Default Content-Type</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>none</code></td>
+            <td class="col-tiger">—</td>
+            <td>No body is sent. Default for new requests.</td>
+          </tr>
+          <tr>
+            <td><code>json</code></td>
+            <td class="col-tiger"><code>application/json</code></td>
+            <td>Free-form JSON editor with syntax highlighting, prettify and minify buttons.</td>
+          </tr>
+          <tr>
+            <td><code>xml</code></td>
+            <td class="col-tiger"><code>text/xml</code></td>
+            <td>Plain XML or SOAP envelopes. SOAP 1.1 requests also need a <code>SOAPAction</code> header (set it in the Headers tab or import via WSDL).</td>
+          </tr>
+          <tr>
+            <td><code>text</code></td>
+            <td class="col-tiger"><code>text/plain</code></td>
+            <td>Arbitrary plain-text payload.</td>
+          </tr>
+          <tr>
+            <td><code>form</code></td>
+            <td class="col-tiger"><code>application/x-www-form-urlencoded</code></td>
+            <td>Key/value lines, URL-encoded at send time. Same <code>key: value</code> syntax as headers.</td>
+          </tr>
+          <tr>
+            <td><code>graphql</code></td>
+            <td class="col-tiger"><code>application/json</code></td>
+            <td>Two panes: the query document and a separate variables JSON pane. Sent as a JSON envelope <code>{ "query": "...", "variables": {...} }</code>.</td>
+          </tr>
+          <tr>
+            <td><code>multipart</code></td>
+            <td class="col-tiger">Set by Tiger with boundary</td>
+            <td>Mixed text fields and file rows. File paths stored as <code>@file:</code> values in the format.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>JSON body</h3>
+    <p>
+      Type or paste any JSON. <code>{{variable}}</code> placeholders anywhere in the text
+      are resolved before the request is sent:
+    </p>
+    <pre><code>body:json {
+  {
+    "title": "{{postTitle}}",
+    "published": true
+  }
+}</code></pre>
+
+    <h3>XML / SOAP body</h3>
+    <p>
+      Use the <code>xml</code> type for both plain XML REST APIs and SOAP/WS-* services.
+      For SOAP 1.1, also add a <code>SOAPAction</code> header in the Headers tab. For
+      SOAP 1.2, add <code>action</code> as a parameter of the <code>application/soap+xml</code>
+      Content-Type header (override the default by adding the header manually):
+    </p>
+    <pre><code>headers {
+  SOAPAction: "http://tempuri.org/GetUser"
+}
+
+body:xml {
+  &lt;?xml version="1.0" encoding="utf-8"?&gt;
+  &lt;soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"&gt;
+    &lt;soap:Body&gt;
+      &lt;GetUser xmlns="http://tempuri.org/"&gt;
+        &lt;UserId&gt;{{userId}}&lt;/UserId&gt;
+      &lt;/GetUser&gt;
+    &lt;/soap:Body&gt;
+  &lt;/soap:Envelope&gt;
+}</code></pre>
+    <p>
+      If you have a WSDL file, use <strong>File &gt; Import &gt; WSDL</strong> instead.
+      Tiger generates one ready-to-fill request per binding operation, with the correct
+      method, Content-Type and SOAPAction already set.
+      See <a href="/tiger/docs/importing/">Importing collections</a> for details.
+    </p>
+
+    <h3>URL-encoded form body</h3>
+    <p>
+      Write one <code>key: value</code> pair per line. A <code>~</code> prefix disables a
+      row without deleting it:
+    </p>
+    <pre><code>body:form {
+  username: {{username}}
+  password: {{password}}
+  ~remember_me: 1
+}</code></pre>
+
+    <h3>GraphQL body</h3>
+    <p>
+      The query document goes in the main editor. Variables go in a second pane that
+      appears below it. Both support <code>{{variable}}</code> interpolation.
+      Tiger sends them as a single JSON POST body:
+    </p>
+    <pre><code>body:graphql {
+  query GetUser($id: ID!) {
+    user(id: $id) {
+      name
+      email
+    }
+  }
+}
+
+graphql:vars {
+  { "id": "{{userId}}" }
+}</code></pre>
+
+    <h3>Multipart form-data (file upload)</h3>
+    <p>
+      The multipart editor has a table of rows. Each row is either a text field or a file
+      row. For file rows, click the file icon to open a file picker; the path is stored in
+      the <code>.tiger</code> file as an <code>@file:</code> value and the file is read from
+      disk at send time. Tiger sets the <code>Content-Type: multipart/form-data</code> header
+      with the correct boundary automatically.
+    </p>
+    <pre><code>body:multipart {
+  description: Quarterly report
+  file: @file:/Users/you/reports/q1.pdf
+}</code></pre>
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>File paths in <code>.tiger</code> files are absolute. If you share a collection
+      via Git, teammates need to adjust file-row paths to point to local copies of the
+      files they want to upload.</p>
+    </div>
+
+    <h2>Auth</h2>
+    <p>
+      The <strong>Auth</strong> tab lets you attach credentials to a request without
+      cluttering the Headers tab. Tiger applies auth after building the header table, so an
+      explicit header you set always overrides what auth would have contributed.
+    </p>
+    <p>
+      Auth is inherited: if you set auth on a collection (the <code>collection.tiger</code>
+      file), every request in that collection uses it unless the request overrides it with
+      its own auth block.
+    </p>
+
+    <h3>None</h3>
+    <p>
+      The default. No credentials are added to the request.
+    </p>
+    <pre><code>auth:none {
+}</code></pre>
+
+    <h3>Bearer token</h3>
+    <p>
+      Adds <code>Authorization: Bearer &lt;token&gt;</code> to the request headers.
+      The token supports <code>{{variable}}</code> so you can store it in an environment
+      or capture it from a login request:
+    </p>
+    <pre><code>auth:bearer {
+  token: {{accessToken}}
+}</code></pre>
+
+    <h3>Basic auth</h3>
+    <p>
+      Adds <code>Authorization: Basic &lt;base64(username:password)&gt;</code>. Both fields
+      support variable interpolation:
+    </p>
+    <pre><code>auth:basic {
+  username: {{apiUser}}
+  password: {{apiPassword}}
+}</code></pre>
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Store passwords as <em>secret</em> variables in your environment. Secret variables
+      are masked in the UI and are excluded from history exports. See
+      <a href="/tiger/docs/environments/">Environments &amp; variables</a>.</p>
+    </div>
+
+    <h3>API key</h3>
+    <p>
+      Sends a named key/value pair either as a request header or as a query parameter.
+      Choose the placement with the <strong>In</strong> dropdown:
+    </p>
+    <pre><code>auth:apikey {
+  key: X-API-Key
+  value: {{apiKey}}
+  in: header
+}</code></pre>
+    <pre><code>auth:apikey {
+  key: api_key
+  value: {{apiKey}}
+  in: query
+}</code></pre>
+    <p>
+      When <code>in</code> is <code>query</code>, Tiger appends the pair to the URL's query
+      string, after any explicit query params you have set.
+    </p>
+
+    <h3>OAuth 2.0 — client credentials</h3>
+    <p>
+      Tiger supports the <strong>client_credentials</strong> grant type. Fill in the token
+      URL, client ID, client secret and scope, then click <strong>Get token</strong>. Tiger
+      fetches a token from the token URL using a <code>POST</code> with
+      <code>application/x-www-form-urlencoded</code> body, caches it for the lifetime of the
+      session, and adds <code>Authorization: Bearer &lt;token&gt;</code> to every request
+      that uses this auth block. The token is not written to the <code>.tiger</code> file.
+    </p>
+    <pre><code>auth:oauth2 {
+  grantType: client_credentials
+  tokenUrl: https://auth.example.com/oauth/token
+  clientId: {{oauthClientId}}
+  clientSecret: {{oauthClientSecret}}
+  scope: read:users write:posts
+}</code></pre>
+    <p>
+      All four fields support <code>{{variable}}</code> interpolation, so you can store
+      client credentials in an environment and swap between staging and production by
+      switching environments.
+    </p>
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>The token URL call is made from Tiger's local HTTP layer, not from a browser popup.
+      This grant type does not involve a redirect URI or user interaction. If your provider
+      requires authorization code or device flow, use Bearer auth and paste the token
+      manually instead.</p>
+    </div>
+
+    <h2>How auth and headers interact</h2>
+    <p>
+      Tiger builds the outgoing header map in this order:
+    </p>
+    <ol>
+      <li>Auth headers are applied first (e.g. <code>Authorization: Bearer ...</code>).</li>
+      <li>Explicit headers from the Headers tab are merged in next. If a header name
+          matches an auth header (case-insensitively), the explicit header replaces it.</li>
+    </ol>
+    <p>
+      This means you can always override what auth injects by adding the same header name
+      in the Headers tab, without disabling auth.
+    </p>
+
+    <h2>Content-Type defaults in practice</h2>
+    <p>
+      Tiger only injects a <code>Content-Type</code> header when you have not already set
+      one. Here is a summary of when each default applies:
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Body type</th>
+            <th class="col-tiger">Auto Content-Type</th>
+            <th>Override?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>json</code></td>
+            <td class="col-tiger"><code>application/json</code></td>
+            <td>Yes — add Content-Type to the Headers tab</td>
+          </tr>
+          <tr>
+            <td><code>xml</code></td>
+            <td class="col-tiger"><code>text/xml</code></td>
+            <td>Yes — e.g. set <code>application/soap+xml</code> for SOAP 1.2</td>
+          </tr>
+          <tr>
+            <td><code>text</code></td>
+            <td class="col-tiger"><code>text/plain</code></td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>form</code></td>
+            <td class="col-tiger"><code>application/x-www-form-urlencoded</code></td>
+            <td>Rarely needed</td>
+          </tr>
+          <tr>
+            <td><code>graphql</code></td>
+            <td class="col-tiger"><code>application/json</code></td>
+            <td>Almost never</td>
+          </tr>
+          <tr>
+            <td><code>multipart</code></td>
+            <td class="col-tiger"><code>multipart/form-data; boundary=...</code></td>
+            <td>No — Tiger must set the boundary</td>
+          </tr>
+          <tr>
+            <td><code>none</code></td>
+            <td class="col-tiger">—</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">
+      <span class="ic">!</span>
+      <p>Do not add a <code>Content-Type</code> header manually for multipart requests.
+      Tiger generates the boundary string and must embed it in the header itself. A manually
+      set header will overwrite the boundary and the server will reject the body.</p>
+    </div>
+
+    <h2>Disabling rows without deleting them</h2>
+    <p>
+      Every table row — headers, query params, form fields, multipart fields — has a checkbox
+      in the UI. In the <code>.tiger</code> file the same concept is represented by a
+      <code>~</code> prefix on the line. Disabled rows are saved and restored between
+      sessions. Use this to keep useful headers or params around while testing different
+      scenarios.
+    </p>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments &amp; variables</div>
+        <div class="d">Named variable sets, secret values, and <code>{{variable}}</code> interpolation.</div>
+      </a>
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Scripting &amp; chaining</div>
+        <div class="d">Pre/post-request JavaScript, response captures, and assertions.</div>
+      </a>
+      <a class="card" href="/tiger/docs/importing/">
+        <div class="t">Importing collections</div>
+        <div class="d">Postman, Insomnia, Bruno, OpenAPI, WSDL, and curl.</div>
+      </a>
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">The .tiger format</div>
+        <div class="d">How requests, auth and environments look on disk.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

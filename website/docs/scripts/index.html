@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scripts &amp; captures · Tiger docs</title>
+  <meta name="description" content="Pre-request and post-response JavaScript in Tiger: set variables, assert on responses, and capture values for chaining requests with the tiger API." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/scripts/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Scripts &amp; captures" />
+  <meta property="og:description" content="Pre-request and post-response JavaScript in Tiger: set variables, assert on responses, and capture values for chaining requests with the tiger API." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Scripts &amp; captures</div>
+    <h1>Scripts &amp; captures</h1>
+    <p class="lead">
+      Tiger lets you attach small JavaScript snippets to any request: a pre-request script
+      that runs before the HTTP call is made, and a post-response script that runs after
+      the response arrives. A separate captures table extracts values from the response
+      and writes them into environment variables automatically, with no code required.
+    </p>
+
+    <h2>Overview</h2>
+    <p>
+      Scripts and captures address two complementary needs. Captures handle the common
+      case of chaining requests — log in, grab the token, use it in the next call — using
+      a simple point-and-click table with no JavaScript. Scripts handle everything else:
+      computing a dynamic header value, seeding a variable before sending, asserting on
+      response shape, or logging intermediate values during a collection run.
+    </p>
+    <p>
+      Both the <code>preScript</code> and <code>postScript</code> fields are stored
+      verbatim in the <code>.tiger</code> file, so they are version-controlled alongside
+      the request they belong to.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>Scripts run in a sandboxed <code>Function</code> context. They have access only
+      to the <code>tiger</code> API and <code>console.log</code>. Globals like
+      <code>fetch</code>, <code>require</code>, <code>process</code>, <code>window</code>,
+      and <code>document</code> are deliberately shadowed and unavailable.</p>
+    </div>
+
+    <h2>The tiger API</h2>
+    <p>
+      Every script receives a single <code>tiger</code> object. Its surface is intentionally
+      small and stable.
+    </p>
+
+    <h3>Variable access</h3>
+    <pre><code>// Read a variable from the active environment.
+const base = tiger.getVar('baseUrl')
+
+// Write a variable. It merges back into the active environment
+// and is available to all subsequent requests in the same session.
+tiger.setVar('authToken', 'Bearer abc123')
+tiger.setVar('retryCount', 0)   // non-string values are coerced to string</code></pre>
+
+    <p>
+      <code>tiger.getVar(name)</code> returns <code>undefined</code> when the variable
+      does not exist in the active environment. <code>tiger.setVar(name, value)</code>
+      converts the value to a string; passing <code>null</code> or <code>undefined</code>
+      writes an empty string.
+    </p>
+
+    <h3>Logging</h3>
+    <pre><code>tiger.log('token length:', tiger.getVar('token')?.length)
+tiger.log({ status: tiger.response?.status })</code></pre>
+
+    <p>
+      Output appears in the Script console pane below the editor. Objects are
+      JSON-serialised. You can also use the browser-style <code>console.log(...)</code>
+      shorthand — it maps to the same output buffer.
+    </p>
+
+    <h3>Response (post-response scripts only)</h3>
+    <p>
+      In a post-response script, <code>tiger.response</code> is populated:
+    </p>
+    <pre><code>tiger.response.status      // number, e.g. 200
+tiger.response.timeMs      // round-trip time in milliseconds
+tiger.response.body        // raw response body as a string
+tiger.response.json        // parsed JSON, or undefined if the body is not valid JSON
+tiger.response.headers     // Array&lt;{ name: string; value: string }&gt;</code></pre>
+
+    <p>
+      <code>tiger.response</code> is <code>undefined</code> in pre-request scripts.
+      Accessing it there will throw, so guard with a check if you share code between phases.
+    </p>
+
+    <h3>Assertions</h3>
+    <pre><code>tiger.test('status is 200', () => {
+  tiger.expect(tiger.response.status === 200, `got ${tiger.response.status}`)
+})
+
+tiger.test('body has id', () => {
+  tiger.expect(tiger.response.json?.id != null, 'id field missing')
+})</code></pre>
+
+    <p>
+      <code>tiger.test(name, fn)</code> registers a named assertion. The callback should
+      throw when the assertion fails — the easiest way is <code>tiger.expect(condition,
+      message)</code>, which throws an <code>Error</code> with the given message when
+      <code>condition</code> is falsy. Each test appears in the response panel as a
+      green pass or red fail row, and in the collection runner's live verdict list.
+    </p>
+
+    <h2>Pre-request scripts</h2>
+    <p>
+      A pre-request script runs after variable interpolation resolves
+      <code>{{variable}}</code> placeholders but before the HTTP request is dispatched.
+      Use it to compute values that cannot be expressed as static variables.
+    </p>
+
+    <h3>Example: HMAC signature header</h3>
+    <pre><code>// Tiger's sandbox does not expose Node's crypto module, so use
+// the pure-JS approach or store the value in an environment variable
+// if your signing flow requires native crypto.
+
+const ts = String(Date.now())
+tiger.setVar('X-Timestamp', ts)
+
+// The header {{X-Timestamp}} in the request will now carry this value.
+tiger.log('timestamp set to', ts)</code></pre>
+
+    <h3>Example: conditional environment switching</h3>
+    <pre><code>const env = tiger.getVar('APP_ENV')
+if (env === 'staging') {
+  tiger.setVar('baseUrl', 'https://staging.example.com')
+} else {
+  tiger.setVar('baseUrl', 'https://api.example.com')
+}
+tiger.log('routing to', tiger.getVar('baseUrl'))</code></pre>
+
+    <h3>Example: increment a counter</h3>
+    <pre><code>const n = parseInt(tiger.getVar('seq') || '0', 10)
+tiger.setVar('seq', n + 1)
+tiger.log('request sequence:', n + 1)</code></pre>
+
+    <h2>Post-response scripts</h2>
+    <p>
+      A post-response script runs immediately after the response is received, before Tiger
+      renders the response panel. This is where you write assertions and extract values that
+      require conditional logic beyond what the captures table supports.
+    </p>
+
+    <h3>Example: save a token from a login response</h3>
+    <pre><code>tiger.test('login succeeded', () => {
+  tiger.expect(tiger.response.status === 200)
+})
+
+const body = tiger.response.json
+if (body?.token) {
+  tiger.setVar('authToken', body.token)
+  tiger.log('token saved, length', body.token.length)
+}</code></pre>
+
+    <h3>Example: validate a paginated list response</h3>
+    <pre><code>tiger.test('status 200', () => {
+  tiger.expect(tiger.response.status === 200, `expected 200, got ${tiger.response.status}`)
+})
+
+tiger.test('items array present', () => {
+  const items = tiger.response.json?.items
+  tiger.expect(Array.isArray(items), 'items must be an array')
+  tiger.expect(items.length > 0, 'items array is empty')
+})
+
+tiger.test('response under 300ms', () => {
+  tiger.expect(
+    tiger.response.timeMs < 300,
+    `took ${tiger.response.timeMs}ms`
+  )
+})</code></pre>
+
+    <h3>Example: read a response header</h3>
+    <pre><code>const rateLimit = tiger.response.headers
+  .find(h => h.name.toLowerCase() === 'x-ratelimit-remaining')
+  ?.value
+
+tiger.log('rate limit remaining:', rateLimit)
+tiger.setVar('rateLimitRemaining', rateLimit ?? '')</code></pre>
+
+    <h2>Captures</h2>
+    <p>
+      Captures are a code-free alternative for the most common chaining pattern: extract
+      a value from the response and store it in a variable. Each row in the captures table
+      maps a <strong>variable name</strong> to a <strong>path</strong> into the response.
+    </p>
+    <p>
+      Tiger evaluates captures after the response arrives, in the same phase as the
+      post-response script. Disabled rows and paths that do not resolve are silently
+      skipped — a failed capture never causes an error.
+    </p>
+
+    <h3>Path syntax</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>What it resolves to</th>
+            <th>Example value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>status</code></td>
+            <td>The HTTP status code as a string</td>
+            <td><code>201</code></td>
+          </tr>
+          <tr>
+            <td><code>header.&lt;Name&gt;</code></td>
+            <td>A response header (name matched case-insensitively)</td>
+            <td><code>header.Content-Type</code> → <code>application/json</code></td>
+          </tr>
+          <tr>
+            <td><code>body</code></td>
+            <td>The entire raw response body as a string</td>
+            <td><code>{"id":7,"token":"abc"}</code></td>
+          </tr>
+          <tr>
+            <td><code>body.&lt;path&gt;</code></td>
+            <td>A JSON dot/bracket path into the parsed body</td>
+            <td><code>body.data[0].id</code> → <code>42</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>JSON path examples</h3>
+    <p>
+      Given a response body like:
+    </p>
+    <pre><code>{
+  "user": {
+    "id": 7,
+    "roles": ["admin", "editor"]
+  },
+  "token": "eyJhbGci..."
+}</code></pre>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Variable name</th>
+            <th>Path</th>
+            <th>Captured value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>userId</code></td>
+            <td><code>body.user.id</code></td>
+            <td><code>7</code></td>
+          </tr>
+          <tr>
+            <td><code>authToken</code></td>
+            <td><code>body.token</code></td>
+            <td><code>eyJhbGci...</code></td>
+          </tr>
+          <tr>
+            <td><code>firstRole</code></td>
+            <td><code>body.user.roles[0]</code></td>
+            <td><code>admin</code></td>
+          </tr>
+          <tr>
+            <td><code>responseStatus</code></td>
+            <td><code>status</code></td>
+            <td><code>200</code></td>
+          </tr>
+          <tr>
+            <td><code>requestId</code></td>
+            <td><code>header.X-Request-Id</code></td>
+            <td>value of the <code>X-Request-Id</code> header</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Non-string values (numbers, booleans, nested objects) are JSON-serialised when written
+      to the variable. String values are stored as-is.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Captures run before the post-response script, so a variable set by a capture
+      is immediately readable via <code>tiger.getVar()</code> inside the same request's
+      post-response script.</p>
+    </div>
+
+    <h3>The .tiger file format</h3>
+    <p>
+      Captures appear as a <code>capture</code> block in the <code>.tiger</code> file.
+      A tilde (<code>~</code>) prefix disables a row without deleting it, consistent
+      with how headers and query params work:
+    </p>
+    <pre><code>capture {
+  authToken: body.token
+  userId: body.user.id
+  ~debugStatus: status
+}</code></pre>
+
+    <p>
+      Scripts appear as <code>pre-script</code> and <code>post-script</code> blocks
+      with a heredoc-style delimiter:
+    </p>
+    <pre><code>pre-script {
+  ---
+  tiger.setVar('startedAt', String(Date.now()))
+  ---
+}
+
+post-script {
+  ---
+  tiger.test('ok', () => tiger.expect(tiger.response.status &lt; 400))
+  tiger.log('done in', tiger.response.timeMs, 'ms')
+  ---
+}</code></pre>
+
+    <h2>Scripts and the collection runner</h2>
+    <p>
+      When you run a collection folder, Tiger executes each request in sequence. Variables
+      set by <code>tiger.setVar()</code> or captures in one request are available to all
+      subsequent requests in the same run. Test results from every request are collected
+      and displayed as a live pass/fail list in the runner panel, making it straightforward
+      to drive an entire authentication-then-CRUD flow and verify each step.
+    </p>
+
+    <div class="callout warn">
+      <span class="ic">!</span>
+      <p>Variables written by scripts during a collection run are applied to the active
+      environment in memory for the duration of the run. They do not automatically persist
+      to the environment file on disk after the run completes.</p>
+    </div>
+
+    <h2>Limitations</h2>
+    <ul>
+      <li>Scripts run synchronously. There is no <code>await</code>, <code>Promise</code>,
+      or async I/O. All work must complete before the function returns.</li>
+      <li>Network access (<code>fetch</code>, <code>XMLHttpRequest</code>) is not available
+      inside scripts. Use a second chained request for any additional HTTP calls.</li>
+      <li>Node built-ins (<code>require</code>, <code>process</code>, <code>Buffer</code>,
+      <code>crypto</code>) are not available. Pure-JavaScript logic is supported; native
+      modules are not.</li>
+      <li>A script that throws an uncaught error is captured and shown in the script console
+      as an error message. It does not abort the request that produced the response, but it
+      does prevent any <code>tiger.setVar()</code> calls that follow the throw from taking
+      effect.</li>
+    </ul>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/environments/">
+        <div class="t">Environments &amp; variables</div>
+        <div class="d">Named variable sets, secret values, and {{variable}} interpolation.</div>
+      </a>
+      <a class="card" href="/tiger/docs/requests-auth/">
+        <div class="t">Requests &amp; auth</div>
+        <div class="d">Methods, headers, body types, and authentication options.</div>
+      </a>
+      <a class="card" href="/tiger/docs/runner/">
+        <div class="t">Collection runner</div>
+        <div class="d">Run a whole folder sequentially with live pass/fail verdicts.</div>
+      </a>
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">.tiger file format</div>
+        <div class="d">The plain-text, git-friendly schema behind every request and environment.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

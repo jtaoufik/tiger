@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tiger vs the field · Tiger docs</title>
+  <meta name="description" content="A fair, feature-by-feature comparison of Tiger against Postman, Bruno, Insomnia, and Hoppscotch across storage, pricing, scripting, and more." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/compare/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Tiger vs the field" />
+  <meta property="og:description" content="A fair, feature-by-feature comparison of Tiger against Postman, Bruno, Insomnia, and Hoppscotch across storage, pricing, scripting, and more." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Compare › Tiger vs the field</div>
+    <h1>Tiger vs the field</h1>
+    <p class="lead">
+      Tiger, Postman, Bruno, Insomnia, and Hoppscotch all let you build and send HTTP requests.
+      Where they differ is in how they store your work, what they cost, and how much they require
+      of a server or an account. This page lays out the differences honestly.
+    </p>
+
+    <h2>How to read this table</h2>
+    <p>
+      Each row describes a capability that affects day-to-day workflow or team cost.
+      <span class="yes">Yes</span> means fully supported in the free tier.
+      <span class="partial">Partial</span> means the feature exists but is limited,
+      requires a paid plan, or has meaningful caveats described in the note.
+      <span class="no">No</span> means the feature is absent.
+      Information is based on publicly documented behavior as of mid-2026; always
+      verify against each product's current pricing page before making a decision.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>This table mirrors the comparison matrix in Tiger's <code>README.md</code>.
+      If you spot an inaccuracy, open an issue or pull request on GitHub.</p>
+    </div>
+
+    <h2>Feature matrix</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="col-tiger">Tiger 0.4.0</th>
+            <th>Postman</th>
+            <th>Bruno</th>
+            <th>Insomnia</th>
+            <th>Hoppscotch</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Local-first / offline</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — all data on disk; no network required after install</td>
+            <td><span class="partial">Partial</span> — the desktop app works offline, but many features require the cloud backend</td>
+            <td><span class="yes">Yes</span> — pure desktop app, no cloud dependency</td>
+            <td><span class="partial">Partial</span> — desktop app is offline capable, but sync and some features need an account</td>
+            <td><span class="partial">Partial</span> — self-hosted edition is fully local; hosted version requires a server</td>
+          </tr>
+          <tr>
+            <td><strong>Plain-text &amp; git-native storage</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — one <code>.tiger</code> file per request; diffs are human-readable</td>
+            <td><span class="no">No</span> — collections stored in Postman's cloud or as a single opaque JSON export</td>
+            <td><span class="yes">Yes</span> — one <code>.bru</code> file per request; similar philosophy</td>
+            <td><span class="no">No</span> — data lives in a local SQLite database; not diff-friendly</td>
+            <td><span class="no">No</span> — collections stored in the app's own backend or browser storage</td>
+          </tr>
+          <tr>
+            <td><strong>Works without an account</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — no sign-in, no registration, ever</td>
+            <td><span class="no">No</span> — account required for all tiers including free</td>
+            <td><span class="yes">Yes</span> — fully offline and account-free</td>
+            <td><span class="partial">Partial</span> — a local scratch project works without an account; team sync requires one</td>
+            <td><span class="partial">Partial</span> — self-hosted instance can be run without external accounts; the hosted SaaS requires sign-in</td>
+          </tr>
+          <tr>
+            <td><strong>Free / price per seat</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — MIT-licensed, free for individuals and teams with no seat limits</td>
+            <td><span class="partial">Partial</span> — free tier exists but caps collaborators; paid plans start at $14/seat/month</td>
+            <td><span class="yes">Yes</span> — free and open source; no paid tier</td>
+            <td><span class="partial">Partial</span> — free Hobby plan; Team plan is paid</td>
+            <td><span class="partial">Partial</span> — free self-hosted; cloud plan has paid tiers</td>
+          </tr>
+          <tr>
+            <td><strong>Open source</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — MIT license</td>
+            <td><span class="no">No</span></td>
+            <td><span class="yes">Yes</span> — MIT license</td>
+            <td><span class="partial">Partial</span> — core open-source (Apache 2.0), product cloud-leaning</td>
+            <td><span class="yes">Yes</span> — MIT license</td>
+          </tr>
+          <tr>
+            <td><strong>Built-in MCP server</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — ships <code>tiger-mcp</code>; AI clients can list, read, and run requests without leaving the chat</td>
+            <td><span class="no">No</span></td>
+            <td><span class="no">No</span></td>
+            <td><span class="no">No</span></td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td><strong>SOAP / WSDL import</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — import a <code>.wsdl</code> file; each binding operation becomes a POST with a ready-to-fill SOAP envelope (SOAP 1.1 and 1.2)</td>
+            <td><span class="yes">Yes</span> — WSDL import supported</td>
+            <td><span class="no">No</span></td>
+            <td><span class="no">No</span></td>
+            <td><span class="no">No</span></td>
+          </tr>
+          <tr>
+            <td><strong>OpenAPI &amp; Postman import</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — OpenAPI 3 / Swagger 2 and Postman v2.0/2.1; also Insomnia v4, Bruno, curl</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="partial">Partial</span> — OpenAPI import available; Postman import via community tooling</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td><strong>Pre/post-request scripting</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — sandboxed JS with assertions; a tests panel shows pass/fail per assertion</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="partial">Partial</span> — pre-request scripts available; post-response scripting is limited</td>
+          </tr>
+          <tr>
+            <td><strong>Collection runner</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — runs a folder sequentially with live pass/fail verdicts and a stop button</td>
+            <td><span class="partial">Partial</span> — runner available; scheduled and automated runs require paid tiers</td>
+            <td><span class="partial">Partial</span> — CLI runner available; GUI runner is limited</td>
+            <td><span class="partial">Partial</span> — runner available on free tier with some limitations</td>
+            <td><span class="partial">Partial</span> — basic runner available</td>
+          </tr>
+          <tr>
+            <td><strong>Environments &amp; secrets</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — named environments as plain files in <code>environments/</code>; secret values masked in the UI</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td><strong>Native macOS / Windows / Linux</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — native Electron builds; Apple Silicon + Intel, Windows installer + winget, AppImage + .deb</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="partial">Partial</span> — primarily a web app; a desktop shell is available but less capable than a native client</td>
+          </tr>
+          <tr>
+            <td><strong>No telemetry of your traffic</strong></td>
+            <td class="col-tiger"><span class="yes">Yes</span> — request URLs, headers, and bodies are never sent anywhere; optional anonymous usage analytics (method + status bucket only) with a single toggle to disable</td>
+            <td><span class="no">No</span> — requests pass through Postman's infrastructure for some features; review their privacy policy</td>
+            <td><span class="yes">Yes</span> — no telemetry</td>
+            <td><span class="partial">Partial</span> — desktop app sends requests directly; some sync features route through servers</td>
+            <td><span class="partial">Partial</span> — self-hosted is fully private; hosted version may log request metadata</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Storage and Git workflow</h2>
+    <p>
+      The single biggest architectural difference between these tools is where your collections live.
+      Postman and Hoppscotch (hosted) store collections server-side, which enables web access and sharing
+      links but means your API definitions — including internal endpoint names and token shapes — sit on
+      a third-party server. Insomnia stores data in a local SQLite database that is not easily
+      diff-able and is difficult to include in a repository meaningfully.
+    </p>
+    <p>
+      Bruno and Tiger both store requests as plain text files, one per request, in a folder you own.
+      The difference is format: Bruno uses <code>.bru</code> files and Tiger uses <code>.tiger</code>
+      files. Both are human-readable and produce useful <code>git diff</code> output. Tiger additionally
+      ships a built-in Git panel so you can commit, branch, pull, and push without leaving the app.
+    </p>
+
+    <h2>Pricing in practice</h2>
+    <p>
+      Tiger and Bruno are entirely free with no seat limits and no paid tier. Postman's free plan
+      caps the number of collaborators and automated collection runs. Insomnia's free Hobby plan
+      covers individual use; team collaboration requires a paid plan. Hoppscotch's self-hosted
+      Community Edition is free; the cloud and Enterprise editions carry per-seat pricing.
+    </p>
+    <p>
+      For a team of engineers who want to commit their API definitions alongside code and share them
+      through a Git repository, both Tiger and Bruno avoid per-seat costs entirely. Tiger is the only
+      one of the five that also ships an MCP server.
+    </p>
+
+    <h2>MCP server</h2>
+    <p>
+      Tiger is the only client in this comparison that ships a built-in MCP (Model Context Protocol)
+      server. The binary is called <code>tiger-mcp</code>. Once registered with an MCP-compatible AI
+      client such as Claude Desktop or Cursor, the assistant receives four tools:
+      <code>list_requests</code>, <code>list_environments</code>, <code>get_request</code>, and
+      <code>run_request</code>. The assistant can invoke any saved request directly from a chat
+      window. The collection remains on disk; no data is forwarded to any third party.
+    </p>
+    <p>
+      For teams that use AI assistants to debug or document APIs, this removes the copy-paste
+      round trip between the API client and the chat window.
+    </p>
+
+    <h2>WSDL and SOAP</h2>
+    <p>
+      Legacy enterprise stacks often expose WSDL-described SOAP services that REST-first clients
+      treat as an afterthought. Tiger added first-class WSDL import in 0.4.0: point it at a
+      <code>.wsdl</code> file and it generates one POST request per binding operation, pre-filled
+      with a SOAP envelope body, the correct <code>Content-Type</code> header
+      (<code>text/xml</code> for SOAP 1.1, <code>application/soap+xml</code> for SOAP 1.2),
+      and the <code>SOAPAction</code> header for SOAP 1.1 services.
+    </p>
+    <p>
+      Among the five clients compared here, only Postman offers comparable WSDL import. Bruno
+      and Insomnia have no WSDL importer; Hoppscotch has no WSDL importer either. You can still
+      send raw XML bodies in all of them, but you must construct the envelope yourself.
+    </p>
+
+    <h2>What Tiger does not have (yet)</h2>
+    <p>
+      Fair comparison means listing gaps too. As of version 0.4.0:
+    </p>
+    <ul>
+      <li>No web interface — Tiger is a desktop app only. Hoppscotch and the Postman web app
+          both work in a browser without installing anything.</li>
+      <li>No built-in team sync or shared workspace. Collaboration is entirely via Git
+          (push to a shared repo, open a pull request). Postman and Insomnia offer managed
+          sync that is easier for teams who do not want to self-host a Git remote.</li>
+      <li>No marketplace of public APIs or collections. Postman's API Network has a large catalog
+          of published collections. Tiger has no equivalent.</li>
+      <li>No OAuth 2.0 authorization code or PKCE flows. Tiger supports the client credentials
+          grant; interactive browser-based OAuth flows are not yet implemented.</li>
+      <li>Builds are not yet code-signed on all platforms. On macOS, right-click the app and
+          choose Open the first time. Windows builds install cleanly via winget.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>If your team uses GitHub, GitLab, or Bitbucket for code review, Git-native storage means
+      API changes can be part of the same pull request as the code that introduces them — reviewable,
+      commentable, and rollback-able with the same workflow you already have.</p>
+    </div>
+
+    <h2>Per-rival deep dives</h2>
+
+    <div class="card-grid">
+      <a class="card" href="/tiger/compare/tiger-vs-postman/">
+        <div class="t">Tiger vs Postman</div>
+        <div class="d">Account-free, plain-text collections vs Postman's cloud-backed workspace. Detailed feature and pricing breakdown.</div>
+      </a>
+      <a class="card" href="/tiger/compare/tiger-vs-bruno/">
+        <div class="t">Tiger vs Bruno</div>
+        <div class="d">Two git-native, account-free clients compared: .tiger vs .bru format, MCP server, WSDL import, and scripting differences.</div>
+      </a>
+      <a class="card" href="/tiger/compare/tiger-vs-hoppscotch/">
+        <div class="t">Tiger vs Hoppscotch</div>
+        <div class="d">Desktop-first local storage vs Hoppscotch's web-first, self-hostable approach.</div>
+      </a>
+      <a class="card" href="/tiger/compare/tiger-vs-insomnia/">
+        <div class="t">Tiger vs Insomnia</div>
+        <div class="d">Git-native, account-free local collections vs Insomnia's cloud sync and plugin ecosystem.</div>
+      </a>
+    </div>
+
+    <h2>Related pages</h2>
+    <ul>
+      <li><a href="/tiger/docs/getting-started/">What is Tiger?</a> — overview of core concepts</li>
+      <li><a href="/tiger/docs/importing/">Importing collections</a> — Postman, Bruno, Insomnia, OpenAPI, WSDL, and curl</li>
+      <li><a href="/tiger/docs/mcp/">MCP server</a> — connecting Tiger to Claude, Cursor, and other AI clients</li>
+      <li><a href="/tiger/docs/tiger-format/">The .tiger format</a> — how requests are stored as plain text</li>
+    </ul>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

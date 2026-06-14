@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Response tools · Tiger docs</title>
+  <meta name="description" content="Tiger's response panel: status pill, timing breakdown, size, headers, cookies, in-response search, JSON highlighting, HTML preview, and image preview." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/response/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Response tools" />
+  <meta property="og:description" content="Tiger's response panel: status pill, timing breakdown, size, headers, cookies, in-response search, JSON highlighting, HTML preview, and image preview." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Response tools</div>
+    <h1>Response tools</h1>
+    <p class="lead">
+      After a request completes, Tiger's response panel shows the status, timing, size and
+      body in one opaque, readable surface. The frosted chrome stays decorative while the
+      body area uses a more solid background so text is easy to scan.
+    </p>
+
+    <h2>The response header bar</h2>
+    <p>
+      A narrow strip at the top of the panel summarises everything you need to triage a
+      response at a glance, without opening a sub-panel or inspecting raw text.
+    </p>
+
+    <h3>Status pill</h3>
+    <p>
+      The status code and reason phrase appear in a coloured pill. Responses in the
+      <code>2xx</code> range are rendered with a success colour; everything else — client
+      errors, server errors, redirects that were followed but produced a final
+      non-<code>2xx</code> code — is rendered with an error colour. The pill maps
+      directly to the <code>ok</code> flag computed in <code>src/core/response.ts</code>
+      (<code>status &gt;= 200 &amp;&amp; status &lt; 300</code>).
+    </p>
+
+    <h3>Timing chip</h3>
+    <p>
+      The total round-trip time is shown in milliseconds next to the status pill. Hover
+      the chip to expand a breakdown card with every phase that was measured:
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>What it measures</th>
+            <th>When present</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>DNS lookup</td>
+            <td>Name resolution for the hostname</td>
+            <td>Node send path only (client certificate requests)</td>
+          </tr>
+          <tr>
+            <td>TCP connect</td>
+            <td>Time to establish the TCP connection</td>
+            <td>Node send path only</td>
+          </tr>
+          <tr>
+            <td>TLS handshake</td>
+            <td>Time to complete TLS negotiation</td>
+            <td>Node send path, HTTPS only</td>
+          </tr>
+          <tr>
+            <td>Waiting (TTFB)</td>
+            <td>Time from request sent until the first response byte arrives</td>
+            <td>Always</td>
+          </tr>
+          <tr>
+            <td>Download</td>
+            <td>Time to transfer the response body</td>
+            <td>Always</td>
+          </tr>
+          <tr>
+            <td>Total</td>
+            <td>Full elapsed time from send to last byte</td>
+            <td>Always</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      DNS, TCP and TLS phases are populated only when Tiger routes the request through the
+      Node HTTP stack, which happens when client certificates (mTLS) are configured for
+      the collection. On the standard Electron fetch path those phases are not exposed by
+      the browser engine and are omitted from the hover card rather than shown as zero.
+    </p>
+
+    <h3>Size chip</h3>
+    <p>
+      The body size is shown in human-readable units: bytes up to 1 KB, then KB or MB.
+      The figure is the byte length of the response body as received after decoding —
+      computed with <code>TextEncoder</code> to get an accurate UTF-8 byte count rather
+      than a character count.
+    </p>
+
+    <h2>Body tab</h2>
+    <p>
+      The Body tab is selected by default. It renders the response body in one of four
+      modes depending on the <code>Content-Type</code> and user controls.
+    </p>
+
+    <h3>JSON mode</h3>
+    <p>
+      When Tiger can parse the body as JSON it pretty-prints it with two-space indentation
+      and applies syntax highlighting via the <code>JsonView</code> component. A
+      <strong>Pretty / Raw</strong> toggle in the header bar lets you switch between the
+      formatted view and the original bytes. Pretty mode is the default.
+    </p>
+
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        For very large responses (above approximately 2 MB) Tiger skips JSON parsing and
+        highlighting and shows the raw text instead. A "Large response · raw" chip appears
+        in the header bar to explain why the Pretty toggle is absent. This threshold
+        prevents the UI from stalling on multi-megabyte payloads.
+      </p>
+    </div>
+
+    <h3>HTML preview</h3>
+    <p>
+      When the <code>Content-Type</code> is <code>text/html</code>, the body tab offers a
+      <strong>Preview / Raw</strong> toggle. In Preview mode the HTML is rendered inside a
+      sandboxed <code>&lt;iframe&gt;</code> with no permissions granted — scripts,
+      forms, popups and same-origin access are all blocked. This lets you inspect
+      templated pages and email HTML without executing anything. Switch to Raw to see the
+      markup as plain text.
+    </p>
+
+    <h3>Image preview</h3>
+    <p>
+      When the response <code>Content-Type</code> starts with <code>image/</code>, Tiger
+      displays the image inline in the body area. The transport layer encodes the binary
+      body as base64 and passes it to the renderer as a data URL; Tiger constructs the
+      <code>src</code> as <code>data:&lt;content-type&gt;;base64,&lt;bytes&gt;</code>.
+      A <strong>Preview / Raw</strong> toggle lets you see the raw base64 string if
+      needed. Preview is the default.
+    </p>
+
+    <h3>Plain text and XML</h3>
+    <p>
+      Bodies that are not JSON, HTML or an image type are shown verbatim in a
+      monospace pre-formatted block. Word wrap is off by default; toggle it with the
+      wrap icon button in the header bar.
+    </p>
+
+    <h3>In-response search</h3>
+    <p>
+      Press <kbd>Cmd</kbd>+<kbd>F</kbd> (macOS) or <kbd>Ctrl</kbd>+<kbd>F</kbd> (Windows /
+      Linux) while a response is on screen to open the search bar. You can also click the
+      magnifying-glass icon in the header bar. Tiger runs the search over the text that
+      is currently visible — the pretty-printed JSON in Pretty mode, or the raw bytes in
+      Raw mode.
+    </p>
+    <p>How the search works:</p>
+    <ul>
+      <li>All matches are highlighted inline. The active match is scrolled into view automatically.</li>
+      <li>Press <kbd>Enter</kbd> to move to the next match, <kbd>Shift</kbd>+<kbd>Enter</kbd> to go back.</li>
+      <li>The counter in the search bar shows the current position as <code>n/total</code>. A trailing <code>+</code> means matches were truncated to keep the UI responsive on very long bodies.</li>
+      <li>Press <kbd>Esc</kbd> or click the close button to dismiss the bar. Highlights disappear immediately.</li>
+      <li>The search is case-insensitive plain text — not a regular expression.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        Opening <kbd>Cmd/Ctrl</kbd>+<kbd>F</kbd> while on the Headers or Cookies tab
+        automatically switches to the Body tab so the search bar always applies to the
+        body text.
+      </p>
+    </div>
+
+    <h2>Headers tab</h2>
+    <p>
+      The Headers tab lists every response header as a <code>name: value</code> pair.
+      Header names are displayed in their original casing as returned by the server.
+      The tab label includes the header count, for example <strong>Headers (12)</strong>.
+    </p>
+
+    <h2>Cookies tab</h2>
+    <p>
+      Any <code>Set-Cookie</code> headers in the response are parsed and shown on the
+      Cookies tab: the cookie name and value, followed by the raw attribute string
+      (<code>Path</code>, <code>Expires</code>, <code>HttpOnly</code>, etc.) in a dimmed
+      colour. The tab label shows the cookie count.
+    </p>
+    <p>
+      Cookies that arrive in a response are automatically persisted to Tiger's cookie jar
+      and sent on subsequent requests to the same origin, provided the cookie jar is
+      enabled for the collection.
+    </p>
+
+    <h2>Tests tab</h2>
+    <p>
+      When the request has a post-request script that calls <code>test()</code>, a Tests
+      tab appears alongside Body, Headers and Cookies. The label shows the pass/fail ratio
+      — for example <strong>Tests (3/4)</strong>. Each row carries a
+      <code>PASS</code> or <code>FAIL</code> badge, the test name, and any error message
+      from a failing assertion.
+    </p>
+    <p>
+      Script <code>console.log()</code> output appears below the test list in a dimmed
+      log block. See <a href="/tiger/docs/scripts/">Scripts and tests</a> for how to write
+      assertions.
+    </p>
+
+    <h2>Toolbar actions</h2>
+    <p>The icon buttons on the right side of the header bar are always visible regardless of which tab is active:</p>
+    <ul>
+      <li><strong>Copy</strong> — copies the raw response body text to the clipboard. The icon briefly changes to a checkmark to confirm.</li>
+      <li><strong>Save to file</strong> — opens a save dialog (or triggers a browser download fallback) to write the raw body to disk. JSON responses are suggested as <code>response.json</code>; everything else as <code>response.txt</code>.</li>
+      <li><strong>Wrap</strong> (body tab only) — toggles word wrap on the body text. Useful for wide JSON or XML that overflows horizontally.</li>
+      <li><strong>Search</strong> (body tab only) — opens the in-response search bar, same as <kbd>Cmd/Ctrl</kbd>+<kbd>F</kbd>.</li>
+    </ul>
+
+    <h2>Empty and error states</h2>
+    <p>
+      Before any request is sent the panel shows a neutral placeholder. While a request
+      is in flight a "Sending…" status pill appears. If the request fails at the network
+      level — a DNS failure, a connection refusal, a timeout — the panel shows a
+      "Request failed" pill and the underlying error message in monospace text. HTTP
+      error responses (4xx, 5xx) are not network failures: they are displayed normally
+      with a red status pill.
+    </p>
+
+    <h2>Large response behaviour</h2>
+    <p>
+      Tiger applies a 2 MB threshold to JSON pretty-printing and syntax highlighting.
+      Above that threshold:
+    </p>
+    <ul>
+      <li>The body is displayed as raw text, bypassing the JSON parser entirely.</li>
+      <li>The Pretty/Raw toggle is hidden.</li>
+      <li>A "Large response · raw" chip appears in the header bar with a tooltip explaining the behaviour.</li>
+      <li>In-response search still works over the raw text.</li>
+      <li>The copy and save actions still capture the full body.</li>
+    </ul>
+    <p>
+      This design keeps Tiger responsive when an API returns a large paginated dump or a
+      diagnostic payload that would otherwise freeze a syntax highlighter.
+    </p>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Scripts and tests</div>
+        <div class="d">Write pre/post-request scripts and assertions that appear in the Tests tab.</div>
+      </a>
+      <a class="card" href="/tiger/docs/requests-auth/">
+        <div class="t">Requests and auth</div>
+        <div class="d">Configure the request that produces the response.</div>
+      </a>
+      <a class="card" href="/tiger/docs/variables/">
+        <div class="t">Variables and environments</div>
+        <div class="d">Use response captures to feed values from one response into the next request.</div>
+      </a>
+      <a class="card" href="/tiger/docs/collections/">
+        <div class="t">Collection runner</div>
+        <div class="d">Run a whole folder and see live pass/fail verdicts across every response.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

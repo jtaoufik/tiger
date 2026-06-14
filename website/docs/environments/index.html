@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Environments &amp; secrets · Tiger docs</title>
+  <meta name="description" content="Create, edit and switch environments in Tiger. Manage named variable sets, keep secret values hidden in the UI, and understand the cookie jar." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/environments/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Environments &amp; secrets" />
+  <meta property="og:description" content="Create, edit and switch environments in Tiger. Manage named variable sets, keep secret values hidden in the UI, and understand the cookie jar." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Environments &amp; secrets</div>
+    <h1>Environments &amp; secrets</h1>
+    <p class="lead">
+      An environment is a named set of variables you can activate per collection. Switch from
+      <code>dev</code> to <code>production</code> and every <code>{{baseUrl}}</code>,
+      <code>{{token}}</code>, and <code>{{apiKey}}</code> in your requests updates instantly
+      without you touching a single file. Secret variables are masked in the UI and kept in a
+      separate block in the file so you can choose what to commit to Git.
+    </p>
+
+    <h2>How environments are stored on disk</h2>
+    <p>
+      Each environment is a <code>.tiger</code> file inside an <code>environments/</code> folder
+      at the root of your collection directory. Opening a collection folder in Tiger surfaces every
+      file in that subfolder automatically.
+    </p>
+    <p>A minimal environment file looks like this:</p>
+<pre><code>meta {
+  name: dev
+}
+
+vars {
+  baseUrl: https://api.example.dev
+  timeout: 5000
+}</code></pre>
+    <p>
+      The <code>meta</code> block gives the environment its display name. The <code>vars</code>
+      block holds plain key-value pairs, one per line. The file is plain text, so you can create
+      or edit it in any editor, and diffs are clean and readable.
+    </p>
+
+    <h2>Creating an environment</h2>
+    <p>There are two ways to create a new environment:</p>
+    <ol>
+      <li>
+        <strong>From the UI.</strong> Open a collection, click the environment selector at the top
+        of the sidebar (it shows "No environment" when none is active), then choose
+        <strong>Manage environments</strong>. Click <strong>New environment</strong>, enter a name,
+        and Tiger writes a new <code>.tiger</code> file into the <code>environments/</code> folder
+        of that collection.
+      </li>
+      <li>
+        <strong>By hand.</strong> Create a file at <code>environments/staging.tiger</code> with a
+        <code>meta</code> block and a <code>vars</code> block. Save it, and Tiger picks it up the
+        next time the collection is in focus.
+      </li>
+    </ol>
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>
+        Committing environment files that contain only non-secret, non-credential values
+        (base URLs, feature flags, timeout durations) is encouraged. This lets every team member
+        run the same named environments without manual setup.
+      </p>
+    </div>
+
+    <h2>Editing variables</h2>
+    <p>
+      Click the environment name in the Manage environments panel to open its editor. Each row
+      has an enabled toggle, a name field, and a value field. The <strong>enabled toggle</strong>
+      corresponds to the <code>~</code> prefix in the file: a disabled variable is preserved in
+      the file but not interpolated at send time.
+    </p>
+    <p>
+      On disk, a disabled variable has a tilde prefix:
+    </p>
+<pre><code>vars {
+  baseUrl: https://api.example.dev
+  ~debugHeader: x-debug-on
+}</code></pre>
+    <p>
+      <code>debugHeader</code> is stored but ignored until you re-enable it. This is useful for
+      optional overrides you want versioned but not always active.
+    </p>
+
+    <h2>Switching the active environment</h2>
+    <p>
+      The environment selector appears at the top of the sidebar for each open collection. Click
+      it to choose any environment defined in that collection's <code>environments/</code> folder,
+      or choose <strong>No environment</strong> to send requests without substituting any variables.
+      Switching is instant and affects all requests in that collection.
+    </p>
+    <p>
+      Each collection remembers its own active environment independently. You can have
+      <code>my-api</code> set to <code>production</code> and <code>payments-api</code> set to
+      <code>staging</code> at the same time.
+    </p>
+
+    <h2>Secret variables</h2>
+    <p>
+      Any variable marked as secret is stored in a separate <code>vars:secret</code> block and
+      displayed as masked dots in the UI. The value is never shown in plain text in the editor
+      unless you explicitly reveal it.
+    </p>
+
+    <h3>File format for secrets</h3>
+    <p>
+      The serializer writes plain variables first, then secrets in their own block:
+    </p>
+<pre><code>meta {
+  name: production
+}
+
+vars {
+  baseUrl: https://api.example.com
+  region: eu-west-1
+}
+
+vars:secret {
+  token: eyJhbGciOiJIUzI1NiJ9...
+  apiKey: sk-live-abc123
+}</code></pre>
+    <p>
+      The two blocks are parsed and merged into a single variable set at runtime. The
+      <code>vars:secret</code> block is what you add to <code>.gitignore</code> if you want the
+      rest of the environment committed but credentials kept off the repository.
+    </p>
+
+    <h3>Gitignoring secrets without losing the file structure</h3>
+    <p>
+      Because plain variables and secret variables live in separate blocks in the same file, you
+      have options:
+    </p>
+    <ul>
+      <li>
+        <strong>Commit the whole file</strong> if all values are safe (non-production keys,
+        placeholder values, public feature flags).
+      </li>
+      <li>
+        <strong>Gitignore the entire environments/ folder</strong> and distribute it out-of-band
+        if every environment has live credentials. Add <code>environments/</code> to your
+        <code>.gitignore</code>.
+      </li>
+      <li>
+        <strong>Split by file.</strong> Keep a <code>dev.tiger</code> (committed) and a
+        <code>production.tiger</code> (gitignored). Add <code>environments/production.tiger</code>
+        to <code>.gitignore</code> and commit the rest.
+      </li>
+    </ul>
+    <div class="callout warn">
+      <span class="ic">!</span>
+      <p>
+        Tiger does not automatically gitignore environment files that contain secrets. You are
+        responsible for deciding what enters version control. Review your
+        <code>environments/</code> folder before the first commit on any collection that holds
+        real credentials.
+      </p>
+    </div>
+
+    <h3>Marking a variable as secret in the UI</h3>
+    <p>
+      In the environment editor, each row has a lock icon on the right. Click it to toggle the
+      secret flag. The variable moves into the <code>vars:secret</code> block the next time the
+      file is saved.
+    </p>
+
+    <h2>Variable interpolation</h2>
+    <p>
+      Variables from the active environment are substituted with the <code>{{name}}</code> syntax
+      everywhere a value appears: URL, query parameters, headers, request body, auth fields, and
+      pre/post-request scripts. Interpolation happens at send time, so the raw
+      <code>{{variable}}</code> tokens stay in the <code>.tiger</code> files on disk.
+    </p>
+    <p>
+      If you reference a variable that does not exist in the active environment, Tiger shows a
+      yellow warning under the URL bar before you send. The request still goes out with the
+      literal <code>{{name}}</code> string in place, which is useful for debugging but typically
+      indicates a missing definition.
+    </p>
+    <p>
+      Beyond environment variables, Tiger also resolves a set of built-in dynamic variables that
+      produce a fresh value on every send:
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Variable</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>{{$uuid}}</code></td><td>A random UUID v4</td></tr>
+          <tr><td><code>{{$timestamp}}</code></td><td>Unix epoch in seconds</td></tr>
+          <tr><td><code>{{$isoTimestamp}}</code></td><td>ISO 8601 datetime string</td></tr>
+          <tr><td><code>{{$randomInt}}</code></td><td>A random integer between 0 and 1000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Response captures: writing back into the environment</h2>
+    <p>
+      A <code>capture</code> block in a request file reads a value from the response and writes
+      it into the active environment, making it available to every subsequent request in that
+      collection. This is the foundation of request chaining.
+    </p>
+<pre><code>capture {
+  authToken: body.data.token
+  userId: body.data.id
+}</code></pre>
+    <p>
+      The right-hand side is a path: <code>body</code> refers to the parsed JSON response body,
+      <code>status</code> is the HTTP status code, and <code>headers.x-request-id</code> reads
+      a response header. After this request runs, <code>{{authToken}}</code> and
+      <code>{{userId}}</code> are live in the active environment for the rest of the session.
+      Captures do not modify the environment file on disk; they write to an in-memory overlay
+      that is cleared when you switch environments or restart the app.
+    </p>
+
+    <h2>The cookie jar</h2>
+    <p>
+      Tiger maintains a persistent cookie jar per collection. When a response includes a
+      <code>Set-Cookie</code> header, Tiger stores the cookie and attaches it to future requests
+      that match its domain, path, and security constraints.
+    </p>
+
+    <h3>RFC 6265 compliance</h3>
+    <p>
+      The cookie store follows RFC 6265 rules precisely:
+    </p>
+    <ul>
+      <li>
+        <strong>Domain matching.</strong> A cookie with a <code>Domain</code> attribute is sent to
+        the host that set it and any subdomain of it. A cookie without a <code>Domain</code>
+        attribute is a host-only cookie and is sent exclusively to the exact host that set it,
+        not to subdomains.
+      </li>
+      <li>
+        <strong>Path matching.</strong> <code>/api</code> matches <code>/api/v2</code> but not
+        <code>/apiv2</code>.
+      </li>
+      <li>
+        <strong>Secure flag.</strong> Cookies with the <code>Secure</code> attribute are never
+        sent over plain HTTP connections.
+      </li>
+      <li>
+        <strong>Expiry.</strong> <code>Max-Age</code> takes precedence over <code>Expires</code>.
+        Session cookies (no expiry attribute) persist in memory until you clear the jar.
+        Persistent cookies survive restarts.
+      </li>
+      <li>
+        <strong>Cross-origin scope protection.</strong> A <code>Set-Cookie</code> that tries to
+        set <code>Domain=victim.com</code> from a different host is rejected and demoted to a
+        host-only cookie scoped to the request host.
+      </li>
+    </ul>
+
+    <h3>Viewing and clearing cookies</h3>
+    <p>
+      Open the collection settings tab to see the current cookie jar for that collection. Each
+      entry shows the domain, path, name, value, and expiry. You can delete individual cookies
+      or clear the entire jar. Clearing the jar does not affect environment variables.
+    </p>
+    <div class="callout note">
+      <span class="ic">i</span>
+      <p>
+        Session cookies (no expiry) survive for the lifetime of the app process. They are kept
+        in the in-memory jar alongside persistent cookies and are cleared when you quit Tiger or
+        explicitly clear the jar.
+      </p>
+    </div>
+
+    <h3>Disabling the cookie jar</h3>
+    <p>
+      If you want to suppress automatic cookie handling for a collection — for example, because
+      you are testing cookie-less flows or managing tokens manually — you can disable the jar in
+      collection settings. When disabled, Tiger neither reads from nor writes to the cookie store
+      for any request in that collection.
+    </p>
+
+    <h2>Environment file reference</h2>
+    <p>A complete environment file showing all supported features:</p>
+<pre><code>meta {
+  name: staging
+}
+
+vars {
+  baseUrl: https://api.staging.example.com
+  region: eu-west-1
+  ~debugMode: true
+}
+
+vars:secret {
+  token: eyJhbGciOiJIUzI1NiJ9.some.payload
+  apiKey: sk-staging-xyz789
+}</code></pre>
+    <ul>
+      <li><code>meta.name</code> is what appears in the environment selector. It must be unique within a collection.</li>
+      <li>Each <code>vars</code> entry is <code>  name: value</code>, indented by two spaces.</li>
+      <li>A <code>~</code> prefix on any line disables that variable without removing it.</li>
+      <li><code>vars:secret</code> entries are masked in the Tiger UI. Their format is otherwise identical to <code>vars</code>.</li>
+      <li>Both blocks may exist in the same file; the parser merges them at load time, with <code>vars:secret</code> entries carrying the <code>secret: true</code> flag.</li>
+    </ul>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/variables/">
+        <div class="t">Variables &amp; interpolation</div>
+        <div class="d">How {{variable}} tokens are resolved at send time, including precedence and dynamic built-ins.</div>
+      </a>
+      <a class="card" href="/tiger/docs/scripts/">
+        <div class="t">Request chaining</div>
+        <div class="d">Use capture blocks to pass values from one response into the next request.</div>
+      </a>
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">The .tiger format</div>
+        <div class="d">Full reference for the plain-text file format that makes collections git-native.</div>
+      </a>
+      <a class="card" href="/tiger/docs/git/">
+        <div class="t">Built-in Git</div>
+        <div class="d">Commit, branch, diff and push your collection from inside Tiger.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>

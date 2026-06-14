@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Collections &amp; folders · Tiger docs</title>
+  <meta name="description" content="A Tiger collection is a plain-text folder of .tiger files. Learn how to create, organise, and navigate collections, folders, tabs, and the sidebar." />
+  <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/collections/" />
+  <link rel="icon" type="image/png" href="/tiger/icon.png" />
+  <meta property="og:title" content="Collections &amp; folders" />
+  <meta property="og:description" content="A Tiger collection is a plain-text folder of .tiger files. Learn how to create, organise, and navigate collections, folders, tabs, and the sidebar." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
+  <link rel="stylesheet" href="/tiger/styles.css" />
+</head>
+<body>
+  <article>
+    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Concepts › Collections &amp; folders</div>
+    <h1>Collections &amp; folders</h1>
+    <p class="lead">
+      A collection is an ordinary folder on your disk. Every request inside it is a
+      plain-text <code>.tiger</code> file, subfolders nest arbitrarily, and the whole
+      tree is version-controlled with Git — no proprietary database, no account.
+    </p>
+
+    <h2>What a collection looks like on disk</h2>
+    <p>
+      When you open a folder in Tiger, or create a new one, Tiger reads it as a
+      collection. The layout is straightforward:
+    </p>
+    <pre><code>my-api/                       ← collection root (the folder you open)
+  collection.tiger            ← optional collection settings
+  environments/
+    staging.tiger             ← named environment
+    production.tiger
+  get-users.tiger             ← a request at the collection root
+  auth/
+    login.tiger               ← a request in the "auth" folder
+    refresh-token.tiger
+  posts/
+    create-post.tiger
+    folder.tiger              ← optional folder settings
+    drafts/
+      list-drafts.tiger</code></pre>
+
+    <p>
+      Tiger scans the root recursively. Any <code>.tiger</code> file that is not
+      named <code>collection.tiger</code> or <code>folder.tiger</code>, and is not
+      inside the <code>environments/</code> directory, is treated as a request.
+      Hidden directories (names starting with <code>.</code>) are skipped, so your
+      <code>.git</code> folder is never touched.
+    </p>
+
+    <div class="callout tip">
+      <span class="ic">✓</span>
+      <p>Because the files are plain text, you can rename, move, duplicate or
+      delete requests from your file manager or terminal — Tiger picks up the
+      changes the next time you open the collection.</p>
+    </div>
+
+    <h2>collection.tiger — collection settings</h2>
+    <p>
+      Placing a <code>collection.tiger</code> file at the root lets you store
+      collection-level settings. The file is optional; Tiger opens the folder
+      even without one.
+    </p>
+    <p>Three things can go in <code>collection.tiger</code>:</p>
+    <ul>
+      <li><strong>A display name</strong> — overrides the folder name in the sidebar.</li>
+      <li><strong>A default auth</strong> — inherited by every request in the collection
+          unless the request sets its own auth (including an explicit <code>auth:none</code>
+          to opt out of inheritance).</li>
+      <li><strong>Free-form documentation</strong> — a <code>docs</code> block that holds
+          Markdown notes shown on the collection page.</li>
+    </ul>
+
+    <pre><code>meta {
+  name: JSONPlaceholder API
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Public REST API at https://jsonplaceholder.typicode.com.
+  Rate-limited to 100 requests/minute per IP.
+}</code></pre>
+
+    <p>
+      The <code>auth:bearer</code> block above means every request inherits bearer auth
+      automatically. A request that adds its own <code>auth:basic</code> block will use
+      basic auth instead. A request that adds <code>auth:none</code> sends no auth at all,
+      regardless of the collection default.
+    </p>
+
+    <h2>folder.tiger — folder-level settings</h2>
+    <p>
+      A <code>folder.tiger</code> file inside any subfolder stores the same three fields
+      as <code>collection.tiger</code>: a display name, a default auth for requests inside
+      that folder, and a <code>docs</code> block. Folder settings override collection
+      settings for requests inside the folder.
+    </p>
+
+    <h2>Creating a new collection</h2>
+    <p>
+      Tiger offers three ways to start a collection:
+    </p>
+    <ul>
+      <li>
+        <strong>New collection</strong> — click the <code>+</code> button in the sidebar
+        header (or use the welcome screen). Tiger prompts you to pick a parent directory,
+        creates an empty folder there, and immediately opens it. The folder starts with no
+        files; add your first request with the <code>+</code> button on the collection
+        header in the sidebar.
+      </li>
+      <li>
+        <strong>Open a folder</strong> — click the folder icon in the sidebar header to
+        open any existing directory. Tiger reads it as a collection whether or not it
+        already contains <code>.tiger</code> files.
+      </li>
+      <li>
+        <strong>Clone from Git</strong> — click the branch icon to clone a remote
+        repository directly inside Tiger. After the clone finishes, the collection opens
+        automatically.
+      </li>
+    </ul>
+
+    <p>
+      Multiple collections can be open at the same time. Each appears as its own
+      collapsible section in the sidebar.
+    </p>
+
+    <h2>Sidebar — the full action set</h2>
+    <p>
+      Everything you need to manage a collection is in the sidebar, accessible from the
+      row buttons or the right-click context menu.
+    </p>
+
+    <h3>Collection-level actions</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>How to trigger</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>New request</td>
+            <td>
+              <kbd>+</kbd> icon on the collection row, or
+              <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>T</kbd>
+            </td>
+          </tr>
+          <tr>
+            <td>Open collection settings</td>
+            <td>Click the collection name row (opens it as a tab)</td>
+          </tr>
+          <tr>
+            <td>Git panel</td>
+            <td>Git branch icon on the collection row, or the inline git-status chips</td>
+          </tr>
+          <tr>
+            <td>Close collection</td>
+            <td><kbd>×</kbd> icon on the collection row</td>
+          </tr>
+          <tr>
+            <td>Context menu</td>
+            <td>Right-click anywhere on the collection name row</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Folder actions</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>How to trigger</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Expand / collapse</td>
+            <td>Click the chevron, or click the folder row</td>
+          </tr>
+          <tr>
+            <td>Open folder settings</td>
+            <td>Click the folder name (opens it as a tab)</td>
+          </tr>
+          <tr>
+            <td>Rename folder</td>
+            <td>Double-click the folder name, or right-click and choose Rename</td>
+          </tr>
+          <tr>
+            <td>Duplicate folder</td>
+            <td>Copy icon on the folder row, or right-click and choose Duplicate</td>
+          </tr>
+          <tr>
+            <td>Drop a request into a folder</td>
+            <td>Drag a request row and release it on the target folder row (moves the file on disk)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Request actions</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>How to trigger</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Open request</td>
+            <td>Click the request row</td>
+          </tr>
+          <tr>
+            <td>Rename request</td>
+            <td>Double-click the request name, or press <kbd>F2</kbd> while the request is active</td>
+          </tr>
+          <tr>
+            <td>Duplicate request</td>
+            <td>Copy icon on the request row</td>
+          </tr>
+          <tr>
+            <td>Delete request</td>
+            <td>Trash icon on the request row (confirmation required)</td>
+          </tr>
+          <tr>
+            <td>Move to a different folder</td>
+            <td>Drag the request row and drop it onto a folder row or the collection header</td>
+          </tr>
+          <tr>
+            <td>Right-click menu</td>
+            <td>Right-click any request row for Close / Close others / Close to right / Close all / Reveal in sidebar</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout note">
+      <span class="ic">✓</span>
+      <p>Drag-and-drop moves the <code>.tiger</code> file on disk. The change is
+      immediately reflected in your working directory, so it will appear as a rename
+      in <code>git status</code>.</p>
+    </div>
+
+    <h2>Inline rename</h2>
+    <p>
+      Tiger follows the file-manager convention for renaming. Double-click any request or
+      folder name in the sidebar to start editing it inline. Press <kbd>Enter</kbd> to
+      confirm or <kbd>Escape</kbd> to cancel. For the currently active request, pressing
+      <kbd>F2</kbd> starts rename without needing the mouse.
+    </p>
+    <p>
+      Renaming a request renames the underlying <code>.tiger</code> file on disk (and
+      updates the <code>meta.name</code> field inside it). Renaming a folder renames the
+      directory.
+    </p>
+
+    <h2>Search</h2>
+    <p>
+      The search box at the top of the sidebar filters across all open collections by
+      request name. Matching requests are shown flat, grouped by collection name, so you
+      can find a request without knowing which folder it lives in. Clear the search to
+      return to the full tree view.
+    </p>
+
+    <h2>Git status chips</h2>
+    <p>
+      When a collection folder is a Git repository, the collection header shows small
+      status chips:
+    </p>
+    <ul>
+      <li>A number — uncommitted changes in the working tree.</li>
+      <li>An up arrow with a count — commits ahead of the remote (ready to push).</li>
+      <li>A down arrow with a count — commits behind the remote (available to pull).</li>
+      <li>A check mark — the working tree is clean and in sync with the remote.</li>
+    </ul>
+    <p>
+      Clicking any chip opens the Git panel for that collection. The full Git workflow
+      (status, diff, commit, pull, push, branch, log, and more) is documented on the
+      <a href="/tiger/docs/git/">Git integration</a> page.
+    </p>
+
+    <h2>Tabs</h2>
+    <p>
+      Every request and every collection or folder page opens in its own tab at the top
+      of the editor area. Tabs let you work on several requests at once and switch between
+      them quickly.
+    </p>
+
+    <h3>Tab shortcuts</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>macOS</th>
+            <th>Windows / Linux</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Switch to tab 1–9</td>
+            <td><kbd>Cmd</kbd>+<kbd>1</kbd> – <kbd>9</kbd></td>
+            <td><kbd>Ctrl</kbd>+<kbd>1</kbd> – <kbd>9</kbd></td>
+          </tr>
+          <tr>
+            <td>Close current tab</td>
+            <td><kbd>Cmd</kbd>+<kbd>W</kbd></td>
+            <td><kbd>Ctrl</kbd>+<kbd>W</kbd></td>
+          </tr>
+          <tr>
+            <td>Cycle to next tab</td>
+            <td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd></td>
+            <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd></td>
+          </tr>
+          <tr>
+            <td>Cycle to previous tab</td>
+            <td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd></td>
+            <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd></td>
+          </tr>
+          <tr>
+            <td>New request tab</td>
+            <td><kbd>Cmd</kbd>+<kbd>T</kbd></td>
+            <td><kbd>Ctrl</kbd>+<kbd>T</kbd></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Drag-to-reorder</h3>
+    <p>
+      Drag any tab left or right along the tab bar to reorder it. The new order is
+      remembered within the session.
+    </p>
+
+    <h3>Unsaved-change indicator</h3>
+    <p>
+      A small dot appears on a tab when the request has unsaved changes. The dot
+      disappears after you save (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>S</kbd>).
+    </p>
+
+    <h3>Session restore</h3>
+    <p>
+      When you quit and reopen Tiger, the sidebar restores all previously open
+      collections, and the tab strip and active tab are exactly as you left them. You
+      pick up where you stopped without manually reopening anything.
+    </p>
+
+    <h3>Right-click tab menu</h3>
+    <p>
+      Right-clicking a tab shows options to close just that tab, close all other tabs,
+      close tabs to the right, close all tabs, or reveal the corresponding request in the
+      sidebar.
+    </p>
+
+    <h2>The .tiger file format</h2>
+    <p>
+      Each request is stored as a single <code>.tiger</code> text file. The format uses
+      named blocks, is readable in any editor, and produces clean, reviewable diffs.
+      A minimal example:
+    </p>
+    <pre><code>meta {
+  name: Create post
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/posts
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "title": "Hello from Tiger" }
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+capture {
+  postId: body.id
+}</code></pre>
+
+    <p>
+      A <code>~</code> prefix on a header or query-param line disables it without deleting
+      it — handy for commenting out a value during debugging. The <code>capture</code>
+      block writes a value from the response into an environment variable for the next
+      request in a chain.
+    </p>
+    <p>
+      For the full field reference see the <a href="/tiger/docs/tiger-format/">.tiger format</a> page.
+    </p>
+
+    <h2>Importing an existing collection</h2>
+    <p>
+      If your team already has a collection in Postman, Insomnia, Bruno, or OpenAPI, you
+      can import it instead of rebuilding it by hand. Tiger converts each request into
+      its own <code>.tiger</code> file and creates matching subfolders. The importer
+      handles:
+    </p>
+    <ul>
+      <li>Postman v2.0 and v2.1 JSON exports</li>
+      <li>Insomnia v4 exports</li>
+      <li>Bruno folder of <code>.bru</code> files</li>
+      <li>OpenAPI 3 and Swagger 2 specs (<code>.json</code> or <code>.yaml</code>)</li>
+      <li>WSDL / SOAP (<code>.wsdl</code> or <code>.xml</code>) — each binding operation becomes a POST with a ready-to-fill SOAP envelope (new in 0.4.0)</li>
+      <li>A pasted curl command — creates a single request</li>
+    </ul>
+    <p>
+      Click the Import / Export icon (double-arrow) in the sidebar header to open the
+      importer. The full import guide is on the <a href="/tiger/docs/importing/">Importing</a> page.
+    </p>
+
+    <h2>Related pages</h2>
+    <div class="card-grid">
+      <a class="card" href="/tiger/docs/tiger-format/">
+        <div class="t">.tiger format</div>
+        <div class="d">Field-by-field reference for the plain-text request and environment files.</div>
+      </a>
+      <a class="card" href="/tiger/docs/variables/">
+        <div class="t">Variables &amp; environments</div>
+        <div class="d">Named environments, {{variable}} interpolation, secrets, and dynamic variables.</div>
+      </a>
+      <a class="card" href="/tiger/docs/importing/">
+        <div class="t">Importing</div>
+        <div class="d">Bring in collections from Postman, Insomnia, Bruno, OpenAPI, WSDL, and curl.</div>
+      </a>
+      <a class="card" href="/tiger/docs/git/">
+        <div class="t">Git integration</div>
+        <div class="d">Commit, branch, push, pull, diff and sync collections from inside Tiger.</div>
+      </a>
+    </div>
+  </article>
+  <script src="/tiger/nav.js"></script>
+</body>
+</html>
