@@ -617,7 +617,7 @@
       <span class="eyebrow">Download</span>
       <h2>Get Tiger for your platform</h2>
       <p class="sub">
-        Version 0.3.1, free for personal and commercial use. These are early preview builds and
+        Version 0.4.0, free for personal and commercial use. These are early preview builds and
         are not yet code-signed.
       </p>
       <div class="install-note">
@@ -635,40 +635,27 @@
           applying to the <a href="https://signpath.org/">SignPath Foundation</a> for free
           open source code signing.
         </p>
+        <p class="m">
+          <b>Linux:</b> the AppImage is self-contained — make it executable
+          (<code>chmod +x</code>) and run it. The <code>.deb</code> installs with
+          <code>sudo apt install ./&lt;the-downloaded-file&gt;.deb</code>.
+        </p>
       </div>
       <div class="spec">
-        <table>
-          <thead>
-            <tr><th scope="col">Platform</th><th scope="col">File</th><th scope="col">Size</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>macOS · Apple Silicon</td>
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest">Tiger-0.3.1-mac-arm64.dmg</a></td>
-              <td class="m">127 MB</td>
-            </tr>
-            <tr>
-              <td>macOS · Intel</td>
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest">Tiger-0.3.1-mac-x64.dmg</a></td>
-              <td class="m">134 MB</td>
-            </tr>
-            <tr>
-              <td>Windows · Installer</td>
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-0.3.1-windows-x64.exe">Tiger-Setup-0.3.1-windows-x64.exe</a></td>
-              <td class="m">98 MB</td>
-            </tr>
-            <tr>
-              <td>Windows · Portable</td>
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Portable-0.3.1-windows-x64.exe">Tiger-Portable-0.3.1-windows-x64.exe</a></td>
-              <td class="m">97 MB</td>
-            </tr>
-            <tr>
-              <td>Windows · ZIP</td>
-              <td><a class="m" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-0.3.1-win-x64.zip">Tiger-0.3.1-win-x64.zip</a></td>
-              <td class="m">136 MB</td>
-            </tr>
-          </tbody>
-        </table>
+        <p class="sub" style="margin: 0 0 18px">
+          Every build lives on GitHub Releases. Pick your platform — the latest
+          version is always there.
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center">
+          <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest">Download for macOS</a>
+          <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download for Windows</a>
+          <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download for Linux</a>
+        </div>
+        <p class="m" style="margin: 14px 0 0">
+          On the release page: macOS users take the <code>.dmg</code>, Windows users
+          the <code>Setup .exe</code> (or <code>winget install TaoufikJabbari.Tiger</code>),
+          and Linux users the <code>.AppImage</code> or <code>.deb</code>.
+        </p>
       </div>
     </section>
 

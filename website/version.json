@@ -1,12 +1,11 @@
 {
-  "version": "0.3.1",
+  "version": "0.4.0",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Complete tab management: right-click menu (close others/right/all), drag to reorder, unsaved-change dots, Cmd 1-9 jumps",
-    "Your session survives restarts: collections and tabs reopen where you left off",
-    "Collection runner, multipart file upload, response search and previews",
-    "Keyboard shortcuts overlay (Cmd+/) and reveal-in-sidebar",
-    "Collection and folder pages organized in tabs; Code and Perf as editor tabs",
-    "Windows builds are back: install via winget or the direct installer"
+    "Import WSDL / SOAP services: each operation becomes a ready-to-fill SOAP request",
+    "Create a new empty collection on disk in one step",
+    "Linux builds: AppImage (auto-updating) and Debian/Ubuntu .deb",
+    "Windows: fixed window resize and maximize (removed the acrylic backdrop that blocked it)",
+    "Clearer, more readable response view"
   ]
 }
