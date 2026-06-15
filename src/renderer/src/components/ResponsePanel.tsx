@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormattedResponse } from '@core/response'
+import { humanSize, type FormattedResponse } from '@core/response'
 import { parseSetCookie } from '@core/cookies'
 import { findMatches, splitByRanges } from '@core/textSearch'
 import { Logo } from '../Logo'
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CloseIcon, CopyIcon, SaveIcon, SearchIcon, WrapIcon } from './Icons'
 import { JsonView } from './JsonView'
 import './ResponsePanel.css'
+
+// Hard cap on what we render into the DOM. A multi-MB body laid out as
+// `white-space: pre` is what froze the viewer on big responses; past this
+// size we slice the visible portion and surface a banner. Copy and Save
+// still operate on the full body via res.body / res.raw.
+const RENDER_LIMIT = 1_000_000
 
 interface ScriptTest {
   name: string
@@ -114,7 +120,9 @@ export function ResponsePanel({ state }: Props) {
   const res = state.data!
   // Skip tokenized highlighting for very large bodies to stay responsive.
   const showPretty = pretty && res.isJson && !res.tooLargeToPretty
-  const bodyText = showPretty ? res.body : res.raw
+  const fullText = showPretty ? res.body : res.raw
+  const renderTruncated = fullText.length > RENDER_LIMIT
+  const bodyText = renderTruncated ? fullText.slice(0, RENDER_LIMIT) : fullText
   const isHtml = /text\/html/i.test(res.contentType)
   const showImage = !!res.imageDataUrl && preview
   const showHtmlPreview = isHtml && preview && !res.imageDataUrl
@@ -284,6 +292,11 @@ export function ResponsePanel({ state }: Props) {
               <button className="icon-btn" title="Close search (Esc)" onClick={() => setSearchOpen(false)}>
                 <CloseIcon size={13} />
               </button>
+            </div>
+          )}
+          {renderTruncated && (
+            <div className="resp-truncated" role="status">
+              Body truncated to {humanSize(RENDER_LIMIT)} for performance. Use Copy or Save to get the full {humanSize(fullText.length)} response.
             </div>
           )}
           {showImage ? (

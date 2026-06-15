@@ -46,6 +46,23 @@ describe('ResponsePanel power tools', () => {
     expect(document.querySelector('iframe.html-preview')).toBeNull()
   })
 
+  it('truncates very large bodies in the DOM and shows a banner', () => {
+    // 3 MB plain-text response: above the 1 MB DOM render cap, below the
+    // 2 MB pretty-print cap (content-type is text/plain so isJson is false anyway).
+    // We tag the tail with a unique marker that must NOT appear in the DOM.
+    const filler = 'x'.repeat(3_000_000 - 'TAIL_MARKER_ZZZ'.length)
+    const data = formatResponse({
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'text/plain' },
+      body: filler + 'TAIL_MARKER_ZZZ',
+      timeMs: 4
+    })
+    render(<ResponsePanel state={{ loading: false, data }} />)
+    expect(document.querySelector('.resp-truncated')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('TAIL_MARKER_ZZZ')
+  })
+
   it('renders an image preview from the base64 body', () => {
     const data = formatResponse({
       status: 200,

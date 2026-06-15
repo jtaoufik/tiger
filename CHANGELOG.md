@@ -3,6 +3,10 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.5.1
+
+- Response viewer no longer freezes on multi-megabyte bodies. Past 1 MB the panel only renders a leading slice of the body into the DOM and surfaces a banner ("Body truncated to 1 MB for performance…"); Copy and Save still operate on the full response. Previously a ~10 MB JSON body would stall the renderer because it was pushed as a single `white-space: pre` text node into the layout.
+
 ## 0.5.0
 
 - Native application menu: a proper File / Edit / Request / View / Window / Help layout that surfaces every core action (New Request, New/Open Collection, Import / Export, Send, Save, Command Palette, Environments, History, Keyboard Shortcuts) with its accelerator, on macOS, Windows and Linux. Replaces Electron's stock default menu, so there is no developer-only Reload / DevTools clutter for end users and no off-topic Help links. Developer tools stay available in development builds only.

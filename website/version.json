@@ -1,11 +1,7 @@
 {
-  "version": "0.5.0",
+  "version": "0.5.1",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Native application menu (File / Edit / Request / View / Window / Help) with every core shortcut, on macOS, Windows and Linux",
-    "Tiger reopens at the size and position you left it, and restores a maximized window",
-    "Windows: the Tiger logo now sits flush at the leading edge of the titlebar",
-    "Dark mode: native form controls, scrollbars and the method dropdown (GET/POST/…) now render with the dark theme",
-    "Windows packaging also ships a portable .zip alongside the installer"
+    "Response viewer no longer freezes on multi-MB bodies: the panel renders at most 1 MB into the DOM and offers Copy / Save for the full response"
   ]
 }
