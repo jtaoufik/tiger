@@ -63,6 +63,13 @@ function createWindow(): void {
   const saved = settings.window
   const placeable = saved && isOnScreen(saved)
 
+  // macOS picks up the app icon from the bundle (.icns); on Windows and Linux
+  // the running window's taskbar icon comes from BrowserWindow.icon, so point
+  // it explicitly at the bundled PNG. This works in both dev and packaged
+  // builds (the file ships under the asar and is resolved off __dirname).
+  const winIcon =
+    process.platform !== 'darwin' ? join(__dirname, '../../build/icon.png') : undefined
+
   const win = new BrowserWindow({
     width: saved?.width ?? 1180,
     height: saved?.height ?? 760,
@@ -71,6 +78,7 @@ function createWindow(): void {
     minWidth: 880,
     minHeight: 560,
     show: false,
+    icon: winIcon,
     backgroundColor: dark ? '#0f1117' : '#eef1f7',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     // Real OS-level translucency where the platform supports it; the renderer
