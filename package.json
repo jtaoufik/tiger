@@ -133,9 +133,6 @@
     "portable": {
       "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}"
     },
-    "zip": {
-      "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}"
-    },
     "appImage": {
       "artifactName": "Tiger-${version}-linux-x64.AppImage"
     },
