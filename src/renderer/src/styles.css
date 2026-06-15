@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --bg-1: #eef1f7;
   --bg-2: #d9e0ee;
   --bg-3: #f3ecff;
@@ -30,6 +31,7 @@
 }
 
 [data-theme='dark'] {
+  color-scheme: dark;
   --bg-1: #0e1016;
   --bg-2: #161a26;
   --bg-3: #1b1530;
@@ -91,9 +93,14 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px 10px 90px; /* leave room for mac traffic lights */
+  padding: 10px 14px;
   -webkit-app-region: drag;
   border-bottom: 1px solid var(--border);
+}
+/* Reserve room for the macOS traffic lights (hiddenInset titlebar). On
+   Windows/Linux the native frame is on the right, so no left padding is needed. */
+[data-platform='mac'] .titlebar {
+  padding-left: 90px;
 }
 
 .titlebar .brand {
@@ -342,6 +349,7 @@ button {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--glass-strong);
+  color: var(--text);
 }
 .url-input {
   flex: 1;

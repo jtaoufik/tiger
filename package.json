@@ -116,6 +116,12 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -125,6 +131,9 @@
       "allowToChangeInstallationDirectory": true
     },
     "portable": {
+      "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}"
+    },
+    "zip": {
       "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}"
     },
     "appImage": {

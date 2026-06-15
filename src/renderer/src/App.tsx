@@ -354,6 +354,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    const platform = /Windows/i.test(ua) ? 'win' : /Mac/i.test(ua) ? 'mac' : 'linux'
+    document.documentElement.dataset.platform = platform
+  }, [])
+
+  useEffect(() => {
     const apply = () => {
       document.documentElement.dataset.theme = resolveDark(settings.theme) ? 'dark' : 'light'
     }
@@ -1032,13 +1038,13 @@ export default function App() {
   }, [save, send, paletteOpen, cycleTab, closeActiveTab, newRequestShortcut, jumpToTab])
 
   // Cmd+W arrives from the main process (it must block the menu accelerator).
-  const closeActiveTabRef = useRef(closeActiveTab)
-  useEffect(() => {
-    closeActiveTabRef.current = closeActiveTab
-  })
+  // Native menu items (menu.ts) fan out through the shortcut channel. The ref is
+  // repopulated each render with the latest callbacks, while the IPC listener is
+  // registered exactly once so menu clicks always hit current handlers.
+  const menuActionsRef = useRef<Record<string, () => void>>({})
   useEffect(() => {
     window.tiger?.onShortcut?.((name) => {
-      if (name === 'close-tab') closeActiveTabRef.current()
+      menuActionsRef.current[name]?.()
     })
   }, [])
 
@@ -1102,6 +1108,33 @@ export default function App() {
     },
     [selectRequest, applyOpenedCollection, toast]
   )
+
+  // Wire native menu items to the matching in-app actions. Keys match the action
+  // names emitted by menu.ts; the IPC listener above dispatches through this map.
+  menuActionsRef.current = {
+    'close-tab': closeActiveTab,
+    'new-request': newRequestShortcut,
+    'new-collection': newCollection,
+    'open-collection': openCollection,
+    send,
+    save,
+    'command-palette': () => setPaletteOpen(true),
+    'import-export': () => setModal('io'),
+    settings: () => setView('settings'),
+    environments: () => setModal('env'),
+    history: () => setModal('history'),
+    shortcuts: () => setModal('shortcuts'),
+    'check-update': () => {
+      window.tiger?.checkUpdate?.().then((info) => {
+        if (info) {
+          setUpdate(info)
+          setUpdateModalOpen(true)
+        } else {
+          toast("You're on the latest version")
+        }
+      })
+    }
+  }
 
   const importFromCurl = useCallback(
     async (command: string) => {
