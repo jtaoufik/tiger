@@ -102,3 +102,31 @@ jobs:
             release/*.exe
             release/*.AppImage
             release/*.deb
+            release/*.zip
+
+  # Keep only the release for the tag that just shipped. Runs once after every
+  # matrix build attached its installers, so the new release is fully populated
+  # before we delete the previous ones. Git tags are intentionally preserved
+  # (cheap, and `compare/` diff links rely on them).
+  cleanup-old-releases:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete previous GitHub releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release list --repo "$REPO" --limit 200 \
+            --json tagName --jq '.[].tagName' \
+            | grep -vx "$CURRENT_TAG" \
+            | while read -r tag; do
+                [ -n "$tag" ] || continue
+                echo "Deleting release $tag"
+                gh release delete "$tag" --repo "$REPO" --yes
+              done
