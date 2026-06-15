@@ -123,8 +123,8 @@ jobs:
         run: |
           set -euo pipefail
           gh release list --repo "$REPO" --limit 200 \
-            --json tagName --jq '.[].tagName' \
-            | grep -vx "$CURRENT_TAG" \
+            --json tagName \
+            --jq ".[] | select(.tagName != \"$CURRENT_TAG\") | .tagName" \
             | while read -r tag; do
                 [ -n "$tag" ] || continue
                 echo "Deleting release $tag"
