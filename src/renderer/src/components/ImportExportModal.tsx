@@ -16,11 +16,11 @@ interface Props {
 }
 
 const IMPORTS: Array<{ kind: ImportKind; title: string; desc: string }> = [
-  { kind: 'postman', title: 'Postman', desc: 'Collection v2.0 / v2.1 (.json)' },
-  { kind: 'bruno', title: 'Bruno', desc: 'A folder of .bru files' },
-  { kind: 'openapi', title: 'OpenAPI / Swagger', desc: 'OpenAPI 3 or Swagger 2 (.json / .yaml)' },
-  { kind: 'insomnia', title: 'Insomnia', desc: 'Insomnia v4 export (.json / .yaml)' },
-  { kind: 'wsdl', title: 'WSDL / SOAP', desc: 'WSDL 1.1 / 1.2 service (.wsdl / .xml)' }
+  { kind: 'postman', title: 'Postman', desc: 'A .json file, many files, or a folder' },
+  { kind: 'bruno', title: 'Bruno', desc: 'A folder of .bru files (nested OK)' },
+  { kind: 'openapi', title: 'OpenAPI / Swagger', desc: 'A .json / .yaml spec, many, or a folder' },
+  { kind: 'insomnia', title: 'Insomnia', desc: 'A .json / .yaml export, many, or a folder' },
+  { kind: 'wsdl', title: 'WSDL / SOAP', desc: 'A .wsdl / .xml service, many, or a folder' }
 ]
 
 export function ImportExportModal({

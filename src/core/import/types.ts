@@ -1,4 +1,4 @@
-import type { TigerRequest } from '../types'
+import type { TigerEnvironment, TigerRequest } from '../types'
 
 /** A request plus the folder path it lives under within a collection. */
 export interface ImportedRequest {
@@ -12,4 +12,5 @@ export interface ImportResult {
   name: string
   source: ImportSource
   requests: ImportedRequest[]
+  environments?: TigerEnvironment[]
 }

@@ -1,5 +1,5 @@
 export { importPostman } from './postman'
-export { importBrunoRequest } from './bruno'
+export { importBrunoRequest, importBrunoEnvironment } from './bruno'
 export { importOpenApi } from './openapi'
 export { importInsomnia } from './insomnia'
 export { importWsdl } from './wsdl'

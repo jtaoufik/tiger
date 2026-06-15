@@ -1202,32 +1202,41 @@ export default function App() {
 
   const loadImport = useCallback(
     (kind: ImportKind) => {
-      window.tiger?.importCollection(kind).then((result) => {
-        if (!result) return
-        const colId = `import-${++importCount.current}`
-        const entries: SidebarEntry[] = result.requests.map((r, i) => ({
-          id: `${colId}${SEP}${i}`,
-          name: r.request.name,
-          method: r.request.method,
-          folderPath: r.path
-        }))
-        reviveIds(entries.map((e) => e.id))
-        setCollections((prev) => [
-          ...prev,
-          { id: colId, name: result.name, entries, environments: [] }
-        ])
-        setRequestsById((prev) => ({
-          ...prev,
-          ...Object.fromEntries(result.requests.map((r, i) => [`${colId}${SEP}${i}`, r.request]))
-        }))
-        setModal('none')
-        if (entries[0]) {
-          openTab({ kind: 'request', id: entries[0].id })
-          setActiveId(entries[0].id)
-        }
-        toast(`Imported ${entries.length} requests from ${result.name}`)
-        trackEvent(events.collectionImported(result.source, result.requests.length))
-      })
+      window.tiger
+        ?.importCollection(kind)
+        .then((result) => {
+          if (!result) return
+          if (result.requests.length === 0) {
+            toast(`No importable requests found in ${result.name}`)
+            return
+          }
+          const colId = `import-${++importCount.current}`
+          const entries: SidebarEntry[] = result.requests.map((r, i) => ({
+            id: `${colId}${SEP}${i}`,
+            name: r.request.name,
+            method: r.request.method,
+            folderPath: r.path
+          }))
+          reviveIds(entries.map((e) => e.id))
+          setCollections((prev) => [
+            ...prev,
+            { id: colId, name: result.name, entries, environments: result.environments ?? [] }
+          ])
+          setRequestsById((prev) => ({
+            ...prev,
+            ...Object.fromEntries(result.requests.map((r, i) => [`${colId}${SEP}${i}`, r.request]))
+          }))
+          setModal('none')
+          if (entries[0]) {
+            openTab({ kind: 'request', id: entries[0].id })
+            setActiveId(entries[0].id)
+          }
+          toast(`Imported ${entries.length} requests from ${result.name}`)
+          trackEvent(events.collectionImported(result.source, result.requests.length))
+        })
+        .catch((err: unknown) =>
+          toast(`Import failed: ${err instanceof Error ? err.message : String(err)}`)
+        )
     },
     [openTab, reviveIds, toast]
   )
