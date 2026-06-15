@@ -68,6 +68,7 @@ Full breakdown: https://jtaoufik.github.io/tiger/compare/
 - **Multipart and file upload.** multipart/form-data bodies mix text fields and file rows with a per-row file picker; file paths live in the .tiger format as @file: values.
 - **Response power tools.** Search inside any response with Cmd/Ctrl+F (match cycling and highlights), preview HTML responses in a sandboxed frame, and view image responses inline.
 - **Keyboard-first.** A shortcuts overlay on Cmd/Ctrl+/, tab cycling, close-tab, quick-create, and focus-URL shortcuts. Inline rename (double-click or F2) and drag-and-drop to move requests between folders.
+- **Native application menu.** A proper File / Edit / Request / View / Window / Help menu that lists every core action with its shortcut, on macOS, Windows, and Linux. The window remembers its size, position, and maximized state between launches.
 - **Import and export Postman, OpenAPI, and more.** Import a Postman v2.0/v2.1 export, an Insomnia v4 export, a Bruno folder, an OpenAPI 3 / Swagger 2 spec, or a pasted curl command. Export collections back to Postman v2.1 or OpenAPI 3.0, and single requests as `.tiger` or curl.
 - **Code generation.** Turn any request into a curl command or a JavaScript fetch snippet.
 - **Cookie jar.** Persist cookies between sends and sessions, with automatic cross-origin stripping on redirects.
@@ -190,7 +191,8 @@ Tiger sends anonymous usage analytics by default: app opened, request sent (meth
 src/core      Pure TypeScript: format, interpolation, auth, request building,
               response formatting, captures, importers, exporters, codegen.
               No DOM, no Node dependency. Fully unit-tested.
-src/main      Electron main process: windows, file IO, HTTP, settings, history.
+src/main      Electron main process: windows, application menu, file IO, HTTP,
+              settings, history.
 src/preload   The narrow, typed IPC bridge.
 src/renderer  React UI (glass).
 src/mcp       The MCP server (stdio) and its filesystem store.

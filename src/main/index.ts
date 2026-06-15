@@ -1,7 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, screen, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
+import { buildAppMenu } from './menu'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import {
   applyNetworkSettings,
@@ -38,14 +39,35 @@ import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
+/** Was this saved position still visible on a connected display? */
+function isOnScreen(state: { x?: number; y?: number; width: number; height: number }): boolean {
+  if (state.x === undefined || state.y === undefined) return false
+  return screen.getAllDisplays().some((d) => {
+    const a = d.workArea
+    return (
+      state.x! < a.x + a.width &&
+      state.x! + state.width > a.x &&
+      state.y! < a.y + a.height &&
+      state.y! + state.height > a.y
+    )
+  })
+}
+
 function createWindow(): void {
   const settings = loadSettings()
   const dark =
     settings.theme === 'dark' || (settings.theme === 'system' && nativeTheme.shouldUseDarkColors)
 
+  // Reopen at the last size/position; fall back to a sensible default and ignore
+  // an off-screen position (e.g. an external monitor that's no longer attached).
+  const saved = settings.window
+  const placeable = saved && isOnScreen(saved)
+
   const win = new BrowserWindow({
-    width: 1180,
-    height: 760,
+    width: saved?.width ?? 1180,
+    height: saved?.height ?? 760,
+    x: placeable ? saved!.x : undefined,
+    y: placeable ? saved!.y : undefined,
     minWidth: 880,
     minHeight: 560,
     show: false,
@@ -63,23 +85,36 @@ function createWindow(): void {
     }
   })
 
+  if (saved?.maximized) win.maximize()
+
   win.once('ready-to-show', () => win.show())
 
-  // Cmd/Ctrl+W must close the active TAB, not the window. The default menu's
-  // Close accelerator fires before the page sees the key, so intercept here:
-  // preventDefault blocks the menu shortcut and we forward the intent to the
-  // renderer instead.
-  win.webContents.on('before-input-event', (event, input) => {
-    if (
-      input.type === 'keydown' &&
-      (input.meta || input.control) &&
-      !input.alt &&
-      input.key.toLowerCase() === 'w'
-    ) {
-      event.preventDefault()
-      win.webContents.send('tiger:shortcut', 'close-tab')
-    }
+  // Remember the window geometry. getNormalBounds() reports the restored size even
+  // while maximized, so unmaximizing later returns to a sensible window. Debounced
+  // so a drag-resize doesn't hammer the settings file.
+  let saveTimer: ReturnType<typeof setTimeout> | null = null
+  const rememberBounds = (): void => {
+    if (win.isDestroyed() || win.isMinimized()) return
+    const b = win.getNormalBounds()
+    saveSettings({
+      window: { width: b.width, height: b.height, x: b.x, y: b.y, maximized: win.isMaximized() }
+    })
+  }
+  const scheduleRemember = (): void => {
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(rememberBounds, 400)
+  }
+  win.on('resize', scheduleRemember)
+  win.on('move', scheduleRemember)
+  win.on('maximize', scheduleRemember)
+  win.on('unmaximize', scheduleRemember)
+  win.on('close', () => {
+    if (saveTimer) clearTimeout(saveTimer)
+    rememberBounds()
   })
+
+  // ⌘W / Ctrl+W closes the active tab, not the window: the "Close Tab" menu item
+  // owns that accelerator (see menu.ts) and forwards the intent to the renderer.
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
@@ -300,6 +335,7 @@ app.whenReady().then(() => {
 
   registerIpc()
   applyNetworkSettings()
+  buildAppMenu()
   createWindow()
   initAutoUpdate()
 

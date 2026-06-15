@@ -5,10 +5,22 @@ import { randomUUID } from 'node:crypto'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
+/** Last window geometry, persisted so the app reopens where you left it. */
+export interface WindowState {
+  width: number
+  height: number
+  x?: number
+  y?: number
+  maximized: boolean
+}
+
 export interface Settings {
   theme: ThemeChoice
   timeoutMs: number
   fontSize: number
+
+  /** Restored on launch; absent until the first window resize/move/close. */
+  window?: WindowState
 
   // Network / advanced
   followRedirects: boolean

@@ -3,6 +3,15 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.5.0
+
+- Native application menu: a proper File / Edit / Request / View / Window / Help layout that surfaces every core action (New Request, New/Open Collection, Import / Export, Send, Save, Command Palette, Environments, History, Keyboard Shortcuts) with its accelerator, on macOS, Windows and Linux. Replaces Electron's stock default menu, so there is no developer-only Reload / DevTools clutter for end users and no off-topic Help links. Developer tools stay available in development builds only.
+- Window state is remembered between launches: Tiger reopens at the size and position you left it, and restores a maximized window. A position on a display that is no longer connected is ignored and falls back to the default placement.
+- Windows: the Tiger logo in the titlebar now sits flush at the leading edge instead of being offset by the macOS-only traffic-light padding.
+- Dark mode: declare `color-scheme: dark` on the renderer so Chromium paints native form controls in the matching theme. This fixes the white patches around the method dropdown and scrollbars, and the black `GET` / `POST` / … labels in the method `<select>` on Windows.
+- Windows packaging now produces a portable `.zip` (`Tiger-Portable-<version>-windows-x64.zip`) alongside the NSIS installer and the portable `.exe`.
+- Releases: publishing a new tag deletes prior GitHub releases so the downloads page always points at the current build. Git tags are preserved.
+
 ## 0.4.1
 
 - WSDL / SOAP import now produces ready-to-send requests. The operation's parameters are expanded from the WSDL `<types>` schema into the SOAP body, the mandatory `SOAPAction` header is always sent for SOAP 1.1 (even when empty), and a single SOAP binding is used so operations are no longer duplicated across SOAP 1.1 and 1.2; non-SOAP HTTP bindings are ignored.
