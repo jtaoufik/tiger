@@ -1,6 +1,6 @@
 {
   "name": "tiger-api-client",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
   "author": {
     "name": "Taoufik Jabbari",

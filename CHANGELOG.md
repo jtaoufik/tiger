@@ -3,6 +3,10 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.5.2
+
+- Clone from Git no longer fails silently when credentials are missing. Git operations run with `GIT_TERMINAL_PROMPT=0` so the Electron process never hangs on a hidden prompt; the side-effect was that a private HTTPS clone with no credential helper surfaced the cryptic `fatal: could not read Username for 'https://…': terminal prompts disabled`. Clone, push, pull, fetch and sync now translate that case — and the common SSH-key, bad-PAT, repo-not-found and host-unreachable errors — into a one-line message the user can act on.
+
 ## 0.5.1
 
 - Response viewer no longer freezes on multi-megabyte bodies. Past 1 MB the panel only renders a leading slice of the body into the DOM and surfaces a banner ("Body truncated to 1 MB for performance…"); Copy and Save still operate on the full response. Previously a ~10 MB JSON body would stall the renderer because it was pushed as a single `white-space: pre` text node into the layout.

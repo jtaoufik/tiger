@@ -1,7 +1,7 @@
 {
-  "version": "0.5.1",
+  "version": "0.5.2",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Response viewer no longer freezes on multi-MB bodies: the panel renders at most 1 MB into the DOM and offers Copy / Save for the full response"
+    "Clone / push / pull / sync now explain credential, SSH-key, repository and network failures in plain language instead of surfacing git's cryptic 'terminal prompts disabled' line"
   ]
 }

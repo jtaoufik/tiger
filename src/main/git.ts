@@ -46,6 +46,33 @@ function run(
   })
 }
 
+/**
+ * Network git commands run with GIT_TERMINAL_PROMPT=0 so the Electron process
+ * never hangs on a hidden prompt. That makes the typical "no credentials"
+ * failure surface as a cryptic "terminal prompts disabled" line. Translate the
+ * common auth, host and access errors into a message the user can act on, and
+ * fall back to git's own last stderr line for anything we don't recognise.
+ */
+export function translateGitError(stderr: string, fallback: string): string {
+  const text = stderr.toLowerCase()
+  if (/terminal prompts disabled|could not read username|could not read password/.test(text)) {
+    return 'Authentication required. Set up a Git credential helper, or use an SSH URL with a key in your agent.'
+  }
+  if (/permission denied \(publickey\)/.test(text)) {
+    return 'SSH key not accepted. Add the right key to your SSH agent (e.g. ssh-add ~/.ssh/id_ed25519).'
+  }
+  if (/authentication failed|http basic: access denied|invalid username or password/.test(text)) {
+    return 'Authentication failed. Check your username and personal access token.'
+  }
+  if (/repository not found|remote: not found/.test(text)) {
+    return 'Repository not found. Check the URL, or verify your account has access.'
+  }
+  if (/could not resolve host|name or service not known|temporary failure in name resolution/.test(text)) {
+    return 'Could not reach the host. Check your network or the repository URL.'
+  }
+  return fallback
+}
+
 export async function gitAvailable(): Promise<GitAvailability> {
   const result = await run(['--version'])
   return result.ok
@@ -120,7 +147,13 @@ export async function gitFetch(root: string): Promise<GitActionResult> {
   const result = await run(['fetch', '--quiet'], root, 30000)
   return result.ok
     ? { ok: true, message: 'Refreshed from remote' }
-    : { ok: false, message: result.stderr.trim().split('\n').pop() || 'Fetch failed' }
+    : {
+        ok: false,
+        message: translateGitError(
+          result.stderr,
+          result.stderr.trim().split('\n').pop() || 'Fetch failed'
+        )
+      }
 }
 
 export async function gitDiff(root: string): Promise<string> {
@@ -148,7 +181,13 @@ export async function gitPull(root: string): Promise<GitActionResult> {
   const result = await run(['pull', '--ff-only'], root, 30000)
   return result.ok
     ? { ok: true, message: result.stdout.trim().split('\n').pop() || 'Up to date' }
-    : { ok: false, message: result.stderr.trim().split('\n').pop() || 'Pull failed' }
+    : {
+        ok: false,
+        message: translateGitError(
+          result.stderr,
+          result.stderr.trim().split('\n').pop() || 'Pull failed'
+        )
+      }
 }
 
 export async function gitPush(root: string): Promise<GitActionResult> {
@@ -156,7 +195,7 @@ export async function gitPush(root: string): Promise<GitActionResult> {
   const lastLine = (text: string) => text.trim().split('\n').pop() || ''
   return result.ok
     ? { ok: true, message: lastLine(result.stderr) || lastLine(result.stdout) || 'Pushed' }
-    : { ok: false, message: lastLine(result.stderr) || 'Push failed' }
+    : { ok: false, message: translateGitError(result.stderr, lastLine(result.stderr) || 'Push failed') }
 }
 
 export async function gitInit(root: string): Promise<GitActionResult> {
@@ -195,7 +234,7 @@ export async function gitSync(root: string, message: string): Promise<GitActionR
         ok: false,
         message: conflicting
           ? 'Your changes and the team changes overlap. Open the folder in your editor to resolve the conflicts, then sync again.'
-          : `Could not fetch team updates: ${detail || 'pull failed'}`
+          : `Could not fetch team updates: ${translateGitError(pull.stderr, detail || 'pull failed')}`
       }
     }
     const push = await gitPush(root)
@@ -293,7 +332,13 @@ export async function gitClone(url: string, targetDir: string): Promise<GitActio
   const result = await run(['clone', url.trim(), targetDir], undefined, 60000)
   return result.ok
     ? { ok: true, message: `Cloned into ${targetDir}` }
-    : { ok: false, message: result.stderr.trim().split('\n').pop() || 'Clone failed' }
+    : {
+        ok: false,
+        message: translateGitError(
+          result.stderr,
+          result.stderr.trim().split('\n').pop() || 'Clone failed'
+        )
+      }
 }
 
 export function repoNameFromUrl(url: string): string {
