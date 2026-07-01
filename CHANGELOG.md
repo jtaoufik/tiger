@@ -3,6 +3,16 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.6.0
+
+- Sync conflicts are now resolved inside Tiger. When you and a teammate change the same thing, the sync card asks whose version should win where the changes overlap: "Keep my version" or "Use the team's version". Everything that does not overlap is combined automatically, and the shared history keeps both sides. No editor, no merge tools, no git knowledge required.
+- Team sync leads with plain language. The sync panel shows what you changed (Edited / New / Deleted, by request name), an optional "Describe your changes" note, and one Sync button. Branches, pull, push, commit, diff and history moved behind an Advanced section for people who want them.
+- Windows: right-clicking any text field now shows the native Cut / Copy / Paste menu, file dialogs open attached to the Tiger window instead of behind it, "Show in Explorer" highlights the file reliably, and the Help menu gains "Check for Updates" and a proper About box. Fixed a bug where renaming a folder could silently detach the requests inside it and resurrect the old folder on the next save.
+- macOS: entering full screen no longer leaves a gap where the traffic lights were, and Control-based text editing shortcuts (Ctrl+K, Ctrl+T, Ctrl+F) keep their standard meaning inside inputs instead of triggering app actions.
+- Closing the window with unsaved request edits now warns before discarding them.
+- Keyboard shortcut labels match the platform everywhere (Cmd on macOS, Ctrl elsewhere), the shortcuts overlay documents every binding including Cmd/Ctrl+F response search and F2 rename, and the Windows key no longer triggers app shortcuts.
+- Polish: rename and confirmation dialogs focus the right control so Enter works immediately, context menus stay inside the window and support arrow-key navigation, clearing history asks for confirmation, sidebar rows are keyboard-focusable, and animations respect the system reduced-motion setting.
+
 ## 0.5.2
 
 - Clone from Git no longer fails silently when credentials are missing. Git operations run with `GIT_TERMINAL_PROMPT=0` so the Electron process never hangs on a hidden prompt; the side-effect was that a private HTTPS clone with no credential helper surfaced the cryptic `fatal: could not read Username for 'https://…': terminal prompts disabled`. Clone, push, pull, fetch and sync now translate that case — and the common SSH-key, bad-PAT, repo-not-found and host-unreachable errors — into a one-line message the user can act on.

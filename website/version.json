@@ -1,7 +1,11 @@
 {
-  "version": "0.5.2",
+  "version": "0.6.0",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Clone / push / pull / sync now explain credential, SSH-key, repository and network failures in plain language instead of surfacing git's cryptic 'terminal prompts disabled' line"
+    "Sync conflicts resolve in-app: keep my version or use the team's, one click, no merge tools",
+    "Team sync panel speaks plain language; branches, push, pull and diffs move behind Advanced",
+    "Windows: native right-click paste on inputs, parented dialogs, folder-rename fix, Check for Updates in Help",
+    "macOS: fullscreen titlebar gap fixed; Ctrl text-editing shortcuts no longer hijacked",
+    "Warns before closing the window with unsaved edits; platform-correct shortcut labels everywhere"
   ]
 }
