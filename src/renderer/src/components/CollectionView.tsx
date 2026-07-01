@@ -3,6 +3,7 @@ import type { TigerAuth } from '@core/types'
 import type { GitStatus } from '../../../main/git'
 import type { HistoryEntry } from '../../../main/history'
 import { AuthEditor } from './AuthEditor'
+import { REVEAL_LABEL } from '../platform'
 import './PageTabs.css'
 import {
   CheckIcon,
@@ -38,6 +39,8 @@ interface Props {
   onImportExport: () => void
   onClose: () => void
   onOpenGitDetails: () => void
+  /** Sync can rewrite .tiger files on disk; App must drop stale in-memory copies. */
+  onWorkingTreeChanged?: () => void
 }
 
 type SyncScreen = 'loading' | 'browser' | 'no-git' | 'no-repo' | 'no-remote' | 'ready'
@@ -56,13 +59,15 @@ export function CollectionView({
   onNewRequest,
   onImportExport,
   onClose,
-  onOpenGitDetails
+  onOpenGitDetails,
+  onWorkingTreeChanged
 }: Props) {
   const [pageTab, setPageTab] = useState<'overview' | 'docs' | 'auth' | 'activity'>('overview')
   const [screen, setScreen] = useState<SyncScreen>('loading')
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [remoteUrl, setRemoteUrl] = useState('')
   const [busy, setBusy] = useState(false)
+  const [conflict, setConflict] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!collection.root || !window.tiger?.git) return setScreen('browser')
@@ -89,6 +94,41 @@ export function CollectionView({
       }
     },
     [onToast, refresh]
+  )
+
+  /** One-button sync; a conflict flips the card to "keep mine / take theirs". */
+  const doSync = useCallback(async () => {
+    setBusy(true)
+    try {
+      const result = await window.tiger!.git.sync(collection.root!, '')
+      if (result.conflict) {
+        setConflict(true)
+      } else {
+        onToast(result.message)
+        if (result.ok) onWorkingTreeChanged?.()
+      }
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }, [collection.root, onToast, onWorkingTreeChanged, refresh])
+
+  const doResolve = useCallback(
+    async (prefer: 'mine' | 'theirs') => {
+      setBusy(true)
+      try {
+        const result = await window.tiger!.git.syncResolve(collection.root!, prefer, '')
+        onToast(result.message)
+        if (result.ok) {
+          setConflict(false)
+          onWorkingTreeChanged?.()
+        }
+        await refresh()
+      } finally {
+        setBusy(false)
+      }
+    },
+    [collection.root, onToast, onWorkingTreeChanged, refresh]
   )
 
   const summary = !status
@@ -121,7 +161,7 @@ export function CollectionView({
         {collection.root && (
           <button
             className="icon-btn"
-            title="Reveal in file manager"
+            title={REVEAL_LABEL}
             onClick={() => window.tiger?.reveal?.(collection.root!)}
           >
             <FolderOpenIcon />
@@ -251,20 +291,36 @@ export function CollectionView({
           </div>
         )}
 
-        {screen === 'ready' && status && (
+        {screen === 'ready' && status && conflict && (
+          <div className="git-conflict">
+            <b>You and a teammate changed the same thing.</b>
+            <p>
+              Pick whose version to keep where the changes overlap. Everything that doesn't
+              overlap is combined automatically, and the team's history keeps both.
+            </p>
+            <div className="git-conflict-actions">
+              <button className="btn accent" disabled={busy} onClick={() => doResolve('mine')}>
+                {busy ? 'Working…' : 'Keep my version'}
+              </button>
+              <button className="btn" disabled={busy} onClick={() => doResolve('theirs')}>
+                Use the team's version
+              </button>
+              <button className="btn ghost" disabled={busy} onClick={() => setConflict(false)}>
+                Decide later
+              </button>
+            </div>
+          </div>
+        )}
+
+        {screen === 'ready' && status && !conflict && (
           <div className="cv-sync-row">
             <div>
               <b>{summary}</b>
-              <div className="cv-dim">
-                Branch {status.branch ?? 'detached'}
-                {status.dirtyCount > 0 && ` · ${status.dirtyCount} file(s) changed`}
-              </div>
+              {status.dirtyCount > 0 && (
+                <div className="cv-dim">{status.dirtyCount} file(s) changed</div>
+              )}
             </div>
-            <button
-              className="btn accent"
-              disabled={busy}
-              onClick={() => act(() => window.tiger!.git.sync(collection.root!, ''))}
-            >
+            <button className="btn accent" disabled={busy} onClick={doSync}>
               {busy ? 'Syncing…' : 'Sync now'}
             </button>
             <button className="btn ghost" onClick={onOpenGitDetails}>

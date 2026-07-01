@@ -39,6 +39,7 @@ export function HistoryModal({
   )
   const [filter, setFilter] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
 
   const idSet = useMemo(() => new Set(collectionEntryIds), [collectionEntryIds])
 
@@ -89,9 +90,27 @@ export function HistoryModal({
             aria-label="Filter history"
           />
         </div>
-        <button className="btn ghost" onClick={onClear} title="Clear all history">
-          Clear
-        </button>
+        {confirmClear ? (
+          <>
+            {/* Same two-step confirm as Git discard: wiping history is irreversible. */}
+            <button
+              className="btn danger"
+              onClick={() => {
+                setConfirmClear(false)
+                onClear()
+              }}
+            >
+              Clear everything
+            </button>
+            <button className="btn ghost" onClick={() => setConfirmClear(false)}>
+              Keep
+            </button>
+          </>
+        ) : (
+          <button className="btn ghost" onClick={() => setConfirmClear(true)} title="Clear all history">
+            Clear
+          </button>
+        )}
       </div>
 
       {visible.length === 0 ? (

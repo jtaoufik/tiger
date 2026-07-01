@@ -6,6 +6,7 @@ import { Logo } from '../Logo'
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CloseIcon, CopyIcon, SaveIcon, SearchIcon, WrapIcon } from './Icons'
 import { JsonView } from './JsonView'
 import './ResponsePanel.css'
+import { MOD } from '../platform'
 
 // Hard cap on what we render into the DOM. A multi-MB body laid out as
 // `white-space: pre` is what froze the viewer on big responses; past this
@@ -54,11 +55,14 @@ export function ResponsePanel({ state }: Props) {
   const activeMarkRef = useRef<HTMLElement>(null)
   const hasData = !!state?.data
 
-  // Cmd/Ctrl+F opens search whenever a response is on screen.
+  // Cmd/Ctrl+F opens search whenever a response is on screen. Strictly the
+  // platform modifier: Ctrl+F must keep its cursor-forward meaning on macOS,
+  // and the Windows key must not trigger it on Windows.
   useEffect(() => {
     if (!hasData) return
+    const isMac = /Mac/i.test(navigator.platform)
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         setTab('body')
         setSearchOpen(true)
@@ -211,7 +215,7 @@ export function ResponsePanel({ state }: Props) {
         {tab === 'body' && (
           <button
             className="icon-btn"
-            title="Search in response (Cmd/Ctrl+F)"
+            title={`Search in response (${MOD}+F)`}
             style={searchOpen ? { color: 'var(--accent)' } : undefined}
             onClick={() => {
               setSearchOpen((o) => !o)

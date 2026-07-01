@@ -1,9 +1,9 @@
 import { Modal } from './Modal'
 import './ShortcutsModal.css'
 
-const IS_MAC = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
-/** Platform modifier label: Cmd on macOS, Ctrl elsewhere. */
-export const MOD = IS_MAC ? 'Cmd' : 'Ctrl'
+// Re-exported so existing imports keep working; the source of truth is platform.ts.
+export { IS_MAC, MOD } from '../platform'
+import { IS_MAC, MOD } from '../platform'
 
 interface Shortcut {
   keys: string[]
@@ -15,6 +15,9 @@ const GROUPS: Array<{ title: string; items: Shortcut[] }> = [
     title: 'General',
     items: [
       { keys: [MOD, 'K'], what: 'Command palette: jump to any request' },
+      { keys: [MOD, 'N'], what: 'New collection' },
+      { keys: [MOD, 'O'], what: 'Open collection' },
+      ...(IS_MAC ? [{ keys: [MOD, ','], what: 'Settings' }] : []),
       { keys: [MOD, '/'], what: 'Show this shortcuts overlay' }
     ]
   },
@@ -24,7 +27,9 @@ const GROUPS: Array<{ title: string; items: Shortcut[] }> = [
       { keys: [MOD, 'Enter'], what: 'Send the request' },
       { keys: [MOD, 'S'], what: 'Save the request to disk' },
       { keys: [MOD, 'T'], what: 'New request in the active collection' },
-      { keys: [MOD, 'L'], what: 'Focus the URL bar' }
+      { keys: [MOD, 'L'], what: 'Focus the URL bar' },
+      { keys: [MOD, 'F'], what: 'Search in the response' },
+      { keys: ['F2'], what: 'Rename the selected request' }
     ]
   },
   {

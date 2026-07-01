@@ -55,6 +55,8 @@ const api = {
     init: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:init', root),
     sync: (root: string, message: string): Promise<GitActionResult> =>
       ipcRenderer.invoke('tiger:git:sync', root, message),
+    syncResolve: (root: string, prefer: 'mine' | 'theirs', message: string): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:syncResolve', root, prefer, message),
     setRemote: (root: string, url: string): Promise<GitActionResult> =>
       ipcRenderer.invoke('tiger:git:setRemote', root, url),
     branches: (root: string): Promise<GitBranches> => ipcRenderer.invoke('tiger:git:branches', root),
@@ -72,6 +74,12 @@ const api = {
   },
   onShortcut: (cb: (name: string) => void): void => {
     ipcRenderer.on('tiger:shortcut', (_e, name) => cb(name))
+  },
+  onFullscreen: (cb: (state: boolean) => void): void => {
+    ipcRenderer.on('tiger:fullscreen', (_e, state) => cb(state))
+  },
+  setDirty: (dirty: boolean): void => {
+    ipcRenderer.send('tiger:dirtyState', dirty)
   },
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),
   reveal: (path: string): Promise<void> => ipcRenderer.invoke('tiger:reveal', path),

@@ -16,8 +16,15 @@ export function Modal({ title, onClose, children, width = 560 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Focus the dialog container so focus trap works immediately
-    dialogRef.current?.focus()
+    // If a child already claimed focus (autoFocus inputs — e.g. PromptModal's
+    // name field), leave it alone; passive effects run after React applies
+    // autoFocus, so grabbing focus here would silently defeat it. Otherwise
+    // land on the first focusable control so keyboard users can type/Enter
+    // right away, with the container as a last resort for the focus trap.
+    const dialog = dialogRef.current
+    if (!dialog || dialog.contains(document.activeElement)) return
+    const first = dialog.querySelector<HTMLElement>(FOCUSABLE)
+    ;(first ?? dialog).focus()
   }, [])
 
   useEffect(() => {

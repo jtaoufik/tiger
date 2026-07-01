@@ -13,7 +13,8 @@ export function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel
     <Modal title={title} onClose={onCancel} width={420}>
       <p style={{ margin: '0 0 18px', color: 'var(--text-dim)' }}>{message}</p>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button className="btn" onClick={onCancel}>
+        {/* Cancel gets initial focus: Enter on a destructive dialog must be safe. */}
+        <button className="btn" autoFocus onClick={onCancel}>
           Cancel
         </button>
         <button className="btn danger" onClick={onConfirm}>

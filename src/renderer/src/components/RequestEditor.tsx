@@ -10,6 +10,7 @@ import {
 import type { BuiltRequest } from '@core/request'
 import { formatJsonText, isValidJson, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
+import { MOD } from './ShortcutsModal'
 import { CodePane } from './CodePane'
 import { MultipartEditor } from './MultipartEditor'
 import { PerfPane } from './PerfPane'
@@ -101,7 +102,7 @@ export function RequestEditor({
         {diskBacked && (
           <button
             className="icon-btn save-btn"
-            title={dirty ? 'Unsaved changes — Save (⌘S)' : 'Save (⌘S)'}
+            title={dirty ? `Unsaved changes — Save (${MOD}+S)` : `Save (${MOD}+S)`}
             onClick={onSave}
           >
             <SaveIcon />
@@ -138,7 +139,7 @@ export function RequestEditor({
             Cancel
           </button>
         ) : (
-          <button className="btn accent" onClick={onSend} title="Send (⌘↵)">
+          <button className="btn accent" onClick={onSend} title={`Send (${MOD}+Enter)`}>
             Send
           </button>
         )}

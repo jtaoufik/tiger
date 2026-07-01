@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
 import './Sidebar.css'
+import { MOD } from '../platform'
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -221,6 +222,16 @@ export function Sidebar({
         style={{ paddingLeft: 8 + depth * 16 }}
         data-entry-id={entry.id}
         draggable={!isRenaming}
+        role="treeitem"
+        aria-selected={entry.id === activeId}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (isRenaming) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelect(entry.id)
+          }
+        }}
         onDragStart={(e) => {
           e.dataTransfer.setData(
             'application/x-tiger-request',
@@ -485,31 +496,31 @@ export function Sidebar({
                       return (
                         <span
                           className="sync-chips"
-                          title="Git status — click to open"
+                          title="Team sync — click to open"
                           onClick={(e) => {
                             e.stopPropagation()
                             onGit(col.id)
                           }}
                         >
                           {sync.dirtyCount > 0 && (
-                            <span className="git-chip dirty" title={`${sync.dirtyCount} uncommitted change(s)`}>
+                            <span className="git-chip dirty" title={`${sync.dirtyCount} change(s) not yet shared`}>
                               {sync.dirtyCount}
                             </span>
                           )}
                           {sync.ahead > 0 && (
-                            <span className="git-chip ahead" title={`${sync.ahead} commit(s) to push`}>
+                            <span className="git-chip ahead" title={`${sync.ahead} update(s) ready to share`}>
                               <ArrowUpIcon size={10} />
                               {sync.ahead}
                             </span>
                           )}
                           {sync.behind > 0 && (
-                            <span className="git-chip behind" title={`${sync.behind} commit(s) to pull`}>
+                            <span className="git-chip behind" title={`${sync.behind} team update(s) to fetch`}>
                               <ArrowDownIcon size={10} />
                               {sync.behind}
                             </span>
                           )}
                           {clean && (
-                            <span className="git-chip synced" title="Synced with remote">
+                            <span className="git-chip synced" title="In sync with your team">
                               <CheckIcon size={10} />
                             </span>
                           )}
@@ -518,13 +529,13 @@ export function Sidebar({
                     })()}
                     <span className="row-actions" onClick={(e) => e.stopPropagation()}>
                       {col.root && (
-                        <button className="icon-btn" title="Git" onClick={() => onGit(col.id)}>
+                        <button className="icon-btn" title="Team sync" onClick={() => onGit(col.id)}>
                           <GitBranchIcon size={13} />
                         </button>
                       )}
                       <button
                         className="icon-btn"
-                        title="New request (Cmd/Ctrl+T)"
+                        title={`New request (${MOD}+T)`}
                         onClick={() => onNewRequest(col.id)}
                       >
                         <PlusIcon size={13} />

@@ -15,6 +15,15 @@ export interface RequestEntry {
 
 const ENVIRONMENTS_DIR = 'environments'
 
+/**
+ * Every path handed to the renderer is normalized to forward slashes. The
+ * renderer builds and compares paths with '/' (they double as stable ids), and
+ * Windows backslash paths would silently break those comparisons — e.g. a
+ * folder rename desyncing the requests inside it. Node's fs accepts forward
+ * slashes on Windows, so paths coming back over IPC need no translation.
+ */
+const norm = (p: string): string => (sep === '\\' ? p.split(sep).join('/') : p)
+
 async function readMeta(path: string): Promise<{ name: string; method: HttpMethod }> {
   try {
     const r = parseRequest(await readFile(path, 'utf8'))
@@ -39,7 +48,7 @@ async function walk(root: string, dir: string, acc: RequestEntry[]): Promise<voi
     ) {
       const meta = await readMeta(full)
       const folder = relative(root, dir)
-      acc.push({ ...meta, path: full, folder: folder ? folder.split(sep) : [] })
+      acc.push({ ...meta, path: norm(full), folder: folder ? folder.split(sep) : [] })
     }
   }
 }
@@ -66,7 +75,7 @@ export async function readEnvironments(root: string): Promise<EnvironmentRef[]> 
       if (!entry.isFile() || !entry.name.endsWith('.tiger')) continue
       const full = join(dir, entry.name)
       const env = parseEnvironment(await readFile(full, 'utf8'))
-      out.push({ name: env.name || basename(entry.name, '.tiger'), path: full })
+      out.push({ name: env.name || basename(entry.name, '.tiger'), path: norm(full) })
     }
     return out
   } catch {
@@ -94,7 +103,7 @@ export async function readOpenedCollection(root: string): Promise<OpenedCollecti
     /* optional file */
   }
   return {
-    root,
+    root: norm(root),
     name: basename(root),
     requests: await readCollection(root),
     environments: await readEnvironments(root),

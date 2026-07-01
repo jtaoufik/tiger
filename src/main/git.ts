@@ -28,6 +28,12 @@ export interface GitStatus {
 export interface GitActionResult {
   ok: boolean
   message: string
+  /**
+   * The sync stopped because local and team changes overlap. The UI offers
+   * "keep mine" / "take theirs" and calls gitSyncResolve — never ask the user
+   * to resolve conflicts by hand.
+   */
+  conflict?: boolean
 }
 
 function run(
@@ -230,18 +236,77 @@ export async function gitSync(root: string, message: string): Promise<GitActionR
       await run(['merge', '--abort'], root)
       const detail = pull.stderr.trim().split('\n').pop() || pull.stdout.trim().split('\n').pop() || ''
       const conflicting = /conflict|merge|diverg/i.test(`${pull.stdout} ${pull.stderr}`)
-      return {
-        ok: false,
-        message: conflicting
-          ? 'Your changes and the team changes overlap. Open the folder in your editor to resolve the conflicts, then sync again.'
-          : `Could not fetch team updates: ${translateGitError(pull.stderr, detail || 'pull failed')}`
-      }
+      return conflicting
+        ? {
+            ok: false,
+            conflict: true,
+            message: 'You and a teammate changed the same thing.'
+          }
+        : {
+            ok: false,
+            message: `Could not fetch team updates: ${translateGitError(pull.stderr, detail || 'pull failed')}`
+          }
     }
     const push = await gitPush(root)
     if (!push.ok) return { ok: false, message: `Could not share your changes: ${push.message}` }
     return { ok: true, message: 'Everything is in sync with your team' }
   }
   return { ok: true, message: 'Changes saved locally (no team remote configured)' }
+}
+
+/**
+ * Finish a sync that stopped on overlapping changes, without ever showing the
+ * user a merge tool. `prefer` picks the winning side for the overlapping parts
+ * only — everything that doesn't overlap is still combined from both sides
+ * (`git pull -X ours|theirs`). Falls back to a clean abort if git still can't
+ * finish (e.g. a file deleted on one side and edited on the other).
+ */
+export async function gitSyncResolve(
+  root: string,
+  prefer: 'mine' | 'theirs',
+  message: string
+): Promise<GitActionResult> {
+  const status = await gitStatus(root)
+  if (!status.isRepo) return { ok: false, message: 'This folder is not set up for syncing yet' }
+  if (status.dirtyCount > 0) {
+    const commit = await gitCommitAll(root, message || 'Update collection')
+    if (!commit.ok) return { ok: false, message: `Could not package your changes: ${commit.message}` }
+  }
+  await gitFetch(root)
+  // From the merge's point of view "ours" is the local side.
+  const side = prefer === 'mine' ? 'ours' : 'theirs'
+  const pull = await run(['pull', '--no-rebase', '-X', side], root, 30000)
+  if (!pull.ok) {
+    await run(['merge', '--abort'], root)
+    // -X can't settle edit-vs-delete conflicts. Redo the merge, then resolve
+    // each still-unmerged path by taking the chosen side (or deleting the file
+    // when the chosen side deleted it), and complete the merge commit.
+    await run(['pull', '--no-rebase', '--no-commit'], root, 30000)
+    const unmerged = await run(['diff', '--name-only', '--diff-filter=U'], root)
+    for (const path of unmerged.stdout.split('\n').filter(Boolean)) {
+      const take = await run(['checkout', `--${side}`, '--', path], root)
+      if (!take.ok) await run(['rm', '--force', '--quiet', '--', path], root)
+    }
+    const add = await run(['add', '-A'], root)
+    const commit = await run(['commit', '--no-edit'], root)
+    if (!add.ok || !commit.ok) {
+      await run(['merge', '--abort'], root)
+      const detail = pull.stderr.trim().split('\n').pop() || 'merge failed'
+      return {
+        ok: false,
+        message: `Could not combine the changes: ${translateGitError(pull.stderr, detail)}`
+      }
+    }
+  }
+  const push = await gitPush(root)
+  if (!push.ok) return { ok: false, message: `Could not share your changes: ${push.message}` }
+  return {
+    ok: true,
+    message:
+      prefer === 'mine'
+        ? 'Done — where they overlapped, your version won.'
+        : "Done — where they overlapped, the team's version won."
+  }
 }
 
 /**

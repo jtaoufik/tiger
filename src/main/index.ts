@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, screen, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
@@ -31,6 +31,7 @@ import {
   gitSetRemote,
   gitStatus,
   gitSync,
+  gitSyncResolve,
   repoNameFromUrl
 } from './git'
 import { sanitizeCollectionName } from '../core/newCollection'
@@ -52,6 +53,17 @@ function isOnScreen(state: { x?: number; y?: number; width: number; height: numb
     )
   })
 }
+
+/** Dialogs are parented to the app window so they can't pop up behind it (Windows). */
+function parentWindow(): BrowserWindow | undefined {
+  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+}
+
+/**
+ * The renderer reports whether any request has unsaved edits; the close handler
+ * uses it to warn before the window (and the edits) go away.
+ */
+let hasUnsavedChanges = false
 
 function createWindow(): void {
   const settings = loadSettings()
@@ -116,9 +128,60 @@ function createWindow(): void {
   win.on('move', scheduleRemember)
   win.on('maximize', scheduleRemember)
   win.on('unmaximize', scheduleRemember)
-  win.on('close', () => {
+  let closeConfirmed = false
+  win.on('close', (e) => {
+    // Unsaved request edits die with the window; warn once, close on confirm.
+    if (hasUnsavedChanges && !closeConfirmed) {
+      e.preventDefault()
+      dialog
+        .showMessageBox(win, {
+          type: 'warning',
+          message: 'You have unsaved changes',
+          detail: 'Closing now discards edits that are not saved yet.',
+          buttons: ['Close Anyway', 'Keep Editing'],
+          defaultId: 1,
+          cancelId: 1
+        })
+        .then(({ response }) => {
+          if (response === 0) {
+            closeConfirmed = true
+            win.close()
+          }
+        })
+      return
+    }
     if (saveTimer) clearTimeout(saveTimer)
     rememberBounds()
+  })
+
+  // The macOS traffic lights disappear in fullscreen; tell the renderer so it
+  // can drop the titlebar inset it reserves for them.
+  const sendFullscreen = (state: boolean) => (): void => {
+    if (!win.isDestroyed()) win.webContents.send('tiger:fullscreen', state)
+  }
+  win.on('enter-full-screen', sendFullscreen(true))
+  win.on('leave-full-screen', sendFullscreen(false))
+
+  // Native right-click edit menu on text fields (and for text selections).
+  // Windows users in particular reach for right-click → Paste; without this
+  // Electron shows nothing at all.
+  win.webContents.on('context-menu', (_e, params) => {
+    if (!params.isEditable && !params.selectionText) return
+    const menu = Menu.buildFromTemplate(
+      params.isEditable
+        ? [
+            { role: 'undo', enabled: params.editFlags.canUndo },
+            { role: 'redo', enabled: params.editFlags.canRedo },
+            { type: 'separator' },
+            { role: 'cut', enabled: params.editFlags.canCut },
+            { role: 'copy', enabled: params.editFlags.canCopy },
+            { role: 'paste', enabled: params.editFlags.canPaste },
+            { type: 'separator' },
+            { role: 'selectAll', enabled: params.editFlags.canSelectAll }
+          ]
+        : [{ role: 'copy', enabled: params.editFlags.canCopy }]
+    )
+    menu.popup({ window: win })
   })
 
   // ⌘W / Ctrl+W closes the active tab, not the window: the "Close Tab" menu item
@@ -138,7 +201,7 @@ function createWindow(): void {
 
 function registerIpc(): void {
   ipcMain.handle('tiger:openCollection', async () => {
-    const result = await dialog.showOpenDialog({
+    const result = await dialog.showOpenDialog(parentWindow()!, {
       title: 'Open a Tiger collection folder',
       properties: ['openDirectory']
     })
@@ -149,7 +212,7 @@ function registerIpc(): void {
   ipcMain.handle('tiger:newCollection', async (_e, name: string) => {
     const folder = sanitizeCollectionName(name)
     if (!folder) return null
-    const result = await dialog.showOpenDialog({
+    const result = await dialog.showOpenDialog(parentWindow()!, {
       title: `Choose where to create "${folder}"`,
       buttonLabel: 'Create here',
       properties: ['openDirectory', 'createDirectory']
@@ -264,6 +327,9 @@ function registerIpc(): void {
   ipcMain.handle('tiger:git:push', (_e, root: string) => gitPush(root))
   ipcMain.handle('tiger:git:init', (_e, root: string) => gitInit(root))
   ipcMain.handle('tiger:git:sync', (_e, root: string, message: string) => gitSync(root, message))
+  ipcMain.handle('tiger:git:syncResolve', (_e, root: string, prefer: 'mine' | 'theirs', message: string) =>
+    gitSyncResolve(root, prefer, message)
+  )
   ipcMain.handle('tiger:git:setRemote', (_e, root: string, url: string) => gitSetRemote(root, url))
   ipcMain.handle('tiger:git:branches', (_e, root: string) => gitBranches(root))
   ipcMain.handle('tiger:git:checkout', (_e, root: string, branch: string, create: boolean) =>
@@ -272,7 +338,7 @@ function registerIpc(): void {
   ipcMain.handle('tiger:git:log', (_e, root: string) => gitLog(root))
   ipcMain.handle('tiger:git:discard', (_e, root: string) => gitDiscardAll(root))
   ipcMain.handle('tiger:git:clone', async (_e, url: string) => {
-    const dest = await dialog.showOpenDialog({
+    const dest = await dialog.showOpenDialog(parentWindow()!, {
       title: 'Choose where to clone the collection',
       properties: ['openDirectory', 'createDirectory']
     })
@@ -286,12 +352,20 @@ function registerIpc(): void {
   ipcMain.handle('tiger:openExternal', (_e, url: string) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
   })
-  ipcMain.handle('tiger:reveal', (_e, path: string) => shell.showItemInFolder(path))
+  // Renderer paths are normalized to forward slashes (see collection.ts);
+  // Explorer's select-item call wants native backslashes.
+  ipcMain.handle('tiger:reveal', (_e, path: string) =>
+    shell.showItemInFolder(process.platform === 'win32' ? path.replace(/\//g, '\\') : path)
+  )
+
+  ipcMain.on('tiger:dirtyState', (_e, dirty: boolean) => {
+    hasUnsavedChanges = dirty
+  })
 
   ipcMain.handle(
     'tiger:pickFile',
     async (_e, filters: { name: string; extensions: string[] }[]) => {
-      const result = await dialog.showOpenDialog({
+      const result = await dialog.showOpenDialog(parentWindow()!, {
         properties: ['openFile'],
         filters
       })

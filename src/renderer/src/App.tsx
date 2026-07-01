@@ -41,6 +41,7 @@ import { ConfirmModal } from './components/ConfirmModal'
 import { PromptModal } from './components/PromptModal'
 import { RunnerModal } from './components/RunnerModal'
 import { ShortcutsModal } from './components/ShortcutsModal'
+import { REVEAL_LABEL } from './platform'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
 import { ContextMenu, type MenuItem } from './components/ContextMenu'
@@ -357,6 +358,11 @@ export default function App() {
     const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
     const platform = /Windows/i.test(ua) ? 'win' : /Mac/i.test(ua) ? 'mac' : 'linux'
     document.documentElement.dataset.platform = platform
+    // macOS fullscreen hides the traffic lights; drop the titlebar inset that
+    // reserves space for them (styles.css keys off this attribute).
+    window.tiger?.onFullscreen?.((state) => {
+      document.documentElement.dataset.fullscreen = state ? 'true' : 'false'
+    })
   }, [])
 
   useEffect(() => {
@@ -990,14 +996,19 @@ export default function App() {
   }, [activeCollection, collections])
 
   useEffect(() => {
+    const isMac = /Mac/i.test(navigator.platform)
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return
-      // Ctrl+Tab cycles tabs (with Shift: backwards).
+      // Ctrl+Tab cycles tabs on every platform (with Shift: backwards). Checked
+      // before the modifier gate below, which would drop it on macOS.
       if (e.ctrlKey && e.key === 'Tab') {
         e.preventDefault()
         cycleTab(e.shiftKey ? -1 : 1)
         return
       }
+      // Strictly the platform's command modifier: Cmd on macOS (Ctrl+K/T/… must
+      // keep their emacs-style text-editing meaning in inputs), Ctrl elsewhere
+      // (the Windows key must never trigger app shortcuts).
+      if (!(isMac ? e.metaKey : e.ctrlKey)) return
       // While the palette is open it owns the keyboard, except the toggle.
       if (paletteOpen && e.key.toLowerCase() !== 'k') return
       if (/^[1-9]$/.test(e.key) && !e.shiftKey && !e.altKey) {
@@ -1785,7 +1796,7 @@ export default function App() {
       ]
       if (pathById[entryId] && window.tiger?.reveal) {
         items.splice(3, 0, {
-          label: 'Reveal in file manager',
+          label: REVEAL_LABEL,
           icon: <FolderOpenIcon size={14} />,
           onClick: () => window.tiger!.reveal(pathById[entryId])
         })
@@ -1815,12 +1826,12 @@ export default function App() {
       if (col.root) {
         items.push(
           {
-            label: 'Git sync…',
+            label: 'Team sync…',
             icon: <GitBranchIcon size={14} />,
             onClick: () => setGitColId(colId)
           },
           {
-            label: 'Reveal in file manager',
+            label: REVEAL_LABEL,
             icon: <FolderOpenIcon size={14} />,
             onClick: () => window.tiger?.reveal?.(col.root!)
           }
@@ -1942,6 +1953,14 @@ export default function App() {
     return savedText.current[id] !== text
   }
   const dirty = !!(activeId && isDirty(activeId))
+
+  // Tell the main process whether ANY loaded request has unsaved edits (open
+  // tab or not), so closing the window warns before discarding them.
+  const anyDirty = Object.keys(requestsById).some(isDirty)
+  useEffect(() => {
+    window.tiger?.setDirty?.(anyDirty)
+  }, [anyDirty])
+
   const missingVars =
     activeEffective && !largeBody
       ? findMissingVars(sentSurface(activeEffective), envToVars(activeEnv))
@@ -2177,6 +2196,7 @@ export default function App() {
                     onImportExport={() => setModal('io')}
                     onClose={() => requestCloseCollection(col.id)}
                     onOpenGitDetails={() => setGitColId(col.id)}
+                    onWorkingTreeChanged={() => invalidateCollectionCache(col.id)}
                   />
                 )
               })()

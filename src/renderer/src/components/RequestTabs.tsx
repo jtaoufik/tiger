@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { HttpMethod } from '@core/types'
 import { BoxIcon, CloseIcon, FolderIcon } from './Icons'
 import './RequestTabs.css'
+import { MOD } from '../platform'
 
 export interface RequestTab {
   key: string
@@ -97,7 +98,7 @@ export function RequestTabs({ tabs, activeKey, onSelect, onClose, onTabMenu, onR
           {tab.dirty && <span className="request-tab-dirty" title="Unsaved changes" />}
           <button
             className="request-tab-close"
-            title="Close tab (Cmd/Ctrl+W)"
+            title={`Close tab (${MOD}+W)`}
             onClick={(e) => {
               e.stopPropagation()
               onClose(tab.key)

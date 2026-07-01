@@ -99,7 +99,7 @@ describe('App (browser preview, no Electron bridge)', () => {
 
   it('creates a new request in a collection', () => {
     render(<App />)
-    fireEvent.click(screen.getByTitle('New request (Cmd/Ctrl+T)'))
+    fireEvent.click(screen.getByTitle('New request (Ctrl+T)'))
     expect(screen.getByDisplayValue('New request')).toBeInTheDocument()
   })
 
@@ -267,7 +267,7 @@ describe('App (browser preview, no Electron bridge)', () => {
 
   it('opens the command palette with cmd+k and jumps to a request', () => {
     render(<App />)
-    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
     const input = screen.getByPlaceholderText('Go to request…')
     fireEvent.change(input, { target: { value: 'users' } })
     fireEvent.keyDown(window, { key: 'Enter' })
@@ -312,7 +312,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     const tabbar = document.querySelector('.request-tabs') as HTMLElement
     const activeTab = tabbar.querySelector('.request-tab.active') as HTMLElement
     expect(within(activeTab).getByText('List users')).toBeInTheDocument()
-    fireEvent.click(within(activeTab).getByTitle('Close tab (Cmd/Ctrl+W)'))
+    fireEvent.click(within(activeTab).getByTitle('Close tab (Ctrl+W)'))
 
     expect(tabbar.querySelectorAll('.request-tab')).toHaveLength(1)
     expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
@@ -321,13 +321,13 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('labels each tab close button with a title', () => {
     render(<App />)
     const tabbar = document.querySelector('.request-tabs') as HTMLElement
-    expect(within(tabbar).getAllByTitle('Close tab (Cmd/Ctrl+W)').length).toBeGreaterThan(0)
+    expect(within(tabbar).getAllByTitle('Close tab (Ctrl+W)').length).toBeGreaterThan(0)
   })
 
   it('shows the empty state when the last tab is closed', () => {
     render(<App />)
     const tabbar = document.querySelector('.request-tabs') as HTMLElement
-    fireEvent.click(within(tabbar).getByTitle('Close tab (Cmd/Ctrl+W)'))
+    fireEvent.click(within(tabbar).getByTitle('Close tab (Ctrl+W)'))
     expect(tabbar.querySelectorAll('.request-tab')).toHaveLength(0)
     expect(screen.getByText('No request selected')).toBeInTheDocument()
   })
@@ -432,7 +432,7 @@ describe('App (browser preview, no Electron bridge)', () => {
 describe('keyboard shortcuts', () => {
   it('opens and closes the shortcuts overlay with Cmd+/', () => {
     render(<App />)
-    fireEvent.keyDown(window, { key: '/', metaKey: true })
+    fireEvent.keyDown(window, { key: '/', ctrlKey: true })
     expect(screen.getByText('Keyboard shortcuts')).toBeInTheDocument()
     expect(screen.getByText('Close the active tab')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -444,7 +444,7 @@ describe('keyboard shortcuts', () => {
     const sidebar = document.querySelector('.sidebar')!
     fireEvent.click(within(sidebar as HTMLElement).getByText('List users'))
     expect(document.querySelectorAll('.request-tab')).toHaveLength(2)
-    fireEvent.keyDown(window, { key: 'w', metaKey: true })
+    fireEvent.keyDown(window, { key: 'w', ctrlKey: true })
     expect(document.querySelectorAll('.request-tab')).toHaveLength(1)
     expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
   })
@@ -462,14 +462,23 @@ describe('keyboard shortcuts', () => {
 
   it('creates a new request with Cmd+T', () => {
     render(<App />)
-    fireEvent.keyDown(window, { key: 't', metaKey: true })
+    fireEvent.keyDown(window, { key: 't', ctrlKey: true })
     expect(screen.getByDisplayValue('New request')).toBeInTheDocument()
   })
 
   it('focuses the URL bar with Cmd+L', () => {
     render(<App />)
-    fireEvent.keyDown(window, { key: 'l', metaKey: true })
+    fireEvent.keyDown(window, { key: 'l', ctrlKey: true })
     expect(document.activeElement?.classList.contains('url-input')).toBe(true)
+  })
+
+  it('ignores the meta (Windows) key on non-mac platforms', () => {
+    // Regression: Win+T / Win+K etc. must never trigger app shortcuts.
+    render(<App />)
+    fireEvent.keyDown(window, { key: 't', metaKey: true })
+    expect(screen.queryByDisplayValue('New request')).not.toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(document.querySelector('.palette')).toBeNull()
   })
 })
 
@@ -698,11 +707,11 @@ describe('tab management: reorder + jump shortcuts', () => {
     render(<App />)
     fireEvent.click(within(sidebar()).getByText('List users'))
     fireEvent.click(within(sidebar()).getByText('Get post'))
-    fireEvent.keyDown(window, { key: '1', metaKey: true })
+    fireEvent.keyDown(window, { key: '1', ctrlKey: true })
     expect(screen.getByDisplayValue('List posts')).toBeInTheDocument()
-    fireEvent.keyDown(window, { key: '2', metaKey: true })
+    fireEvent.keyDown(window, { key: '2', ctrlKey: true })
     expect(screen.getByDisplayValue('List users')).toBeInTheDocument()
-    fireEvent.keyDown(window, { key: '9', metaKey: true })
+    fireEvent.keyDown(window, { key: '9', ctrlKey: true })
     expect(screen.getByDisplayValue('Get post')).toBeInTheDocument()
   })
 })

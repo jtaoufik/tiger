@@ -3,9 +3,11 @@ import {
   BrowserWindow,
   dialog,
   Menu,
+  nativeImage,
   shell,
   type MenuItemConstructorOptions
 } from 'electron'
+import { join } from 'node:path'
 
 const REPO = 'https://github.com/jtaoufik/tiger'
 
@@ -140,15 +142,22 @@ export function buildAppMenu(): void {
 
   const aboutOther: MenuItemConstructorOptions[] = [
     { type: 'separator' },
+    // macOS gets these in the app menu; everywhere else they live under Help.
+    action('Check for Updates…', undefined, 'check-update'),
     {
       label: 'About Tiger',
-      click: () =>
-        dialog.showMessageBox({
-          type: 'info',
+      click: () => {
+        const win = targetWindow()
+        const options = {
+          type: 'info' as const,
           title: 'About Tiger',
           message: 'Tiger',
-          detail: `Version ${app.getVersion()}`
-        })
+          detail: `Version ${app.getVersion()}\n${REPO}`,
+          icon: nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
+        }
+        if (win) dialog.showMessageBox(win, options)
+        else dialog.showMessageBox(options)
+      }
     }
   ]
   template.push({

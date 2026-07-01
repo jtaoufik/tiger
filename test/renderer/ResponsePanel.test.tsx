@@ -15,7 +15,7 @@ const json = (body: string) =>
 describe('ResponsePanel power tools', () => {
   it('opens in-response search with Cmd+F, counts and cycles matches', () => {
     render(<ResponsePanel state={{ loading: false, data: json('{"a":"tiger","b":"tiger"}') }} />)
-    fireEvent.keyDown(window, { key: 'f', metaKey: true })
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true })
     const input = screen.getByPlaceholderText('Search in response')
     fireEvent.change(input, { target: { value: 'tiger' } })
     expect(screen.getByText('1/2')).toBeInTheDocument()

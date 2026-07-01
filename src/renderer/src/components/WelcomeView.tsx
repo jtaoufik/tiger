@@ -10,6 +10,7 @@ import {
   SearchIcon,
   SwapIcon
 } from './Icons'
+import { MOD } from './ShortcutsModal'
 
 interface Props {
   version: string
@@ -77,7 +78,7 @@ export function WelcomeView({
     {
       icon: <SearchIcon size={20} />,
       title: 'Jump anywhere',
-      desc: 'Cmd+K finds any request across collections.',
+      desc: `${MOD}+K finds any request across collections.`,
       onClick: onPalette
     },
     {

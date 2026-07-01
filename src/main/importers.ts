@@ -1,4 +1,4 @@
-import { dialog } from 'electron'
+import { BrowserWindow, dialog } from 'electron'
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, extname, join, relative, sep } from 'node:path'
 import { parse as parseYaml } from 'yaml'
@@ -25,8 +25,13 @@ const FILE_PICKER_PROPS: ('openFile' | 'openDirectory' | 'multiSelections')[] =
     ? ['openFile', 'openDirectory', 'multiSelections']
     : ['openFile', 'multiSelections']
 
+/** Dialogs are parented to the app window so they can't pop up behind it (Windows). */
+function parentWindow(): BrowserWindow | undefined {
+  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+}
+
 async function pickPaths(title: string, extensions: string[]): Promise<string[] | null> {
-  const result = await dialog.showOpenDialog({
+  const result = await dialog.showOpenDialog(parentWindow()!, {
     title,
     filters: [{ name: title, extensions }],
     properties: FILE_PICKER_PROPS
@@ -69,7 +74,7 @@ async function importManyFiles(
 }
 
 async function importBrunoFolder(): Promise<ImportResult | null> {
-  const result = await dialog.showOpenDialog({
+  const result = await dialog.showOpenDialog(parentWindow()!, {
     title: 'Import a Bruno collection folder',
     properties: ['openDirectory']
   })
@@ -158,7 +163,12 @@ export async function saveExport(
   defaultName: string,
   content: string
 ): Promise<string | null> {
-  const result = await dialog.showSaveDialog({ title: 'Export', defaultPath: defaultName })
+  // Request names can contain characters Windows filenames forbid.
+  const safeName = defaultName.replace(/[\\/:*?"<>|]/g, '-')
+  const result = await dialog.showSaveDialog(parentWindow()!, {
+    title: 'Export',
+    defaultPath: safeName
+  })
   if (result.canceled || !result.filePath) return null
   const { writeFile } = await import('node:fs/promises')
   await writeFile(result.filePath, content, 'utf8')
