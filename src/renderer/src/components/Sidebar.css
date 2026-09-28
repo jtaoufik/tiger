@@ -9,7 +9,7 @@
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.7812rem;
   color: var(--text);
   background: var(--glass-strong);
   border: 1px solid var(--focus-ring);
@@ -43,13 +43,13 @@
 .search-head {
   cursor: default;
   color: var(--text-dim);
-  font-size: 11.5px;
+  font-size: 0.7188rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .col-count {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-dim);
 }
 
@@ -90,12 +90,12 @@
 }
 .sidebar-empty h3 {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--text);
 }
 .sidebar-empty p {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 0.7812rem;
   line-height: 1.5;
   max-width: 220px;
   overflow-wrap: anywhere;
@@ -115,7 +115,7 @@
   padding: 9px 12px;
   border-top: 1px solid var(--border);
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 0.6875rem;
   min-width: 0;
 }
 .sidebar-foot > span:last-child {

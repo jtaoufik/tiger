@@ -110,7 +110,7 @@
   background: transparent;
   text-align: left;
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text);
 }
 .cv-req-row:hover {
