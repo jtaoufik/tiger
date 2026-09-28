@@ -18,7 +18,7 @@ describe('ResponsePanel accessibility', () => {
     const status = document.querySelector('.resp-status') as HTMLElement
     expect(status.textContent).toContain('404 Client error')
     expect(
-      screen.getAllByRole('status').some((el) => /Response 404 Client error, Client error, 7 milliseconds/.test(el.textContent ?? ''))
+      screen.getAllByRole('status').some((el) => /Response 404 Client error, 7 milliseconds/.test(el.textContent ?? ''))
     ).toBe(true)
   })
 

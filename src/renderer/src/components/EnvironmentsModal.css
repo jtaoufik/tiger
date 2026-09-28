@@ -60,7 +60,9 @@
   font-size: 12px;
 }
 .envs-modal .env-kv {
-  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  /* Fixed action column (secret, reveal, remove) so every row lines up,
+     including the blank one with no actions. */
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.4fr) 90px;
 }
 .env-kv-actions {
   display: inline-flex;

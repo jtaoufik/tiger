@@ -248,7 +248,7 @@ export function ResponsePanel({ state }: Props) {
             <XCircleIcon size={13} aria-hidden="true" />
           )}
           <span>{statusLine}</span>
-          <span className="tg-sr-only">, {verdict}</span>
+          {res.statusText && <span className="tg-sr-only">, {verdict}</span>}
         </span>
         <span className="timing-wrap">
           <span
@@ -274,7 +274,7 @@ export function ResponsePanel({ state }: Props) {
         </span>
         {/* One polite announcement per response, so screen readers hear the result. */}
         <span className="tg-sr-only" role="status" aria-live="polite">
-          {`Response ${statusLine}, ${verdict}, ${res.timeMs} milliseconds, ${res.sizeLabel}`}
+          {`Response ${statusLine}${res.statusText ? `, ${verdict}` : ''}, ${res.timeMs} milliseconds, ${res.sizeLabel}`}
         </span>
         <span className="resp-spacer" />
         <button
