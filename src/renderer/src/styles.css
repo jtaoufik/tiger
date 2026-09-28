@@ -264,7 +264,7 @@ button {
   padding: 6px 9px;
   border-radius: 9px;
   background: var(--glass-strong);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   color: var(--text-dim);
 }
 .sidebar-search input {
@@ -277,7 +277,9 @@ button {
 }
 /* The inner input suppresses its outline; the wrapper carries the focus ring. */
 .sidebar-search:focus-within {
-  border-color: var(--accent);
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
 }
 .tree-row,
 .col-head,
@@ -398,9 +400,10 @@ button {
   padding: 2px 0;
   user-select: text;
 }
-.req-name:focus {
-  outline: none;
-  border-bottom: 1px solid var(--accent);
+.req-name:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 .urlbar {
   display: flex;
@@ -414,7 +417,7 @@ button {
   font-size: 12.5px;
   padding: 0 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--control-border);
   background: var(--glass-strong);
   color: var(--text);
 }
@@ -424,15 +427,15 @@ button {
   font-size: 13px;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--control-border);
   background: var(--glass-strong);
   color: var(--text);
   user-select: text;
 }
-.url-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-weak);
+.url-input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
 }
 
 .tabs {
@@ -487,14 +490,15 @@ button {
   font-size: 12.5px;
   padding: 6px 9px;
   border-radius: 7px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   background: var(--glass-strong);
   color: var(--text);
   user-select: text;
 }
-.kv input:focus {
-  outline: none;
-  border-color: var(--accent);
+.kv input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
 }
 .kv.disabled input {
   opacity: 0.45;
@@ -511,8 +515,10 @@ button {
   color: var(--text);
   user-select: text;
 }
-.code-area:focus {
-  outline: none;
+.code-area:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 6px;
 }
 
 /* ---------- Response ---------- */
@@ -656,7 +662,7 @@ button {
   font-family: var(--mono);
   padding: 7px 9px;
   border-radius: 8px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--control-border);
   background: var(--glass-strong);
   color: var(--text);
   user-select: text;
@@ -674,7 +680,7 @@ button {
   display: inline-flex;
   align-items: stretch;
   height: 30px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--control-border);
   border-radius: 8px;
   overflow: hidden;
   background: var(--glass-strong);
@@ -687,8 +693,12 @@ button {
   padding: 0 8px 0 11px;
   height: 100%;
 }
-.env-combo .env-select:focus { outline: none; }
-.env-combo:focus-within { border-color: var(--accent); }
+.env-combo .env-select:focus { outline: none; } /* the combo carries the ring */
+.env-combo:focus-within {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
+}
 .env-combo .env-edit {
   display: inline-flex;
   align-items: center;
@@ -901,14 +911,15 @@ button {
   font-size: 12.5px;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--control-border);
   background: var(--glass-strong);
   color: var(--text);
 }
-.field input:focus,
-.field select:focus {
-  outline: none;
-  border-color: var(--accent);
+.field input:focus-visible,
+.field select:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
 }
 .row-2 {
   display: grid;
@@ -943,6 +954,9 @@ button {
 .modal.palette {
   width: 520px;
   padding: 0;
+}
+.palette-input:focus-within {
+  box-shadow: inset 0 calc(-1 * var(--focus-width)) 0 var(--focus-ring);
 }
 .palette-input {
   display: flex;
@@ -1142,12 +1156,16 @@ button {
   font-size: 12.5px;
   padding: 9px 12px;
   border-radius: 9px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--control-border);
   background: var(--glass-modal);
   color: var(--text);
   user-select: text;
 }
-.cv-remote-row input:focus { outline: none; border-color: var(--accent); }
+.cv-remote-row input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
+}
 .docs-area {
   width: 100%;
   min-height: 120px;
@@ -1160,7 +1178,11 @@ button {
   color: var(--text);
   user-select: text;
 }
-.docs-area:focus { outline: none; }
+.docs-area:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
 .chev-btn { padding: 1px; }
 
 /* ---------- git ---------- */
@@ -1250,11 +1272,15 @@ button {
   font-size: 13.5px;
   padding: 9px 12px;
   border-radius: 9px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--control-border);
   background: var(--glass-strong);
   color: var(--text);
 }
-.git-commit input:focus { outline: none; border-color: var(--accent); }
+.git-commit input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
+}
 .git-diff {
   font-family: var(--mono);
   font-size: 12px;
@@ -1357,13 +1383,17 @@ button {
 .git-branch-pick { display: inline-flex; align-items: center; gap: 6px; }
 .git-branch-pick select {
   font-family: var(--mono); font-size: 12.5px; padding: 5px 8px; border-radius: 8px;
-  border: 1px solid var(--border-strong); background: var(--glass-strong); color: var(--text);
+  border: 1px solid var(--control-border); background: var(--glass-strong); color: var(--text);
 }
 .git-newbranch {
   font-family: var(--mono); font-size: 12.5px; padding: 6px 9px; border-radius: 8px; width: 150px;
-  border: 1px solid var(--border-strong); background: var(--glass-strong); color: var(--text);
+  border: 1px solid var(--control-border); background: var(--glass-strong); color: var(--text);
 }
-.git-newbranch:focus { outline: none; border-color: var(--accent); }
+.git-newbranch:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
+}
 .git-history {
   max-height: 180px; overflow-y: auto; margin-bottom: 12px;
   border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px;
@@ -1400,7 +1430,11 @@ button {
 }
 .ctx-item svg { color: var(--text-dim); }
 .ctx-item:hover,
-.ctx-item:focus { background: var(--accent-weak); outline: none; }
+.ctx-item:focus { background: var(--accent-weak); }
+.ctx-item:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
 .ctx-item.danger,
 .ctx-item.danger svg { color: var(--m-delete); }
 .ctx-sep { height: 1px; background: var(--border); margin: 5px 8px; }
@@ -1539,24 +1573,306 @@ button {
 }
 .request-tab.active > svg { color: var(--accent); }
 
-/* ---------- reduced motion ---------- */
-/* Modal.css guards its own animations; this covers everything else that moves. */
+/* ==========================================================================
+   Accessibility primitives (shared; see src/renderer/src/a11y.ts)
+   ========================================================================== */
+
+/* Visually hidden but read by screen readers. */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* First Tab stop: jumps to the request URL (or the workspace). */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  z-index: 200;
+  transform: translate(-50%, -160%);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-modal);
+  border: 1px solid var(--control-border);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-weight: 650;
+  text-decoration: none;
+  -webkit-app-region: no-drag;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translate(-50%, 0);
+}
+
+/* One keyboard focus ring for every interactive element. Component rules may
+   tune the offset (inset for rows inside scrollers), never remove the ring.
+   --focus-ring is measured >= 3:1 on every glass surface in both themes. */
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.seg button:focus-visible,
+.switch:focus-visible,
+.welcome-tile:focus-visible,
+.choice:focus-visible,
+.tab:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+/* Rows inside overflow containers: draw the ring inside so it is never clipped. */
+.tab:focus-visible,
+.env-row:focus-visible,
+.palette-row:focus-visible,
+.hist-row:focus-visible {
+  outline-offset: -2px;
+}
+[tabindex='-1']:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Target size (WCAG 2.5.8): icon-only controls are at least 24x24 CSS px.
+   Negative margins keep the rows they live in from growing. */
+.icon-btn {
+  min-width: 24px;
+  min-height: 24px;
+}
+.chev-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: -4px -4px -4px -6px;
+}
+.row-actions .icon-btn {
+  margin-block: -3px;
+}
+.seg.mini button {
+  min-height: 24px;
+}
+.env-combo .env-edit {
+  min-width: 28px;
+}
+
+/* Narrow windows and 200% zoom: titlebar buttons collapse to icons (their
+   text stays as the accessible name), headers and toolbars wrap. */
+@media (max-width: 820px) {
+  .titlebar .btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .titlebar {
+    gap: 8px;
+  }
+  .body {
+    padding: 8px;
+  }
+  .cv-head,
+  .welcome-head {
+    flex-wrap: wrap;
+  }
+  .collection-view,
+  .welcome,
+  .settings {
+    padding: 18px 16px;
+  }
+  .setting-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------- User preferences ---------- */
+
+/* Reduced motion: stop every transition and animation, app-wide (this also
+   covers component stylesheets). Hover lifts are dropped too. */
 @media (prefers-reduced-motion: reduce) {
-  .modal-backdrop,
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .welcome-tile:hover,
+  .btn:active {
+    transform: none;
+  }
+}
+
+/* Reduced transparency: opaque surfaces, no backdrop blur. */
+@media (prefers-reduced-transparency: reduce) {
+  :root:not([data-theme='dark']) {
+    --glass: #f6f8fc;
+    --glass-strong: #ffffff;
+    --glass-hover: #ffffff;
+    --glass-modal: #ffffff;
+    --code-surface: #fbfcfe;
+  }
+  [data-theme='dark'] {
+    --glass: #1b1f2b;
+    --glass-strong: #232836;
+    --glass-hover: #2b3142;
+    --glass-modal: #1e2230;
+    --code-surface: #12151e;
+  }
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* More contrast: near-opaque glass, stronger borders and text, thicker ring. */
+@media (prefers-contrast: more) {
+  :root:not([data-theme='dark']) {
+    --glass: rgba(255, 255, 255, 0.94);
+    --glass-strong: #ffffff;
+    --glass-hover: #ffffff;
+    --glass-modal: #ffffff;
+    --border: rgba(20, 28, 56, 0.42);
+    --border-strong: rgba(20, 28, 56, 0.62);
+    --control-border: rgba(20, 28, 56, 0.8);
+    --text: #0b1020;
+    --text-dim: #2c3550;
+    --text-faint: #37405a;
+    --focus-ring: #8a3300;
+  }
+  [data-theme='dark'] {
+    --glass: rgba(22, 25, 36, 0.96);
+    --glass-strong: #1f2433;
+    --glass-hover: #2a3042;
+    --glass-modal: #1b1f2b;
+    --border: rgba(255, 255, 255, 0.4);
+    --border-strong: rgba(255, 255, 255, 0.6);
+    --control-border: rgba(255, 255, 255, 0.75);
+    --text: #ffffff;
+    --text-dim: #d3d9e6;
+    --text-faint: #c3cadb;
+    --focus-ring: #ffc49b;
+  }
+  :root {
+    --focus-width: 3px;
+  }
+  .panel,
+  .modal,
+  .ctx-menu {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .tree-row.active,
+  .request-tab.active {
+    box-shadow: inset 3px 0 0 var(--text);
+  }
+}
+
+/* Windows High Contrast / forced colors: glass becomes system Canvas, every
+   surface gets a visible border, state uses Highlight. */
+@media (forced-colors: active) {
+  body {
+    background: Canvas;
+  }
+  .panel,
   .modal,
   .ctx-menu,
   .toast,
   .update-ready,
-  .tree-row.flash {
-    animation: none;
-  }
-  .chev,
-  .switch,
-  .switch .knob,
-  .btn,
   .welcome-tile,
-  .perf-fill {
-    transition: none;
+  .cv-card,
+  .cv-tabcard,
+  .choice,
+  .request-tab,
+  .skip-link {
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+  }
+  .modal-backdrop {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .btn,
+  .icon-btn,
+  .seg button,
+  .tab {
+    border: 1px solid ButtonText;
+  }
+  .icon-btn {
+    border-color: transparent;
+  }
+  :focus-visible,
+  .tree-node:focus-visible > .tree-row,
+  .tree-node:focus-visible > .col-head,
+  .tree-node:focus-visible > .folder-row,
+  .sidebar-search:focus-within,
+  .env-combo:focus-within {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+  .tree-row.active,
+  .col-head.active,
+  .folder-row.active,
+  .request-tab.active,
+  .seg button.on,
+  .seg button[aria-pressed='true'],
+  .seg button[aria-selected='true'],
+  .tab.active,
+  .palette-row.sel {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .tree-row.active *,
+  .col-head.active *,
+  .folder-row.active *,
+  .request-tab.active * {
+    color: HighlightText;
+  }
+  .method-pill {
+    background: transparent;
+    border: 1px solid currentColor;
+  }
+  .switch {
+    forced-color-adjust: none;
+    background: Canvas;
+    border: 1px solid ButtonText;
+  }
+  .switch .knob {
+    background: ButtonText;
+    box-shadow: none;
+  }
+  .switch.on {
+    background: Highlight;
+    border-color: Highlight;
+  }
+  .switch.on .knob {
+    background: HighlightText;
+  }
+  .dirty-dot,
+  .request-tab-dirty,
+  .tab .dot {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .resizer::after {
+    background: CanvasText;
   }
 }
-
