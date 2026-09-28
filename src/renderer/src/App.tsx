@@ -57,6 +57,7 @@ import {
   CodeIcon,
   CopyIcon,
   FileIcon,
+  FolderIcon,
   FolderOpenIcon,
   GearIcon,
   GitBranchIcon,
@@ -64,6 +65,7 @@ import {
   ListXIcon,
   LocateIcon,
   PencilIcon,
+  PlayIcon,
   PlusIcon,
   SwapIcon,
   TrashIcon,
@@ -1930,6 +1932,19 @@ export default function App() {
     [openTab, activateTab]
   )
 
+  const openFolderMenu = useCallback(
+    (colId: string, path: string[], x: number, y: number) => {
+      const items: MenuItem[] = [
+        { label: 'Open folder', icon: <FolderIcon size={14} />, onClick: () => inspectFolder(colId, path) },
+        { label: 'New request here', icon: <PlusIcon size={14} />, onClick: () => newRequest(colId, path) },
+        { label: 'Run folder', icon: <PlayIcon size={14} />, onClick: () => setRunnerScope({ colId, path }) },
+        { label: 'Duplicate folder', icon: <CopyIcon size={14} />, onClick: () => duplicateFolder(colId, path) }
+      ]
+      setCtxMenu({ x, y, items })
+    },
+    [inspectFolder, newRequest, duplicateFolder]
+  )
+
   const envCollections = collections.filter((c) => c.environments.length > 0)
 
   // Past this body size, serializing and var-scanning on every keystroke lags;
@@ -2091,6 +2106,12 @@ export default function App() {
           onGit={setGitColId}
           onRequestMenu={openRequestMenu}
           onCollectionMenu={openCollectionMenu}
+          onFolderMenu={openFolderMenu}
+          inspected={
+            view === 'workspace' && inspect
+              ? { colId: inspect.colId, path: inspect.type === 'folder' ? inspect.path : [] }
+              : null
+          }
           onInspectCollection={inspectCollection}
           onInspectFolder={inspectFolder}
           reveal={sidebarReveal}

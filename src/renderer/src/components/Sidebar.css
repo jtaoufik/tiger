@@ -28,3 +28,98 @@
   0%, 60% { background: var(--accent-weak); box-shadow: 0 0 0 1.5px var(--accent) inset; }
   100% { background: transparent; box-shadow: none; }
 }
+
+/* ARIA tree nodes are layout-neutral wrappers around a row + its group. */
+.tree-node {
+  display: block;
+}
+.tree-node + .tree-node,
+.tree [role='group'] > .tree-node {
+  margin-top: 1px;
+}
+.tree > .tree-node + .tree-node {
+  margin-top: 6px;
+}
+.search-head {
+  cursor: default;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.col-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Git sync badges: one pointer target that opens team sync. */
+.sync-chips {
+  border: none;
+  background: transparent;
+  padding: 2px;
+  min-height: 24px;
+  border-radius: var(--radius-xs);
+}
+.sync-chips:hover {
+  background: var(--accent-weak);
+}
+
+/* Search field: native clear button off, the wrapper draws the chrome. */
+.sidebar-search input[type='search'] {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 20px;
+}
+.sidebar-search input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+/* Empty states (no collection, no search hit). */
+.sidebar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 36px 14px;
+  text-align: center;
+  color: var(--text-dim);
+}
+.sidebar-empty > svg {
+  color: var(--text-dim);
+}
+.sidebar-empty h3 {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.sidebar-empty p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+.sidebar-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
+  min-width: 0;
+}
+.sidebar-foot > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

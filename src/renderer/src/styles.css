@@ -244,6 +244,7 @@ button {
   border-bottom: 1px solid var(--border);
 }
 .sidebar header .title {
+  margin: 0;
   font-weight: 650;
   font-size: 12px;
   text-transform: uppercase;
@@ -299,9 +300,17 @@ button {
 .folder-row:hover {
   background: var(--accent-weak);
 }
-.tree-row.active {
+/* Selected = surface + an accent bar at the leading edge + heavier label,
+   so selection never relies on color alone. */
+.tree-row.active,
+.col-head.active,
+.folder-row.active {
   background: var(--glass-strong);
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 3px 0 0 var(--accent-fill), var(--shadow-sm);
+}
+.tree-row.active .row-label,
+.folder-row.active .row-label {
+  font-weight: 650;
 }
 .col-head {
   font-weight: 650;
@@ -344,12 +353,21 @@ button {
 .col-head:focus-within .row-actions {
   display: inline-flex;
 }
-/* Keyboard focus on tree rows (they are tabbable). */
-.tree-row:focus-visible,
-.col-head:focus-visible,
-.folder-row:focus-visible {
-  outline: 2px solid var(--accent);
+/* Keyboard focus: the treeitem wraps its row and its child group, so the
+   ring is drawn on the row only (inset, never clipped by the scroller). */
+.tree-node:focus-visible {
+  outline: none;
+}
+.tree-node:focus-visible > .tree-row,
+.tree-node:focus-visible > .col-head,
+.tree-node:focus-visible > .folder-row {
+  outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: -2px;
+}
+.tree-node:focus-visible > .tree-row .row-actions,
+.tree-node:focus-visible > .col-head .row-actions,
+.tree-node:focus-visible > .folder-row .row-actions {
+  display: inline-flex;
 }
 .method-pill {
   font-family: var(--mono);
