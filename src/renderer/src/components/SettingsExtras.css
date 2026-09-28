@@ -28,8 +28,8 @@
 }
 
 .cert-row-label.placeholder {
-  color: var(--text-faint, var(--text-dim));
-  opacity: 0.55;
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 .cert-pick-btn {

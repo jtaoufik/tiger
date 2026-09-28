@@ -10,24 +10,43 @@
   --code-surface: rgba(250, 251, 254, 0.94);
   --border: rgba(28, 38, 72, 0.1);
   --border-strong: rgba(28, 38, 72, 0.16);
+  /* Boundary of form controls (inputs, selects, switch track): >= 3:1 on glass. */
+  --control-border: rgba(28, 38, 72, 0.56);
+  /* Text tokens measured against the darkest light surface (accent wash over
+     bg-2): text 10.9:1, dim >= 4.5:1, faint >= 4.5:1 (placeholders use it). */
   --text: #1a2233;
-  --text-dim: #5b6680;
-  --text-faint: #6e7890; /* muted, >=3:1 on the light glass */
+  --text-dim: #465170;
+  --text-faint: #4f5a74;
+  /* Brand orange: decorative only (dots, borders, icons, washes). */
   --accent: #ff7a18;
+  /* Orange for TEXT on glass (>= 4.5:1). */
+  --accent-text: #963c00;
+  /* Solid fill for primary buttons / selected segments, with its ink (>= 4.5:1). */
+  --accent-fill: #c24f00;
   --accent-ink: #ffffff;
   --accent-weak: rgba(255, 122, 24, 0.12);
+  --danger-fill: #b8321f;
+  --danger-ink: #ffffff;
+  --warn: #7a5200;
+  /* Keyboard focus ring: >= 3:1 against every light surface. */
+  --focus-ring: #b54500;
+  --focus-width: 2px;
   --shadow: 0 10px 34px rgba(30, 40, 80, 0.14);
   --shadow-sm: 0 2px 10px rgba(30, 40, 80, 0.08);
   --radius: 14px;
   --radius-sm: 9px;
+  --radius-xs: 6px;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  --blur: blur(22px) saturate(165%);
 
-  --m-get: #2ca36a;
-  --m-post: #ff7a18;
-  --m-put: #2f7fe0;
-  --m-patch: #9b59d0;
-  --m-delete: #e0533d;
+  /* HTTP method + status hues, as TEXT on glass (>= 4.5:1). */
+  --m-get: #11683f;
+  --m-post: #963c00;
+  --m-put: #1a55a3;
+  --m-patch: #7a3cae;
+  --m-delete: #a62c1a;
+  --m-other: #465170;
 }
 
 [data-theme='dark'] {
@@ -42,14 +61,28 @@
   --code-surface: rgba(16, 19, 28, 0.94);
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
+  --control-border: rgba(255, 255, 255, 0.4);
   --text: #e7ebf5;
-  --text-dim: #98a1b8;
-  --text-faint: #6b7488;
+  --text-dim: #b7bfd1;
+  --text-faint: #a7b0c4;
   --accent: #ff8c42;
+  --accent-text: #ffa266;
+  --accent-fill: #ff8c42;
   --accent-ink: #1a1206;
   --accent-weak: rgba(255, 140, 66, 0.18);
+  --danger-fill: #ff7563;
+  --danger-ink: #1c0805;
+  --warn: #ffc24d;
+  --focus-ring: #ffab73;
   --shadow: 0 12px 38px rgba(0, 0, 0, 0.45);
   --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.35);
+
+  --m-get: #4fd197;
+  --m-post: #ffa266;
+  --m-put: #7ab4ff;
+  --m-patch: #cf9cf5;
+  --m-delete: #ff968a;
+  --m-other: #b7bfd1;
 }
 
 * {
@@ -80,6 +113,12 @@ button {
   font-family: inherit;
   color: inherit;
   cursor: pointer;
+}
+
+/* Browser-default placeholders are ~2.3:1; text-faint is measured >= 4.5:1. */
+::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
 }
 
 /* ---------- App shell ---------- */
@@ -161,10 +200,13 @@ button {
   transform: translateY(1px);
 }
 .btn.accent {
-  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 82%, #000));
+  background: var(--accent-fill);
   color: var(--accent-ink);
   border-color: transparent;
-  box-shadow: 0 6px 18px var(--accent-weak);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 6px 18px var(--accent-weak);
+}
+.btn.accent:hover {
+  background: color-mix(in srgb, var(--accent-fill) 90%, var(--text));
 }
 .btn.ghost {
   background: transparent;
@@ -174,9 +216,17 @@ button {
   background: var(--accent-weak);
 }
 .btn.danger {
-  background: linear-gradient(180deg, var(--m-delete), color-mix(in srgb, var(--m-delete) 82%, #000));
-  color: #fff;
+  background: var(--danger-fill);
+  color: var(--danger-ink);
   border-color: transparent;
+}
+.btn.danger:hover {
+  background: color-mix(in srgb, var(--danger-fill) 90%, var(--text));
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
 }
 
 /* ---------- Sidebar ---------- */
@@ -315,7 +365,7 @@ button {
 .m-put { color: var(--m-put); }
 .m-patch { color: var(--m-patch); }
 .m-delete { color: var(--m-delete); }
-.m-head, .m-options { color: var(--text-dim); }
+.m-head, .m-options { color: var(--m-other); }
 
 /* ---------- Main / request ---------- */
 .main {
@@ -406,14 +456,14 @@ button {
 }
 .tab .count {
   font-size: 10px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .tab .dot {
   display: inline-block;
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-fill);
   vertical-align: 2px;
   margin-left: 2px;
 }
@@ -566,21 +616,26 @@ button {
   font-size: 12.5px;
   color: var(--text-dim);
 }
-.seg button.on {
-  background: var(--accent);
+.seg button.on,
+.seg button[aria-pressed='true'],
+.seg button[aria-selected='true'] {
+  background: var(--accent-fill);
   color: var(--accent-ink);
 }
 .switch {
   width: 44px;
   height: 26px;
   border-radius: 99px;
-  border: 1px solid var(--border-strong);
-  background: var(--glass-strong);
+  border: 1px solid var(--control-border);
+  background: color-mix(in srgb, var(--control-border) 55%, transparent);
   position: relative;
+  flex-shrink: 0;
+  padding: 0;
   transition: background 0.16s ease;
 }
 .switch.on {
-  background: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
 }
 .switch .knob {
   position: absolute;
@@ -590,7 +645,7 @@ button {
   height: 20px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.3);
   transition: transform 0.16s ease;
 }
 .switch.on .knob {
@@ -648,7 +703,7 @@ button {
 .env-combo .env-edit svg { display: block; }
 .env-combo .env-edit:hover { background: var(--accent-weak); color: var(--text); }
 
-.token { color: var(--accent); font-weight: 600; }
+.token { color: var(--accent-text); font-weight: 600; }
 
 .code-area,
 .response-body,
@@ -941,11 +996,10 @@ button {
   border-radius: 9px;
   font-family: var(--mono);
   font-size: 12px;
-  color: #9a6a00;
+  color: var(--warn);
   background: rgba(255, 184, 50, 0.14);
   border: 1px solid rgba(255, 184, 50, 0.35);
 }
-[data-theme='dark'] .warn-row { color: #ffc24d; }
 .warn-row .warn-hint {
   font-family: var(--sans);
   color: var(--text-dim);
@@ -968,7 +1022,7 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 .seg.mini button { padding: 4px 9px; font-size: 11.5px; }
 
@@ -1027,7 +1081,7 @@ button {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-ink);
   box-shadow: 0 6px 16px var(--accent-weak);
 }
@@ -1158,7 +1212,7 @@ button {
 .git-chip.ahead { color: var(--m-put); }
 .git-chip.behind { color: var(--m-post); }
 .git-chip.synced { color: var(--m-get); }
-.git-chip.dirty { color: var(--accent); }
+.git-chip.dirty { color: var(--accent-text); }
 .git-files {
   max-height: 140px;
   overflow-y: auto;
@@ -1216,7 +1270,7 @@ button {
 }
 .dl-add { color: var(--m-get); background: color-mix(in srgb, var(--m-get) 9%, transparent); }
 .dl-del { color: var(--m-delete); background: color-mix(in srgb, var(--m-delete) 9%, transparent); }
-.dl-hunk { color: var(--accent); }
+.dl-hunk { color: var(--accent-text); }
 .dl-meta { color: var(--text-dim); }
 .sync-chips {
   display: inline-flex;
@@ -1315,7 +1369,7 @@ button {
   border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px;
 }
 .git-commit-row { display: flex; align-items: baseline; gap: 9px; padding: 4px 0; font-size: 12.5px; }
-.git-hash { font-family: var(--mono); color: var(--accent); flex-shrink: 0; }
+.git-hash { font-family: var(--mono); color: var(--accent-text); flex-shrink: 0; }
 
 /* ---------- context menu ---------- */
 .ctx-menu {
@@ -1353,7 +1407,7 @@ button {
 
 /* ---------- update ---------- */
 .update-chip {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 650;
 }
 .changelog {
@@ -1365,7 +1419,7 @@ button {
 }
 
 /* ---------- json highlighting ---------- */
-.jt-key { color: var(--accent); }
+.jt-key { color: var(--accent-text); }
 .jt-string { color: var(--m-get); }
 .jt-number { color: var(--m-put); }
 .jt-literal { color: var(--m-patch); font-weight: 600; }

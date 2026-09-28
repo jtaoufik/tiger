@@ -73,7 +73,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-fill);
   flex-shrink: 0;
 }
 .request-tab.drop-before {
