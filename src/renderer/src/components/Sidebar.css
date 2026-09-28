@@ -2,20 +2,21 @@
 .folder-row.drop-target,
 .col-head.drop-target {
   background: var(--accent-weak);
-  box-shadow: 0 0 0 1.5px var(--accent) inset;
+  box-shadow: 0 0 0 2px var(--accent-fill) inset;
   border-radius: var(--radius-sm);
 }
 .rename-input {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.7812rem;
   color: var(--text);
   background: var(--glass-strong);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--focus-ring);
   border-radius: 6px;
   padding: 2px 6px;
-  outline: none;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 0;
   user-select: text;
 }
 
@@ -26,4 +27,99 @@
 @keyframes row-flash {
   0%, 60% { background: var(--accent-weak); box-shadow: 0 0 0 1.5px var(--accent) inset; }
   100% { background: transparent; box-shadow: none; }
+}
+
+/* ARIA tree nodes are layout-neutral wrappers around a row + its group. */
+.tree-node {
+  display: block;
+}
+.tree-node + .tree-node,
+.tree [role='group'] > .tree-node {
+  margin-top: 1px;
+}
+.tree > .tree-node + .tree-node {
+  margin-top: 6px;
+}
+.search-head {
+  cursor: default;
+  color: var(--text-dim);
+  font-size: 0.7188rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.col-count {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--text-dim);
+}
+
+/* Git sync badges: one pointer target that opens team sync. */
+.sync-chips {
+  border: none;
+  background: transparent;
+  padding: 2px;
+  min-height: 24px;
+  border-radius: var(--radius-xs);
+}
+.sync-chips:hover {
+  background: var(--accent-weak);
+}
+
+/* Search field: native clear button off, the wrapper draws the chrome. */
+.sidebar-search input[type='search'] {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 20px;
+}
+.sidebar-search input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+/* Empty states (no collection, no search hit). */
+.sidebar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 36px 14px;
+  text-align: center;
+  color: var(--text-dim);
+}
+.sidebar-empty > svg {
+  color: var(--text-dim);
+}
+.sidebar-empty h3 {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.sidebar-empty p {
+  margin: 0;
+  font-size: 0.7812rem;
+  line-height: 1.5;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+.sidebar-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.6875rem;
+  min-width: 0;
+}
+.sidebar-foot > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

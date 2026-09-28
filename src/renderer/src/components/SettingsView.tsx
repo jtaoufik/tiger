@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Settings, ThemeChoice } from '../../../main/settings'
 import { Logo } from '../Logo'
 import { CheckIcon, CloseIcon, CopyIcon } from './Icons'
 import './SettingsExtras.css'
+import { announce, rovingIndex } from '../a11y'
 
 interface Props {
   settings: Settings
@@ -47,14 +48,28 @@ function FileRow({ label, value, filters, onChange }: FileRowProps) {
         <div className="label">{label}</div>
       </div>
       <div className="cert-row" style={{ flex: 1, minWidth: 0 }}>
-        <span className={`cert-row-label${value ? '' : ' placeholder'}`}>
+        <span
+          className={`cert-row-label${value ? '' : ' placeholder'}`}
+          title={value || undefined}
+        >
           {value ? basename(value) : 'Not set'}
         </span>
-        <button className="cert-pick-btn" onClick={pick}>
+        <button
+          type="button"
+          className="cert-pick-btn"
+          onClick={pick}
+          aria-label={`Choose file: ${label}`}
+        >
           Choose file
         </button>
         {value && (
-          <button className="cert-clear-btn" onClick={clear} title="Clear">
+          <button
+            type="button"
+            className="cert-clear-btn"
+            onClick={clear}
+            title="Clear"
+            aria-label={`Clear ${label}`}
+          >
             <CloseIcon size={14} />
           </button>
         )}
@@ -69,6 +84,7 @@ export function SettingsView({ settings, onChange }: Props) {
   const [clearLabel, setClearLabel] = useState('Clear cookies')
   const [mcpServerPath, setMcpServerPath] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const uid = useId()
 
   // Local mirrors for password inputs so they only commit on blur/Enter
   const [localPassphrase, setLocalPassphrase] = useState(settings.certPassphrase)
@@ -98,6 +114,7 @@ export function SettingsView({ settings, onChange }: Props) {
   function handleClearCookies() {
     window.tiger?.clearCookies?.().then(() => {
       setClearLabel('Cleared')
+      announce('Cookies cleared')
       setTimeout(() => setClearLabel('Clear cookies'), 1200)
     })
   }
@@ -121,23 +138,43 @@ export function SettingsView({ settings, onChange }: Props) {
     if (!mcpSnippet) return
     navigator.clipboard.writeText(mcpSnippet).then(() => {
       setCopied(true)
+      announce('Snippet copied')
       setTimeout(() => setCopied(false), 1500)
     })
   }
 
   return (
-    <section className="panel settings">
+    <section className="panel settings" aria-labelledby={`${uid}-title`}>
       <div className="settings-inner">
-      <h2>Settings</h2>
+      <h2 id={`${uid}-title`}>Settings</h2>
       <div className="sub">Preferences are stored locally on this machine.</div>
 
-      <div className="seg settings-tabs">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+      <div className="seg settings-tabs" role="tablist" aria-label="Settings sections">
+        {TABS.map((t, i) => (
+          <button
+            type="button"
+            key={t.id}
+            role="tab"
+            id={`${uid}-tab-${t.id}`}
+            aria-selected={tab === t.id}
+            aria-controls={`${uid}-panel`}
+            tabIndex={tab === t.id ? 0 : -1}
+            className={tab === t.id ? 'on' : ''}
+            onClick={() => setTab(t.id)}
+            onKeyDown={(e) => {
+              const next = rovingIndex(e.key, i, TABS.length)
+              if (next === null) return
+              e.preventDefault()
+              setTab(TABS[next].id)
+              ;(e.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus()
+            }}
+          >
             {t.label}
           </button>
         ))}
       </div>
+
+      <div role="tabpanel" id={`${uid}-panel`} aria-labelledby={`${uid}-tab-${tab}`}>
 
       {tab === 'general' && (
         <>
@@ -146,11 +183,13 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="label">Appearance</div>
               <div className="desc">Light glass, dark glass, or follow the system.</div>
             </div>
-            <div className="seg">
+            <div className="seg" role="group" aria-label="Appearance">
               {THEMES.map((t) => (
                 <button
+                  type="button"
                   key={t}
                   className={settings.theme === t ? 'on' : ''}
+                  aria-pressed={settings.theme === t}
                   onClick={() => onChange({ theme: t })}
                 >
                   {t[0].toUpperCase() + t.slice(1)}
@@ -169,6 +208,7 @@ export function SettingsView({ settings, onChange }: Props) {
               type="number"
               min={1000}
               step={1000}
+              aria-label="Request timeout (ms)"
               value={settings.timeoutMs}
               onChange={(e) => onChange({ timeoutMs: Number(e.target.value) || 30000 })}
             />
@@ -184,6 +224,7 @@ export function SettingsView({ settings, onChange }: Props) {
               type="number"
               min={10}
               max={22}
+              aria-label="Editor font size"
               value={settings.fontSize}
               onChange={(e) => onChange({ fontSize: Number(e.target.value) || 13 })}
             />
@@ -199,6 +240,7 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="desc">Automatically follow 3xx responses to their target.</div>
             </div>
             <button
+              type="button"
               className={`switch ${settings.followRedirects ? 'on' : ''}`}
               role="switch"
               aria-checked={settings.followRedirects}
@@ -215,6 +257,7 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="desc">Turn off to allow self-signed certificates (development only).</div>
             </div>
             <button
+              type="button"
               className={`switch ${settings.sslVerify ? 'on' : ''}`}
               role="switch"
               aria-checked={settings.sslVerify}
@@ -231,6 +274,7 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="desc">Route all requests through an HTTP/HTTPS or SOCKS proxy.</div>
             </div>
             <button
+              type="button"
               className={`switch ${settings.proxyEnabled ? 'on' : ''}`}
               role="switch"
               aria-checked={settings.proxyEnabled}
@@ -251,6 +295,7 @@ export function SettingsView({ settings, onChange }: Props) {
                 <input
                   className="num-input"
                   style={{ width: 240 }}
+                  aria-label="Proxy URL"
                   value={settings.proxyUrl}
                   placeholder="http://host:port"
                   onChange={(e) => onChange({ proxyUrl: e.target.value })}
@@ -267,6 +312,7 @@ export function SettingsView({ settings, onChange }: Props) {
                 <input
                   className="num-input"
                   style={{ width: 240 }}
+                  aria-label="Proxy username"
                   value={settings.proxyUsername}
                   placeholder="username"
                   spellCheck={false}
@@ -284,6 +330,7 @@ export function SettingsView({ settings, onChange }: Props) {
                   className="num-input"
                   style={{ width: 240 }}
                   type="password"
+                  aria-label="Proxy password"
                   value={localProxyPassword}
                   placeholder="password"
                   onChange={(e) => setLocalProxyPassword(e.target.value)}
@@ -309,6 +356,7 @@ export function SettingsView({ settings, onChange }: Props) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
+                type="button"
                 className={`switch ${settings.cookieJarEnabled ? 'on' : ''}`}
                 role="switch"
                 aria-checked={settings.cookieJarEnabled}
@@ -317,7 +365,7 @@ export function SettingsView({ settings, onChange }: Props) {
               >
                 <span className="knob" />
               </button>
-              <button className="cookie-clear-btn" onClick={handleClearCookies}>
+              <button type="button" className="cookie-clear-btn" onClick={handleClearCookies}>
                 {clearLabel}
               </button>
             </div>
@@ -338,6 +386,7 @@ export function SettingsView({ settings, onChange }: Props) {
             <input
               className="num-input"
               style={{ width: 240 }}
+              aria-label="Certificate exceptions"
               value={settings.certExceptions}
               placeholder="host1, host2"
               spellCheck={false}
@@ -355,6 +404,7 @@ export function SettingsView({ settings, onChange }: Props) {
               type="number"
               min={0}
               max={20}
+              aria-label="Maximum redirects"
               value={settings.maxRedirects}
               onChange={(e) => onChange({ maxRedirects: Number(e.target.value) || 5 })}
             />
@@ -371,6 +421,7 @@ export function SettingsView({ settings, onChange }: Props) {
             <input
               className="num-input"
               style={{ width: 240 }}
+              aria-label="Client certificate subject filter"
               value={settings.clientCertSubject}
               placeholder="e.g. CN=alice"
               spellCheck={false}
@@ -378,7 +429,7 @@ export function SettingsView({ settings, onChange }: Props) {
             />
           </div>
 
-          <div className="settings-group-label" data-testid="certificates-group">Certificates</div>
+          <h3 className="settings-group-label" data-testid="certificates-group">Certificates</h3>
 
           <FileRow
             label="CA bundle (PEM)"
@@ -417,6 +468,7 @@ export function SettingsView({ settings, onChange }: Props) {
               className="num-input"
               style={{ width: 240 }}
               type="password"
+              aria-label="Certificate passphrase"
               value={localPassphrase}
               placeholder="passphrase"
               onChange={(e) => setLocalPassphrase(e.target.value)}
@@ -447,7 +499,13 @@ export function SettingsView({ settings, onChange }: Props) {
           {mcpSnippet ? (
             <div className="mcp-code-block-wrap">
               <code className="mcp-code-block">{mcpSnippet}</code>
-              <button className="mcp-copy-btn" onClick={handleCopyMcp} title="Copy snippet">
+              <button
+                type="button"
+                className="mcp-copy-btn"
+                onClick={handleCopyMcp}
+                title="Copy snippet"
+                aria-label={copied ? 'Snippet copied' : 'Copy snippet'}
+              >
                 {copied ? <CheckIcon size={13} /> : <CopyIcon size={13} />}
                 {copied ? 'Copied' : 'Copy'}
               </button>
@@ -469,16 +527,18 @@ export function SettingsView({ settings, onChange }: Props) {
         <div className="setting-row">
           <div>
             <div className="label">Anonymous usage analytics</div>
-            <div className="desc">
+            <div className="desc" id={`${uid}-analytics-desc`}>
               On by default. Sends anonymous, aggregate events only (never URLs, headers or bodies).
               Turn off anytime.
             </div>
           </div>
           <button
+            type="button"
             className={`switch ${settings.analyticsEnabled ? 'on' : ''}`}
             role="switch"
             aria-checked={settings.analyticsEnabled}
             aria-label="Analytics"
+            aria-describedby={`${uid}-analytics-desc`}
             onClick={() => onChange({ analyticsEnabled: !settings.analyticsEnabled })}
           >
             <span className="knob" />
@@ -496,7 +556,9 @@ export function SettingsView({ settings, onChange }: Props) {
             color: 'var(--text-dim)'
           }}
         >
-          <Logo size={34} rounded />
+          <span aria-hidden>
+            <Logo size={34} rounded />
+          </span>
           <div>
             <div style={{ fontWeight: 600, color: 'var(--text)' }}>Tiger</div>
             <div style={{ fontSize: 12 }}>A local-first API client for teams.</div>
@@ -504,6 +566,7 @@ export function SettingsView({ settings, onChange }: Props) {
           </div>
         </div>
       )}
+      </div>
       </div>
     </section>
   )

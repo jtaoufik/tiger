@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Logo } from '../Logo'
 import {
   ClockIcon,
@@ -24,6 +25,8 @@ interface Props {
   onEnvironments: () => void
   onSettings: () => void
   onGit: () => void
+  /** False when no collection is open: "New request" then explains why. */
+  canCreateRequest?: boolean
 }
 
 /** The home screen: every major feature one click away. */
@@ -38,8 +41,10 @@ export function WelcomeView({
   onHistory,
   onEnvironments,
   onSettings,
-  onGit
+  onGit,
+  canCreateRequest = true
 }: Props) {
+  const uid = useId()
   // The ways to get a collection in front of you. These lead the screen.
   const primary = [
     {
@@ -72,8 +77,11 @@ export function WelcomeView({
     {
       icon: <PlusIcon size={20} />,
       title: 'New request',
-      desc: 'Start from scratch in the demo collection.',
-      onClick: onNewRequest
+      desc: canCreateRequest
+        ? 'Start from scratch in your first collection.'
+        : 'Open or create a collection first.',
+      onClick: onNewRequest,
+      disabled: !canCreateRequest
     },
     {
       icon: <SearchIcon size={20} />,
@@ -107,44 +115,70 @@ export function WelcomeView({
     }
   ]
 
+  // Tiles are named by their title and described by their blurb, so screen
+  // readers hear "Open a collection, button" then the detail, not one run-on.
+  const descId = (title: string) => `${uid}-${title.replace(/\W+/g, '-')}`
+
   return (
-    <section className="panel welcome">
+    <section className="panel welcome" aria-labelledby={`${uid}-title`}>
       <div className="welcome-head">
-        <Logo size={56} />
+        <span aria-hidden>
+          <Logo size={56} />
+        </span>
         <div>
-          <h2>Welcome to Tiger</h2>
+          <h2 id={`${uid}-title`}>Welcome to Tiger</h2>
           <p>The API client that lives in your repos. Start with a collection.</p>
         </div>
       </div>
 
-      <div className="welcome-section-label">Start a collection</div>
-      <div className="welcome-primary">
+      <h3 className="welcome-section-label">Start a collection</h3>
+      <ul className="welcome-primary" role="list">
         {primary.map((tile) => (
-          <button className="welcome-tile primary" key={tile.title} onClick={tile.onClick}>
-            <span className="chip">{tile.icon}</span>
-            <span className="meta">
-              <span className="t">{tile.title}</span>
-              <span className="d">{tile.desc}</span>
-            </span>
-          </button>
+          <li key={tile.title}>
+            <button
+              type="button"
+              className="welcome-tile primary"
+              onClick={tile.onClick}
+              aria-describedby={descId(tile.title)}
+            >
+              <span className="chip">{tile.icon}</span>
+              <span className="meta">
+                <span className="t">{tile.title}</span>
+                <span className="d" id={descId(tile.title)}>
+                  {tile.desc}
+                </span>
+              </span>
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <div className="welcome-section-label">Tools</div>
-      <div className="welcome-grid">
+      <h3 className="welcome-section-label">Tools</h3>
+      <ul className="welcome-grid" role="list">
         {tiles.map((tile) => (
-          <button className="welcome-tile" key={tile.title} onClick={tile.onClick}>
-            {tile.icon}
-            <span className="t">{tile.title}</span>
-            <span className="d">{tile.desc}</span>
-          </button>
+          <li key={tile.title}>
+            <button
+              type="button"
+              className="welcome-tile"
+              onClick={tile.disabled ? undefined : tile.onClick}
+              aria-disabled={tile.disabled || undefined}
+              aria-describedby={descId(tile.title)}
+            >
+              {tile.icon}
+              <span className="t">{tile.title}</span>
+              <span className="d" id={descId(tile.title)}>
+                {tile.desc}
+              </span>
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <div className="welcome-foot">
-        <FileIcon size={13} /> Requests are plain .tiger files: branch them, review them, own them.
+        <FileIcon size={13} />
+        <span>Requests are plain .tiger files: branch them, review them, own them.</span>
         <span style={{ flex: 1 }} />
-        v{version}
+        <span>Version {version}</span>
       </div>
     </section>
   )

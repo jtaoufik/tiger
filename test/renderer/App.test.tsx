@@ -69,12 +69,40 @@ describe('App (browser preview, no Electron bridge)', () => {
     // Overview is the default tab and carries Team sync.
     expect(await screen.findByText('Team sync')).toBeInTheDocument()
     expect(screen.getByText(/lives in memory/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Auth' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Auth' }))
     expect(screen.getByText(/Default auth/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Activity/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /Activity/ }))
     expect(screen.getByText(/Recent activity/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Docs' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Docs' }))
     expect(screen.getByPlaceholderText(/Document this collection/)).toBeInTheDocument()
+  })
+
+  it('collection page sections are a tablist with arrow-key navigation', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Demo collection'))
+    const list = screen.getByRole('tablist', { name: 'Collection sections' })
+    const overview = within(list).getByRole('tab', { name: 'Overview' })
+    expect(overview).toHaveAttribute('aria-selected', 'true')
+    overview.focus()
+    fireEvent.keyDown(overview, { key: 'ArrowRight' })
+    const docs = within(list).getByRole('tab', { name: 'Docs' })
+    expect(docs).toHaveFocus()
+    expect(docs).toHaveAttribute('aria-selected', 'true')
+    expect(document.getElementById(docs.getAttribute('aria-controls')!)).toHaveAttribute(
+      'aria-labelledby',
+      docs.id
+    )
+    fireEvent.keyDown(docs, { key: 'End' })
+    expect(within(list).getByRole('tab', { name: /Activity/ })).toHaveFocus()
+  })
+
+  it('folder page lists its requests as keyboard-operable buttons', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Posts'))
+    const main = screen.getByRole('main')
+    const btn = within(main).getByRole('button', { name: 'GET List posts' })
+    fireEvent.click(btn)
+    expect(document.title).toBe('List posts - Tiger')
   })
 
   it('opens a folder view listing its requests', () => {
@@ -191,12 +219,12 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('shows network + privacy settings with analytics on by default', () => {
     render(<App />)
     fireEvent.click(screen.getByTitle('Settings'))
-    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Network' }))
     expect(screen.getByText('Follow redirects')).toBeInTheDocument()
     expect(screen.getByText('Verify SSL certificates')).toBeInTheDocument()
     expect(screen.getByText('Use a proxy')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Privacy' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Privacy' }))
     const analyticsRow = screen.getByText('Anonymous usage analytics').closest('.setting-row')!
     expect(analyticsRow.querySelector('.switch.on')).not.toBeNull()
   })

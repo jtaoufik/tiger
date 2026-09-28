@@ -2,7 +2,7 @@
 
 /* Group heading inside the Advanced tab */
 .settings-group-label {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -23,18 +23,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-dim);
 }
 
 .cert-row-label.placeholder {
-  color: var(--text-faint, var(--text-dim));
-  opacity: 0.55;
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 .cert-pick-btn {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 3px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -70,7 +70,7 @@
 
 /* Certificate hint */
 .cert-hint {
-  font-size: 11.5px;
+  font-size: 0.7188rem;
   color: var(--text-dim);
   margin-top: 10px;
   line-height: 1.5;
@@ -79,7 +79,7 @@
 /* Cookie jar clear button feedback */
 .cookie-clear-btn {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 3px 12px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -96,7 +96,7 @@
 
 /* MCP tab */
 .mcp-intro {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-dim);
   line-height: 1.6;
   margin-bottom: 18px;
@@ -108,7 +108,7 @@
 
 .mcp-code-block {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -126,7 +126,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 3px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -143,8 +143,29 @@
 }
 
 .mcp-note {
-  font-size: 11.5px;
+  font-size: 0.7188rem;
   color: var(--text-dim);
   margin-top: 10px;
   line-height: 1.5;
+}
+
+/* h3 semantics, same look as before. */
+h3.settings-group-label {
+  font-weight: 600;
+}
+
+/* WCAG 2.5.8: text buttons in settings rows are at least 24px tall. */
+.cert-pick-btn,
+.cookie-clear-btn,
+.mcp-copy-btn {
+  min-height: 24px;
+  border-color: var(--control-border);
+}
+
+/* Settings section tabs: selected = filled segment (>= 3:1) + bold. */
+.settings-tabs [role='tab'][aria-selected='true'] {
+  font-weight: 650;
+}
+.settings-tabs {
+  flex-wrap: wrap;
 }

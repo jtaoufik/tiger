@@ -5,15 +5,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gitSync, gitSyncResolve } from '../../src/main/git'
 
-// If this suite runs inside a git hook (e.g. a pre-commit check that shells out to `npm test`),
-// git has already exported GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE / GIT_PREFIX /
-// GIT_COMMON_DIR into process.env. Left set, every git call below - both this file's own `sh()`
-// helper and the real gitSync()/gitSyncResolve() under test, which spread `...process.env` into
-// their own execFile calls - would inherit those and operate on the repo running the hook
-// instead of the throwaway repos this suite creates in a temp dir. Not a real-world concern
-// (the packaged app is never invoked as a git hook), only a test-isolation one.
-for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR']) {
-  delete process.env[key]
+// When this suite runs inside a git hook (the pre-commit gate), git exports
+// GIT_DIR / GIT_INDEX_FILE and friends. Inherited by the child processes below,
+// they point the scratch repos at the outer checkout. Scrub them for this file.
+for (const key of Object.keys(process.env)) {
+  if (key.startsWith('GIT_')) delete process.env[key]
 }
 
 function sh(args: string[], cwd?: string): Promise<string> {

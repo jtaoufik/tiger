@@ -27,3 +27,109 @@
 .cv-tabbody .section-label:first-child {
   margin-top: 0;
 }
+
+/* ---------- Collection / folder page header ---------- */
+.cv-title {
+  flex: 1;
+  min-width: 0;
+}
+.cv-title h2 {
+  min-width: 0;
+}
+/* Long names truncate; the full name is in the heading's title tooltip. */
+.cv-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.cv-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cv-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.cv-crumbs {
+  display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+.cv-crumbs li {
+  white-space: nowrap;
+}
+.cv-crumbs li + li::before {
+  content: "/";
+  padding: 0 6px;
+  color: var(--text-dim);
+}
+.cv-crumbs li[aria-current='page'] {
+  color: var(--text);
+}
+
+/* Page tabs sit on a scroll-free strip: ring drawn inside, never clipped. */
+.cv-tabs .tab:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+/* Selected page tab: surface + an accent underline, not color alone. */
+.cv-tabs .tab.active {
+  box-shadow: inset 0 -2px 0 var(--accent-fill);
+}
+.cv-tabs .tab {
+  min-height: 30px;
+}
+
+/* Folder request list: real buttons, styled as tree rows. */
+.cv-req-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cv-req-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text);
+}
+.cv-req-row:hover {
+  background: var(--accent-weak);
+}
+.cv-req-row:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.cv-req-row .row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-empty-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
