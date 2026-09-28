@@ -966,7 +966,25 @@ button {
 }
 .resizer.col::after { width: 3px; height: 44px; }
 .resizer.row::after { height: 3px; width: 44px; }
-.resizer:hover::after { opacity: 1; }
+.resizer:hover::after,
+.resizer:focus-visible::after { opacity: 1; }
+/* Wider invisible grab area than the 6px track (pointer hit-testing counts
+   pseudo-elements), without covering the panels' scrollbars. */
+.resizer::before {
+  content: "";
+  position: absolute;
+}
+.resizer.col::before { inset: 0 -4px; }
+.resizer.row::before { inset: -4px 0; }
+.resizer:focus-visible {
+  outline: none;
+}
+.resizer:focus-visible::after {
+  background: var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+.resizer.col:focus-visible::after { width: 4px; height: 64px; }
+.resizer.row:focus-visible::after { height: 4px; width: 64px; }
 
 /* ---------- command palette ---------- */
 .modal.palette {
@@ -1589,7 +1607,7 @@ button {
   flex-shrink: 0;
   color: var(--text-dim);
 }
-.request-tab.active > svg { color: var(--accent); }
+.request-tab.active > svg { color: var(--accent-text); }
 
 /* ==========================================================================
    Accessibility primitives (shared; see src/renderer/src/a11y.ts)

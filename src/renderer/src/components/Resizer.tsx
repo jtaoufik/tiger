@@ -1,14 +1,45 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, type KeyboardEvent } from 'react'
 
 interface Props {
   direction: 'col' | 'row'
   /** Called with the pointer delta (px) since drag start; commit the new size. */
   onDrag: (delta: number) => void
   onEnd?: () => void
+  /** Accessible name, e.g. "Resize sidebar". */
+  label?: string
+  /** Current size of the pane before the separator, in px (aria-valuenow). */
+  value?: number
+  min?: number
+  max?: number
+  /** Measures the current size when `value` is not tracked yet. */
+  measure?: () => number
+  /** Keyboard resize: called with the clamped new size. */
+  onResize?: (size: number) => void
+  /** id of the pane this separator sizes. */
+  controls?: string
 }
 
-/** A slim drag handle between panes. Pointer-capture based, touch friendly. */
-export function Resizer({ direction, onDrag, onEnd }: Props) {
+/** Pixels per arrow press; Shift makes it coarse. */
+export const RESIZE_STEP = 16
+export const RESIZE_STEP_LARGE = 64
+
+/**
+ * A slim drag handle between panes. Pointer-capture based, touch friendly,
+ * and a focusable window splitter (role=separator) for keyboard users:
+ * arrows resize, Shift+arrow resizes faster, Home/End go to min/max.
+ */
+export function Resizer({
+  direction,
+  onDrag,
+  onEnd,
+  label,
+  value,
+  min,
+  max,
+  measure,
+  onResize,
+  controls
+}: Props) {
   const start = useRef(0)
 
   const onPointerDown = useCallback(
@@ -31,11 +62,37 @@ export function Resizer({ direction, onDrag, onEnd }: Props) {
     [direction, onDrag, onEnd]
   )
 
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!onResize) return
+    const current = value ?? measure?.() ?? 0
+    const lo = min ?? 0
+    const hi = max ?? Number.POSITIVE_INFINITY
+    const step = e.shiftKey ? RESIZE_STEP_LARGE : RESIZE_STEP
+    const shrink = direction === 'col' ? 'ArrowLeft' : 'ArrowUp'
+    const grow = direction === 'col' ? 'ArrowRight' : 'ArrowDown'
+    let next: number | null = null
+    if (e.key === shrink) next = current - step
+    else if (e.key === grow) next = current + step
+    else if (e.key === 'Home') next = lo
+    else if (e.key === 'End' && Number.isFinite(hi)) next = hi
+    if (next === null) return
+    e.preventDefault()
+    onResize(Math.round(Math.min(hi, Math.max(lo, next))))
+  }
+
+  const focusable = !!onResize
   return (
     <div
       className={`resizer ${direction}`}
       role="separator"
       aria-orientation={direction === 'col' ? 'vertical' : 'horizontal'}
+      aria-label={label}
+      aria-controls={controls}
+      aria-valuenow={value !== undefined ? Math.round(value) : undefined}
+      aria-valuemin={focusable ? min : undefined}
+      aria-valuemax={focusable ? max : undefined}
+      tabIndex={focusable ? 0 : undefined}
+      onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
     />
   )
