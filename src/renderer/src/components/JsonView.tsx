@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { tokenizeJson } from '@core/jsonHighlight'
+import './JsonView.css'
 
 /** Above this size highlighting would jank the UI; fall back to plain text. */
 const HIGHLIGHT_LIMIT = 400_000

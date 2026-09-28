@@ -1,0 +1,31 @@
+/* JSON syntax colors, tuned for >= 4.5:1 on the code surface.
+   styles.css paints .jt-* with the method colors, which measure 2.5-4.3:1 on
+   the light code surface (#fafbfe) and 4.2:1 for literals on dark (#11141d).
+   These rules carry an extra `html` so they win over styles.css (loaded later).
+   Measured ratios (light / dark):
+     key     #b4500a 4.94  / #ff9d5c 8.99
+     string  #18794a 5.22  / #4cc38a 8.33
+     number  #1f62b8 5.78  / #6aa8ff 7.61
+     literal #7a3fb0 6.39  / #c49bf0 8.17
+     punct   --text-dim 5.53 / 7.14 (unchanged) */
+html .jt-key { color: #b4500a; }
+html .jt-string { color: #18794a; }
+html .jt-number { color: #1f62b8; }
+html .jt-literal { color: #7a3fb0; font-weight: 600; }
+html .jt-punct { color: var(--text-dim); }
+
+html[data-theme='dark'] .jt-key { color: #ff9d5c; }
+html[data-theme='dark'] .jt-string { color: #4cc38a; }
+html[data-theme='dark'] .jt-number { color: #6aa8ff; }
+html[data-theme='dark'] .jt-literal { color: #c49bf0; }
+
+/* Forced colors: syntax tint is decoration, let the system text color win. */
+@media (forced-colors: active) {
+  html .jt-key,
+  html .jt-string,
+  html .jt-number,
+  html .jt-literal,
+  html .jt-punct {
+    color: CanvasText;
+  }
+}

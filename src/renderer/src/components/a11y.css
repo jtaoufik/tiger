@@ -15,6 +15,19 @@
   --tg-focus: var(--focus-ring, #7cb2ff);
 }
 
+/* Text on the accent. Light theme ships white ink on #ff7a18 (2.6:1) and on
+   the #e0533d danger gradient (3.8:1 at best). Inside our surfaces use dark ink on
+   the accent gradient (4.9-7.1:1) and a deeper red behind white (5.3-6.6:1). The dark theme
+   already uses dark ink, so only light is touched. */
+:root:not([data-theme='dark']) :is(.modal-backdrop, .panel.editor, .panel.response) .seg button.on,
+:root:not([data-theme='dark']) :is(.modal-backdrop, .panel.editor, .panel.response) .btn.accent {
+  color: #1a1206;
+}
+:is(.modal-backdrop, .panel.editor, .panel.response) .btn.danger {
+  background: linear-gradient(180deg, #c8321f, #b42318);
+  color: #fff;
+}
+
 /* Visually hidden, still announced by screen readers. */
 .tg-sr-only {
   position: absolute !important;
