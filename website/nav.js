@@ -223,9 +223,13 @@
     })
 
     // ---- Mobile menu ----
+    // The open drawer covers the viewport by design, so the page behind it must not scroll or
+    // stay reachable - otherwise a sighted user can scroll content behind the drawer and a
+    // keyboard/AT user can tab into it while it is hidden under the open panel.
     function setMenu(open) {
       sidebar.classList.toggle('open', open)
       scrim.classList.toggle('show', open)
+      document.body.style.overflow = open ? 'hidden' : ''
     }
     topbar.querySelector('.menu-toggle').addEventListener('click', function () { setMenu(!sidebar.classList.contains('open')) })
     scrim.addEventListener('click', function () { setMenu(false) })
