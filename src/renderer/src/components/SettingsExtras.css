@@ -148,3 +148,24 @@
   margin-top: 10px;
   line-height: 1.5;
 }
+
+/* h3 semantics, same look as before. */
+h3.settings-group-label {
+  font-weight: 600;
+}
+
+/* WCAG 2.5.8: text buttons in settings rows are at least 24px tall. */
+.cert-pick-btn,
+.cookie-clear-btn,
+.mcp-copy-btn {
+  min-height: 24px;
+  border-color: var(--control-border);
+}
+
+/* Settings section tabs: selected = filled segment (>= 3:1) + bold. */
+.settings-tabs [role='tab'][aria-selected='true'] {
+  font-weight: 650;
+}
+.settings-tabs {
+  flex-wrap: wrap;
+}

@@ -219,12 +219,12 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('shows network + privacy settings with analytics on by default', () => {
     render(<App />)
     fireEvent.click(screen.getByTitle('Settings'))
-    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Network' }))
     expect(screen.getByText('Follow redirects')).toBeInTheDocument()
     expect(screen.getByText('Verify SSL certificates')).toBeInTheDocument()
     expect(screen.getByText('Use a proxy')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Privacy' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Privacy' }))
     const analyticsRow = screen.getByText('Anonymous usage analytics').closest('.setting-row')!
     expect(analyticsRow.querySelector('.switch.on')).not.toBeNull()
   })

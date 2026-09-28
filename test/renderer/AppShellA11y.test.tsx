@@ -133,3 +133,30 @@ describe('App shell accessibility', () => {
     expect(folder).toHaveFocus()
   })
 })
+
+describe('Settings page accessibility', () => {
+  it('sections are a tablist; arrows switch sections and move focus', () => {
+    render(<App />)
+    fireEvent.click(screen.getByTitle('Settings'))
+    const list = screen.getByRole('tablist', { name: 'Settings sections' })
+    const general = within(list).getByRole('tab', { name: 'General' })
+    expect(general).toHaveAttribute('aria-selected', 'true')
+    general.focus()
+    fireEvent.keyDown(general, { key: 'ArrowLeft' })
+    const about = within(list).getByRole('tab', { name: 'About' })
+    expect(about).toHaveFocus()
+    expect(about).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('theme buttons expose their pressed state and inputs are labelled', () => {
+    render(<App />)
+    fireEvent.click(screen.getByTitle('Settings'))
+    const group = screen.getByRole('group', { name: 'Appearance' })
+    const pressed = within(group)
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-pressed') === 'true')
+    expect(pressed).toHaveLength(1)
+    expect(screen.getByRole('spinbutton', { name: 'Request timeout (ms)' })).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Editor font size' })).toBeInTheDocument()
+  })
+})
