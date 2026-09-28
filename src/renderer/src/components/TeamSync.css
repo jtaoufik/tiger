@@ -1,0 +1,633 @@
+/* Team sync (git): status badge, setup stepper, changes, conflicts, help. */
+
+.ts-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+  font-size: 0.8125rem;
+  color: var(--text);
+  min-width: 0;
+}
+.ts-badge > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ts-badge svg {
+  flex-shrink: 0;
+}
+.ts-badge.tone-ok svg {
+  color: var(--m-get);
+}
+.ts-badge.tone-attention svg {
+  color: var(--accent-text);
+}
+.ts-badge.tone-danger svg {
+  color: var(--m-delete);
+}
+.ts-badge.tone-neutral svg {
+  color: var(--text-dim);
+}
+
+/* The status in the collection header: a real button, 24px+ target. */
+.ts-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--glass-strong);
+  color: var(--text);
+  cursor: pointer;
+  max-width: 100%;
+}
+.ts-pill:hover {
+  background: var(--glass-hover);
+}
+.ts-pill .ts-badge {
+  font-size: 0.75rem;
+}
+
+/* Sidebar row variant. */
+.sync-chips .ts-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  gap: 4px;
+  color: var(--text-dim);
+}
+
+.ts-term {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ts-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 18px 0 8px;
+  font-size: 0.8438rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.ts-h:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.ts-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.ts-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.ts-hint code {
+  font-family: var(--mono);
+  font-size: 0.7188rem;
+  background: var(--glass-strong);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.ts-invalid {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: var(--m-delete);
+  font-weight: 600;
+}
+
+.ts-link {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  min-height: 24px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.ts-link:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ---- status card at the top of the dialog ---- */
+.ts-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--glass-strong);
+}
+.ts-status.tone-attention {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.ts-status.tone-danger {
+  border-color: color-mix(in srgb, var(--m-delete) 45%, var(--border));
+}
+.ts-status-text {
+  flex: 1;
+  min-width: 0;
+}
+.ts-status-text .ts-badge {
+  font-size: 0.9375rem;
+}
+.ts-status-text p {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+.ts-status-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.ts-status-actions .ts-term {
+  text-align: right;
+  max-width: 210px;
+}
+.ts-sync {
+  min-width: 96px;
+  justify-content: center;
+}
+.ts-check {
+  align-self: flex-start;
+}
+
+.ts-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+.ts-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent-text);
+  animation: ts-spin 0.8s linear infinite;
+}
+.ts-progress:empty {
+  min-height: 0;
+  margin: 0;
+}
+@keyframes ts-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-spinner {
+    animation: none;
+    border-top-color: var(--border-strong);
+  }
+}
+
+/* ---- errors and help ---- */
+.ts-error {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--m-delete) 45%, var(--border));
+  background: color-mix(in srgb, var(--m-delete) 7%, var(--glass-strong));
+}
+.ts-error-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--m-delete);
+}
+.ts-error-body {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+.ts-error-msg {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+}
+.ts-error-steps {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  line-height: 1.55;
+}
+.ts-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+}
+.ts-identity {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 10px;
+  max-width: 420px;
+}
+
+.ts-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 10px;
+  background: var(--glass-strong);
+  border: 1px solid var(--border);
+  font-size: 0.8125rem;
+}
+
+/* ---- fields ---- */
+.ts-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 10px;
+}
+.ts-field label,
+.ts-note label,
+.ts-identity label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.ts-field input,
+.ts-note input,
+.ts-identity input {
+  font-size: 0.8125rem;
+  padding: 8px 11px;
+  min-height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--control-border);
+  background: var(--glass-modal);
+  color: var(--text);
+  user-select: text;
+}
+.ts-field input {
+  font-family: var(--mono);
+  font-size: 0.7812rem;
+}
+.ts-field input[aria-invalid='true'] {
+  border-color: var(--m-delete);
+}
+.ts-field input:focus-visible,
+.ts-note input:focus-visible,
+.ts-identity input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--focus-ring);
+}
+.ts-field input::placeholder {
+  color: var(--text-faint);
+}
+
+/* ---- setup stepper ---- */
+.ts-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: none;
+}
+.ts-step {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  position: relative;
+}
+.ts-step + .ts-step {
+  border-top: 1px dashed var(--border-strong);
+}
+.ts-step-num {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-dim);
+  background: var(--glass-strong);
+}
+.ts-step.current .ts-step-num {
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
+  color: var(--accent-fill-ink);
+}
+.ts-step.done .ts-step-num {
+  border-color: var(--m-get);
+  color: var(--m-get);
+}
+.ts-step-body {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+.ts-step-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 26px;
+  line-height: 26px;
+}
+.ts-step.todo .ts-step-title b {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.ts-step.done .ts-step-title b {
+  color: var(--text-dim);
+}
+.ts-step-body p {
+  margin: 2px 0 10px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ---- changes ---- */
+.ts-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ts-section-head .ts-h {
+  margin-bottom: 4px;
+}
+.ts-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ts-group h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 2px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.ts-group.ts-added h4 svg {
+  color: var(--m-get);
+}
+.ts-group.ts-changed h4 svg {
+  color: var(--m-put);
+}
+.ts-group.ts-removed h4 svg {
+  color: var(--m-delete);
+}
+.ts-count {
+  font-weight: 500;
+}
+.ts-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ts-change-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ts-change-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ts-change-name:hover {
+  background: var(--glass-hover);
+}
+.ts-change-name:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 0;
+}
+.ts-change-name .chev {
+  transition: transform 0.12s ease;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+.ts-change-name .chev.open {
+  transform: rotate(90deg);
+}
+.ts-folder {
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.ts-discard-one {
+  width: 28px;
+  height: 28px;
+}
+.ts-diff {
+  margin: 4px 0 8px 22px;
+  max-height: 220px;
+}
+
+.ts-note {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ts-note .ts-row {
+  margin-top: 6px;
+}
+
+.ts-discard-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+/* ---- history ---- */
+.ts-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ts-history li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 0.8125rem;
+}
+.ts-history li .row-label {
+  flex: 1;
+  min-width: 0;
+}
+.ts-history li .cv-dim {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* ---- advanced ---- */
+.ts-adv-block + .ts-adv-block {
+  margin-top: 14px;
+}
+.ts-adv-block h4 {
+  margin: 0 0 4px;
+  font-size: 0.8125rem;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.ts-adv-block .ts-hint {
+  margin: 0 0 8px;
+}
+.ts-adv-block .btn .ts-term {
+  margin-left: 6px;
+}
+
+/* ---- conflicts ---- */
+.ts-conflict {
+  margin-top: 12px;
+  padding: 4px 16px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--m-delete) 40%, var(--border));
+  background: color-mix(in srgb, var(--m-delete) 5%, var(--glass-strong));
+}
+.ts-conflict .ts-h {
+  margin-top: 12px;
+}
+.ts-conflict .ts-h svg {
+  color: var(--m-delete);
+}
+.ts-explain {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.ts-conflict-item {
+  margin: 0 0 12px;
+  padding: 8px 12px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--glass-modal);
+}
+.ts-conflict-item legend {
+  padding: 0 6px;
+  font-weight: 700;
+  font-size: 0.8438rem;
+}
+.ts-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ts-side-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.ts-side pre {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--code-surface);
+  font-family: var(--mono);
+  font-size: 0.7188rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ts-side pre:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 1px;
+}
+/* Differences: tinted background + a left bar, so it is not color alone. */
+.ts-differs {
+  display: inline-block;
+  width: 100%;
+  background: var(--accent-weak);
+  box-shadow: inset 3px 0 0 var(--accent-text);
+  padding-left: 4px;
+  margin-left: -4px;
+}
+.ts-side-empty {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-strong);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.ts-conflict-actions {
+  margin-top: 4px;
+}
+
+/* ---- join a team collection ---- */
+.ts-join-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 620px) {
+  .ts-sides {
+    grid-template-columns: 1fr;
+  }
+  .ts-status {
+    flex-wrap: wrap;
+  }
+  .ts-status-actions {
+    align-items: flex-start;
+  }
+}

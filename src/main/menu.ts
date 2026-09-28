@@ -79,6 +79,8 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
       item('new-environment'),
       sep,
       item('open-collection'),
+      item('join-team'),
+      item('team-sync'),
       sep,
       item('import'),
       item('export'),

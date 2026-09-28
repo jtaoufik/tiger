@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { splitDiff } from '@core/diffView'
-import type { GitBranches, GitCommit, GitStatus } from '../../../main/git'
+import type { GitBranches, GitCommit } from '../../../main/git'
+import { setConflict, setupStep, summarizeSync, type ChangeItem } from '../gitUx'
+import { actionLabel } from '../actions'
 import { Modal } from './Modal'
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckIcon,
-  ChevronIcon,
-  DownloadIcon,
-  GitBranchIcon,
-  RefreshIcon
-} from './Icons'
+  ChangeList,
+  ConflictPanel,
+  DiscardConfirm,
+  ErrorPanel,
+  GitTerm,
+  ProgressLine,
+  SetupStepper,
+  SyncBadge,
+  useChangeGroups,
+  useTeamSync,
+  useVersionNote
+} from './TeamSync'
+import { ChevronIcon, DownloadIcon, HistoryIcon, RefreshIcon, SaveIcon, UndoIcon } from './Icons'
 import './a11y.css'
 import './GitModal.css'
 
@@ -25,154 +32,143 @@ interface Props {
    * teammates' freshly pulled changes with stale in-memory copies.
    */
   onWorkingTreeChanged?: () => void
+  /** Start a sync as soon as the collection is ready (the "Sync with team" command). */
+  autoSync?: boolean
   onClose: () => void
 }
 
-type Screen = 'loading' | 'no-electron' | 'no-git' | 'no-repo' | 'repo'
-
-/** "M requests/Get Users.tiger" → "Edited · requests / Get Users" */
-export function plainChange(status: string, path: string): { word: string; label: string } {
-  const word =
-    status === '??' || status.startsWith('A')
-      ? 'New'
-      : status.startsWith('D')
-        ? 'Deleted'
-        : status.startsWith('R')
-          ? 'Renamed'
-          : 'Edited'
-  const label = path.replace(/\.tiger$/, '').split('/').join(' / ')
-  return { word, label }
-}
-
-export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, onClose }: Props) {
-  const [screen, setScreen] = useState<Screen>('loading')
-  const [status, setStatus] = useState<GitStatus | null>(null)
-  const [diff, setDiff] = useState('')
-  const [message, setMessage] = useState('')
-  const [remoteUrl, setRemoteUrl] = useState('')
-  const [busy, setBusy] = useState<string | null>(null)
-  const [branches, setBranches] = useState<GitBranches | null>(null)
-  const [log, setLog] = useState<GitCommit[]>([])
-  const [newBranch, setNewBranch] = useState('')
-  const [conflict, setConflict] = useState(false)
-  const [advanced, setAdvanced] = useState(false)
-  const [confirmDiscard, setConfirmDiscard] = useState(false)
+/**
+ * Team sync for one collection. Plain words first: status, one Sync button,
+ * the changes as requests, a suggested version note. Setup is a 3-step guide;
+ * a conflict shows both versions per request. Git power (version lines,
+ * separate get/share, full diff) lives under Advanced.
+ */
+export function GitModal({
+  collectionName,
+  root,
+  onToast,
+  onWorkingTreeChanged,
+  autoSync = false,
+  onClose
+}: Props) {
   const uid = useId()
-  const keepRef = useRef<HTMLButtonElement>(null)
-  const discardRef = useRef<HTMLButtonElement>(null)
-  const wasConfirming = useRef(false)
-  // The discard buttons swap in place; keep focus on the safe choice.
-  useEffect(() => {
-    if (confirmDiscard) keepRef.current?.focus()
-    else if (wasConfirming.current) discardRef.current?.focus()
-    wasConfirming.current = confirmDiscard
-  }, [confirmDiscard])
+  const state = useTeamSync(root, { onToast, onWorkingTreeChanged })
+  const { status, availability, busy } = state
+  const groups = useChangeGroups(root, status)
+  const note = useVersionNote(groups)
+  const [log, setLog] = useState<GitCommit[]>([])
+  const [branches, setBranches] = useState<GitBranches | null>(null)
+  const [fullDiff, setFullDiff] = useState('')
+  const [advanced, setAdvanced] = useState(false)
+  const [newBranch, setNewBranch] = useState('')
+  const [discarding, setDiscarding] = useState<ChangeItem[] | null>(null)
+  const [undo, setUndo] = useState<{ token: string; text: string } | null>(null)
 
-  const refresh = useCallback(async () => {
-    if (!window.tiger?.git) {
-      setScreen('no-electron')
-      return
-    }
-    const availability = await window.tiger.git.check()
-    if (!availability.ok) {
-      setScreen('no-git')
-      return
-    }
-    const next = await window.tiger.git.status(root)
-    setStatus(next)
-    if (!next.isRepo) {
-      setScreen('no-repo')
-      return
-    }
-    setDiff(await window.tiger.git.diff(root))
-    setBranches(await window.tiger.git.branches(root))
+  const loadDetails = useCallback(async () => {
+    if (!window.tiger?.git || !status?.isRepo) return
     setLog(await window.tiger.git.log(root))
-    setScreen('repo')
-  }, [root])
+    setBranches(await window.tiger.git.branches(root))
+    if (advanced) setFullDiff(await window.tiger.git.diff(root))
+  }, [root, status, advanced])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    void loadDetails()
+  }, [loadDetails])
 
-  const act = useCallback(
-    async (
-      label: string,
-      run: () => Promise<{ ok: boolean; message: string }>,
-      mutatesWorkingTree = false
-    ) => {
-      setBusy(label)
-      try {
-        const result = await run()
-        onToast(result.message || (result.ok ? 'Done' : `${label} failed`))
-        // Pull/checkout/discard can rewrite the .tiger files on disk; tell App to
-        // invalidate its cache so the next read picks up the new content.
-        if (mutatesWorkingTree && result.ok) onWorkingTreeChanged?.()
-        await refresh()
-      } finally {
-        setBusy(null)
-      }
-    },
-    [onToast, onWorkingTreeChanged, refresh]
-  )
+  const summary = summarizeSync(status, { conflict: state.conflict })
+  const step = setupStep(status)
+  const allItems = [...groups.changed, ...groups.added, ...groups.removed]
+  const isBusy = busy !== null
 
-  /** One-button sync. A conflict flips to the "keep mine / take theirs" card. */
-  const doSync = useCallback(async () => {
-    setBusy('Sync')
-    try {
-      const result = await window.tiger!.git.sync(root, message.trim())
-      if (result.conflict) {
-        setConflict(true)
-      } else {
-        onToast(result.message)
-        if (result.ok) {
-          setMessage('')
-          onWorkingTreeChanged?.()
-        }
-      }
-      await refresh()
-    } finally {
-      setBusy(null)
+  const doSync = async (): Promise<void> => {
+    const result = await state.sync(note.note)
+    if (result?.ok) note.reset()
+  }
+
+  // "Sync with team" from the menu or palette: sync once, as soon as it can.
+  const autoSynced = useRef(false)
+  useEffect(() => {
+    if (!autoSync || autoSynced.current || availability !== 'ready' || !status) return
+    autoSynced.current = true
+    if (setupStep(status) === null && !state.conflict) void doSync()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSync, availability, status])
+
+  const saveVersion = async (): Promise<void> => {
+    const result = await state.run('Saving a version…', () =>
+      window.tiger!.git.commit(root, note.note.trim())
+    )
+    if (result?.ok) note.reset()
+  }
+
+  const discard = async (items: ChangeItem[]): Promise<void> => {
+    setDiscarding(null)
+    const everything = items.length === allItems.length
+    const result = await state.run(
+      'Discarding…',
+      () => window.tiger!.git.discard(root, everything ? undefined : items.map((i) => i.path)),
+      { mutates: true, quiet: true }
+    )
+    if (result?.ok) {
+      const text =
+        items.length === 1
+          ? `Discarded changes to ${items[0].name}.`
+          : `Discarded ${items.length} changes.`
+      onToast(text)
+      setUndo(result.undoToken ? { token: result.undoToken, text } : null)
     }
-  }, [root, message, onToast, onWorkingTreeChanged, refresh])
+  }
 
-  const doResolve = useCallback(
-    async (prefer: 'mine' | 'theirs') => {
-      setBusy('Resolve')
-      try {
-        const result = await window.tiger!.git.syncResolve(root, prefer, message.trim())
-        onToast(result.message)
-        if (result.ok) {
-          setConflict(false)
-          setMessage('')
-          onWorkingTreeChanged?.()
-        }
-        await refresh()
-      } finally {
-        setBusy(null)
+  const undoDiscard = async (): Promise<void> => {
+    if (!undo) return
+    const token = undo.token
+    setUndo(null)
+    await state.run(
+      'Bringing your changes back…',
+      () => window.tiger!.git.undoDiscard(root, token),
+      {
+        mutates: true
       }
-    },
-    [root, message, onToast, onWorkingTreeChanged, refresh]
-  )
+    )
+  }
+
+  const resolve = async (
+    prefer: 'mine' | 'theirs',
+    choices?: Record<string, 'mine' | 'theirs'>
+  ): Promise<void> => {
+    const result = await state.run(
+      'Combining the changes and sharing…',
+      () => window.tiger!.git.syncResolve(root, prefer, note.note.trim(), choices),
+      { mutates: true }
+    )
+    if (result?.ok) {
+      setConflict(root, false)
+      note.reset()
+    }
+  }
 
   return (
-    <Modal title={`Team sync · ${collectionName}`} onClose={onClose} width={640}>
-      {screen === 'loading' && (
+    <Modal
+      title={`${actionLabel('team-sync')} · ${collectionName}`}
+      onClose={onClose}
+      width={680}
+      className="git-modal"
+    >
+      {availability === 'loading' && (
         <div className="cv-dim" role="status">
-          Checking repository…
+          Checking version tracking…
         </div>
       )}
 
-      {screen === 'no-electron' && (
+      {availability === 'browser' && (
         <div className="git-empty">
-          <GitBranchIcon size={34} />
           <h3>Team sync lives in the desktop app</h3>
           <p>Open this collection in the Tiger desktop app to share it and get team updates.</p>
         </div>
       )}
 
-      {screen === 'no-git' && (
+      {availability === 'no-git' && (
         <div className="git-empty">
-          <GitBranchIcon size={34} />
           <h3>Git is not installed</h3>
           <p>
             Tiger uses the Git you already have to sync collections, so your SSH keys and
@@ -181,329 +177,305 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
           <p className="git-hint">
             On macOS you can also run <code>xcode-select --install</code> in Terminal.
           </p>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="ts-row">
             <button
+              type="button"
               className="btn accent"
               onClick={() => window.tiger?.openExternal?.('https://git-scm.com/downloads')}
             >
               <DownloadIcon size={14} /> Download Git
             </button>
-            <button className="btn" onClick={refresh}>
+            <button type="button" className="btn" onClick={state.refresh}>
               <RefreshIcon size={14} /> Check again
             </button>
           </div>
         </div>
       )}
 
-      {screen === 'no-repo' && (
-        <div className="git-empty">
-          <GitBranchIcon size={34} />
-          <h3>Change tracking is off</h3>
-          <p>
-            Turn it on to keep a history of every change and share this collection with your
-            team. Nothing leaves your machine until you connect a shared repository.
-          </p>
-          <button
-            className="btn accent"
-            disabled={busy !== null}
-            onClick={() => act('Initialize', () => window.tiger!.git.init(root))}
-          >
-            <GitBranchIcon size={14} /> Turn on tracking
-          </button>
-        </div>
-      )}
-
-      {screen === 'repo' && status && !status.hasRemote && (
-        <div className="cv-card" style={{ marginBottom: 14 }}>
-          <label htmlFor={`${uid}-remote`}>
-            <b>Connect a shared repository to sync with your team.</b>
-          </label>
-          <div className="cv-dim" style={{ margin: '4px 0 10px' }} id={`${uid}-remote-hint`}>
-            Create an empty repository on GitHub, GitLab or your company server, then paste its URL.
-          </div>
-          <div className="cv-remote-row">
-            <input
-              id={`${uid}-remote`}
-              aria-describedby={`${uid}-remote-hint`}
-              placeholder="https://github.com/your-team/payments-api.git"
-              value={remoteUrl}
-              spellCheck={false}
-              onChange={(e) => setRemoteUrl(e.target.value)}
-            />
-            <button
-              className="btn accent"
-              disabled={busy !== null || !remoteUrl.trim()}
-              onClick={() => act('Connect', () => window.tiger!.git.setRemote(root, remoteUrl.trim()))}
-            >
-              {busy === 'Connect' ? 'Connecting…' : 'Connect'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {screen === 'repo' && status && (
+      {availability === 'ready' && status && (
         <>
-          {conflict ? (
-            <div className="git-conflict" role="alert" aria-labelledby={`${uid}-conflict`}>
-              <b id={`${uid}-conflict`}>You and a teammate changed the same thing.</b>
-              <p>
-                Pick whose version to keep where the changes overlap. Everything that doesn't
-                overlap is combined automatically, and the team's history keeps both.
-              </p>
-              <div className="git-conflict-actions">
-                <button
-                  className="btn accent"
-                  disabled={busy !== null}
-                  onClick={() => doResolve('mine')}
-                >
-                  {busy === 'Resolve' ? 'Working…' : 'Keep my version'}
-                </button>
-                <button
-                  className="btn"
-                  disabled={busy !== null}
-                  onClick={() => doResolve('theirs')}
-                >
-                  Use the team's version
-                </button>
-                <button className="btn ghost" disabled={busy !== null} onClick={() => setConflict(false)}>
-                  Decide later
-                </button>
-              </div>
+          <div className={`ts-status tone-${summary.tone}`}>
+            <div className="ts-status-text">
+              <SyncBadge summary={summary} />
+              <p>{summary.detail}</p>
             </div>
-          ) : (
-            <div className="git-simple">
-              <div className="git-summary" role="status">
-                {status.dirtyCount > 0
-                  ? `You have ${status.dirtyCount} change${status.dirtyCount > 1 ? 's' : ''} not yet shared with the team.`
-                  : status.behind > 0
-                    ? `Your team made ${status.behind} update${status.behind > 1 ? 's' : ''} you don't have yet.`
-                    : status.ahead > 0
-                      ? `${status.ahead} of your update${status.ahead > 1 ? 's are' : ' is'} ready to share.`
-                      : 'Everything is in sync with your team.'}
+            {step === null && !state.conflict && (
+              <div className="ts-status-actions">
+                <button
+                  type="button"
+                  className="btn accent ts-sync"
+                  disabled={isBusy}
+                  onClick={doSync}
+                >
+                  <RefreshIcon size={14} /> {actionLabel('sync')}
+                </button>
+                <span className="ts-term">
+                  get team's changes, then share yours · git pull + push
+                </span>
               </div>
-              <button className="btn accent" disabled={busy !== null} onClick={doSync}>
-                {busy === 'Sync' ? 'Syncing…' : 'Sync now'}
+            )}
+            {status.isRepo && status.hasRemote && (
+              <button
+                type="button"
+                className="icon-btn ts-check"
+                title="Check for team updates"
+                aria-label="Check for team updates"
+                disabled={isBusy}
+                onClick={() =>
+                  state.run('Checking for team updates…', () => window.tiger!.git.fetch(root), {
+                    quiet: true
+                  })
+                }
+              >
+                <RefreshIcon size={14} />
+              </button>
+            )}
+          </div>
+          <ProgressLine text={busy} />
+
+          {state.error && (
+            <ErrorPanel
+              error={state.error}
+              root={root}
+              onRetry={() => {
+                state.setError(null)
+                void (step === null ? doSync() : state.refresh())
+              }}
+              onDismiss={() => state.setError(null)}
+            />
+          )}
+
+          {undo && (
+            <div className="ts-undo" role="status">
+              <span>{undo.text}</span>
+              <button type="button" className="btn" onClick={undoDiscard}>
+                <UndoIcon size={14} /> Undo
               </button>
             </div>
           )}
 
-          {status.dirtyCount > 0 && (
-            <>
-              <h3 className="section-label" id={`${uid}-changes`}>
-                What you changed
-              </h3>
-              <ul className="git-files" aria-labelledby={`${uid}-changes`}>
-                {status.changedFiles.map((f) => {
-                  const c = plainChange(f.status, f.path)
-                  return (
-                    <li className="git-file" key={f.path}>
-                      <span className={`git-st st-${f.status[0]?.toLowerCase() ?? 'q'}`}>{c.word}</span>
-                      <span className="row-label" title={f.path}>
-                        {c.label}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-              <div className="git-commit">
-                <label className="tg-sr-only" htmlFor={`${uid}-msg`}>
-                  Describe your changes (optional)
-                </label>
-                <input
-                  id={`${uid}-msg`}
-                  placeholder="Describe your changes (optional), e.g. Add refund endpoint"
-                  value={message}
-                  spellCheck={false}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !conflict) doSync()
-                  }}
-                />
-              </div>
-            </>
+          {state.conflict && (
+            <ConflictPanel
+              root={root}
+              busy={isBusy}
+              onResolve={resolve}
+              onLater={() => onClose()}
+            />
           )}
 
-          <button
-            className="btn ghost adv-toggle"
-            aria-expanded={advanced}
-            aria-controls={`${uid}-adv`}
-            onClick={() => setAdvanced((a) => !a)}
-          >
-            <ChevronIcon size={13} className={`chev ${advanced ? 'open' : ''}`} /> Advanced
-          </button>
+          <SetupStepper root={root} state={state} />
 
-          {advanced && (
-            <div className="git-advanced" id={`${uid}-adv`}>
-              <div className="git-head">
-                <span className="git-branch">
-                  <GitBranchIcon size={14} /> {status.branch ?? 'detached'}
-                </span>
-                {status.ahead > 0 && (
-                  <span className="git-chip ahead" title={`${status.ahead} commit(s) to push`}>
-                    <ArrowUpIcon size={11} /> {status.ahead}
-                  </span>
-                )}
-                {status.behind > 0 && (
-                  <span className="git-chip behind" title={`${status.behind} commit(s) to pull`}>
-                    <ArrowDownIcon size={11} /> {status.behind}
-                  </span>
-                )}
-                {status.dirtyCount === 0 && status.ahead === 0 && status.behind === 0 && (
-                  <span className="git-chip synced">
-                    <CheckIcon size={11} /> Synced
-                  </span>
-                )}
-                <span style={{ flex: 1 }} />
+          {status.dirtyCount > 0 && (
+            <section className="ts-changes" aria-labelledby={`${uid}-changes`}>
+              <div className="ts-section-head">
+                <h3 className="ts-h" id={`${uid}-changes`}>
+                  Your changes
+                </h3>
                 <button
                   type="button"
-                  className="icon-btn"
-                  title="Refresh"
-                  aria-label="Refresh repository status"
-                  onClick={refresh}
+                  className="btn ghost ts-discard-all"
+                  disabled={isBusy}
+                  onClick={() => setDiscarding(allItems)}
                 >
-                  <RefreshIcon size={14} />
-                </button>
-                <button
-                  className="btn"
-                  disabled={busy !== null || !status.hasUpstream}
-                  title={status.hasUpstream ? 'git pull --ff-only' : 'No upstream configured'}
-                  onClick={() => act('Pull', () => window.tiger!.git.pull(root), true)}
-                >
-                  {busy === 'Pull' ? 'Pulling…' : 'Pull'}
-                </button>
-                <button
-                  className="btn"
-                  disabled={busy !== null || (status.ahead === 0 && status.hasUpstream)}
-                  title={status.hasUpstream ? 'git push' : 'git push (sets upstream if configured)'}
-                  onClick={() => act('Push', () => window.tiger!.git.push(root))}
-                >
-                  {busy === 'Push' ? 'Pushing…' : 'Push'}
-                </button>
-                <button
-                  className="btn"
-                  disabled={busy !== null || status.dirtyCount === 0 || !message.trim()}
-                  title="Commit without pushing (message above)"
-                  onClick={() => {
-                    act('Commit', () => window.tiger!.git.commit(root, message.trim()))
-                    setMessage('')
-                  }}
-                >
-                  {busy === 'Commit' ? 'Committing…' : 'Commit'}
+                  Discard all…
                 </button>
               </div>
+              <ChangeList root={root} groups={groups} busy={isBusy} onDiscard={setDiscarding} />
+              {status.isRepo && (
+                <div className="ts-note">
+                  <label htmlFor={`${uid}-note`}>
+                    Describe this version <GitTerm>commit message</GitTerm>
+                  </label>
+                  <input
+                    id={`${uid}-note`}
+                    value={note.note}
+                    spellCheck={false}
+                    aria-describedby={`${uid}-note-hint`}
+                    onChange={(e) => note.setNote(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isBusy && !state.conflict)
+                        void (step === null ? doSync() : saveVersion())
+                    }}
+                  />
+                  <div className="ts-hint" id={`${uid}-note-hint`}>
+                    {note.suggested
+                      ? 'Suggested from your changes. Edit it if you like.'
+                      : 'Shown in the history next to your name.'}
+                  </div>
+                  <div className="ts-row">
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={isBusy || !note.note.trim()}
+                      onClick={saveVersion}
+                      title="Keep a version on this computer without sharing it"
+                    >
+                      <SaveIcon size={14} /> {actionLabel('save-version')}
+                    </button>
+                    <span className="ts-term">keeps it here, shares nothing · git commit</span>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
-              <div className="git-toolbar">
-                <label className="git-branch-pick">
-                  <span className="cv-dim">Branch</span>
-                  <select
-                    value={branches?.current ?? ''}
-                    disabled={busy !== null}
-                    onChange={(e) =>
-                      act('Switch', () => window.tiger!.git.checkout(root, e.target.value, false), true)
-                    }
-                  >
-                    {(branches?.all ?? []).map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="tg-sr-only" htmlFor={`${uid}-branch`}>
-                  New branch name
-                </label>
-                <input
-                  id={`${uid}-branch`}
-                  className="git-newbranch"
-                  placeholder="new branch, e.g. feature/refunds"
-                  value={newBranch}
-                  spellCheck={false}
-                  onChange={(e) => setNewBranch(e.target.value)}
-                />
-                <button
-                  className="btn"
-                  disabled={busy !== null || !newBranch.trim()}
-                  onClick={() => {
-                    act('Create', () => window.tiger!.git.checkout(root, newBranch.trim(), true))
-                    setNewBranch('')
-                  }}
-                >
-                  Create
-                </button>
-                <span style={{ flex: 1 }} />
-                {status.dirtyCount > 0 &&
-                  (confirmDiscard ? (
-                    <>
-                      <span className="cv-dim" id={`${uid}-discard-q`}>
-                        Discard everything?
-                      </span>
+          {status.isRepo && log.length > 0 && (
+            <section className="ts-history" aria-labelledby={`${uid}-hist`}>
+              <h3 className="ts-h" id={`${uid}-hist`}>
+                <HistoryIcon size={14} /> Recent versions
+              </h3>
+              <ul>
+                {log.slice(0, advanced ? log.length : 5).map((c) => (
+                  <li key={c.hash}>
+                    <span className="row-label">{c.subject}</span>
+                    <span className="cv-dim">
+                      {c.author} · {c.at}
+                    </span>
+                    {advanced && <span className="git-hash">{c.hash}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {status.isRepo && (
+            <>
+              <button
+                type="button"
+                className="btn ghost adv-toggle"
+                aria-expanded={advanced}
+                aria-controls={`${uid}-adv`}
+                onClick={() => setAdvanced((a) => !a)}
+              >
+                <ChevronIcon size={13} className={`chev ${advanced ? 'open' : ''}`} /> Advanced{' '}
+                <span className="ts-term">for git users</span>
+              </button>
+              {advanced && (
+                <div className="git-advanced" id={`${uid}-adv`}>
+                  <div className="ts-adv-block">
+                    <h4>
+                      Version line <GitTerm>branch</GitTerm>
+                    </h4>
+                    <p className="ts-hint">
+                      A separate line of versions, for trying changes without affecting the team's
+                      main one. Teammates see it after you share.
+                    </p>
+                    <div className="git-toolbar">
+                      <label className="git-branch-pick">
+                        <span className="cv-dim">Current</span>
+                        <select
+                          value={branches?.current ?? ''}
+                          disabled={isBusy}
+                          onChange={(e) => {
+                            const target = e.target.value
+                            void state.run(
+                              `Switching to ${target}…`,
+                              () => window.tiger!.git.checkout(root, target, false),
+                              {
+                                mutates: true
+                              }
+                            )
+                          }}
+                        >
+                          {(branches?.all ?? []).map((b) => (
+                            <option key={b} value={b}>
+                              {b}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="tg-sr-only" htmlFor={`${uid}-branch`}>
+                        New version line name
+                      </label>
+                      <input
+                        id={`${uid}-branch`}
+                        className="git-newbranch"
+                        placeholder="new line, e.g. feature/refunds"
+                        value={newBranch}
+                        spellCheck={false}
+                        onChange={(e) => setNewBranch(e.target.value)}
+                      />
                       <button
-                        className="btn danger"
-                        disabled={busy !== null}
+                        type="button"
+                        className="btn"
+                        disabled={isBusy || !newBranch.trim()}
                         onClick={() => {
-                          setConfirmDiscard(false)
-                          act('Discard', () => window.tiger!.git.discard(root), true)
+                          const name = newBranch.trim()
+                          setNewBranch('')
+                          void state.run(`Creating ${name}…`, () =>
+                            window.tiger!.git.checkout(root, name, true)
+                          )
                         }}
                       >
-                        Yes, discard
+                        Create and switch
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="ts-adv-block">
+                    <h4>One step at a time</h4>
+                    <div className="ts-row">
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={isBusy || !status.hasUpstream}
+                        title={status.hasUpstream ? 'Fast-forward only' : 'Share once first'}
+                        onClick={() =>
+                          state.run("Getting team's changes…", () => window.tiger!.git.pull(root), {
+                            mutates: true
+                          })
+                        }
+                      >
+                        Get team's changes only <GitTerm>pull --ff-only</GitTerm>
                       </button>
                       <button
                         type="button"
-                        ref={keepRef}
-                        className="btn ghost"
-                        aria-describedby={`${uid}-discard-q`}
-                        onClick={() => setConfirmDiscard(false)}
+                        className="btn"
+                        disabled={
+                          isBusy || !status.hasRemote || (status.ahead === 0 && status.hasUpstream)
+                        }
+                        onClick={() =>
+                          state.run('Sharing your versions…', () => window.tiger!.git.push(root))
+                        }
                       >
-                        Keep
+                        Share versions only <GitTerm>push</GitTerm>
                       </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      ref={discardRef}
-                      className="btn ghost"
-                      disabled={busy !== null}
-                      title="Discard all uncommitted changes"
-                      onClick={() => setConfirmDiscard(true)}
-                    >
-                      Discard
-                    </button>
-                  ))}
-              </div>
-
-              <div className="git-history" role="list" aria-label="Recent commits">
-                {log.length === 0 ? (
-                  <div className="cv-dim" role="listitem">
-                    No commits yet.
-                  </div>
-                ) : (
-                  log.map((c) => (
-                    <div className="git-commit-row" role="listitem" key={c.hash}>
-                      <span className="git-hash">{c.hash}</span>
-                      <span className="row-label">{c.subject}</span>
-                      <span className="cv-dim">
-                        {c.author} · {c.at}
-                      </span>
                     </div>
-                  ))
-                )}
-              </div>
-
-              {diff.trim() && (
-                <>
-                  <div className="section-label">Diff</div>
-                  <div className="git-diff" role="region" aria-label="Uncommitted diff" tabIndex={0}>
-                    {splitDiff(diff).map((line, i) => (
-                      <div key={i} className={`dl-${line.kind}`}>
-                        {line.text || ' '}
-                      </div>
-                    ))}
                   </div>
-                </>
+
+                  {fullDiff.trim() && (
+                    <div className="ts-adv-block">
+                      <h4>
+                        All unsaved changes <GitTerm>diff HEAD</GitTerm>
+                      </h4>
+                      <div
+                        className="git-diff"
+                        role="region"
+                        aria-label="All unsaved changes as a diff"
+                        tabIndex={0}
+                      >
+                        {splitDiff(fullDiff).map((line, i) => (
+                          <div key={i} className={`dl-${line.kind}`}>
+                            {line.text || ' '}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
         </>
+      )}
+
+      {discarding && (
+        <DiscardConfirm
+          items={discarding}
+          groups={groups}
+          onCancel={() => setDiscarding(null)}
+          onConfirm={() => void discard(discarding)}
+        />
       )}
     </Modal>
   )

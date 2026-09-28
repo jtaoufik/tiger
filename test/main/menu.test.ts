@@ -95,6 +95,8 @@ describe('application menu', () => {
       'new-collection',
       'new-environment',
       'open-collection',
+      'join-team',
+      'team-sync',
       'import',
       'export',
       'settings',

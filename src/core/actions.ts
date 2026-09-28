@@ -110,6 +110,51 @@ export const ACTIONS = [
     opensDialog: true,
     docs: 'collections'
   },
+  // Team sync (git). Plain words; the git term is in the description.
+  {
+    id: 'join-team',
+    label: 'Join a team collection',
+    description: 'Get a collection your team shares in a git repository (git clone)',
+    group: 'file',
+    opensDialog: true,
+    docs: 'git',
+    keywords: 'git clone repository team github gitlab'
+  },
+  {
+    id: 'team-sync',
+    label: 'Team sync',
+    description: 'See your changes, the history and the team status of this collection',
+    group: 'file',
+    opensDialog: true,
+    docs: 'git',
+    keywords: 'git status diff history branch changes'
+  },
+  {
+    id: 'sync',
+    label: 'Sync with team',
+    description: "Get your team's changes, then share yours (git pull and push)",
+    group: 'file',
+    docs: 'git',
+    keywords: 'git pull push fetch upload download'
+  },
+  {
+    id: 'save-version',
+    label: 'Save a version',
+    description: 'Keep a version of this collection on your computer without sharing it (git commit)',
+    group: 'file',
+    opensDialog: true,
+    docs: 'git',
+    keywords: 'git commit snapshot'
+  },
+  {
+    id: 'share-collection',
+    label: 'Share with your team',
+    description: 'Turn on version tracking and connect a shared repository (git init and remote)',
+    group: 'file',
+    opensDialog: true,
+    docs: 'git',
+    keywords: 'git init remote publish repository'
+  },
   {
     id: 'import',
     label: 'Import',

@@ -260,23 +260,26 @@ describe('App (browser preview, no Electron bridge)', () => {
     fireEvent.contextMenu(document.querySelector('.tree')!)
     expect(screen.getByText('Open collection…')).toBeInTheDocument()
     expect(screen.getByText('New collection…')).toBeInTheDocument()
-    expect(screen.getByText('Clone from Git…')).toBeInTheDocument()
+    expect(screen.getByText('Join a team collection…')).toBeInTheDocument()
     expect(screen.getByText('Import…')).toBeInTheDocument()
     expect(screen.getByText('Manage environments…')).toBeInTheDocument()
   })
 
-  it('exposes a Clone from Git action in the sidebar header', () => {
+  it('exposes a labelled "join a team collection" (clone) action in the sidebar header', () => {
     render(<App />)
-    expect(screen.getByTitle('Clone from Git')).toBeInTheDocument()
+    expect(screen.getByTitle('Join a team collection')).toBeInTheDocument()
   })
 
-  it('opens an in-app clone prompt (not a blocked native prompt)', () => {
+  it('opens an in-app join dialog with the address field and the steps', () => {
     render(<App />)
-    fireEvent.click(screen.getByTitle('Clone from Git'))
-    expect(screen.getByText('Repository URL')).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('Join a team collection'))
+    expect(screen.getByRole('dialog', { name: 'Join a team collection' })).toBeInTheDocument()
+    expect(screen.getByLabelText('1. Repository address')).toBeInTheDocument()
     expect(
       screen.getByPlaceholderText('https://github.com/your-team/payments-api.git')
     ).toBeInTheDocument()
+    // Nothing to join until the address is usable.
+    expect(screen.getByRole('button', { name: 'Choose folder and join' })).toBeDisabled()
   })
 
   it('offers a Code tab with a curl command for the active request', () => {

@@ -58,6 +58,7 @@ import {
   type LucideIcon,
   type LucideProps
 } from 'lucide-react'
+import { CircleCheck, CircleDashed, CloudUpload, History, Laptop, Undo2, Users } from 'lucide-react'
 
 export type IconProps = LucideProps & { size?: number }
 
@@ -117,3 +118,12 @@ export const MonitorIcon = base(Monitor)
 export const BookIcon = base(BookOpen)
 export const BugIcon = base(Bug)
 export const ChevronDownIcon = base(ChevronDown)
+
+// Team sync (git) status and actions.
+export const CircleDashedIcon = base(CircleDashed)
+export const CircleCheckIcon = base(CircleCheck)
+export const LaptopIcon = base(Laptop)
+export const UsersIcon = base(Users)
+export const UndoIcon = base(Undo2)
+export const CloudUploadIcon = base(CloudUpload)
+export const HistoryIcon = base(History)

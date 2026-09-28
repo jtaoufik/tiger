@@ -27,6 +27,8 @@ import type { ImportKind } from '../../main/importers'
 import { Logo } from './Logo'
 import { Sidebar, type SidebarEntry, type SyncState } from './components/Sidebar'
 import { GitModal } from './components/GitModal'
+import { JoinTeamModal } from './components/TeamSync'
+import { onGitChanged } from './gitUx'
 import { CollectionView } from './components/CollectionView'
 import { FolderView } from './components/FolderView'
 import { WelcomeView } from './components/WelcomeView'
@@ -62,7 +64,6 @@ import {
   FolderIcon,
   FolderOpenIcon,
   GearIcon,
-  GitBranchIcon,
   ListXIcon,
   LocateIcon,
   PencilIcon,
@@ -277,6 +278,8 @@ export default function App() {
   const [downloadedUpdate, setDownloadedUpdate] = useState<string | null>(null)
   const [gitStates, setGitStates] = useState<Record<string, SyncState>>({})
   const [gitColId, setGitColId] = useState<string | null>(null)
+  /** Opened from the "Sync with team" command: start syncing right away. */
+  const [gitAutoSync, setGitAutoSync] = useState(false)
   const [authColId, setAuthColId] = useState<string | null>(null)
   const [confirmCloseId, setConfirmCloseId] = useState<string | null>(null)
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null)
@@ -428,7 +431,17 @@ export default function App() {
     const states = await Promise.all(
       diskCollections.map(async (c) => {
         const s = await window.tiger!.git.status(c.root!)
-        return [c.id, { isRepo: s.isRepo, dirtyCount: s.dirtyCount, ahead: s.ahead, behind: s.behind }] as const
+        return [
+          c.id,
+          {
+            isRepo: s.isRepo,
+            dirtyCount: s.dirtyCount,
+            ahead: s.ahead,
+            behind: s.behind,
+            hasRemote: s.hasRemote,
+            hasUpstream: s.hasUpstream
+          }
+        ] as const
       })
     )
     setGitStates(Object.fromEntries(states))
@@ -447,7 +460,12 @@ export default function App() {
   useEffect(() => {
     refreshGitStates()
     const timer = setInterval(refreshGitStates, 60000)
-    return () => clearInterval(timer)
+    // Team sync from the collection page or dialog updates the sidebar at once.
+    const stop = onGitChanged(() => void refreshGitStates())
+    return () => {
+      clearInterval(timer)
+      stop()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diskRootsKey, refreshGitStates])
 
@@ -1211,23 +1229,16 @@ export default function App() {
 
   const cloneCollection = useCallback(() => setCloneOpen(true), [])
 
-  const runClone = useCallback(async (url: string) => {
-    setCloneOpen(false)
-    if (!window.tiger?.git) {
-      toast('Cloning needs the desktop app')
-      return
-    }
-    toast('Cloning…')
-    const opened = await window.tiger.git.clone(url)
-    if (!opened) return
-    if ('error' in opened) {
-      toast(`Clone failed: ${opened.error}`)
-      return
-    }
-    const entries = applyOpenedCollection(opened)
-    if (entries[0]) selectRequest(entries[0].id)
-    toast(`Cloned ${opened.name}`)
-  }, [selectRequest, reviveIds, toast])
+  /** The join dialog cloned it (and kept any error on screen); open it here. */
+  const onJoinedTeam = useCallback(
+    (opened: OpenedCollection) => {
+      setCloneOpen(false)
+      const entries = applyOpenedCollection(opened)
+      if (entries[0]) selectRequest(entries[0].id)
+      toast(`Joined ${opened.name}. Use Sync to get your team's latest changes.`)
+    },
+    [selectRequest, reviveIds, toast]
+  )
 
   const loadImport = useCallback(
     (kind: ImportKind) => {
@@ -1854,11 +1865,7 @@ export default function App() {
       ]
       if (col.root) {
         items.push(
-          {
-            label: 'Team sync…',
-            icon: <GitBranchIcon size={14} />,
-            onClick: () => setGitColId(colId)
-          },
+          actionItem('team-sync', () => setGitColId(colId)),
           {
             label: REVEAL_LABEL,
             icon: <FolderOpenIcon size={14} />,
@@ -2084,6 +2091,15 @@ export default function App() {
   }
   const needCollection = () => toast('Open or create a collection first')
   const needRequest = () => toast('Open a request first')
+  /** Team sync for the current collection; `sync` also starts a sync once it is ready. */
+  const openTeamSync = (sync = false) => {
+    const t = currentTarget()
+    const col = t ? collections.find((c) => c.id === t.colId) : undefined
+    if (!col) return needCollection()
+    if (!col.root) return toast('Team sync needs a collection saved in a folder. Open one from disk first.')
+    setGitAutoSync(sync)
+    setGitColId(col.id)
+  }
 
   /**
    * Every registry action, wired to its handler. The native menu (menu.ts),
@@ -2166,7 +2182,12 @@ export default function App() {
         }
       })
     },
-    about: () => setView('settings')
+    about: () => setView('settings'),
+    'join-team': cloneCollection,
+    'team-sync': () => openTeamSync(),
+    sync: () => openTeamSync(true),
+    'save-version': () => openTeamSync(),
+    'share-collection': () => openTeamSync()
   }
   menuActionsRef.current = actionHandlers
 
@@ -2660,8 +2681,10 @@ export default function App() {
               root={col.root ?? ''}
               onToast={toast}
               onWorkingTreeChanged={() => invalidateCollectionCache(col.id)}
+              autoSync={gitAutoSync}
               onClose={() => {
                 setGitColId(null)
+                setGitAutoSync(false)
                 refreshGitStates()
               }}
             />
@@ -2708,7 +2731,7 @@ export default function App() {
           items={[
             actionItem('new-collection', newCollection),
             actionItem('open-collection', openCollection),
-            { label: 'Clone from Git…', icon: <GitBranchIcon size={14} />, onClick: cloneCollection },
+            actionItem('join-team', cloneCollection),
             actionItem('import', () => openIo('import')),
             'sep',
             actionItem('environments', actionHandlers.environments)
@@ -2718,14 +2741,7 @@ export default function App() {
         />
       )}
       {cloneOpen && (
-        <PromptModal
-          title="Clone from Git"
-          label="Repository URL"
-          placeholder="https://github.com/your-team/payments-api.git"
-          confirmLabel="Clone"
-          onSubmit={runClone}
-          onCancel={() => setCloneOpen(false)}
-        />
+        <JoinTeamModal onJoined={onJoinedTeam} onCancel={() => setCloneOpen(false)} />
       )}
       {newCollectionOpen && (
         <PromptModal

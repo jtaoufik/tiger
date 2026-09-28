@@ -5,9 +5,6 @@ import './Sidebar.css'
 import { actionTitle } from '../actions'
 import { isContextMenuKey, menuAnchor } from '../a11y'
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckIcon,
   ChevronIcon,
   CloseIcon,
   CopyIcon,
@@ -19,14 +16,19 @@ import {
   PlusIcon,
   UploadIcon,
   SearchIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from './Icons'
+import { summarizeSync, useConflictRoots } from '../gitUx'
+import { SyncBadge } from './TeamSync'
 
 export interface SyncState {
   isRepo: boolean
   dirtyCount: number
   ahead: number
   behind: number
+  hasRemote?: boolean
+  hasUpstream?: boolean
 }
 
 export interface SidebarEntry {
@@ -162,6 +164,7 @@ export function Sidebar({
   onNewMenu,
   renameTarget
 }: Props) {
+  const conflictRoots = useConflictRoots()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const treeRef = useRef<HTMLDivElement>(null)
@@ -727,22 +730,17 @@ export function Sidebar({
     )
   }
 
-  function syncChips(colId: string) {
+  /** Team sync status for a tracked collection: icon + short text, full sentence on hover. */
+  function syncChips(colId: string, root?: string) {
     const sync = syncStates[colId]
     if (!sync?.isRepo) return null
-    const clean = sync.dirtyCount === 0 && sync.ahead === 0 && sync.behind === 0
-    const parts = [
-      sync.dirtyCount > 0 && `${sync.dirtyCount} change(s) not yet shared`,
-      sync.ahead > 0 && `${sync.ahead} update(s) ready to share`,
-      sync.behind > 0 && `${sync.behind} team update(s) to fetch`,
-      clean && 'In sync with your team'
-    ].filter(Boolean)
-    const label = `Team sync: ${parts.join(', ')}`
+    const summary = summarizeSync(sync, { conflict: !!root && conflictRoots.has(root) })
+    const label = `Team sync: ${summary.label}`
     return (
       <button
         type="button"
         className="sync-chips"
-        title={`${label}. Click to open.`}
+        title={`${label}. ${summary.detail}`}
         aria-label={label}
         tabIndex={-1}
         onMouseDown={(e) => e.preventDefault()}
@@ -751,24 +749,7 @@ export function Sidebar({
           onGit(colId)
         }}
       >
-        {sync.dirtyCount > 0 && <span className="git-chip dirty">{sync.dirtyCount}</span>}
-        {sync.ahead > 0 && (
-          <span className="git-chip ahead">
-            <ArrowUpIcon size={10} />
-            {sync.ahead}
-          </span>
-        )}
-        {sync.behind > 0 && (
-          <span className="git-chip behind">
-            <ArrowDownIcon size={10} />
-            {sync.behind}
-          </span>
-        )}
-        {clean && (
-          <span className="git-chip synced">
-            <CheckIcon size={10} />
-          </span>
-        )}
+        <SyncBadge summary={summary} short />
       </button>
     )
   }
@@ -866,9 +847,9 @@ export function Sidebar({
             <span className="row-label" title={col.root ? `${col.name}\n${col.root}` : col.name}>
               {col.name}
             </span>
-            {syncChips(col.id)}
+            {syncChips(col.id, col.root)}
             <span className="row-actions">
-              {col.root && rowButton('Team sync', <GitBranchIcon size={13} />, () => onGit(col.id))}
+              {col.root && rowButton(actionTitle('team-sync'), <GitBranchIcon size={13} />, () => onGit(col.id))}
               {rowButton(actionTitle('new-request'), <PlusIcon size={13} />, () => onNewRequest(col.id))}
               {rowButton('Close collection', <CloseIcon size={13} />, () => onCloseCollection(col.id), true)}
               {moreButton(col.name, (x, y) => onCollectionMenu(col.id, x, y))}
@@ -886,7 +867,7 @@ export function Sidebar({
         <h2 className="title" id="sidebar-title">
           Collections
         </h2>
-        {headerButton('Clone from Git', <GitBranchIcon />, onClone)}
+        {headerButton(actionTitle('join-team'), <UsersIcon />, onClone)}
       </div>
       <div className="sidebar-actions" role="group" aria-label="Collection actions">
         <button

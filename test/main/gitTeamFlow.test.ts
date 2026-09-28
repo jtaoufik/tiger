@@ -58,9 +58,11 @@ async function freshRemote(name: string): Promise<string> {
 
 describe('classifyGitError', () => {
   it('maps git output to a code the UI can act on', () => {
-    expect(classifyGitError("fatal: could not read Username for 'https://github.com': terminal prompts disabled")).toBe(
-      'auth-required'
-    )
+    expect(
+      classifyGitError(
+        "fatal: could not read Username for 'https://github.com': terminal prompts disabled"
+      )
+    ).toBe('auth-required')
     expect(classifyGitError('git@github.com: Permission denied (publickey).')).toBe('ssh-key')
     expect(classifyGitError('fatal: Authentication failed for x')).toBe('auth-failed')
     expect(classifyGitError('remote: Repository not found.')).toBe('not-found')
@@ -149,7 +151,10 @@ describe('changes, per-file diff, discard with undo', () => {
       'users/delete-user.tiger',
       'users/get-user.tiger'
     ])
-    const names = await gitRequestNames(dir, status.changedFiles.map((f) => f.path))
+    const names = await gitRequestNames(
+      dir,
+      status.changedFiles.map((f) => f.path)
+    )
     expect(names).toEqual({
       'posts/create-post.tiger': 'Create post',
       'users/delete-user.tiger': 'Delete user',
@@ -246,7 +251,10 @@ describe('conflicts: list them, then resolve per request', () => {
   }, 30000)
 
   it('keeps mine for one request and theirs for the other', async () => {
-    const result = await gitSyncResolve(mine, 'mine', '', { 'a.tiger': 'mine', 'b.tiger': 'theirs' })
+    const result = await gitSyncResolve(mine, 'mine', '', {
+      'a.tiger': 'mine',
+      'b.tiger': 'theirs'
+    })
     expect(result.ok).toBe(true)
     expect(await readFile(join(mine, 'a.tiger'), 'utf8')).toContain('/mine-a')
     expect(await readFile(join(mine, 'b.tiger'), 'utf8')).toContain('/team-b')

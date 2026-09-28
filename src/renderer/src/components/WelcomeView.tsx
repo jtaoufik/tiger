@@ -10,11 +10,12 @@ import {
   GlobeIcon,
   PlusIcon,
   SearchIcon,
-  UploadIcon
+  UploadIcon,
+  UsersIcon
 } from './Icons'
 import { MOD } from './ShortcutsModal'
 import { getAction } from '@core/actions'
-import { actionTitle } from '../actions'
+import { actionLabel, actionTitle } from '../actions'
 import { HelpLink } from './HelpLink'
 import './WelcomeView.css'
 
@@ -72,9 +73,9 @@ export function WelcomeView({
       onClick: onNewCollection
     },
     {
-      icon: <GitBranchIcon size={22} />,
-      title: 'Clone from Git',
-      desc: 'Pull a team collection from a repository URL.',
+      icon: <UsersIcon size={22} />,
+      title: actionLabel('join-team'),
+      desc: 'Get a collection your team shares in a git repository.',
       onClick: onClone
     },
     {

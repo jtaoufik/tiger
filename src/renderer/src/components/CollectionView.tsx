@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import type { TigerAuth } from '@core/types'
-import type { GitStatus } from '../../../main/git'
 import type { HistoryEntry } from '../../../main/history'
 import { AuthEditor } from './AuthEditor'
 import { REVEAL_LABEL } from '../platform'
 import { rovingIndex } from '../a11y'
+import { setupStep, summarizeSync } from '../gitUx'
+import { ErrorPanel, ProgressLine, SyncBadge, useTeamSync } from './TeamSync'
 import './PageTabs.css'
 import {
   CheckIcon,
@@ -12,10 +13,10 @@ import {
   CloseIcon,
   DownloadIcon,
   FolderOpenIcon,
-  GitBranchIcon,
   PlayIcon,
   PlusIcon,
   RefreshIcon,
+  UsersIcon
 } from './Icons'
 import { actionTitle, actionLabel } from '../actions'
 import { HelpLink } from './HelpLink'
@@ -46,8 +47,6 @@ interface Props {
   onWorkingTreeChanged?: () => void
 }
 
-type SyncScreen = 'loading' | 'browser' | 'no-git' | 'no-repo' | 'no-remote' | 'ready'
-
 type PageTab = 'overview' | 'docs' | 'auth' | 'activity'
 const PAGE_TABS: { id: PageTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -75,83 +74,15 @@ export function CollectionView({
 }: Props) {
   const [pageTab, setPageTab] = useState<PageTab>('overview')
   const uid = useId()
-  const [screen, setScreen] = useState<SyncScreen>('loading')
-  const [status, setStatus] = useState<GitStatus | null>(null)
-  const [remoteUrl, setRemoteUrl] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [conflict, setConflict] = useState(false)
+  const sync = useTeamSync(collection.root, { onToast, onWorkingTreeChanged })
+  const summary = summarizeSync(sync.status, { conflict: sync.conflict })
+  const step = setupStep(sync.status)
 
-  const refresh = useCallback(async () => {
-    if (!collection.root || !window.tiger?.git) return setScreen('browser')
-    if (!(await window.tiger.git.check()).ok) return setScreen('no-git')
-    const next = await window.tiger.git.status(collection.root)
-    setStatus(next)
-    if (!next.isRepo) return setScreen('no-repo')
-    setScreen(next.hasRemote ? 'ready' : 'no-remote')
-  }, [collection.root])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  const act = useCallback(
-    async (run: () => Promise<{ ok: boolean; message: string }>) => {
-      setBusy(true)
-      try {
-        const result = await run()
-        onToast(result.message)
-        await refresh()
-      } finally {
-        setBusy(false)
-      }
-    },
-    [onToast, refresh]
-  )
-
-  /** One-button sync; a conflict flips the card to "keep mine / take theirs". */
-  const doSync = useCallback(async () => {
-    setBusy(true)
-    try {
-      const result = await window.tiger!.git.sync(collection.root!, '')
-      if (result.conflict) {
-        setConflict(true)
-      } else {
-        onToast(result.message)
-        if (result.ok) onWorkingTreeChanged?.()
-      }
-      await refresh()
-    } finally {
-      setBusy(false)
-    }
-  }, [collection.root, onToast, onWorkingTreeChanged, refresh])
-
-  const doResolve = useCallback(
-    async (prefer: 'mine' | 'theirs') => {
-      setBusy(true)
-      try {
-        const result = await window.tiger!.git.syncResolve(collection.root!, prefer, '')
-        onToast(result.message)
-        if (result.ok) {
-          setConflict(false)
-          onWorkingTreeChanged?.()
-        }
-        await refresh()
-      } finally {
-        setBusy(false)
-      }
-    },
-    [collection.root, onToast, onWorkingTreeChanged, refresh]
-  )
-
-  const summary = !status
-    ? ''
-    : status.dirtyCount > 0
-      ? `${status.dirtyCount} change${status.dirtyCount > 1 ? 's' : ''} not yet shared with the team.`
-      : status.behind > 0
-        ? `Your team made ${status.behind} update${status.behind > 1 ? 's' : ''} you don't have yet.`
-        : status.ahead > 0
-          ? `${status.ahead} update${status.ahead > 1 ? 's' : ''} ready to share.`
-          : 'Everything is in sync with your team.'
+  /** Sync from the page; a conflict opens the dialog where both versions show. */
+  const doSync = async (): Promise<void> => {
+    const result = await sync.sync()
+    if (result?.conflict) onOpenGitDetails()
+  }
 
   return (
     <section className="panel collection-view" aria-labelledby={`${uid}-title`}>
@@ -164,6 +95,17 @@ export function CollectionView({
             <div className="cv-path" title={collection.root}>
               {collection.root}
             </div>
+          )}
+          {collection.root && sync.availability === 'ready' && (
+            <button
+              type="button"
+              className="ts-pill"
+              aria-label={`Team sync: ${summary.label}. Open team sync`}
+              title={summary.detail}
+              onClick={onOpenGitDetails}
+            >
+              <SyncBadge summary={summary} />
+            </button>
           )}
         </div>
         <div className="cv-actions">
@@ -278,10 +220,10 @@ export function CollectionView({
       {pageTab === 'overview' && (
         <>
       <h3 className="section-label">Team sync</h3>
-      <div className="cv-card" aria-busy={busy || screen === 'loading' || undefined}>
-        {screen === 'loading' && <div className="cv-dim">Checking…</div>}
+      <div className="cv-card" aria-busy={sync.busy !== null || sync.availability === 'loading' || undefined}>
+        {sync.availability === 'loading' && <div className="cv-dim">Checking…</div>}
 
-        {screen === 'browser' && (
+        {sync.availability === 'browser' && (
           <div className="cv-dim">
             {collection.root
               ? 'Sync is available in the desktop app.'
@@ -289,108 +231,64 @@ export function CollectionView({
           </div>
         )}
 
-        {screen === 'no-git' && (
+        {sync.availability === 'no-git' && (
           <div className="cv-sync-row">
             <div>
               <b>Install Git to enable team sync.</b>
               <div className="cv-dim">One install, no restart needed afterwards.</div>
             </div>
             <button
+              type="button"
               className="btn accent"
               onClick={() => window.tiger?.openExternal?.('https://git-scm.com/downloads')}
             >
               Download Git
             </button>
-            <button type="button" className="icon-btn" title="Check again" aria-label="Check again for Git" onClick={refresh}>
+            <button type="button" className="icon-btn" title="Check again" aria-label="Check again for Git" onClick={sync.refresh}>
               <RefreshIcon size={14} />
             </button>
           </div>
         )}
 
-        {screen === 'no-repo' && (
-          <div className="cv-sync-row">
-            <div>
-              <b>Track changes in this collection.</b>
-              <div className="cv-dim">
-                Step 1 of 2: turn on change tracking. Nothing leaves your machine yet.
+        {sync.availability === 'ready' && sync.status && (
+          <>
+            <div className="cv-sync-row">
+              <div>
+                <SyncBadge summary={summary} />
+                <div className="cv-dim cv-sync-detail">{summary.detail}</div>
               </div>
-            </div>
-            <button
-              className="btn accent"
-              disabled={busy}
-              onClick={() => act(() => window.tiger!.git.init(collection.root!))}
-            >
-              <GitBranchIcon size={14} /> Turn on tracking
-            </button>
-          </div>
-        )}
-
-        {screen === 'no-remote' && (
-          <div>
-            <b>Step 2 of 2: connect a shared repository.</b>
-            <div className="cv-dim" style={{ margin: '4px 0 10px' }}>
-              Create an empty repository on GitHub, GitLab or your company server, then paste
-              its URL here. Tiger publishes the collection and keeps it in sync.
-            </div>
-            <div className="cv-remote-row">
-              <input
-                aria-label="Shared repository URL"
-                type="url"
-                placeholder="https://github.com/your-team/payments-api.git"
-                value={remoteUrl}
-                spellCheck={false}
-                onChange={(e) => setRemoteUrl(e.target.value)}
-              />
-              <button
-                className="btn accent"
-                disabled={busy || !remoteUrl.trim()}
-                onClick={() => act(() => window.tiger!.git.setRemote(collection.root!, remoteUrl))}
-              >
-                {busy ? 'Connecting…' : 'Connect'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {screen === 'ready' && status && conflict && (
-          <div className="git-conflict">
-            <b>You and a teammate changed the same thing.</b>
-            <p>
-              Pick whose version to keep where the changes overlap. Everything that doesn't
-              overlap is combined automatically, and the team's history keeps both.
-            </p>
-            <div className="git-conflict-actions">
-              <button className="btn accent" disabled={busy} onClick={() => doResolve('mine')}>
-                {busy ? 'Working…' : 'Keep my version'}
-              </button>
-              <button className="btn" disabled={busy} onClick={() => doResolve('theirs')}>
-                Use the team's version
-              </button>
-              <button className="btn ghost" disabled={busy} onClick={() => setConflict(false)}>
-                Decide later
-              </button>
-            </div>
-          </div>
-        )}
-
-        {screen === 'ready' && status && !conflict && (
-          <div className="cv-sync-row">
-            <div>
-              <b>{summary}</b>
-              {status.dirtyCount > 0 && (
-                <div className="cv-dim">{status.dirtyCount} file(s) changed</div>
+              {sync.conflict ? (
+                <button type="button" className="btn accent" onClick={onOpenGitDetails}>
+                  Choose versions…
+                </button>
+              ) : step !== null ? (
+                <button type="button" className="btn accent" onClick={onOpenGitDetails}>
+                  <UsersIcon size={14} /> {step === 1 ? `${actionLabel('share-collection')}…` : 'Continue setup…'}
+                </button>
+              ) : (
+                <button type="button" className="btn accent" disabled={sync.busy !== null} onClick={doSync}>
+                  <RefreshIcon size={14} /> {actionLabel('sync')}
+                </button>
+              )}
+              {!sync.conflict && (
+                <button type="button" className="btn ghost" onClick={onOpenGitDetails}>
+                  {sync.status.dirtyCount > 0 ? 'See changes' : 'Details'}
+                </button>
               )}
             </div>
-            <button className="btn accent" disabled={busy} onClick={doSync}>
-              {busy ? 'Syncing…' : 'Sync now'}
-            </button>
-            <button className="btn ghost" onClick={onOpenGitDetails}>
-              Details
-            </button>
-            <button type="button" className="icon-btn" title="Refresh" aria-label="Refresh sync status" onClick={refresh}>
-              <RefreshIcon size={14} />
-            </button>
-          </div>
+            <ProgressLine text={sync.busy} />
+            {sync.error && (
+              <ErrorPanel
+                error={sync.error}
+                root={collection.root}
+                onRetry={() => {
+                  sync.setError(null)
+                  void doSync()
+                }}
+                onDismiss={() => sync.setError(null)}
+              />
+            )}
+          </>
         )}
       </div>
 

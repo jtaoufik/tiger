@@ -17,6 +17,7 @@ import {
   BugIcon,
   ClockIcon,
   CloseIcon,
+  CloudUploadIcon,
   CodeIcon,
   CopyIcon,
   DownloadIcon,
@@ -25,6 +26,7 @@ import {
   FolderPlusIcon,
   GaugeIcon,
   GearIcon,
+  GitBranchIcon,
   GlobeIcon,
   KeyboardIcon,
   MonitorIcon,
@@ -36,7 +38,8 @@ import {
   SearchIcon,
   SidebarIcon,
   SunIcon,
-  UploadIcon
+  UploadIcon,
+  UsersIcon
 } from './components/Icons'
 
 type IconComp = (props: { size?: number }) => ReactNode
@@ -69,7 +72,12 @@ const ICONS: Partial<Record<ActionId, IconComp>> = {
   shortcuts: KeyboardIcon,
   docs: BookIcon,
   'report-issue': BugIcon,
-  'check-update': RefreshIcon
+  'check-update': RefreshIcon,
+  'join-team': UsersIcon,
+  'team-sync': GitBranchIcon,
+  sync: RefreshIcon,
+  'save-version': SaveIcon,
+  'share-collection': CloudUploadIcon
 }
 
 /** The registry icon of an action, or null when it has none. */
