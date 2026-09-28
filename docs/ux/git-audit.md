@@ -117,3 +117,21 @@ modal says "You have 3 changes not yet shared with the team."
 7. Conflict choice is blind and global.
 8. No progress text; success message never says what happened.
 9. Duplicate implementations (card vs modal) that drift.
+
+## After (this branch)
+
+Screenshots: `docs/ux/git-after-*.png` (same fake bridge, same states).
+
+| Path | Before | After |
+|---|---|---|
+| Entry points | git-branch icon for clone, arrows icon (import), hover-only row icon, color chips | Header pill + overview card + sidebar row all show one status (icon + words) from `summarizeSync`; clone is "Join a team collection" (people icon, labelled, also in File menu and palette) |
+| P1 Join | 1 field, errors as toasts after the dialog closed | 3 numbered steps, live URL check with one-click fix, progress line, error + fix stays in the dialog with Try again |
+| P2-P3 Share | 2 steps, push of a commit-less repo failed, raw git errors | Stepper: track, connect (access checked, remote removed if unreachable), share now (first sync publishes); identity asked inline |
+| P4 Changes | file slugs, ungrouped | Added / Changed / Removed by request name, path in tooltip, diff per request on click |
+| P5 Save a version | Advanced only, no default | Main path, note prefilled ("Update Get user, add Create post, remove Delete user") |
+| P6-P7 Sync | "Syncing…", generic toast | Phase text ("Getting team's changes…"), toast "Synced: 2 updates received, 3 sent." |
+| P8 Branches | "Branch" select | "Version line (git branch)" under Advanced, with an explanation |
+| P9 Discard | inline yes/no, keeps new files, no undo | Per request or all, in-app confirm listing what is lost, includes new files, Undo bar (git stash) |
+| P10-P11 History, diff | Advanced only | "Recent versions" in the main view; full diff and hashes under Advanced |
+| P12 Conflicts | blind global choice, lost after "Decide later" | Your version / Team's version per request, Keep mine / Keep theirs each, Keep all, Decide later keeps the Conflict status everywhere |
+| P13 Credentials | vanishing toast | Panel with per-OS steps (Git Credential Manager on Windows), links, Try again |

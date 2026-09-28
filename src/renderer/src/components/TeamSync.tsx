@@ -74,7 +74,7 @@ export function SyncBadge({ summary, short = false }: { summary: SyncSummary; sh
   return (
     <span className={`ts-badge tone-${summary.tone}`} title={short ? summary.label : undefined}>
       <Icon size={short ? 11 : 14} />
-      <span>{short ? summary.short : summary.label}</span>
+      {(!short || summary.short) && <span>{short ? summary.short : summary.label}</span>}
     </span>
   )
 }

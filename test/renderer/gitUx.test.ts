@@ -43,7 +43,8 @@ describe('summarizeSync', () => {
 
   it('counts local changes, then versions waiting to be shared', () => {
     expect(summarizeSync({ ...clean, dirtyCount: 3 }).label).toBe('3 local changes')
-    expect(summarizeSync({ ...clean, dirtyCount: 3 }).short).toBe('3 changed')
+    expect(summarizeSync({ ...clean, dirtyCount: 3 }).short).toBe('3')
+    expect(summarizeSync(clean).short).toBe('')
     expect(summarizeSync({ ...clean, ahead: 1 }).label).toBe('1 version to share')
   })
 

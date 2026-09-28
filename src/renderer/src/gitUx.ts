@@ -34,7 +34,11 @@ export interface SyncSummary {
   kind: SyncKind
   /** Short text for badges: always shown next to an icon, never color alone. */
   label: string
-  /** Fits a sidebar row: "3 changed", "Synced". Still paired with an icon. */
+  /**
+   * For a narrow sidebar row: a count, "Conflict", or empty when the state's
+   * own icon is distinct enough. The full label is the accessible name and
+   * the tooltip there.
+   */
   short: string
   /** One sentence saying what it means and what to do. */
   detail: string
@@ -88,7 +92,7 @@ export function summarizeSync(
     return {
       kind: 'updates',
       label: `${plural(status.behind, 'update')} from team`,
-      short: `${status.behind} from team`,
+      short: `${status.behind}`,
       detail:
         yours > 0
           ? 'Your team made changes and so did you. Sync combines both.'
@@ -100,7 +104,7 @@ export function summarizeSync(
     return {
       kind: 'local-changes',
       label: plural(status.dirtyCount, 'local change'),
-      short: `${status.dirtyCount} changed`,
+      short: `${status.dirtyCount}`,
       detail: shared
         ? 'Saved on this computer, not yet shared. Sync to share them with your team.'
         : 'Saved on this computer. Save a version to keep them in the history.',
@@ -111,7 +115,7 @@ export function summarizeSync(
     return {
       kind: 'to-share',
       label: `${plural(status.ahead, 'version')} to share`,
-      short: `${status.ahead} to share`,
+      short: `${status.ahead}`,
       detail: 'Saved as versions, not yet shared. Sync to share them with your team.',
       tone: 'attention'
     }
@@ -120,7 +124,7 @@ export function summarizeSync(
     return {
       kind: 'local-only',
       label: 'Only on this computer',
-      short: 'Local only',
+      short: '',
       detail:
         'Versions are kept on this computer. Connect a shared repository to work with your team.',
       tone: 'neutral'
@@ -130,7 +134,7 @@ export function summarizeSync(
     return {
       kind: 'unpublished',
       label: 'Not shared yet',
-      short: 'Not shared',
+      short: '',
       detail: 'Connected to a shared repository. Sync once to publish this collection to it.',
       tone: 'attention'
     }
@@ -138,7 +142,7 @@ export function summarizeSync(
   return {
     kind: 'up-to-date',
     label: 'Up to date',
-    short: 'Synced',
+    short: '',
     detail: 'Everything is in sync with your team.',
     tone: 'ok'
   }
