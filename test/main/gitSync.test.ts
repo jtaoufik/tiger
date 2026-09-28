@@ -5,6 +5,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gitSync, gitSyncResolve } from '../../src/main/git'
 
+// When this suite runs inside a git hook (the pre-commit gate), git exports
+// GIT_DIR / GIT_INDEX_FILE and friends. Inherited by the child processes below,
+// they point the scratch repos at the outer checkout. Scrub them for this file.
+for (const key of Object.keys(process.env)) {
+  if (key.startsWith('GIT_')) delete process.env[key]
+}
+
 function sh(args: string[], cwd?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile('git', args, { cwd }, (err, stdout, stderr) =>
