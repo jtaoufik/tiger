@@ -61,7 +61,7 @@ export function Modal({
             className="icon-btn modal-close"
             onClick={onClose}
             title="Close (Esc)"
-            aria-label="Close"
+            aria-label="Close dialog"
           >
             <CloseIcon />
           </button>

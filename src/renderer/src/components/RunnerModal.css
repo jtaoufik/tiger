@@ -1,47 +1,138 @@
 /* Collection runner modal. */
-.runner-toolbar {
+.runner-progress {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
+.runner-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--glass-strong);
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+}
+.runner-fill {
+  height: 100%;
+  background: #1f8a57;
+  transition: width 0.2s ease;
+}
+.runner-fill.has-fail {
+  background: #c8321f;
+}
+.runner-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
 .runner-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 650;
   font-size: 13px;
+  white-space: nowrap;
 }
-.runner-summary.good { color: var(--m-get); }
-.runner-summary.bad { color: var(--m-delete); }
+/* Greens/reds tuned for >= 4.5:1 on the modal glass in both themes. */
+.runner-summary.good,
+.runner-ok,
+.runner-verdict.ok { color: #146b41; }
+.runner-summary.bad,
+.runner-bad,
+.runner-verdict.bad,
+.runner-error { color: #b42318; }
+[data-theme='dark'] .runner-summary.good,
+[data-theme='dark'] .runner-ok,
+[data-theme='dark'] .runner-verdict.ok { color: #4cc38a; }
+[data-theme='dark'] .runner-summary.bad,
+[data-theme='dark'] .runner-bad,
+[data-theme='dark'] .runner-verdict.bad,
+[data-theme='dark'] .runner-error { color: #ff8b7a; }
+
 .runner-list {
   max-height: 420px;
-  overflow-y: auto;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
-.runner-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--border);
+.runner-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 13px;
 }
-.runner-row:last-child { border-bottom: none; }
+.runner-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--glass-modal);
+  border-bottom: 1px solid var(--border-strong);
+}
+.runner-table td,
+.runner-table tbody th {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  text-align: left;
+}
+.runner-table tbody tr:last-child td,
+.runner-table tbody tr:last-child th {
+  border-bottom: none;
+}
 .runner-row.pass { background: rgba(44, 163, 106, 0.06); }
 .runner-row.fail { background: rgba(224, 83, 61, 0.07); }
-.runner-name {
-  flex: 1;
-  min-width: 0;
+.runner-row[aria-current='step'] { box-shadow: inset 3px 0 0 var(--accent); }
+.runner-table .runner-name {
+  font-weight: 550;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .runner-error {
-  color: var(--m-delete);
+  display: block;
+  font-weight: 500;
   font-size: 12px;
-  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.runner-verdict.ok { color: var(--m-get); }
-.runner-verdict.bad { color: var(--m-delete); }
+.runner-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+.runner-ok,
+.runner-bad {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+.runner-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.runner-na {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runner-fill { transition: none; }
+}
+@media (forced-colors: active) {
+  .runner-bar { border-color: CanvasText; }
+  .runner-fill,
+  .runner-fill.has-fail { background: Highlight; }
+  .runner-row[aria-current='step'] { outline: 2px solid Highlight; outline-offset: -2px; }
+}

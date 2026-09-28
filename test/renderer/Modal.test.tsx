@@ -47,7 +47,7 @@ describe('Modal', () => {
   it('traps Tab and Shift+Tab inside the dialog', () => {
     render(<Harness />)
     fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
-    const close = screen.getByRole('button', { name: 'Close' })
+    const close = screen.getByRole('button', { name: 'Close dialog' })
     const save = screen.getByRole('button', { name: 'Save' })
     save.focus()
     fireEvent.keyDown(window, { key: 'Tab' })
