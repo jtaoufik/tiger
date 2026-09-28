@@ -1,0 +1,70 @@
+/* Command palette. Base .palette-* rules live in styles.css; overrides carry
+   the .palette-backdrop class so they win over it. */
+.palette-backdrop {
+  align-items: flex-start;
+  padding-top: 14vh;
+}
+.palette-backdrop .modal.palette {
+  width: 560px;
+}
+.palette-backdrop .palette-input input:focus-visible {
+  outline: none;
+}
+.palette-backdrop .palette-input:focus-within {
+  box-shadow: inset 0 -2px 0 var(--tg-focus);
+}
+.palette-backdrop .palette-row {
+  min-height: 36px;
+}
+/* Highlighted option: tint plus an edge bar, so it is not color alone. */
+.palette-backdrop .palette-row.sel {
+  box-shadow: inset 3px 0 0 var(--tg-focus);
+}
+.palette-backdrop .palette-col {
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-backdrop .palette-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 16px 20px;
+  color: var(--text-dim);
+  text-align: center;
+  font-size: 13px;
+}
+.palette-backdrop .palette-empty b {
+  color: var(--text);
+  font-weight: 650;
+}
+.palette-foot {
+  display: flex;
+  gap: 16px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.palette-foot kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-right: 3px;
+  padding: 0 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--glass-strong);
+}
+
+@media (forced-colors: active) {
+  .palette-backdrop .palette-row.sel {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

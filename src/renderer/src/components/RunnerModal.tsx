@@ -4,7 +4,8 @@ import { envToVars } from '@core/interpolate'
 import type { TigerEnvironment } from '@core/types'
 import { cancelRequest, runRequest } from '../runRequest'
 import { Modal } from './Modal'
-import { CheckIcon, CloseIcon, PlayIcon, StopIcon } from './Icons'
+import { CheckIcon, PlayIcon, StopIcon, XCircleIcon } from './Icons'
+import './a11y.css'
 import './RunnerModal.css'
 
 interface Props {
@@ -76,72 +77,172 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
     cancelRequest(RUNNER_KEY)
   }, [])
 
+  const done = results.length
+  const failed = results.filter((r) => !r.passed).length
+  const progressText =
+    phase === 'running'
+      ? `${done} of ${items.length} done${failed ? `, ${failed} failed` : ''}`
+      : summary
+        ? `Finished${summary.stopped ? ' (stopped)' : ''}: ${summary.passed} passed, ${summary.failed} failed`
+        : ''
+
   return (
-    <Modal title={`Run · ${title}`} onClose={onClose} width={620}>
-      {phase === 'loading' && <div className="cv-dim">Loading requests…</div>}
+    <Modal
+      title={`Run · ${title}`}
+      onClose={onClose}
+      width={680}
+      description={
+        phase !== 'loading' && items.length > 0
+          ? 'Sends every request in order, applying captures and scripts between them.'
+          : undefined
+      }
+      footer={
+        phase !== 'loading' && items.length > 0 ? (
+          <>
+            <button type="button" className="btn" onClick={onClose}>
+              Close
+            </button>
+            {phase === 'running' ? (
+              <button type="button" className="btn danger" onClick={stop}>
+                <StopIcon size={13} /> Stop
+              </button>
+            ) : (
+              <button type="button" className="btn accent" data-autofocus onClick={start}>
+                <PlayIcon size={13} />{' '}
+                {phase === 'done'
+                  ? 'Run again'
+                  : `Run ${items.length} request${items.length === 1 ? '' : 's'}`}
+              </button>
+            )}
+          </>
+        ) : undefined
+      }
+    >
+      {phase === 'loading' && (
+        <div className="cv-dim" role="status">
+          Loading requests…
+        </div>
+      )}
 
       {phase !== 'loading' && items.length === 0 && (
-        <div className="cv-dim">Nothing to run yet: this scope has no requests. Add one from the sidebar, then run again.</div>
+        <div className="modal-empty">
+          <PlayIcon size={28} />
+          <h3>Nothing to run yet</h3>
+          <p>This scope has no requests. Add one from the sidebar, then run again.</p>
+          <button type="button" className="btn" data-autofocus onClick={onClose}>
+            Close
+          </button>
+        </div>
       )}
 
       {phase !== 'loading' && items.length > 0 && (
         <>
-          <div className="runner-toolbar">
-            {phase === 'running' ? (
-              <button className="btn" onClick={stop}>
-                <StopIcon size={13} /> Stop
-              </button>
-            ) : (
-              <button className="btn accent" onClick={start}>
-                <PlayIcon size={13} /> {phase === 'done' ? 'Run again' : `Run ${items.length} request${items.length === 1 ? '' : 's'}`}
-              </button>
-            )}
-            {phase === 'running' && (
-              <span className="cv-dim">
-                {results.length} / {items.length}
-              </span>
-            )}
-            {summary && (
-              <span className={`runner-summary ${summary.failed ? 'bad' : 'good'}`}>
-                {summary.passed} passed · {summary.failed} failed
-                {summary.stopped ? ' · stopped' : ''}
-              </span>
-            )}
+          {(phase === 'running' || summary) && (
+            <div className="runner-progress">
+              <div
+                className="runner-bar"
+                role="progressbar"
+                aria-label="Run progress"
+                aria-valuemin={0}
+                aria-valuemax={items.length}
+                aria-valuenow={done}
+                aria-valuetext={progressText}
+              >
+                <div
+                  className={`runner-fill ${failed ? 'has-fail' : ''}`}
+                  style={{ width: `${items.length ? (done / items.length) * 100 : 0}%` }}
+                />
+              </div>
+              {summary ? (
+                <span className={`runner-summary ${summary.failed ? 'bad' : 'good'}`}>
+                  {summary.failed ? (
+                    <XCircleIcon size={14} aria-hidden="true" />
+                  ) : (
+                    <CheckIcon size={14} aria-hidden="true" />
+                  )}
+                  {summary.passed} passed · {summary.failed} failed
+                  {summary.stopped ? ' · stopped' : ''}
+                </span>
+              ) : (
+                <span className="cv-dim runner-count">
+                  {done} / {items.length}
+                </span>
+              )}
+            </div>
+          )}
+          <div className="tg-sr-only" role="status" aria-live="polite">
+            {progressText}
           </div>
 
           <div className="runner-list">
-            {items.map((item, i) => {
-              const r = results[i]
-              const running = phase === 'running' && i === results.length
-              return (
-                <div key={item.id} className={`runner-row ${r ? (r.passed ? 'pass' : 'fail') : ''}`}>
-                  <span className={`method-pill m-${item.request.method}`}>
-                    {item.request.method.toUpperCase()}
-                  </span>
-                  <span className="runner-name">{item.name}</span>
-                  {running && <span className="cv-dim">sending…</span>}
-                  {r && (
-                    <>
-                      {r.status !== undefined && (
-                        <span className={r.status < 400 ? 'status-ok' : 'status-bad'}>{r.status}</span>
-                      )}
-                      {r.timeMs !== undefined && <span className="meta-chip">{r.timeMs} ms</span>}
-                      {r.tests.length > 0 && (
-                        <span className="meta-chip">
-                          tests {r.tests.filter((t) => t.passed).length}/{r.tests.length}
+            <table className="runner-table">
+              <caption className="tg-sr-only">Requests in this run and their results</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Method</th>
+                  <th scope="col">Request</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Time</th>
+                  <th scope="col">Tests</th>
+                  <th scope="col">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, i) => {
+                  const r = results[i]
+                  const running = phase === 'running' && i === results.length
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`runner-row ${r ? (r.passed ? 'pass' : 'fail') : ''}`}
+                      aria-current={running ? 'step' : undefined}
+                    >
+                      <td>
+                        <span className={`method-pill m-${item.request.method}`}>
+                          {item.request.method.toUpperCase()}
                         </span>
-                      )}
-                      {r.error && <span className="runner-error" title={r.error}>{r.error}</span>}
-                      {r.passed ? (
-                        <CheckIcon size={14} className="runner-verdict ok" />
-                      ) : (
-                        <CloseIcon size={14} className="runner-verdict bad" />
-                      )}
-                    </>
-                  )}
-                </div>
-              )
-            })}
+                      </td>
+                      <th scope="row" className="runner-name" title={item.name}>
+                        {item.name}
+                        {r?.error && (
+                          <span className="runner-error" title={r.error}>
+                            {r.error}
+                          </span>
+                        )}
+                      </th>
+                      <td>
+                        {r?.status !== undefined ? (
+                          <span className={r.status < 400 ? 'runner-ok' : 'runner-bad'}>{r.status}</span>
+                        ) : (
+                          <span className="runner-na">{running ? 'sending…' : ''}</span>
+                        )}
+                      </td>
+                      <td className="runner-num">{r?.timeMs !== undefined ? `${r.timeMs} ms` : ''}</td>
+                      <td className="runner-num">
+                        {r && r.tests.length > 0
+                          ? `${r.tests.filter((t) => t.passed).length}/${r.tests.length}`
+                          : ''}
+                      </td>
+                      <td>
+                        {r ? (
+                          r.passed ? (
+                            <span className="runner-verdict ok">
+                              <CheckIcon size={14} aria-hidden="true" /> Pass
+                            </span>
+                          ) : (
+                            <span className="runner-verdict bad">
+                              <XCircleIcon size={14} aria-hidden="true" /> Fail
+                            </span>
+                          )
+                        ) : (
+                          <span className="runner-na">{running ? 'Running' : 'Pending'}</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </>
       )}

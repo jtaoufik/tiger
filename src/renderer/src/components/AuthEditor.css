@@ -1,0 +1,19 @@
+/* Auth editor: notes and hints under fields. */
+.auth-editor .auth-note {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.auth-editor .auth-hint {
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.auth-editor .field input::placeholder {
+  color: var(--text-faint);
+}
+.auth-editor .field input:focus-visible,
+.auth-editor .field select:focus-visible {
+  outline: 2px solid var(--tg-focus, var(--focus-ring, #2563eb));
+  outline-offset: 1px;
+}

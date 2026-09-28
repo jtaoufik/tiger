@@ -1,0 +1,18 @@
+/* Team sync modal. Base .git-* rules live in styles.css. */
+.modal-backdrop ul.git-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.modal-backdrop .git-files .git-file .row-label {
+  min-width: 0;
+}
+.modal-backdrop .git-diff:focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 2px;
+}
+.modal-backdrop .git-newbranch::placeholder,
+.modal-backdrop .git-commit input::placeholder,
+.modal-backdrop .cv-remote-row input::placeholder {
+  color: var(--text-faint);
+}

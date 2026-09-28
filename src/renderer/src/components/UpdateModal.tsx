@@ -11,30 +11,34 @@ interface Props {
 
 export function UpdateModal({ info, currentVersion, onDownload, onClose }: Props) {
   return (
-    <Modal title={`Update available · v${info.latest}`} onClose={onClose} width={480}>
-      <p style={{ margin: '0 0 14px', color: 'var(--text-dim)' }}>
-        You are on v{currentVersion}. Version {info.latest} is ready to download.
-      </p>
-      {info.notes.length > 0 && (
+    <Modal
+      title={`Update available · v${info.latest}`}
+      onClose={onClose}
+      width={480}
+      description={`You are on v${currentVersion}. Version ${info.latest} is ready to download.`}
+      footer={
         <>
-          <div className="section-label" style={{ marginTop: 0 }}>
+          <button type="button" className="btn" onClick={onClose}>
+            Later
+          </button>
+          <button type="button" className="btn accent" data-autofocus onClick={onDownload}>
+            <DownloadIcon size={14} /> Download update
+          </button>
+        </>
+      }
+    >
+      {info.notes.length > 0 && (
+        <section aria-labelledby="update-notes-label">
+          <h3 id="update-notes-label" className="section-label" style={{ marginTop: 0 }}>
             What changed
-          </div>
+          </h3>
           <ul className="changelog">
             {info.notes.map((note, i) => (
               <li key={i}>{note}</li>
             ))}
           </ul>
-        </>
+        </section>
       )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
-        <button className="btn" onClick={onClose}>
-          Later
-        </button>
-        <button className="btn accent" onClick={onDownload}>
-          <DownloadIcon size={14} /> Download update
-        </button>
-      </div>
     </Modal>
   )
 }

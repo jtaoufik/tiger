@@ -1,4 +1,6 @@
+import { useId } from 'react'
 import type { TigerAuth } from '@core/types'
+import './AuthEditor.css'
 
 interface Props {
   auth: TigerAuth | undefined
@@ -34,17 +36,37 @@ function Field({
   label,
   value,
   onChange,
-  type = 'text'
+  type = 'text',
+  placeholder,
+  hint
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   type?: string
+  placeholder?: string
+  hint?: string
 }) {
+  const id = useId()
   return (
     <div className="field">
-      <label>{label}</label>
-      <input type={type} value={value} spellCheck={false} onChange={(e) => onChange(e.target.value)} />
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        spellCheck={false}
+        autoComplete="off"
+        placeholder={placeholder}
+        title={type !== 'password' && value.length > 40 ? value : undefined}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {hint && (
+        <div id={`${id}-hint`} className="auth-hint">
+          {hint}
+        </div>
+      )}
     </div>
   )
 }
@@ -52,12 +74,14 @@ function Field({
 export function AuthEditor({ auth, onChange, noInherit }: Props) {
   const current: TigerAuth = auth ?? { type: 'none' }
   const selected = auth ? auth.type : noInherit ? 'none' : 'inherit'
+  const uid = useId()
 
   return (
-    <div>
+    <div className="auth-editor">
       <div className="field">
-        <label>Type</label>
+        <label htmlFor={`${uid}-type`}>Type</label>
         <select
+          id={`${uid}-type`}
           value={selected}
           onChange={(e) => {
             const v = e.target.value
@@ -69,21 +93,27 @@ export function AuthEditor({ auth, onChange, noInherit }: Props) {
           <option value="bearer">Bearer Token</option>
           <option value="basic">Basic Auth</option>
           <option value="apikey">API Key</option>
-          <option value="oauth2">OAuth 2.0 — Client Credentials</option>
+          <option value="oauth2">OAuth 2.0 (Client Credentials)</option>
         </select>
       </div>
 
       {selected === 'inherit' && (
-        <div style={{ color: 'var(--text-dim)' }}>
+        <div className="auth-note">
           Uses the collection's auth. Set one via right-click on the collection.
         </div>
       )}
       {selected === 'none' && (
-        <div style={{ color: 'var(--text-dim)' }}>This request sends no authentication.</div>
+        <div className="auth-note">This request sends no authentication.</div>
       )}
 
       {auth && current.type === 'bearer' && (
-        <Field label="Token" value={current.token} onChange={(v) => onChange({ ...current, token: v })} />
+        <Field
+          label="Token"
+          value={current.token}
+          placeholder="{{token}} or eyJhbGciOi..."
+          hint="Sent as Authorization: Bearer <token>."
+          onChange={(v) => onChange({ ...current, token: v })}
+        />
       )}
 
       {current.type === 'basic' && (
@@ -105,16 +135,23 @@ export function AuthEditor({ auth, onChange, noInherit }: Props) {
       {current.type === 'apikey' && (
         <>
           <div className="row-2">
-            <Field label="Key" value={current.key} onChange={(v) => onChange({ ...current, key: v })} />
+            <Field
+              label="Key"
+              value={current.key}
+              placeholder="X-API-Key"
+              onChange={(v) => onChange({ ...current, key: v })}
+            />
             <Field
               label="Value"
+              placeholder="{{apiKey}}"
               value={current.value}
               onChange={(v) => onChange({ ...current, value: v })}
             />
           </div>
           <div className="field">
-            <label>Add to</label>
+            <label htmlFor={`${uid}-in`}>Add to</label>
             <select
+              id={`${uid}-in`}
               value={current.in}
               onChange={(e) => onChange({ ...current, in: e.target.value as 'header' | 'query' })}
             >
@@ -129,6 +166,7 @@ export function AuthEditor({ auth, onChange, noInherit }: Props) {
         <>
           <Field
             label="Access Token URL"
+            placeholder="https://auth.example.com/oauth/token"
             value={current.tokenUrl}
             onChange={(v) => onChange({ ...current, tokenUrl: v })}
           />
@@ -145,7 +183,13 @@ export function AuthEditor({ auth, onChange, noInherit }: Props) {
               onChange={(v) => onChange({ ...current, clientSecret: v })}
             />
           </div>
-          <Field label="Scope" value={current.scope} onChange={(v) => onChange({ ...current, scope: v })} />
+          <Field
+            label="Scope"
+            placeholder="read:users write:users"
+            hint="Optional. Space-separated."
+            value={current.scope}
+            onChange={(v) => onChange({ ...current, scope: v })}
+          />
         </>
       )}
     </div>
