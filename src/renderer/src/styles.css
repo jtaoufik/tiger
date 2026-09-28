@@ -157,6 +157,16 @@ button {
 .titlebar .spacer {
   flex: 1;
 }
+/* Current page (Settings/Home): tinted + underlined, not color alone. */
+.titlebar .btn.current {
+  background: var(--accent-weak);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent-fill);
+}
+.titlebar .brand {
+  border-radius: var(--radius-sm);
+  min-height: 28px;
+}
 
 .titlebar button,
 .titlebar .env-select {
@@ -236,14 +246,14 @@ button {
   min-height: 0;
   overflow: hidden;
 }
-.sidebar header {
+.sidebar-head {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 13px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar header .title {
+.sidebar-head .title {
   margin: 0;
   font-weight: 650;
   font-size: 12px;
@@ -587,9 +597,21 @@ button {
   text-align: center;
   padding: 20px;
 }
+.empty h2,
 .empty h3 {
   margin: 6px 0 0;
   color: var(--text);
+  font-size: 1.05rem;
+}
+.empty p {
+  margin: 0;
+}
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 /* ---------- Settings ---------- */
@@ -839,7 +861,17 @@ button {
   animation: modal-in 0.16s ease;
 }
 .toast svg {
-  color: var(--accent);
+  color: var(--accent-text);
+  flex-shrink: 0;
+}
+.toast.error {
+  border-color: color-mix(in srgb, var(--m-delete) 55%, transparent);
+}
+.toast.error svg {
+  color: var(--m-delete);
+}
+.toasts:empty {
+  display: none;
 }
 .choice-grid {
   display: grid;
@@ -1594,11 +1626,33 @@ button {
   min-height: 0;
   min-width: 0;
 }
-.workspace > .main {
+/* <main> landmark: the third grid column; its one child fills it. */
+.main-region {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.main-region:focus {
+  outline: none; /* programmatic focus target of the skip link only */
+}
+.main-region > * {
   flex: 1;
   min-height: 0;
 }
-.workspace > .collection-view {
+/* role=tabpanel wrapper under the tab strip. */
+.workspace-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.workspace-panel > .main {
+  flex: 1;
+  min-height: 0;
+}
+.workspace-panel > .collection-view {
   flex: 1;
   min-height: 0;
   overflow-y: auto;

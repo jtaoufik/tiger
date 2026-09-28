@@ -820,7 +820,7 @@ export function Sidebar({
 
   return (
     <nav className="panel sidebar" aria-labelledby="sidebar-title">
-      <header>
+      <div className="sidebar-head">
         <h2 className="title" id="sidebar-title">
           Collections
         </h2>
@@ -828,7 +828,7 @@ export function Sidebar({
         {headerButton('New collection', <PlusIcon size={15} />, onNewCollection)}
         {headerButton('Clone from Git', <GitBranchIcon />, onClone)}
         {headerButton('Import / Export', <SwapIcon />, onImportExport)}
-      </header>
+      </div>
 
       <div className="sidebar-search" role="search">
         <SearchIcon size={13} />

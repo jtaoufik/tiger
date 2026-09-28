@@ -31,7 +31,7 @@ import { CollectionView } from './components/CollectionView'
 import { FolderView } from './components/FolderView'
 import { WelcomeView } from './components/WelcomeView'
 import { RequestEditor } from './components/RequestEditor'
-import { RequestTabs, type RequestTab } from './components/RequestTabs'
+import { RequestTabs, tabAccessibleName, type RequestTab } from './components/RequestTabs'
 import { ResponsePanel } from './components/ResponsePanel'
 import { SettingsView } from './components/SettingsView'
 import { ImportExportModal, type ExportFormat } from './components/ImportExportModal'
@@ -81,6 +81,7 @@ import {
   type OpenTab
 } from './session'
 import { cancelRequest, runRequest } from './runRequest'
+import { announce, ensureLiveRegions, looksLikeError } from './a11y'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
 import { sampleEnvironment, sampleRequests } from './sample'
 
@@ -116,6 +117,8 @@ type ModalKind = 'none' | 'io' | 'history' | 'env' | 'shortcuts'
 interface Toast {
   id: number
   text: string
+  /** Failures render with an error icon and are announced assertively. */
+  error?: boolean
 }
 
 const FALLBACK_SETTINGS: Settings = {
@@ -292,7 +295,12 @@ export default function App() {
   useEffect(() => {
     folderSettingsRef.current = folderSettings
   })
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number
+    y: number
+    items: MenuItem[]
+    label?: string
+  } | null>(null)
   const [sidebarW, setSidebarW] = useState(() => Number(readStored('tiger.sidebarW')) || 264)
   const [editorH, setEditorH] = useState<number | null>(() => {
     const stored = Number(readStored('tiger.editorH'))
@@ -323,8 +331,15 @@ export default function App() {
 
   const toast = useCallback((text: string) => {
     const id = ++toastSeq
-    setToasts((prev) => [...prev, { id, text }])
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2600)
+    const error = looksLikeError(text)
+    setToasts((prev) => [...prev, { id, text, error }])
+    // Errors stay up longer: they are the ones people need to read.
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), error ? 6000 : 2600)
+  }, [])
+
+  // Live regions must exist before their first message.
+  useEffect(() => {
+    ensureLiveRegions()
   }, [])
 
   useEffect(() => {
@@ -820,11 +835,16 @@ export default function App() {
           }
         }
         setResponses((prev) => ({ ...prev, [id]: { loading: false, data, tests, logs } }))
+        announce(
+          `Response ${data.status}${data.statusText ? ` ${data.statusText}` : ''} in ${data.timeMs} ms`,
+          { assertive: !data.ok }
+        )
       }
       trackEvent(events.requestSent(active.method, data.status, data.ok))
     } catch (e) {
       if (!deletedIds.current.has(id)) {
         setResponses((prev) => ({ ...prev, [id]: { loading: false, error: (e as Error).message } }))
+        announce(`Request failed: ${(e as Error).message}`, { assertive: true })
       }
     } finally {
       setSendingIds((prev) => {
@@ -973,7 +993,7 @@ export default function App() {
           onClick: () => setSidebarReveal({ id: tab.id, nonce: ++revealSeq.current })
         })
       }
-      setCtxMenu({ x, y, items })
+      setCtxMenu({ x, y, items, label: 'Tab actions' })
     },
     [openTabs, closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs]
   )
@@ -1803,7 +1823,7 @@ export default function App() {
           onClick: () => window.tiger!.reveal(pathById[entryId])
         })
       }
-      setCtxMenu({ x, y, items })
+      setCtxMenu({ x, y, items, label: 'Request actions' })
     },
     [selectRequest, duplicateRequest, copyAsCurl, pathById]
   )
@@ -1848,7 +1868,7 @@ export default function App() {
         // closeCollection on a possibly-stale closure.
         onClick: () => requestCloseCollection(colId)
       })
-      setCtxMenu({ x, y, items })
+      setCtxMenu({ x, y, items, label: 'Collection actions' })
     },
     [collections, newRequest, requestCloseCollection]
   )
@@ -1940,7 +1960,7 @@ export default function App() {
         { label: 'Run folder', icon: <PlayIcon size={14} />, onClick: () => setRunnerScope({ colId, path }) },
         { label: 'Duplicate folder', icon: <CopyIcon size={14} />, onClick: () => duplicateFolder(colId, path) }
       ]
-      setCtxMenu({ x, y, items })
+      setCtxMenu({ x, y, items, label: 'Folder actions' })
     },
     [inspectFolder, newRequest, duplicateFolder]
   )
@@ -2017,21 +2037,55 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collections, openTabs, activeTabKey])
 
+  const activeTabItem = tabItems.find((t) => t.key === activeTabKey)
+  const pageTitle =
+    view === 'home'
+      ? 'Home'
+      : view === 'settings'
+        ? 'Settings'
+        : activeTabItem
+          ? `${activeTabItem.dirty ? '* ' : ''}${activeTabItem.label}`
+          : null
+  // The window title names the active request/page, like any document app.
+  useEffect(() => {
+    document.title = pageTitle ? `${pageTitle} - Tiger` : 'Tiger'
+  }, [pageTitle])
+
+  /** Skip link target: the URL field when a request is open, else the page. */
+  const skipToMain = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    const url = document.querySelector<HTMLInputElement>('#main .url-input')
+    if (url) url.focus()
+    else document.getElementById('main')?.focus()
+  }
+
+  const activeSending = !!activeId && sendingIds.has(activeId)
+
   return (
     <div className="app">
-      <div className="titlebar">
+      <a className="skip-link" href="#main" onClick={skipToMain}>
+        {active && view === 'workspace' && !inspect ? 'Skip to request URL' : 'Skip to main content'}
+      </a>
+      <h1 className="sr-only">Tiger</h1>
+      <header className="titlebar">
         <button
+          type="button"
           className="brand"
           style={{ border: 'none', background: 'transparent', padding: 0, font: 'inherit' }}
-          title="Home"
+          title={view === 'home' ? 'Back to workspace' : 'Home'}
+          aria-label={view === 'home' ? 'Tiger, back to workspace' : 'Tiger home'}
+          aria-current={view === 'home' ? 'page' : undefined}
           onClick={() => setView(view === 'home' ? 'workspace' : 'home')}
         >
-          <Logo size={22} rounded />
-          Tiger
+          <span aria-hidden>
+            <Logo size={22} rounded />
+          </span>
+          <span aria-hidden>Tiger</span>
         </button>
         <span className="spacer" />
         {update && (
           <button
+            type="button"
             className="btn ghost update-chip"
             title={`Update to v${update.latest}`}
             onClick={() => setUpdateModalOpen(true)}
@@ -2042,6 +2096,7 @@ export default function App() {
         <div className="env-combo" title="Active environment">
           <select
             className="env-select"
+            aria-label="Active environment"
             value={activeEnvKey ?? ''}
             onChange={(e) => changeEnv(e.target.value)}
           >
@@ -2065,29 +2120,32 @@ export default function App() {
             )}
           </select>
           <button
+            type="button"
             className="env-edit"
             title="Manage environments"
+            aria-label="Manage environments"
             onClick={() => setModal('env')}
           >
             <PencilIcon size={14} />
           </button>
         </div>
-        <button className="btn ghost" title="History" onClick={openHistory}>
-          <ClockIcon size={15} /> History
+        <button type="button" className="btn ghost" title="History" onClick={openHistory}>
+          <ClockIcon size={15} /> <span className="btn-label">History</span>
         </button>
         <button
-          className="btn ghost"
+          type="button"
+          className={`btn ghost${view === 'settings' ? ' current' : ''}`}
           title="Settings"
-          style={view === 'settings' ? { color: 'var(--accent)' } : undefined}
+          aria-current={view === 'settings' ? 'page' : undefined}
           onClick={() => setView(view === 'settings' ? 'workspace' : 'settings')}
         >
-          <GearIcon size={15} /> Settings
+          <GearIcon size={15} /> <span className="btn-label">Settings</span>
         </button>
-      </div>
+      </header>
 
       <div
         className="body"
-        style={{ gridTemplateColumns: `${sidebarW}px 6px minmax(0, 1fr)`, gap: 0 }}
+        style={{ gridTemplateColumns: `min(${sidebarW}px, 42vw) 6px minmax(0, 1fr)`, gap: 0 }}
       >
         <Sidebar
           collections={collections}
@@ -2123,6 +2181,15 @@ export default function App() {
 
         <Resizer
           direction="col"
+          label="Resize sidebar"
+          value={sidebarW}
+          min={200}
+          max={440}
+          onResize={(w) => {
+            setSidebarW(w)
+            sidebarBase.current = w
+            writeStored('tiger.sidebarW', String(w))
+          }}
           onDrag={(delta) =>
             setSidebarW(Math.min(440, Math.max(200, sidebarBase.current + delta)))
           }
@@ -2135,6 +2202,13 @@ export default function App() {
           }
         />
 
+        <main
+          id="main"
+          className="main-region"
+          tabIndex={-1}
+          aria-label={pageTitle ?? 'Workspace'}
+          aria-busy={activeSending || undefined}
+        >
         {view === 'home' ? (
           <WelcomeView
             version={appVersion}
@@ -2161,6 +2235,7 @@ export default function App() {
           <div className="workspace">
             <RequestTabs
               tabs={tabItems}
+              panelId="workspace-panel"
               activeKey={activeTabKey}
               onSelect={(key) => {
                 const t = openTabs.find((x) => tabKey(x) === key)
@@ -2170,6 +2245,12 @@ export default function App() {
               onTabMenu={openTabMenu}
               onReorder={reorderTabs}
             />
+            <div
+              className="workspace-panel"
+              id="workspace-panel"
+              role={activeTabItem ? 'tabpanel' : undefined}
+              aria-label={activeTabItem ? tabAccessibleName(activeTabItem) : undefined}
+            >
             {inspect ? (
               (() => {
                 const col = collections.find((c) => c.id === inspect.colId)
@@ -2254,21 +2335,50 @@ export default function App() {
                     }}
                   />
                 ) : (
-                  <section className="panel editor">
+                  <section className="panel editor" aria-labelledby="empty-editor-title">
                     <div className="empty">
-                      <Logo size={54} rounded />
-                      <h3>No request selected</h3>
-                      <div>Choose one from the sidebar, or start here:</div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                        <button className="btn" onClick={openCollection}>Open a folder</button>
-                        <button className="btn" onClick={() => setModal('io')}>Import / Export</button>
-                        <button className="btn" onClick={() => setView('home')}>All features</button>
+                      <span aria-hidden>
+                        <Logo size={54} rounded />
+                      </span>
+                      <h2 id="empty-editor-title">No request selected</h2>
+                      <p>Choose one from the sidebar, or start here:</p>
+                      <div className="empty-actions">
+                        {collections[0] && (
+                          <button
+                            type="button"
+                            className="btn accent"
+                            onClick={() => newRequest(collections[0].id)}
+                          >
+                            <PlusIcon size={14} /> New request
+                          </button>
+                        )}
+                        <button type="button" className="btn" onClick={openCollection}>
+                          <FolderOpenIcon size={14} /> Open a folder
+                        </button>
+                        <button type="button" className="btn" onClick={() => setModal('io')}>
+                          <SwapIcon size={14} /> Import / Export
+                        </button>
+                        <button type="button" className="btn ghost" onClick={() => setView('home')}>
+                          All features
+                        </button>
                       </div>
                     </div>
                   </section>
                 )}
                 <Resizer
                   direction="row"
+                  label="Resize request editor"
+                  value={editorH ?? undefined}
+                  min={140}
+                  max={Math.max(140, (mainRef.current?.getBoundingClientRect().height ?? 800) - 160)}
+                  measure={() =>
+                    mainRef.current?.children.item(0)?.getBoundingClientRect().height ?? 300
+                  }
+                  onResize={(h) => {
+                    setEditorH(h)
+                    editorBase.current = h
+                    writeStored('tiger.editorH', String(h))
+                  }}
                   onDrag={(delta) => {
                     if (editorBase.current === null) {
                       editorBase.current =
@@ -2288,8 +2398,10 @@ export default function App() {
                 <ResponsePanel state={activeId ? responses[activeId] : undefined} />
               </div>
             )}
+            </div>
           </div>
         )}
+        </main>
       </div>
 
       {modal === 'io' && (
@@ -2390,7 +2502,13 @@ export default function App() {
           )
         })()}
       {ctxMenu && (
-        <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(null)} />
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          label={ctxMenu.label}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
       {paletteOpen && (
         <PaletteModal
@@ -2428,6 +2546,7 @@ export default function App() {
             },
             { label: 'Manage environments…', icon: <GlobeIcon size={14} />, onClick: () => setModal('env') }
           ]}
+          label="Workspace actions"
           onClose={() => setEmptyMenu(null)}
         />
       )}
@@ -2479,7 +2598,7 @@ export default function App() {
       )}
 
       {downloadedUpdate && (
-        <div className="update-ready">
+        <div className="update-ready" role="status">
           <CheckIcon size={15} />
           <span>
             Tiger {downloadedUpdate} is ready to install.
@@ -2487,21 +2606,31 @@ export default function App() {
           <button className="btn accent" onClick={() => window.tiger?.installUpdate?.()}>
             Restart &amp; update
           </button>
-          <button className="icon-btn" title="Dismiss" onClick={() => setDownloadedUpdate(null)}>
+          <button
+            type="button"
+            className="icon-btn"
+            title="Dismiss"
+            aria-label="Dismiss update notice"
+            onClick={() => setDownloadedUpdate(null)}
+          >
             <CloseIcon size={14} />
           </button>
         </div>
       )}
-      {toasts.length > 0 && (
-        <div className="toasts">
-          {toasts.map((t) => (
-            <div className="toast" key={t.id}>
-              <CheckIcon size={14} />
-              {t.text}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Always mounted so screen readers pick up each new toast (polite);
+          failures carry role=alert and are read immediately. */}
+      <div className="toasts" aria-live="polite" aria-relevant="additions">
+        {toasts.map((t) => (
+          <div
+            className={`toast${t.error ? ' error' : ''}`}
+            key={t.id}
+            role={t.error ? 'alert' : undefined}
+          >
+            {t.error ? <XCircleIcon size={14} /> : <CheckIcon size={14} />}
+            {t.text}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
