@@ -7,7 +7,7 @@
   min-width: 0;
 }
 .multipart .mp-value.is-file svg {
-  color: var(--accent);
+  color: var(--accent-text);
   flex-shrink: 0;
 }
 .multipart .mp-value .kv-input {
