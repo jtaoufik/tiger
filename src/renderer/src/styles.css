@@ -23,7 +23,9 @@
   --accent-text: #963c00;
   /* Solid fill for primary buttons / selected segments, with its ink (>= 4.5:1). */
   --accent-fill: #c24f00;
-  --accent-ink: #ffffff;
+  --accent-fill-ink: #ffffff;
+  /* Ink for text on the bright brand --accent itself (7.2:1). */
+  --accent-ink: #1a1206;
   --accent-weak: rgba(255, 122, 24, 0.12);
   --danger-fill: #b8321f;
   --danger-ink: #ffffff;
@@ -68,6 +70,7 @@
   --accent: #ff8c42;
   --accent-text: #ffa266;
   --accent-fill: #ff8c42;
+  --accent-fill-ink: #1a1206;
   --accent-ink: #1a1206;
   --accent-weak: rgba(255, 140, 66, 0.18);
   --danger-fill: #ff7563;
@@ -211,7 +214,7 @@ button {
 }
 .btn.accent {
   background: var(--accent-fill);
-  color: var(--accent-ink);
+  color: var(--accent-fill-ink);
   border-color: transparent;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 6px 18px var(--accent-weak);
 }
@@ -666,7 +669,7 @@ button {
 .seg button[aria-pressed='true'],
 .seg button[aria-selected='true'] {
   background: var(--accent-fill);
-  color: var(--accent-ink);
+  color: var(--accent-fill-ink);
 }
 .switch {
   width: 44px;
@@ -1189,10 +1192,10 @@ button {
   place-items: center;
   border-radius: 12px;
   background: var(--accent-fill);
-  color: var(--accent-ink);
+  color: var(--accent-fill-ink);
   box-shadow: 0 6px 16px var(--accent-weak);
 }
-.welcome-tile.primary .chip svg { color: var(--accent-ink); }
+.welcome-tile.primary .chip svg { color: var(--accent-fill-ink); }
 .welcome-tile.primary .meta {
   display: flex;
   flex-direction: column;

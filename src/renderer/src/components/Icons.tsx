@@ -38,6 +38,7 @@ import {
   Square,
   ArrowRightLeft,
   Trash2,
+  TriangleAlert,
   Upload,
   WrapText,
   X,
@@ -89,3 +90,4 @@ export const EyeIcon = base(Eye)
 export const EyeOffIcon = base(EyeOff)
 export const GaugeIcon = base(Gauge)
 export const SaveIcon = base(Save)
+export const WarningIcon = base(TriangleAlert)
