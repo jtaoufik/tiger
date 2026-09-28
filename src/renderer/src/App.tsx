@@ -2212,6 +2212,7 @@ export default function App() {
         {view === 'home' ? (
           <WelcomeView
             version={appVersion}
+            canCreateRequest={collections.length > 0}
             onOpenCollection={openCollection}
             onNewCollection={newCollection}
             onClone={cloneCollection}
