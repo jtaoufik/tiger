@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import {
   HTTP_METHODS,
   type BodyType,
@@ -16,6 +16,8 @@ import { MultipartEditor } from './MultipartEditor'
 import { PerfPane } from './PerfPane'
 import { AuthEditor } from './AuthEditor'
 import { CheckIcon, CopyIcon, SaveIcon } from './Icons'
+import { tablist } from './tablist'
+import './a11y.css'
 import './RequestEditor.css'
 
 interface Props {
@@ -52,6 +54,7 @@ export function RequestEditor({
   perf
 }: Props) {
   const [tab, setTab] = useState<Tab>('params')
+  const uid = useId()
   // Form-body rows live in component state while editing; re-deriving them
   // from the serialized text on every keystroke would drop value-only rows
   // mid-typing. The component remounts per request (key={activeId} in App),
@@ -89,30 +92,64 @@ export function RequestEditor({
     }
   }
 
+  const hasAuth = !!request.auth && request.auth.type !== 'none'
+  const hasScripts = !!request.preScript?.trim() || !!request.postScript?.trim()
+  const hasDocs = !!request.docs?.trim()
+  const tabDefs: Array<{ id: Tab; label: string; count?: number; flag?: string }> = [
+    { id: 'params', label: 'Params', count: enabledCount(request.query) },
+    { id: 'headers', label: 'Headers', count: enabledCount(request.headers) },
+    { id: 'auth', label: 'Auth', flag: hasAuth ? 'set' : undefined },
+    { id: 'body', label: 'Body', flag: request.body.type !== 'none' ? request.body.type : undefined },
+    { id: 'capture', label: 'Capture', count: enabledCount(request.captures ?? []) },
+    { id: 'scripts', label: 'Scripts', flag: hasScripts ? 'has scripts' : undefined },
+    { id: 'docs', label: 'Docs', flag: hasDocs ? 'written' : undefined },
+    { id: 'code', label: 'Code' },
+    { id: 'perf', label: 'Perf' }
+  ]
+  const tabs = tablist(
+    `${uid}-req`,
+    tabDefs.map((t) => t.id),
+    tab,
+    setTab
+  )
+
+  const bodyIsJson = request.body.type === 'json'
+  const jsonInvalid =
+    bodyIsJson &&
+    !!request.body.content.trim() &&
+    request.body.content.length < 100000 &&
+    !isValidJson(request.body.content) &&
+    !request.body.content.includes('{{')
+
   return (
-    <section className="panel editor">
+    <section className="panel editor" aria-label="Request editor">
       <div className="name-row">
         <input
           className="req-name"
           value={request.name}
           spellCheck={false}
           placeholder="Request name"
+          aria-label="Request name"
+          title={request.name.length > 40 ? request.name : undefined}
           onChange={(e) => set({ name: e.target.value })}
         />
         {diskBacked && (
           <button
+            type="button"
             className="icon-btn save-btn"
-            title={dirty ? `Unsaved changes — Save (${MOD}+S)` : `Save (${MOD}+S)`}
+            title={dirty ? `Unsaved changes. Save (${MOD}+S)` : `Save (${MOD}+S)`}
+            aria-label={dirty ? 'Save request (unsaved changes)' : 'Save request'}
             onClick={onSave}
           >
             <SaveIcon />
-            {dirty && <span className="dirty-dot" />}
+            {dirty && <span className="dirty-dot" aria-hidden="true" />}
           </button>
         )}
       </div>
       <div className="urlbar" style={{ paddingTop: 8 }}>
         <select
           className="method-select"
+          aria-label="HTTP method"
           value={request.method}
           onChange={(e) => set({ method: e.target.value as TigerRequest['method'] })}
         >
@@ -126,7 +163,10 @@ export function RequestEditor({
           className="url-input"
           spellCheck={false}
           value={request.url}
-          placeholder="https://api.example.com/path"
+          placeholder="https://api.example.com/users/{{userId}}"
+          aria-label="Request URL"
+          aria-describedby={missingVars.length > 0 ? `${uid}-missing` : undefined}
+          title={request.url.length > 60 ? request.url : undefined}
           onChange={(e) => set({ url: e.target.value })}
           onKeyDown={(e) => {
             // Plain Enter only: Cmd/Ctrl+Enter is handled by the global
@@ -135,62 +175,50 @@ export function RequestEditor({
           }}
         />
         {sending ? (
-          <button className="btn danger" onClick={onCancel} title="Cancel request">
+          <button type="button" className="btn danger" onClick={onCancel} title="Cancel request">
             Cancel
           </button>
         ) : (
-          <button className="btn accent" onClick={onSend} title={`Send (${MOD}+Enter)`}>
+          <button type="button" className="btn accent" onClick={onSend} title={`Send (${MOD}+Enter)`}>
             Send
           </button>
         )}
       </div>
       {missingVars.length > 0 && (
-        <div className="warn-row" role="status">
+        <div className="warn-row" role="status" id={`${uid}-missing`}>
           Unresolved variables: {missingVars.map((v) => `{{${v}}}`).join(' ')}
           <span className="warn-hint">define them in the active environment</span>
         </div>
       )}
 
-      <div className="tabs">
-        <button className={`tab ${tab === 'params' ? 'active' : ''}`} onClick={() => setTab('params')}>
-          Params {enabledCount(request.query) > 0 && <span className="count">{enabledCount(request.query)}</span>}
-        </button>
-        <button className={`tab ${tab === 'headers' ? 'active' : ''}`} onClick={() => setTab('headers')}>
-          Headers {enabledCount(request.headers) > 0 && <span className="count">{enabledCount(request.headers)}</span>}
-        </button>
-        <button className={`tab ${tab === 'auth' ? 'active' : ''}`} onClick={() => setTab('auth')}>
-          Auth {request.auth && request.auth.type !== 'none' && <span className="dot" />}
-        </button>
-        <button className={`tab ${tab === 'body' ? 'active' : ''}`} onClick={() => setTab('body')}>
-          Body {request.body.type !== 'none' && <span className="dot" />}
-        </button>
-        <button className={`tab ${tab === 'capture' ? 'active' : ''}`} onClick={() => setTab('capture')}>
-          Capture{' '}
-          {enabledCount(request.captures ?? []) > 0 && (
-            <span className="count">{enabledCount(request.captures ?? [])}</span>
-          )}
-        </button>
-        <button
-          className={`tab ${tab === 'scripts' ? 'active' : ''}`}
-          onClick={() => setTab('scripts')}
-        >
-          Scripts{' '}
-          {(!!request.preScript?.trim() || !!request.postScript?.trim()) && (
-            <span className="dot" />
-          )}
-        </button>
-        <button className={`tab ${tab === 'docs' ? 'active' : ''}`} onClick={() => setTab('docs')}>
-          Docs {!!request.docs?.trim() && <span className="dot" />}
-        </button>
-        <button className={`tab ${tab === 'code' ? 'active' : ''}`} onClick={() => setTab('code')}>
-          Code
-        </button>
-        <button className={`tab ${tab === 'perf' ? 'active' : ''}`} onClick={() => setTab('perf')}>
-          Perf
-        </button>
+      <div className="tabs" role="tablist" aria-label="Request sections" onKeyDown={tabs.onKeyDown}>
+        {tabDefs.map((t) => {
+          const name = t.count ? `${t.label}, ${t.count}` : t.flag ? `${t.label}, ${t.flag}` : t.label
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={`tab ${tab === t.id ? 'active' : ''}`}
+              aria-label={name}
+              {...tabs.tab(t.id)}
+            >
+              {t.label}
+              {t.count ? (
+                <>
+                  {' '}
+                  <span className="count" aria-hidden="true">
+                    {t.count}
+                  </span>
+                </>
+              ) : t.flag ? (
+                <span className="dot" aria-hidden="true" />
+              ) : null}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="tab-body">
+      <div className="tab-body" {...tabs.panel()}>
         {tab === 'params' && (
           <KeyValueEditor
             items={request.query}
@@ -209,30 +237,33 @@ export function RequestEditor({
           <AuthEditor auth={request.auth} onChange={(auth) => set({ auth })} />
         )}
         {tab === 'body' && (
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="seg">
+          <div className="body-pane">
+            <div className="body-toolbar">
+              <div className="seg" role="group" aria-label="Body type">
                 {BODY_TYPES.map((t) => (
                   <button
                     key={t}
+                    type="button"
                     className={request.body.type === t ? 'on' : ''}
+                    aria-pressed={request.body.type === t}
                     onClick={() => set({ body: { ...request.body, type: t } })}
                   >
                     {t}
                   </button>
                 ))}
               </div>
-              {request.body.type === 'json' && request.body.content.trim() && (
+              {bodyIsJson && request.body.content.trim() && (
                 <>
-                  {request.body.content.length < 100000 &&
-                    !isValidJson(request.body.content) &&
-                    !request.body.content.includes('{{') && (
-                      <span className="json-bad">Invalid JSON</span>
-                    )}
+                  {jsonInvalid && (
+                    <span className="json-bad" id={`${uid}-json-bad`}>
+                      Invalid JSON
+                    </span>
+                  )}
                   <div className="body-toolbar-actions">
                     <button
-                      className="btn ghost"
-                      style={{ padding: '5px 11px', fontSize: 12.5 }}
+                      type="button"
+                      className="btn ghost body-tool"
+                      title="Pretty-print the JSON body"
                       onClick={() => {
                         const result = formatJsonText(request.body.content)
                         if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
@@ -241,8 +272,9 @@ export function RequestEditor({
                       Format
                     </button>
                     <button
-                      className="btn ghost"
-                      style={{ padding: '5px 11px', fontSize: 12.5 }}
+                      type="button"
+                      className="btn ghost body-tool"
+                      title="Remove whitespace from the JSON body"
                       onClick={() => {
                         const result = minifyJsonText(request.body.content)
                         if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
@@ -250,15 +282,26 @@ export function RequestEditor({
                     >
                       Minify
                     </button>
-                    <button className="icon-btn" title="Copy body" onClick={copyBody}>
+                    <button
+                      type="button"
+                      className="icon-btn body-copy"
+                      title="Copy body"
+                      aria-label={copiedBody ? 'Body copied' : 'Copy body'}
+                      onClick={copyBody}
+                    >
                       {copiedBody ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
                     </button>
                   </div>
                 </>
               )}
             </div>
+            <span className="tg-sr-only" role="status" aria-live="polite">
+              {copiedBody ? 'Body copied to clipboard' : ''}
+            </span>
             {request.body.type === 'none' && (
-              <div style={{ color: 'var(--text-dim)' }}>This request has no body.</div>
+              <div className="body-empty">
+                This request has no body. Pick a type above (json, form, multipart...) to add one.
+              </div>
             )}
             {request.body.type === 'form' && (
               <KeyValueEditor
@@ -281,18 +324,22 @@ export function RequestEditor({
             )}
             {request.body.type === 'graphql' && (
               <div className="gql-body">
+                <label className="gql-vars-label" htmlFor={`${uid}-gql-query`}>
+                  Query
+                </label>
                 <textarea
+                  id={`${uid}-gql-query`}
                   className="code-area gql-query"
                   spellCheck={false}
                   value={request.body.content}
                   placeholder={'query {\n  viewer { id name }\n}'}
                   onChange={(e) => set({ body: { ...request.body, content: e.target.value } })}
                 />
-                <label className="gql-vars-label" htmlFor="gql-vars">
+                <label className="gql-vars-label" htmlFor={`${uid}-gql-vars`}>
                   Variables (JSON)
                 </label>
                 <textarea
-                  id="gql-vars"
+                  id={`${uid}-gql-vars`}
                   className="code-area gql-vars"
                   spellCheck={false}
                   value={request.body.variables ?? ''}
@@ -305,8 +352,17 @@ export function RequestEditor({
               <textarea
                 className="code-area"
                 spellCheck={false}
+                aria-label={`Request body (${request.body.type.toUpperCase()})`}
+                aria-invalid={jsonInvalid || undefined}
+                aria-describedby={jsonInvalid ? `${uid}-json-bad` : undefined}
                 value={request.body.content}
-                placeholder={request.body.type === 'json' ? '{\n  "key": "value"\n}' : 'Raw body…'}
+                placeholder={
+                  request.body.type === 'json'
+                    ? '{\n  "name": "Ada",\n  "email": "ada@example.com"\n}'
+                    : request.body.type === 'xml'
+                      ? '<user>\n  <name>Ada</name>\n</user>'
+                      : 'Raw body text'
+                }
                 onChange={(e) => set({ body: { ...request.body, content: e.target.value } })}
               />
             )}
@@ -315,18 +371,20 @@ export function RequestEditor({
         {tab === 'capture' && (
           <KeyValueEditor
             items={request.captures ?? []}
-            placeholder={['Variable', 'body.path.to.value']}
+            placeholder={['Variable', 'body.data.id']}
+            noun="Capture"
             onChange={(captures) => set({ captures })}
           />
         )}
         {tab === 'scripts' && (
           <div className="scripts-tab">
             <div className="script-block">
-              <div className="script-label">
+              <label className="script-label" htmlFor={`${uid}-pre`}>
                 Pre-request script
                 <span className="cv-dim"> runs before the request is sent</span>
-              </div>
+              </label>
               <textarea
+                id={`${uid}-pre`}
                 className="code-area"
                 spellCheck={false}
                 value={request.preScript ?? ''}
@@ -335,11 +393,12 @@ export function RequestEditor({
               />
             </div>
             <div className="script-block">
-              <div className="script-label">
+              <label className="script-label" htmlFor={`${uid}-post`}>
                 Post-response script
                 <span className="cv-dim"> runs after the response, for captures and tests</span>
-              </div>
+              </label>
               <textarea
+                id={`${uid}-post`}
                 className="code-area"
                 spellCheck={false}
                 value={request.postScript ?? ''}
@@ -359,8 +418,9 @@ export function RequestEditor({
           <textarea
             className="code-area"
             spellCheck={false}
+            aria-label="Request documentation (markdown)"
             value={request.docs ?? ''}
-            placeholder="Document this request in markdown…"
+            placeholder={'## What this does\nReturns the current user. Needs a bearer token.'}
             onChange={(e) => set({ docs: e.target.value })}
           />
         )}

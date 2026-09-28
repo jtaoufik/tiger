@@ -33,3 +33,107 @@
   align-items: center;
   gap: 6px;
 }
+
+/* ---------- Body tab layout (was inline styles) ---------- */
+.body-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.body-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.panel.editor .body-tool {
+  padding: 5px 11px;
+  font-size: 12.5px;
+  min-height: 28px;
+}
+.panel.editor .body-copy {
+  width: 28px;
+  height: 28px;
+}
+.body-empty {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 6px 2px;
+}
+
+/* ---------- Request section tabs ---------- */
+/* Counts were 10px orange on glass (about 2.4:1); a tinted chip with body
+   text passes 4.5:1 in both themes. */
+.panel.editor .tabs .tab .count {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: var(--text);
+  background: var(--accent-weak);
+}
+.panel.editor .tabs .tab {
+  min-height: 30px;
+}
+.panel.editor .tabs .tab:hover:not(.active) {
+  color: var(--text);
+}
+
+/* ---------- Keyboard focus ---------- */
+.panel.editor .tabs .tab:focus-visible,
+.panel.editor .icon-btn:focus-visible,
+.panel.editor .btn:focus-visible,
+.panel.editor .seg button:focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 2px;
+}
+.panel.editor .tab-body:focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: -2px;
+}
+.panel.editor .url-input:focus-visible,
+.panel.editor .method-select:focus-visible,
+.panel.editor .field input:focus-visible,
+.panel.editor .field select:focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 1px;
+}
+.panel.editor .req-name:focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.panel.editor .code-area:focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.panel.editor .icon-btn {
+  min-width: 26px;
+  min-height: 26px;
+}
+.panel.editor .seg button {
+  min-height: 26px;
+}
+.panel.editor .code-area::placeholder {
+  color: var(--text-faint);
+}
+
+@media (forced-colors: active) {
+  .panel.editor .tabs .tab.active {
+    border: 1px solid CanvasText;
+    border-bottom: 3px solid Highlight;
+  }
+  .panel.editor .seg button[aria-pressed='true'] {
+    border: 2px solid Highlight;
+  }
+  .panel.editor .tabs .tab .count {
+    border: 1px solid CanvasText;
+  }
+}

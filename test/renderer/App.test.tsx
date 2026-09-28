@@ -152,7 +152,7 @@ describe('App (browser preview, no Electron bridge)', () => {
       'Bearer Token',
       'Basic Auth',
       'API Key',
-      'OAuth 2.0 — Client Credentials'
+      'OAuth 2.0 (Client Credentials)'
     ])
   })
 
