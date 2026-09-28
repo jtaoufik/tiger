@@ -189,7 +189,8 @@ describe('Sidebar ARIA tree', () => {
     setup()
     const btn = screen.getAllByRole('button', { name: 'Delete request' })[0]
     expect(btn).toHaveAttribute('tabindex', '-1')
-    expect(screen.getByRole('button', { name: 'Open collection folder' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveAttribute('title', expect.stringMatching(/^Open collection/))
+    expect(screen.getAllByRole('button', { name: /^More actions for/ })[0]).toHaveAttribute('tabindex', '-1')
   })
 
   it('search shows an empty state when nothing matches, and ArrowDown enters results', () => {

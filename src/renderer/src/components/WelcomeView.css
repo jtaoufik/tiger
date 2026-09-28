@@ -1,0 +1,75 @@
+/* Getting started: three numbered steps that tick themselves off. */
+.welcome-steps {
+  margin-bottom: 22px;
+}
+.welcome-steps-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.welcome-steps-head .welcome-section-label {
+  margin: 0;
+}
+.welcome-step-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.welcome-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--glass);
+}
+.welcome-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-fill);
+  color: var(--accent-text);
+  font-weight: 700;
+  font-size: 12px;
+}
+.welcome-step.done .welcome-step-num {
+  background: var(--accent-fill);
+  color: var(--accent-fill-ink);
+}
+.welcome-step.done .welcome-step-num svg {
+  color: var(--accent-fill-ink);
+}
+.welcome-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.welcome-step-text .t {
+  font-weight: 650;
+  font-size: 0.875rem;
+}
+.welcome-step-text .d {
+  color: var(--text-dim);
+  font-size: 0.7812rem;
+  line-height: 1.45;
+}
+
+@media (forced-colors: active) {
+  .welcome-step {
+    border: 1px solid CanvasText;
+  }
+  .welcome-step.done .welcome-step-num {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
 import type { KeyValue, TigerEnvironment } from '@core/types'
 import { Modal } from './Modal'
 import './KeyValueEditor.css'
 import './EnvironmentsModal.css'
-import { CheckIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, PlusIcon, TrashIcon } from './Icons'
+import { CheckIcon, CloseIcon, CopyIcon, EyeIcon, LockIcon, LockOpenIcon, PlusIcon, TrashIcon } from './Icons'
 
 export interface EnvCollectionRef {
   id: string
@@ -33,6 +33,8 @@ interface Props {
   onActiveEnvMaybeChanged?: (colId: string, name: string, data: TigerEnvironment) => void
   onToast: (text: string) => void
   onClose: () => void
+  /** Create a new environment as soon as the modal opens (menu "New environment"). */
+  startNew?: boolean
 }
 
 /** Full environment management: create, rename, duplicate, delete, secrets. */
@@ -46,7 +48,8 @@ export function EnvironmentsModal({
   onCollectionsChanged,
   onActiveEnvMaybeChanged,
   onToast,
-  onClose
+  onClose,
+  startNew = false
 }: Props) {
   const [colId, setColId] = useState(initialColId ?? collections[0]?.id ?? '')
   const col = collections.find((c) => c.id === colId)
@@ -123,6 +126,15 @@ export function EnvironmentsModal({
     },
     [col, onCollectionsChanged, onToast]
   )
+
+  // "New environment" from a menu opens the modal with one already created.
+  const started = useRef(false)
+  useEffect(() => {
+    if (startNew && !started.current && col) {
+      started.current = true
+      void createEnv()
+    }
+  }, [startNew, col, createEnv])
 
   const renameEnv = useCallback(
     async (oldName: string, newName: string) => {
@@ -211,7 +223,8 @@ export function EnvironmentsModal({
       title="Environments"
       onClose={onClose}
       width={700}
-      description="Named sets of {{variables}}. The checked environment is the one requests use."
+      description="Named sets of {{variables}}, like dev, staging or prod. Click the check next to one to make it the active environment for every request."
+      help={{ page: 'environments', topic: 'Environments' }}
     >
       <div className="env-layout envs-modal">
         <div className="env-side">
@@ -332,7 +345,7 @@ export function EnvironmentsModal({
               </p>
               {!envs.length && (
                 <button type="button" className="btn accent" onClick={() => createEnv()}>
-                  <PlusIcon size={14} /> Create environment
+                  <PlusIcon size={14} /> New environment
                 </button>
               )}
             </div>
@@ -399,12 +412,16 @@ export function EnvironmentsModal({
                           <button
                             type="button"
                             className={`icon-btn ${row.secret ? 'on' : ''}`}
-                            title={row.secret ? 'Secret (click to make plain)' : 'Mark as secret'}
+                            title={
+                              row.secret
+                                ? 'Secret: the value is masked on screen. Click to make it plain'
+                                : 'Mark as secret: mask the value on screen'
+                            }
                             aria-label={`Secret variable ${i + 1}`}
                             aria-pressed={!!row.secret}
                             onClick={() => updateRow(i, { secret: !row.secret })}
                           >
-                            {row.secret ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
+                            {row.secret ? <LockIcon size={14} /> : <LockOpenIcon size={14} />}
                           </button>
                           {row.secret && (
                             <button

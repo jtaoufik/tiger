@@ -4,6 +4,8 @@ import { Logo } from '../Logo'
 import { CheckIcon, CloseIcon, CopyIcon } from './Icons'
 import './SettingsExtras.css'
 import { announce, rovingIndex } from '../a11y'
+import type { DocsPage } from '@core/actions'
+import { HelpLink } from './HelpLink'
 
 interface Props {
   settings: Settings
@@ -14,13 +16,29 @@ const THEMES: ThemeChoice[] = ['light', 'dark', 'system']
 
 type SettingsTab = 'general' | 'network' | 'advanced' | 'mcp' | 'privacy' | 'about'
 
-const TABS: { id: SettingsTab; label: string }[] = [
-  { id: 'general', label: 'General' },
-  { id: 'network', label: 'Network' },
-  { id: 'advanced', label: 'Advanced' },
-  { id: 'mcp', label: 'MCP' },
-  { id: 'privacy', label: 'Privacy' },
-  { id: 'about', label: 'About' }
+/** Each section says in one line what it is for, so nobody opens six tabs to find a setting. */
+export const TABS: { id: SettingsTab; label: string; intro: string; docs?: DocsPage }[] = [
+  { id: 'general', label: 'General', intro: 'How Tiger looks and how long it waits for a server.' },
+  {
+    id: 'network',
+    label: 'Network',
+    intro: 'Redirects, SSL checks, proxy and cookies: how requests leave your machine.'
+  },
+  {
+    id: 'advanced',
+    label: 'Advanced',
+    intro:
+      'Certificates for company networks and mutual TLS. Most people never need these.'
+  },
+  {
+    id: 'mcp',
+    label: 'AI assistants (MCP)',
+    intro:
+      'Let Claude, Cursor and other AI assistants list and run the requests of a collection.',
+    docs: 'mcp'
+  },
+  { id: 'privacy', label: 'Privacy', intro: 'What Tiger sends about its own usage. Never your requests.' },
+  { id: 'about', label: 'About', intro: 'Version and project information.' }
 ]
 
 function basename(p: string): string {
@@ -29,12 +47,13 @@ function basename(p: string): string {
 
 interface FileRowProps {
   label: string
+  desc: string
   value: string
   filters: { name: string; extensions: string[] }[]
   onChange: (v: string) => void
 }
 
-function FileRow({ label, value, filters, onChange }: FileRowProps) {
+function FileRow({ label, desc, value, filters, onChange }: FileRowProps) {
   async function pick() {
     const path = await window.tiger?.pickFile(filters)
     if (path != null) onChange(path)
@@ -44,8 +63,9 @@ function FileRow({ label, value, filters, onChange }: FileRowProps) {
   }
   return (
     <div className="setting-row">
-      <div style={{ flex: '0 0 160px', minWidth: 0 }}>
+      <div style={{ flex: '0 0 200px', minWidth: 0 }}>
         <div className="label">{label}</div>
+        <div className="desc">{desc}</div>
       </div>
       <div className="cert-row" style={{ flex: 1, minWidth: 0 }}>
         <span
@@ -175,6 +195,15 @@ export function SettingsView({ settings, onChange }: Props) {
       </div>
 
       <div role="tabpanel" id={`${uid}-panel`} aria-labelledby={`${uid}-tab-${tab}`}>
+      {(() => {
+        const current = TABS.find((t) => t.id === tab)!
+        return (
+          <p className="settings-intro">
+            <span>{current.intro}</span>
+            {current.docs && <HelpLink page={current.docs} topic={current.label} />}
+          </p>
+        )
+      })()}
 
       {tab === 'general' && (
         <>
@@ -433,6 +462,7 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <FileRow
             label="CA bundle (PEM)"
+            desc="Extra certificate authorities to trust, e.g. your company's internal CA."
             value={settings.caFile}
             filters={[{ name: 'PEM Certificate', extensions: ['pem', 'crt', 'cer'] }]}
             onChange={(v) => onChange({ caFile: v })}
@@ -440,6 +470,7 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <FileRow
             label="Client certificate (PEM)"
+            desc="Your certificate, for servers that ask who you are (mutual TLS)."
             value={settings.clientCertFile}
             filters={[{ name: 'PEM Certificate', extensions: ['pem', 'crt', 'cer'] }]}
             onChange={(v) => onChange({ clientCertFile: v })}
@@ -447,6 +478,7 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <FileRow
             label="Client key (PEM)"
+            desc="The private key that goes with the client certificate."
             value={settings.clientKeyFile}
             filters={[{ name: 'PEM Key', extensions: ['pem', 'key'] }]}
             onChange={(v) => onChange({ clientKeyFile: v })}
@@ -454,14 +486,16 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <FileRow
             label="PFX / P12 bundle"
+            desc="Certificate and key in one file, instead of the two PEM files."
             value={settings.clientPfxFile}
             filters={[{ name: 'PFX / P12 Bundle', extensions: ['pfx', 'p12'] }]}
             onChange={(v) => onChange({ clientPfxFile: v })}
           />
 
           <div className="setting-row">
-            <div style={{ flex: '0 0 160px', minWidth: 0 }}>
+            <div style={{ flex: '0 0 200px', minWidth: 0 }}>
               <div className="label">Certificate passphrase</div>
+              <div className="desc">Unlocks the key or bundle above, if it has a password.</div>
             </div>
             <input
               ref={passphraseRef}
@@ -491,8 +525,9 @@ export function SettingsView({ settings, onChange }: Props) {
       {tab === 'mcp' && (
         <>
           <p className="mcp-intro">
-            Tiger ships a built-in MCP server that exposes your collections to Claude Desktop
-            and other MCP-compatible clients. Add the snippet below to your{' '}
+            Tiger ships a built-in MCP server (Model Context Protocol) that exposes your
+            collections to Claude Desktop and other MCP-compatible clients. Add the snippet below
+            to your{' '}
             <code>claude_desktop_config.json</code> to connect.
           </p>
 
@@ -518,7 +553,7 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <p className="mcp-note">
             Replace <code>&lt;path to your collection folder&gt;</code> with the absolute path to
-            the folder you opened in Tiger. You can have multiple entries — one per collection.
+            the folder you opened in Tiger. You can have one entry per collection.
           </p>
         </>
       )}

@@ -49,25 +49,25 @@ import { PaletteModal } from './components/PaletteModal'
 import { Resizer } from './components/Resizer'
 import { UpdateModal } from './components/UpdateModal'
 import type { UpdateInfo } from '@core/version'
+import { docsUrl, REPO_URL, type ActionId, type RequestSectionId } from '@core/actions'
+import { actionItem, actionTitle } from './actions'
+import { openExternal } from './components/HelpLink'
 import {
   ArrowRightToLineIcon,
   CheckIcon,
   ClockIcon,
   CloseIcon,
-  CodeIcon,
   CopyIcon,
   FileIcon,
   FolderIcon,
   FolderOpenIcon,
   GearIcon,
   GitBranchIcon,
-  GlobeIcon,
   ListXIcon,
   LocateIcon,
   PencilIcon,
-  PlayIcon,
   PlusIcon,
-  SwapIcon,
+  SidebarIcon,
   TrashIcon,
   XCircleIcon
 } from './components/Icons'
@@ -302,6 +302,19 @@ export default function App() {
     label?: string
   } | null>(null)
   const [sidebarW, setSidebarW] = useState(() => Number(readStored('tiger.sidebarW')) || 264)
+  const [sidebarHidden, setSidebarHidden] = useState(() => readStored('tiger.sidebarHidden') === '1')
+  /** Which half of the Import and export dialog the entry point asked for. */
+  const [ioFocus, setIoFocus] = useState<'import' | 'export'>('import')
+  /** Environments dialog opened by "New environment": create one right away. */
+  const [envStartNew, setEnvStartNew] = useState(false)
+  /** "New folder" prompt target: the collection and the parent folder. */
+  const [newFolderIn, setNewFolderIn] = useState<{ colId: string; path: string[] } | null>(null)
+  const renameSeq = useRef(0)
+  const [renameTarget, setRenameTarget] = useState<
+    { id?: string; colId?: string; path?: string[]; nonce: number } | null
+  >(null)
+  /** Ask the request editor to show a section (menu "Load test"). */
+  const [showSection, setShowSection] = useState<{ id: RequestSectionId; nonce: number } | null>(null)
   const [editorH, setEditorH] = useState<number | null>(() => {
     const stored = Number(readStored('tiger.editorH'))
     return stored > 0 ? stored : null
@@ -1009,6 +1022,13 @@ export default function App() {
     [openTabs, activeTabKey, activateTab]
   )
 
+  const toggleSidebar = useCallback(() => {
+    setSidebarHidden((hidden) => {
+      writeStored('tiger.sidebarHidden', hidden ? '0' : '1')
+      return !hidden
+    })
+  }, [])
+
   /** New request in the collection of the active request, else the first one.
    * newRequest is declared later in the component, so go through a ref. */
   const newRequestRef = useRef<(collectionId: string, folderPath?: string[]) => void>(() => {})
@@ -1053,6 +1073,9 @@ export default function App() {
         // this fallback covers the browser preview.
         e.preventDefault()
         closeActiveTab()
+      } else if (key === 'b' && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        toggleSidebar()
       } else if (key === 't') {
         e.preventDefault()
         newRequestShortcut()
@@ -1068,7 +1091,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [save, send, paletteOpen, cycleTab, closeActiveTab, newRequestShortcut, jumpToTab])
+  }, [save, send, paletteOpen, cycleTab, closeActiveTab, newRequestShortcut, jumpToTab, toggleSidebar])
 
   // Cmd+W arrives from the main process (it must block the menu accelerator).
   // Native menu items (menu.ts) fan out through the shortcut channel. The ref is
@@ -1141,33 +1164,6 @@ export default function App() {
     },
     [selectRequest, applyOpenedCollection, toast]
   )
-
-  // Wire native menu items to the matching in-app actions. Keys match the action
-  // names emitted by menu.ts; the IPC listener above dispatches through this map.
-  menuActionsRef.current = {
-    'close-tab': closeActiveTab,
-    'new-request': newRequestShortcut,
-    'new-collection': newCollection,
-    'open-collection': openCollection,
-    send,
-    save,
-    'command-palette': () => setPaletteOpen(true),
-    'import-export': () => setModal('io'),
-    settings: () => setView('settings'),
-    environments: () => setModal('env'),
-    history: () => setModal('history'),
-    shortcuts: () => setModal('shortcuts'),
-    'check-update': () => {
-      window.tiger?.checkUpdate?.().then((info) => {
-        if (info) {
-          setUpdate(info)
-          setUpdateModalOpen(true)
-        } else {
-          toast("You're on the latest version")
-        }
-      })
-    }
-  }
 
   const importFromCurl = useCallback(
     async (command: string) => {
@@ -1803,47 +1799,58 @@ export default function App() {
       const items: MenuItem[] = [
         { label: 'Open', icon: <FileIcon size={14} />, onClick: () => selectRequest(entryId) },
         {
-          label: 'Duplicate',
-          icon: <CopyIcon size={14} />,
-          onClick: () => duplicateRequest(entryId)
+          label: 'Rename',
+          icon: <PencilIcon size={14} />,
+          onClick: () => setRenameTarget({ id: entryId, nonce: ++renameSeq.current })
         },
-        { label: 'Copy as cURL', icon: <CodeIcon size={14} />, onClick: () => copyAsCurl(entryId) },
-        'sep',
-        {
-          label: 'Delete…',
-          icon: <TrashIcon size={14} />,
-          danger: true,
-          onClick: () => setConfirmDeleteId(entryId)
-        }
+        actionItem('duplicate-request', () => duplicateRequest(entryId)),
+        actionItem('copy-curl', () => copyAsCurl(entryId))
       ]
       if (pathById[entryId] && window.tiger?.reveal) {
-        items.splice(3, 0, {
+        items.push({
           label: REVEAL_LABEL,
           icon: <FolderOpenIcon size={14} />,
           onClick: () => window.tiger!.reveal(pathById[entryId])
         })
       }
+      items.push('sep', {
+        label: 'Delete request…',
+        icon: <TrashIcon size={14} />,
+        danger: true,
+        onClick: () => setConfirmDeleteId(entryId)
+      })
       setCtxMenu({ x, y, items, label: 'Request actions' })
     },
     [selectRequest, duplicateRequest, copyAsCurl, pathById]
   )
+
+  const inspectCollectionRef = useRef<(colId: string) => void>(() => {})
+  /** Import and export share one dialog; each entry point says which half. */
+  const openIo = useCallback((focus: 'import' | 'export') => {
+    setIoFocus(focus)
+    setModal('io')
+  }, [])
 
   const openCollectionMenu = useCallback(
     (colId: string, x: number, y: number) => {
       const col = collections.find((c) => c.id === colId)
       if (!col) return
       const items: MenuItem[] = [
-        { label: 'New request', icon: <PlusIcon size={14} />, onClick: () => newRequest(colId) },
+        actionItem('new-request', () => newRequest(colId)),
+        actionItem('new-folder', () => setNewFolderIn({ colId, path: [] })),
+        actionItem('run-collection', () => setRunnerScope({ colId })),
+        'sep',
         {
-          label: 'Import / Export…',
-          icon: <SwapIcon size={14} />,
-          onClick: () => setModal('io')
+          label: 'Collection overview',
+          icon: <FileIcon size={14} />,
+          onClick: () => inspectCollectionRef.current(colId)
         },
         {
-          label: 'Collection auth…',
+          label: 'Auth for all requests…',
           icon: <PencilIcon size={14} />,
           onClick: () => setAuthColId(colId)
-        }
+        },
+        actionItem('export', () => openIo('export'))
       ]
       if (col.root) {
         items.push(
@@ -1861,7 +1868,7 @@ export default function App() {
       }
       items.push('sep', {
         label: 'Close collection',
-        icon: <TrashIcon size={14} />,
+        icon: <CloseIcon size={14} />,
         danger: true,
         // Route through the confirm path (like every other close button) so it
         // gets the confirmation dialog and inspect-view cleanup, not a raw
@@ -1870,7 +1877,7 @@ export default function App() {
       })
       setCtxMenu({ x, y, items, label: 'Collection actions' })
     },
-    [collections, newRequest, requestCloseCollection]
+    [collections, newRequest, requestCloseCollection, openIo]
   )
 
   const saveCollectionAuth = useCallback(
@@ -1900,7 +1907,7 @@ export default function App() {
           serializeCollectionSettings({ name: col.name, auth: col.auth, docs })
         )
       }
-      toast('Collection docs saved')
+      toast('Collection notes saved')
     },
     [collections, toast]
   )
@@ -1932,7 +1939,7 @@ export default function App() {
   )
   const saveFolderDocs = useCallback(
     (colId: string, path: string[], docs: string) =>
-      saveFolderSetting(colId, path, { docs }, 'Folder docs saved'),
+      saveFolderSetting(colId, path, { docs }, 'Folder notes saved'),
     [saveFolderSetting]
   )
 
@@ -1943,6 +1950,7 @@ export default function App() {
     },
     [openTab, activateTab]
   )
+  inspectCollectionRef.current = inspectCollection
 
   const inspectFolder = useCallback(
     (colId: string, path: string[]) => {
@@ -1955,9 +1963,16 @@ export default function App() {
   const openFolderMenu = useCallback(
     (colId: string, path: string[], x: number, y: number) => {
       const items: MenuItem[] = [
-        { label: 'Open folder', icon: <FolderIcon size={14} />, onClick: () => inspectFolder(colId, path) },
-        { label: 'New request here', icon: <PlusIcon size={14} />, onClick: () => newRequest(colId, path) },
-        { label: 'Run folder', icon: <PlayIcon size={14} />, onClick: () => setRunnerScope({ colId, path }) },
+        actionItem('new-request', () => newRequest(colId, path)),
+        actionItem('new-folder', () => setNewFolderIn({ colId, path })),
+        actionItem('run-collection', () => setRunnerScope({ colId, path }), { label: 'Run folder…' }),
+        'sep',
+        { label: 'Folder overview', icon: <FolderIcon size={14} />, onClick: () => inspectFolder(colId, path) },
+        {
+          label: 'Rename',
+          icon: <PencilIcon size={14} />,
+          onClick: () => setRenameTarget({ colId, path, nonce: ++renameSeq.current })
+        },
         { label: 'Duplicate folder', icon: <CopyIcon size={14} />, onClick: () => duplicateFolder(colId, path) }
       ]
       setCtxMenu({ x, y, items, label: 'Folder actions' })
@@ -2061,6 +2076,108 @@ export default function App() {
 
   const activeSending = !!activeId && sendingIds.has(activeId)
 
+  /** Collection (and folder) the "current" commands act on. */
+  const currentTarget = (): { colId: string; path: string[] } | null => {
+    if (activeCollection) return { colId: activeCollection.id, path: activeEntry?.folderPath ?? [] }
+    if (inspect) return { colId: inspect.colId, path: inspect.type === 'folder' ? inspect.path : [] }
+    return collections[0] ? { colId: collections[0].id, path: [] } : null
+  }
+  const needCollection = () => toast('Open or create a collection first')
+  const needRequest = () => toast('Open a request first')
+
+  /**
+   * Every registry action, wired to its handler. The native menu (menu.ts),
+   * the command palette and the keyboard all dispatch through this one map, by
+   * the ids in src/core/actions.ts.
+   */
+  const actionHandlers: Record<ActionId, () => void> = {
+    'new-request': () => {
+      const t = currentTarget()
+      if (t) newRequest(t.colId, inspect?.type === 'folder' ? inspect.path : [])
+      else needCollection()
+    },
+    'new-folder': () => {
+      const t = currentTarget()
+      if (t) setNewFolderIn({ colId: t.colId, path: inspect?.type === 'folder' ? inspect.path : [] })
+      else needCollection()
+    },
+    'new-collection': newCollection,
+    'new-environment': () => {
+      if (!collections.length) return needCollection()
+      setEnvStartNew(true)
+      setModal('env')
+    },
+    'open-collection': openCollection,
+    import: () => openIo('import'),
+    export: () => openIo('export'),
+    settings: () => setView('settings'),
+    'close-tab': closeActiveTab,
+    send,
+    save,
+    'duplicate-request': () => (activeId ? duplicateRequest(activeId) : needRequest()),
+    'copy-curl': () => (activeId ? copyAsCurl(activeId) : needRequest()),
+    'load-test': () => {
+      if (!activeId) return needRequest()
+      setView('workspace')
+      const tab = openTabs.find((t) => t.kind === 'request' && t.id === activeId)
+      if (tab) activateTab(tab)
+      setShowSection({ id: 'perf', nonce: Date.now() })
+    },
+    'run-collection': () => {
+      const t = currentTarget()
+      if (t) setRunnerScope(inspect?.type === 'folder' ? { colId: t.colId, path: inspect.path } : { colId: t.colId })
+      else needCollection()
+    },
+    'focus-url': () => {
+      const url = document.querySelector<HTMLInputElement>('.url-input')
+      url?.focus()
+      url?.select()
+    },
+    'search-response': () => {},
+    rename: () => (activeId ? setRenameTarget({ id: activeId, nonce: ++renameSeq.current }) : needRequest()),
+    'command-palette': () => setPaletteOpen(true),
+    environments: () => {
+      setEnvStartNew(false)
+      setModal('env')
+    },
+    history: openHistory,
+    'toggle-sidebar': toggleSidebar,
+    'theme-system': () => updateSettings({ theme: 'system' }),
+    'theme-light': () => updateSettings({ theme: 'light' }),
+    'theme-dark': () => updateSettings({ theme: 'dark' }),
+    'zoom-in': () => {},
+    'zoom-out': () => {},
+    'zoom-reset': () => {},
+    'next-tab': () => cycleTab(1),
+    'previous-tab': () => cycleTab(-1),
+    'jump-tab': () => {},
+    'getting-started': () => setView('home'),
+    shortcuts: () => setModal('shortcuts'),
+    docs: () => openExternal(docsUrl('getting-started')),
+    'report-issue': () => openExternal(`${REPO_URL}/issues`),
+    'check-update': () => {
+      if (!window.tiger?.checkUpdate) return toast('Updates are checked in the desktop app')
+      window.tiger.checkUpdate().then((info) => {
+        if (info) {
+          setUpdate(info)
+          setUpdateModalOpen(true)
+        } else {
+          toast("You're on the latest version")
+        }
+      })
+    },
+    about: () => setView('settings')
+  }
+  menuActionsRef.current = actionHandlers
+
+  const newMenuItems = (): MenuItem[] => [
+    actionItem('new-request', actionHandlers['new-request']),
+    actionItem('new-folder', actionHandlers['new-folder']),
+    'sep',
+    actionItem('new-collection', newCollection),
+    actionItem('new-environment', actionHandlers['new-environment'])
+  ]
+
   return (
     <div className="app">
       <a className="skip-link" href="#main" onClick={skipToMain}>
@@ -2091,6 +2208,16 @@ export default function App() {
             onClick={() => setUpdateModalOpen(true)}
           >
             Update v{update.latest}
+          </button>
+        )}
+        {sidebarHidden && (
+          <button
+            type="button"
+            className="btn ghost"
+            title={actionTitle('toggle-sidebar')}
+            onClick={toggleSidebar}
+          >
+            <SidebarIcon size={15} /> <span className="btn-label">Show sidebar</span>
           </button>
         )}
         <div className="env-combo" title="Active environment">
@@ -2124,9 +2251,9 @@ export default function App() {
             className="env-edit"
             title="Manage environments"
             aria-label="Manage environments"
-            onClick={() => setModal('env')}
+            onClick={actionHandlers.environments}
           >
-            <PencilIcon size={14} />
+            <GearIcon size={14} />
           </button>
         </div>
         <button type="button" className="btn ghost" title="History" onClick={openHistory}>
@@ -2145,8 +2272,14 @@ export default function App() {
 
       <div
         className="body"
-        style={{ gridTemplateColumns: `min(${sidebarW}px, 42vw) 6px minmax(0, 1fr)`, gap: 0 }}
+        style={{
+          gridTemplateColumns: sidebarHidden
+            ? 'minmax(0, 1fr)'
+            : `min(${sidebarW}px, 42vw) 6px minmax(0, 1fr)`,
+          gap: 0
+        }}
       >
+        {!sidebarHidden && (
         <Sidebar
           collections={collections}
           activeId={activeId}
@@ -2155,7 +2288,9 @@ export default function App() {
           onOpenCollection={openCollection}
           onNewCollection={newCollection}
           onClone={cloneCollection}
-          onImportExport={() => setModal('io')}
+          onImportExport={() => openIo('import')}
+          onNewMenu={(x, y) => setCtxMenu({ x, y, items: newMenuItems(), label: 'New' })}
+          renameTarget={renameTarget}
           onNewRequest={newRequest}
           onCloseCollection={requestCloseCollection}
           onEmptyMenu={(x, y) => setEmptyMenu({ x, y })}
@@ -2178,7 +2313,9 @@ export default function App() {
           onDuplicateFolder={duplicateFolder}
           onMoveRequest={moveRequest}
         />
+        )}
 
+        {!sidebarHidden && (
         <Resizer
           direction="col"
           label="Resize sidebar"
@@ -2201,6 +2338,7 @@ export default function App() {
             })
           }
         />
+        )}
 
         <main
           id="main"
@@ -2213,10 +2351,13 @@ export default function App() {
           <WelcomeView
             version={appVersion}
             canCreateRequest={collections.length > 0}
+            hasCollection={collections.length > 0}
+            hasRequestOpen={!!active}
+            hasSent={Object.keys(responses).length > 0}
             onOpenCollection={openCollection}
             onNewCollection={newCollection}
             onClone={cloneCollection}
-            onImportExport={() => setModal('io')}
+            onImportExport={() => openIo('import')}
             onNewRequest={() => {
               if (collections[0]) newRequest(collections[0].id)
             }}
@@ -2296,7 +2437,7 @@ export default function App() {
                     onSaveDocs={(docs) => saveCollectionDocs(col.id, docs)}
                     onRun={() => setRunnerScope({ colId: col.id })}
                     onNewRequest={() => newRequest(col.id)}
-                    onImportExport={() => setModal('io')}
+                    onImportExport={() => openIo('export')}
                     onClose={() => requestCloseCollection(col.id)}
                     onOpenGitDetails={() => setGitColId(col.id)}
                     onWorkingTreeChanged={() => invalidateCollectionCache(col.id)}
@@ -2329,6 +2470,7 @@ export default function App() {
                     getBuilt={() =>
                       activeEffective ? buildRequest(activeEffective, envToVars(activeEnv)) : null
                     }
+                    showSection={showSection}
                     perf={{
                       collectionAuth: inheritedAuth,
                       env: activeEnv,
@@ -2341,26 +2483,25 @@ export default function App() {
                       <span aria-hidden>
                         <Logo size={54} rounded />
                       </span>
-                      <h2 id="empty-editor-title">No request selected</h2>
-                      <p>Choose one from the sidebar, or start here:</p>
+                      <h2 id="empty-editor-title">No request open</h2>
+                      <p>
+                        {collections.length
+                          ? 'Pick a request in the sidebar, or add one:'
+                          : 'Open, create or import a collection from the sidebar first.'}
+                      </p>
                       <div className="empty-actions">
                         {collections[0] && (
                           <button
                             type="button"
                             className="btn accent"
-                            onClick={() => newRequest(collections[0].id)}
+                            title={actionTitle('new-request')}
+                            onClick={actionHandlers['new-request']}
                           >
                             <PlusIcon size={14} /> New request
                           </button>
                         )}
-                        <button type="button" className="btn" onClick={openCollection}>
-                          <FolderOpenIcon size={14} /> Open a folder
-                        </button>
-                        <button type="button" className="btn" onClick={() => setModal('io')}>
-                          <SwapIcon size={14} /> Import / Export
-                        </button>
                         <button type="button" className="btn ghost" onClick={() => setView('home')}>
-                          All features
+                          Getting started
                         </button>
                       </div>
                     </div>
@@ -2407,6 +2548,7 @@ export default function App() {
 
       {modal === 'io' && (
         <ImportExportModal
+          focus={ioFocus}
           collectionName={activeCollection?.name ?? null}
           requestName={active?.name ?? null}
           environmentName={activeEnv?.name ?? null}
@@ -2462,7 +2604,29 @@ export default function App() {
           onCollectionsChanged={setCollectionEnvironments}
           onActiveEnvMaybeChanged={(colId, name, data) => reloadActiveEnv(colId, name, data)}
           onToast={toast}
-          onClose={() => setModal('none')}
+          startNew={envStartNew}
+          onClose={() => {
+            setEnvStartNew(false)
+            setModal('none')
+          }}
+        />
+      )}
+      {newFolderIn && (
+        <PromptModal
+          title="New folder"
+          label="Folder name"
+          placeholder="Payments"
+          confirmLabel="Create folder"
+          onSubmit={(name) => {
+            const target = newFolderIn
+            setNewFolderIn(null)
+            const clean = name.trim().replace(/[\\/]+/g, '-')
+            if (!clean) return
+            // A folder exists through its files: start it with a first request.
+            newRequest(target.colId, [...target.path, clean])
+            toast(`Folder ${clean} created with a first request`)
+          }}
+          onCancel={() => setNewFolderIn(null)}
         />
       )}
       {authColId &&
@@ -2471,8 +2635,9 @@ export default function App() {
           if (!col) return null
           return (
             <Modal
-              title={`Collection auth · ${col.name}`}
+              title={`Auth for all requests · ${col.name}`}
               onClose={() => setAuthColId(null)}
+              help={{ page: 'requests-auth', topic: 'Auth' }}
             >
               <p style={{ margin: '0 0 14px', color: 'var(--text-dim)', fontSize: 13.5 }}>
                 Requests in this collection inherit this auth unless they set their own.
@@ -2518,6 +2683,10 @@ export default function App() {
             selectRequest(id)
             setPaletteOpen(false)
           }}
+          onCommand={(id) => {
+            setPaletteOpen(false)
+            actionHandlers[id]()
+          }}
           onClose={() => setPaletteOpen(false)}
         />
       )}
@@ -2537,15 +2706,12 @@ export default function App() {
           x={emptyMenu.x}
           y={emptyMenu.y}
           items={[
-            { label: 'Open collection folder…', icon: <FolderOpenIcon size={14} />, onClick: openCollection },
+            actionItem('new-collection', newCollection),
+            actionItem('open-collection', openCollection),
             { label: 'Clone from Git…', icon: <GitBranchIcon size={14} />, onClick: cloneCollection },
-            { label: 'Import / Export…', icon: <SwapIcon size={14} />, onClick: () => setModal('io') },
-            {
-              label: 'New request',
-              icon: <PlusIcon size={14} />,
-              onClick: () => collections[0] && newRequest(collections[0].id)
-            },
-            { label: 'Manage environments…', icon: <GlobeIcon size={14} />, onClick: () => setModal('env') }
+            actionItem('import', () => openIo('import')),
+            'sep',
+            actionItem('environments', actionHandlers.environments)
           ]}
           label="Workspace actions"
           onClose={() => setEmptyMenu(null)}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import type { HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
 import './Sidebar.css'
-import { MOD } from '../platform'
+import { actionTitle } from '../actions'
 import { isContextMenuKey, menuAnchor } from '../a11y'
 import {
   ArrowDownIcon,
@@ -13,10 +13,12 @@ import {
   CopyIcon,
   FolderIcon,
   FolderOpenIcon,
+  ChevronDownIcon,
   GitBranchIcon,
+  MoreIcon,
   PlusIcon,
+  UploadIcon,
   SearchIcon,
-  SwapIcon,
   TrashIcon
 } from './Icons'
 
@@ -49,7 +51,10 @@ interface Props {
   onOpenCollection: () => void
   onNewCollection: () => void
   onClone: () => void
+  /** Opens the import half of the Import and export dialog. */
   onImportExport: () => void
+  /** Opens the "New" menu (request, folder, collection, environment) at x, y. */
+  onNewMenu?: (x: number, y: number) => void
   onNewRequest: (collectionId: string) => void
   onCloseCollection: (collectionId: string) => void
   onDeleteRequest: (entryId: string) => void
@@ -70,6 +75,8 @@ interface Props {
   reveal?: { id: string; nonce: number } | null
   /** The collection or folder page currently shown (path [] = collection). */
   inspected?: { colId: string; path: string[] } | null
+  /** Start renaming a request (id) or folder (colId + path); nonce re-triggers. */
+  renameTarget?: { id?: string; colId?: string; path?: string[]; nonce: number } | null
 }
 
 interface TreeFolder {
@@ -151,7 +158,9 @@ export function Sidebar({
   onCollectionMenu,
   onInspectCollection,
   onInspectFolder,
-  onEmptyMenu
+  onEmptyMenu,
+  onNewMenu,
+  renameTarget
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
@@ -186,6 +195,33 @@ export function Sidebar({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [activeId, renaming, collections])
+
+  // Rename started from a context menu ("Rename" item) rather than F2.
+  useEffect(() => {
+    if (!renameTarget) return
+    if (renameTarget.id) {
+      const entry = collections.flatMap((c) => c.entries).find((x) => x.id === renameTarget.id)
+      if (entry) {
+        setDraft(entry.name)
+        setRenaming({ kind: 'request', id: entry.id })
+      }
+    } else if (renameTarget.colId && renameTarget.path?.length) {
+      const path = renameTarget.path
+      setQuery('')
+      // Make sure the row exists: expand the collection and every ancestor.
+      setCollapsed((prev) => {
+        const next = new Set(prev)
+        for (let i = 0; i < path.length; i++) {
+          next.delete(JSON.stringify([renameTarget.colId, ...path.slice(0, i)]))
+        }
+        return next
+      })
+      setDraft(path[path.length - 1])
+      setRenaming({ kind: 'folder', key: JSON.stringify([renameTarget.colId, ...path]) })
+    }
+    // Only a new nonce should restart a rename; collections changing mid-rename must not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameTarget])
 
   const [flashId, setFlashId] = useState<string | null>(null)
 
@@ -479,6 +515,26 @@ export function Sidebar({
     </button>
   )
 
+  /** "More actions": the row's context menu, for people who never right-click. */
+  const moreButton = (what: string, open: (x: number, y: number) => void) => (
+    <button
+      type="button"
+      className="icon-btn"
+      title={`More actions for ${what}`}
+      aria-label={`More actions for ${what}`}
+      aria-haspopup="menu"
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        const r = e.currentTarget.getBoundingClientRect()
+        open(r.left, r.bottom + 2)
+      }}
+    >
+      <MoreIcon size={13} />
+    </button>
+  )
+
   const chevron = (open: boolean, what: 'folder' | 'collection', key: string) => (
     <button
       type="button"
@@ -563,6 +619,7 @@ export function Sidebar({
           <span className="row-actions">
             {rowButton('Duplicate request', <CopyIcon size={13} />, () => onDuplicateRequest(entry.id))}
             {rowButton('Delete request', <TrashIcon size={13} />, () => onDeleteRequest(entry.id), true)}
+            {moreButton(entry.name, (x, y) => onRequestMenu(entry.id, x, y))}
           </span>
         </div>
       </div>
@@ -662,6 +719,7 @@ export function Sidebar({
           )}
           <span className="row-actions">
             {rowButton('Duplicate folder', <CopyIcon size={13} />, () => onDuplicateFolder(colId, path))}
+            {onFolderMenu && moreButton(folder.name, (x, y) => onFolderMenu(colId, path, x, y))}
           </span>
         </div>
         {open && renderChildren(folder, depth + 1, colId, level + 1)}
@@ -727,10 +785,13 @@ export function Sidebar({
       <div className="sidebar-empty">
         <FolderOpenIcon size={26} />
         <h3>No collections open.</h3>
-        <p>Open a folder of .tiger files, or start a new collection.</p>
+        <p>
+          A collection is a folder of .tiger request files. Open one or start a new one. Coming
+          from Postman, Insomnia or Bruno? Use Import above.
+        </p>
         <div className="sidebar-empty-actions">
           <button type="button" className="btn accent" onClick={onOpenCollection}>
-            Open a folder
+            Open collection
           </button>
           <button type="button" className="btn" onClick={onNewCollection}>
             New collection
@@ -808,8 +869,9 @@ export function Sidebar({
             {syncChips(col.id)}
             <span className="row-actions">
               {col.root && rowButton('Team sync', <GitBranchIcon size={13} />, () => onGit(col.id))}
-              {rowButton(`New request (${MOD}+T)`, <PlusIcon size={13} />, () => onNewRequest(col.id))}
+              {rowButton(actionTitle('new-request'), <PlusIcon size={13} />, () => onNewRequest(col.id))}
               {rowButton('Close collection', <CloseIcon size={13} />, () => onCloseCollection(col.id), true)}
+              {moreButton(col.name, (x, y) => onCollectionMenu(col.id, x, y))}
             </span>
           </div>
           {open && renderChildren(root, 1, col.id, 2, 1)}
@@ -824,10 +886,42 @@ export function Sidebar({
         <h2 className="title" id="sidebar-title">
           Collections
         </h2>
-        {headerButton('Open collection folder', <FolderOpenIcon />, onOpenCollection)}
-        {headerButton('New collection', <PlusIcon size={15} />, onNewCollection)}
         {headerButton('Clone from Git', <GitBranchIcon />, onClone)}
-        {headerButton('Import / Export', <SwapIcon />, onImportExport)}
+      </div>
+      <div className="sidebar-actions" role="group" aria-label="Collection actions">
+        <button
+          type="button"
+          className="btn ghost sidebar-action"
+          title="New request, folder, collection or environment"
+          aria-haspopup="menu"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            if (onNewMenu) onNewMenu(r.left, r.bottom + 4)
+            else onNewCollection()
+          }}
+        >
+          <PlusIcon size={14} />
+          New
+          <ChevronDownIcon size={12} />
+        </button>
+        <button
+          type="button"
+          className="btn ghost sidebar-action"
+          title={actionTitle('open-collection')}
+          onClick={onOpenCollection}
+        >
+          <FolderOpenIcon size={14} />
+          Open
+        </button>
+        <button
+          type="button"
+          className="btn ghost sidebar-action"
+          title="Import from Postman, Insomnia, Bruno, OpenAPI or curl"
+          onClick={onImportExport}
+        >
+          <UploadIcon size={14} />
+          Import
+        </button>
       </div>
 
       <div className="sidebar-search" role="search">

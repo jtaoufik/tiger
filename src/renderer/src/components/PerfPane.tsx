@@ -16,7 +16,7 @@ interface Props {
 }
 
 /**
- * Performance tab: fire the request many times with bounded concurrency and
+ * Load test tab: fire the request many times with bounded concurrency and
  * report latency percentiles. A lightweight load check on the live request.
  */
 export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
@@ -129,7 +129,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
 
       {!window.tiger && (
         <div className="cv-dim perf-note" role="note">
-          Performance runs need the desktop app.
+          Load tests need the desktop app.
         </div>
       )}
 
@@ -138,7 +138,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
           <div
             className="perf-bar"
             role="progressbar"
-            aria-label="Performance run progress"
+            aria-label="Load test progress"
             aria-valuemin={0}
             aria-valuemax={total}
             aria-valuenow={done}

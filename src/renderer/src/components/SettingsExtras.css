@@ -169,3 +169,17 @@ h3.settings-group-label {
 .settings-tabs {
   flex-wrap: wrap;
 }
+
+/* One-line intro under the section tabs, with an optional guide link. */
+.settings-intro {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 4px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.settings-intro > span {
+  flex: 1;
+  min-width: 0;
+}

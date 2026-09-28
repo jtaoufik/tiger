@@ -9,14 +9,16 @@ import './PageTabs.css'
 import {
   CheckIcon,
   ClockIcon,
+  CloseIcon,
+  DownloadIcon,
   FolderOpenIcon,
   GitBranchIcon,
   PlayIcon,
   PlusIcon,
   RefreshIcon,
-  SwapIcon,
-  TrashIcon
 } from './Icons'
+import { actionTitle, actionLabel } from '../actions'
+import { HelpLink } from './HelpLink'
 
 export interface CollectionInfo {
   id: string
@@ -49,7 +51,7 @@ type SyncScreen = 'loading' | 'browser' | 'no-git' | 'no-repo' | 'no-remote' | '
 type PageTab = 'overview' | 'docs' | 'auth' | 'activity'
 const PAGE_TABS: { id: PageTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
-  { id: 'docs', label: 'Docs' },
+  { id: 'docs', label: 'Notes' },
   { id: 'auth', label: 'Auth' },
   { id: 'activity', label: 'Activity' }
 ]
@@ -168,11 +170,16 @@ export function CollectionView({
           <button type="button" className="btn accent" onClick={onNewRequest}>
             <PlusIcon size={14} /> New request
           </button>
-          <button type="button" className="btn" onClick={onRun} title="Run every request in this collection">
-            <PlayIcon size={14} /> Run
+          <button type="button" className="btn" onClick={onRun} title={actionTitle('run-collection')}>
+            <PlayIcon size={14} /> {actionLabel('run-collection')}
           </button>
-          <button type="button" className="btn" onClick={onImportExport}>
-            <SwapIcon size={14} /> Import / Export
+          <button
+            type="button"
+            className="btn"
+            onClick={onImportExport}
+            title="Export this collection as Postman or OpenAPI"
+          >
+            <DownloadIcon size={14} /> {actionLabel('export')}
           </button>
           {collection.root && (
             <button
@@ -188,12 +195,13 @@ export function CollectionView({
           <button
             type="button"
             className="icon-btn danger"
-            title="Close collection"
+            title="Close collection (the files stay on disk)"
             aria-label="Close collection"
             onClick={onClose}
           >
-            <TrashIcon />
+            <CloseIcon />
           </button>
+          <HelpLink page="collections" topic="Collections" />
         </div>
       </div>
 

@@ -191,3 +191,8 @@
     outline: 2px solid Highlight;
   }
 }
+
+/* Help "?" sits right of the title; the close button follows it directly. */
+.modal-head .help-link + .modal-close {
+  margin-left: 0;
+}

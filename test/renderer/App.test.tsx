@@ -73,7 +73,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByText(/Default auth/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: /Activity/ }))
     expect(screen.getByText(/Recent activity/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('tab', { name: 'Docs' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Notes' }))
     expect(screen.getByPlaceholderText(/Document this collection/)).toBeInTheDocument()
   })
 
@@ -85,7 +85,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(overview).toHaveAttribute('aria-selected', 'true')
     overview.focus()
     fireEvent.keyDown(overview, { key: 'ArrowRight' })
-    const docs = within(list).getByRole('tab', { name: 'Docs' })
+    const docs = within(list).getByRole('tab', { name: 'Notes' })
     expect(docs).toHaveFocus()
     expect(docs).toHaveAttribute('aria-selected', 'true')
     expect(document.getElementById(docs.getAttribute('aria-controls')!)).toHaveAttribute(
@@ -108,7 +108,7 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('opens a folder view listing its requests', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Posts'))
-    expect(screen.getByText('New request here')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Run folder' })).toBeInTheDocument()
     const label = [...document.querySelectorAll('.section-label')].find(
       (el) => el.textContent?.replace(/\s+/g, ' ').trim() === '3 requests in this folder'
     )
@@ -186,7 +186,7 @@ describe('App (browser preview, no Electron bridge)', () => {
 
   it('opens the Import/Export modal with all sources and targets', () => {
     render(<App />)
-    fireEvent.click(screen.getByTitle('Import / Export'))
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     expect(screen.getByText('Postman')).toBeInTheDocument()
     expect(screen.getByText('Bruno')).toBeInTheDocument()
     // OpenAPI / Swagger appears as both an import source and an export target.
@@ -195,22 +195,22 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByText('Postman collection')).toBeInTheDocument()
     expect(screen.getByText('Active environment')).toBeInTheDocument()
     expect(screen.getByText('Request as .tiger')).toBeInTheDocument()
-    expect(screen.getByText('Request as cURL')).toBeInTheDocument()
+    expect(screen.getByText('Copy as curl')).toBeInTheDocument()
   })
 
   it('copies a curl command from the export screen and confirms with a toast', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
     render(<App />)
-    fireEvent.click(screen.getByTitle('Import / Export'))
-    fireEvent.click(screen.getByText('Request as cURL'))
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
+    fireEvent.click(screen.getByText('Copy as curl'))
     expect(await screen.findByText('curl command copied')).toBeInTheDocument()
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('curl -X GET'))
   })
 
   it('closes a modal with Escape', () => {
     render(<App />)
-    fireEvent.click(screen.getByTitle('Import / Export'))
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     expect(screen.getByText('Postman')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByText('Postman')).not.toBeInTheDocument()
@@ -244,13 +244,13 @@ describe('App (browser preview, no Electron bridge)', () => {
     expect(screen.getByText('Environments')).toBeInTheDocument()
     expect(screen.getByDisplayValue('baseUrl')).toBeInTheDocument()
     expect(screen.getByText('New environment')).toBeInTheDocument()
-    expect(screen.getAllByTitle('Mark as secret').length).toBeGreaterThan(0)
+    expect(screen.getAllByTitle(/^Mark as secret/).length).toBeGreaterThan(0)
   })
 
-  it('offers a Perf tab with run configuration for the active request', () => {
+  it('offers a Load test tab with run configuration for the active request', () => {
     render(<App />)
     const editor = document.querySelector('.editor')!
-    fireEvent.click(within(editor as HTMLElement).getByText('Perf'))
+    fireEvent.click(within(editor as HTMLElement).getByRole('tab', { name: 'Load test' }))
     expect(screen.getByText('Total requests')).toBeInTheDocument()
     expect(screen.getByText('Concurrency')).toBeInTheDocument()
   })
@@ -258,8 +258,10 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('offers create actions including clone on empty-space right click', () => {
     render(<App />)
     fireEvent.contextMenu(document.querySelector('.tree')!)
-    expect(screen.getByText('Open collection folder…')).toBeInTheDocument()
+    expect(screen.getByText('Open collection…')).toBeInTheDocument()
+    expect(screen.getByText('New collection…')).toBeInTheDocument()
     expect(screen.getByText('Clone from Git…')).toBeInTheDocument()
+    expect(screen.getByText('Import…')).toBeInTheDocument()
     expect(screen.getByText('Manage environments…')).toBeInTheDocument()
   })
 
@@ -280,7 +282,7 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('offers a Code tab with a curl command for the active request', () => {
     render(<App />)
     const editor = document.querySelector('.editor')!
-    fireEvent.click(within(editor as HTMLElement).getByText('Code'))
+    fireEvent.click(within(editor as HTMLElement).getByRole('tab', { name: 'Code snippet' }))
     const code = document.querySelector('.code-block')!
     expect(code.textContent).toContain('curl -X GET')
     expect(code.textContent).toContain('https://jsonplaceholder.typicode.com/posts')
@@ -296,10 +298,10 @@ describe('App (browser preview, no Electron bridge)', () => {
   it('opens the command palette with cmd+k and jumps to a request', () => {
     render(<App />)
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
-    const input = screen.getByPlaceholderText('Go to request…')
+    const input = screen.getByPlaceholderText('Search requests and commands…')
     fireEvent.change(input, { target: { value: 'users' } })
     fireEvent.keyDown(window, { key: 'Enter' })
-    expect(screen.queryByPlaceholderText('Go to request…')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Search requests and commands…')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('List users')).toBeInTheDocument()
   })
 
@@ -357,7 +359,7 @@ describe('App (browser preview, no Electron bridge)', () => {
     const tabbar = document.querySelector('.request-tabs') as HTMLElement
     fireEvent.click(within(tabbar).getByTitle('Close tab (Ctrl+W)'))
     expect(tabbar.querySelectorAll('.request-tab')).toHaveLength(0)
-    expect(screen.getByText('No request selected')).toBeInTheDocument()
+    expect(screen.getByText('No request open')).toBeInTheDocument()
   })
 
   it('formats a JSON body and flags invalid JSON', () => {
@@ -424,8 +426,9 @@ describe('App (browser preview, no Electron bridge)', () => {
     fireEvent.click(document.querySelector('.modal .btn.danger')!)
     expect(screen.getByText('No collections open.')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTitle('Import / Export'))
-    fireEvent.click(screen.getByText('Paste a cURL command'))
+    // One Import entry point on screen, not one per panel.
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
+    fireEvent.click(screen.getByText('Paste a curl command'))
     const curlInput = screen.getByPlaceholderText('Paste a curl command…') as HTMLTextAreaElement
     fireEvent.change(curlInput, { target: { value: 'curl https://api.example.com/x' } })
     fireEvent.click(screen.getByRole('button', { name: 'Import request' }))
@@ -461,10 +464,10 @@ describe('keyboard shortcuts', () => {
   it('opens and closes the shortcuts overlay with Cmd+/', () => {
     render(<App />)
     fireEvent.keyDown(window, { key: '/', ctrlKey: true })
-    expect(screen.getByText('Keyboard shortcuts')).toBeInTheDocument()
-    expect(screen.getByText('Close the active tab')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument()
+    expect(screen.getByText('Close tab')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByText('Keyboard shortcuts')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).not.toBeInTheDocument()
   })
 
   it('closes the active tab with Cmd+W (browser fallback)', () => {
@@ -514,7 +517,7 @@ describe('collection runner', () => {
   it('opens the runner from the collection page listing every request', async () => {
     render(<App />)
     fireEvent.click(screen.getByText('Demo collection'))
-    fireEvent.click(await screen.findByTitle('Run every request in this collection'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Run collection' }))
     expect(await screen.findByText('Run · Demo collection')).toBeInTheDocument()
     expect(await screen.findByText('Run 4 requests')).toBeInTheDocument()
     const rows = document.querySelectorAll('.runner-row')
@@ -524,7 +527,7 @@ describe('collection runner', () => {
   it('opens the runner from a folder page scoped to that folder', async () => {
     render(<App />)
     fireEvent.click(screen.getByText('Posts'))
-    fireEvent.click(await screen.findByTitle('Run every request in this folder'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Run folder' }))
     expect(await screen.findByText('Run · Posts')).toBeInTheDocument()
     expect(await screen.findByText('Run 3 requests')).toBeInTheDocument()
   })
@@ -675,7 +678,7 @@ describe('tab management: dirty dot, context menu, reveal', () => {
     fireEvent.contextMenu(document.querySelector('.request-tab')!)
     fireEvent.click(screen.getByText('Close all'))
     expect(document.querySelectorAll('.request-tab')).toHaveLength(0)
-    expect(screen.getByText('No request selected')).toBeInTheDocument()
+    expect(screen.getByText('No request open')).toBeInTheDocument()
   })
 
   it('reveal in sidebar expands the collapsed folder and flashes the row', async () => {

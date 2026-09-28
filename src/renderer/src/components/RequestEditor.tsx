@@ -10,7 +10,9 @@ import {
 import type { BuiltRequest } from '@core/request'
 import { formatJsonText, isValidJson, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
-import { MOD } from './ShortcutsModal'
+import { REQUEST_SECTIONS, type RequestSectionId } from '@core/actions'
+import { actionTitle } from '../actions'
+import { HelpLink } from './HelpLink'
 import { CodePane } from './CodePane'
 import { MultipartEditor } from './MultipartEditor'
 import { PerfPane } from './PerfPane'
@@ -34,9 +36,11 @@ interface Props {
   getBuilt: () => BuiltRequest | null
   /** Inputs the Perf tab needs to fire the live request repeatedly. */
   perf: { collectionAuth: TigerAuth | undefined; env: TigerEnvironment | null; timeoutMs: number }
+  /** Switch to a section from outside (menu "Load test"); nonce re-triggers. */
+  showSection?: { id: RequestSectionId; nonce: number } | null
 }
 
-type Tab = 'params' | 'headers' | 'auth' | 'body' | 'capture' | 'scripts' | 'docs' | 'code' | 'perf'
+type Tab = RequestSectionId
 
 const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form', 'graphql', 'multipart']
 
@@ -51,9 +55,13 @@ export function RequestEditor({
   onCancel,
   onSave,
   getBuilt,
-  perf
+  perf,
+  showSection
 }: Props) {
-  const [tab, setTab] = useState<Tab>('params')
+  const [tab, setTab] = useState<Tab>(showSection?.id ?? 'params')
+  useEffect(() => {
+    if (showSection) setTab(showSection.id)
+  }, [showSection])
   const uid = useId()
   // Form-body rows live in component state while editing; re-deriving them
   // from the serialized text on every keystroke would drop value-only rows
@@ -95,17 +103,26 @@ export function RequestEditor({
   const hasAuth = !!request.auth && request.auth.type !== 'none'
   const hasScripts = !!request.preScript?.trim() || !!request.postScript?.trim()
   const hasDocs = !!request.docs?.trim()
-  const tabDefs: Array<{ id: Tab; label: string; count?: number; flag?: string }> = [
-    { id: 'params', label: 'Params', count: enabledCount(request.query) },
-    { id: 'headers', label: 'Headers', count: enabledCount(request.headers) },
-    { id: 'auth', label: 'Auth', flag: hasAuth ? 'set' : undefined },
-    { id: 'body', label: 'Body', flag: request.body.type !== 'none' ? request.body.type : undefined },
-    { id: 'capture', label: 'Capture', count: enabledCount(request.captures ?? []) },
-    { id: 'scripts', label: 'Scripts', flag: hasScripts ? 'has scripts' : undefined },
-    { id: 'docs', label: 'Docs', flag: hasDocs ? 'written' : undefined },
-    { id: 'code', label: 'Code' },
-    { id: 'perf', label: 'Perf' }
-  ]
+  // Labels, order and descriptions come from the registry; this only adds
+  // what is set, so a count or a dot shows which sections are in use.
+  const state: Partial<Record<Tab, { count?: number; flag?: string }>> = {
+    params: { count: enabledCount(request.query) },
+    headers: { count: enabledCount(request.headers) },
+    auth: { flag: hasAuth ? 'set' : undefined },
+    body: { flag: request.body.type !== 'none' ? request.body.type : undefined },
+    capture: { count: enabledCount(request.captures ?? []) },
+    scripts: { flag: hasScripts ? 'has scripts' : undefined },
+    docs: { flag: hasDocs ? 'written' : undefined }
+  }
+  const tabDefs = REQUEST_SECTIONS.map((sec) => ({ ...sec, ...state[sec.id] }))
+  const current = REQUEST_SECTIONS.find((sec) => sec.id === tab)!
+  /** One-line explanation plus a guide link, for the less obvious sections. */
+  const intro = (
+    <p className="panel-intro" id={`${uid}-intro`}>
+      <span>{current.description}</span>
+      {'docs' in current && current.docs && <HelpLink page={current.docs} topic={current.label} />}
+    </p>
+  )
   const tabs = tablist(
     `${uid}-req`,
     tabDefs.map((t) => t.id),
@@ -137,7 +154,7 @@ export function RequestEditor({
           <button
             type="button"
             className="icon-btn save-btn"
-            title={dirty ? `Unsaved changes. Save (${MOD}+S)` : `Save (${MOD}+S)`}
+            title={dirty ? `Unsaved changes. ${actionTitle('save')}` : actionTitle('save')}
             aria-label={dirty ? 'Save request (unsaved changes)' : 'Save request'}
             onClick={onSave}
           >
@@ -179,7 +196,7 @@ export function RequestEditor({
             Cancel
           </button>
         ) : (
-          <button type="button" className="btn accent" onClick={onSend} title={`Send (${MOD}+Enter)`}>
+          <button type="button" className="btn accent" onClick={onSend} title={actionTitle('send')}>
             Send
           </button>
         )}
@@ -200,6 +217,7 @@ export function RequestEditor({
               type="button"
               className={`tab ${tab === t.id ? 'active' : ''}`}
               aria-label={name}
+              title={t.description}
               {...tabs.tab(t.id)}
             >
               {t.label}
@@ -233,6 +251,7 @@ export function RequestEditor({
             onChange={(headers) => set({ headers })}
           />
         )}
+        {tab === 'auth' && intro}
         {tab === 'auth' && (
           <AuthEditor auth={request.auth} onChange={(auth) => set({ auth })} />
         )}
@@ -369,15 +388,24 @@ export function RequestEditor({
           </div>
         )}
         {tab === 'capture' && (
-          <KeyValueEditor
-            items={request.captures ?? []}
-            placeholder={['Variable', 'body.data.id']}
-            noun="Capture"
-            onChange={(captures) => set({ captures })}
-          />
+          <>
+            {intro}
+            <KeyValueEditor
+              items={request.captures ?? []}
+              placeholder={['Variable', 'body.data.id']}
+              columns={['Variable', 'Read from response']}
+              noun="Saved value"
+              onChange={(captures) => set({ captures })}
+            />
+            <p className="cv-dim script-help">
+              Left: the variable to write. Right: where to read it, e.g. status,
+              header.x-request-id or body.data[0].id. Use it later as {'{{variable}}'}.
+            </p>
+          </>
         )}
         {tab === 'scripts' && (
           <div className="scripts-tab">
+            {intro}
             <div className="script-block">
               <label className="script-label" htmlFor={`${uid}-pre`}>
                 Pre-request script
@@ -414,17 +442,19 @@ export function RequestEditor({
             </div>
           </div>
         )}
+        {tab === 'docs' && intro}
         {tab === 'docs' && (
           <textarea
             className="code-area"
             spellCheck={false}
-            aria-label="Request documentation (markdown)"
+            aria-label="Request notes (Markdown)"
             value={request.docs ?? ''}
             placeholder={'## What this does\nReturns the current user. Needs a bearer token.'}
             onChange={(e) => set({ docs: e.target.value })}
           />
         )}
         {tab === 'code' && <CodePane getBuilt={getBuilt} />}
+        {tab === 'perf' && intro}
         {tab === 'perf' && (
           <PerfPane
             request={request}

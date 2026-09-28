@@ -91,9 +91,10 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
       title={`Run · ${title}`}
       onClose={onClose}
       width={680}
+      help={{ page: 'runner', topic: 'Collection runner' }}
       description={
         phase !== 'loading' && items.length > 0
-          ? 'Sends every request in order, applying captures and scripts between them.'
+          ? 'Sends every request in order. Saved values and scripts run between them, and each test shows pass or fail.'
           : undefined
       }
       footer={

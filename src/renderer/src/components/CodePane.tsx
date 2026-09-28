@@ -8,7 +8,7 @@ import './CodePane.css'
 const TARGETS: CodegenTarget[] = ['curl', 'fetch', 'python']
 
 const TARGET_LABELS: Record<CodegenTarget, string> = {
-  curl: 'cURL',
+  curl: 'curl',
   fetch: 'JavaScript fetch',
   python: 'Python requests'
 }

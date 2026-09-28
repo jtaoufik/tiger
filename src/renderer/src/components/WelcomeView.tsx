@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { Logo } from '../Logo'
 import {
+  CheckIcon,
   ClockIcon,
   FileIcon,
   FolderOpenIcon,
@@ -9,9 +10,13 @@ import {
   GlobeIcon,
   PlusIcon,
   SearchIcon,
-  SwapIcon
+  UploadIcon
 } from './Icons'
 import { MOD } from './ShortcutsModal'
+import { getAction } from '@core/actions'
+import { actionTitle } from '../actions'
+import { HelpLink } from './HelpLink'
+import './WelcomeView.css'
 
 interface Props {
   version: string
@@ -27,6 +32,10 @@ interface Props {
   onGit: () => void
   /** False when no collection is open: "New request" then explains why. */
   canCreateRequest?: boolean
+  /** Progress of the three getting-started steps. */
+  hasCollection?: boolean
+  hasRequestOpen?: boolean
+  hasSent?: boolean
 }
 
 /** The home screen: every major feature one click away. */
@@ -42,7 +51,10 @@ export function WelcomeView({
   onEnvironments,
   onSettings,
   onGit,
-  canCreateRequest = true
+  canCreateRequest = true,
+  hasCollection = false,
+  hasRequestOpen = false,
+  hasSent = false
 }: Props) {
   const uid = useId()
   // The ways to get a collection in front of you. These lead the screen.
@@ -55,7 +67,7 @@ export function WelcomeView({
     },
     {
       icon: <PlusIcon size={22} />,
-      title: 'New collection',
+      title: getAction('new-collection').label,
       desc: 'Create an empty collection folder on your machine.',
       onClick: onNewCollection
     },
@@ -66,8 +78,8 @@ export function WelcomeView({
       onClick: onClone
     },
     {
-      icon: <SwapIcon size={22} />,
-      title: 'Import',
+      icon: <UploadIcon size={22} />,
+      title: getAction('import').label,
       desc: 'Bring in Postman, Insomnia, Bruno or OpenAPI.',
       onClick: onImportExport
     }
@@ -76,7 +88,7 @@ export function WelcomeView({
   const tiles = [
     {
       icon: <PlusIcon size={20} />,
-      title: 'New request',
+      title: getAction('new-request').label,
       desc: canCreateRequest
         ? 'Start from scratch in your first collection.'
         : 'Open or create a collection first.',
@@ -85,8 +97,8 @@ export function WelcomeView({
     },
     {
       icon: <SearchIcon size={20} />,
-      title: 'Jump anywhere',
-      desc: `${MOD}+K finds any request across collections.`,
+      title: getAction('command-palette').label,
+      desc: `${MOD}+K finds any request or command by name.`,
       onClick: onPalette
     },
     {
@@ -97,21 +109,39 @@ export function WelcomeView({
     },
     {
       icon: <GlobeIcon size={20} />,
-      title: 'Environments',
+      title: getAction('environments').label,
       desc: 'Switch dev, staging and prod with {{variables}}.',
       onClick: onEnvironments
     },
     {
       icon: <ClockIcon size={20} />,
-      title: 'History',
+      title: getAction('history').label,
       desc: 'Your last 200 sends with status and timing.',
       onClick: onHistory
     },
     {
       icon: <GearIcon size={20} />,
-      title: 'Settings',
-      desc: 'Theme, proxy, SSL, timeouts and privacy.',
+      title: getAction('settings').label,
+      desc: 'Theme, proxy, SSL, timeouts, AI assistants and privacy.',
       onClick: onSettings
+    }
+  ]
+
+  const steps = [
+    {
+      title: 'Open or create a collection',
+      hint: 'A collection is a folder of .tiger files. Use a card below.',
+      done: hasCollection
+    },
+    {
+      title: 'Pick a request',
+      hint: `Click one in the sidebar, or ${actionTitle('new-request')}.`,
+      done: hasRequestOpen
+    },
+    {
+      title: 'Send it',
+      hint: `${actionTitle('send')}. The response shows below the request.`,
+      done: hasSent
     }
   ]
 
@@ -130,6 +160,31 @@ export function WelcomeView({
           <p>The API client that lives in your repos. Start with a collection.</p>
         </div>
       </div>
+
+      <section className="welcome-steps" aria-labelledby={`${uid}-steps`}>
+        <div className="welcome-steps-head">
+          <h3 className="welcome-section-label" id={`${uid}-steps`}>
+            Getting started
+          </h3>
+          <HelpLink page="first-request" topic="Your first request" />
+        </div>
+        <ol className="welcome-step-list">
+          {steps.map((step, i) => (
+            <li key={step.title} className={`welcome-step${step.done ? ' done' : ''}`}>
+              <span className="welcome-step-num" aria-hidden="true">
+                {step.done ? <CheckIcon size={13} /> : i + 1}
+              </span>
+              <span className="welcome-step-text">
+                <span className="t">
+                  {step.title}
+                  {step.done && <span className="tg-sr-only"> (done)</span>}
+                </span>
+                <span className="d">{step.hint}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <h3 className="welcome-section-label">Start a collection</h3>
       <ul className="welcome-primary" role="list">

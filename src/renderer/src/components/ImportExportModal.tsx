@@ -14,6 +14,8 @@ interface Props {
   onImportCurl: (command: string) => void
   onExport: (format: ExportFormat) => void
   onClose: () => void
+  /** Which half the entry point asked for; 'export' moves focus to it. */
+  focus?: 'import' | 'export'
 }
 
 const IMPORTS: Array<{ kind: ImportKind; title: string; desc: string }> = [
@@ -31,7 +33,8 @@ export function ImportExportModal({
   onImport,
   onImportCurl,
   onExport,
-  onClose
+  onClose,
+  focus = 'import'
 }: Props) {
   const [curl, setCurl] = useState('')
   const [showCurl, setShowCurl] = useState(false)
@@ -39,6 +42,14 @@ export function ImportExportModal({
   const curlRef = useRef<HTMLTextAreaElement>(null)
   const curlToggleRef = useRef<HTMLButtonElement>(null)
   const curlWasOpen = useRef(false)
+  const exportRef = useRef<HTMLDivElement>(null)
+  // "Export" entry points land on the export half, not on the importers.
+  useEffect(() => {
+    if (focus !== 'export') return
+    const first = exportRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')
+    exportRef.current?.scrollIntoView?.({ block: 'nearest' })
+    first?.focus()
+  }, [focus])
   // Opening the paste box focuses it; closing returns focus to its toggle.
   useEffect(() => {
     if (showCurl) curlRef.current?.focus()
@@ -46,7 +57,12 @@ export function ImportExportModal({
     curlWasOpen.current = showCurl
   }, [showCurl])
   return (
-    <Modal title="Import / Export" onClose={onClose} width={600}>
+    <Modal
+      title="Import and export"
+      onClose={onClose}
+      width={600}
+      help={{ page: 'importing', topic: 'Importing and exporting' }}
+    >
       <h3 className="section-label" style={{ marginTop: 0 }} id={`${uid}-import`}>
         Import a collection
       </h3>
@@ -65,7 +81,7 @@ export function ImportExportModal({
       {showCurl ? (
         <div className="curl-box">
           <label className="curl-label" htmlFor={`${uid}-curl`}>
-            cURL command
+            curl command
           </label>
           <textarea
             id={`${uid}-curl`}
@@ -103,14 +119,19 @@ export function ImportExportModal({
           aria-expanded={false}
           onClick={() => setShowCurl(true)}
         >
-          <CodeIcon size={14} /> Paste a cURL command
+          <CodeIcon size={14} /> Paste a curl command
         </button>
       )}
 
       <h3 className="section-label" id={`${uid}-export`}>
         Export
       </h3>
-      <div className="choice-grid" role="group" aria-labelledby={`${uid}-export`}>
+      <div
+        ref={exportRef}
+        className="choice-grid"
+        role="group"
+        aria-labelledby={`${uid}-export`}
+      >
         <button
           type="button"
           className="choice"
@@ -184,7 +205,7 @@ export function ImportExportModal({
         >
           <span className="t">
             <CodeIcon size={15} />
-            Request as cURL
+            Copy as curl
           </span>
           <span className="d">
             {requestName ? 'Copy a curl command to the clipboard' : 'Select a request first'}

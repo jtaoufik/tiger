@@ -10,7 +10,20 @@ import {
   ArrowDown,
   ArrowRightToLine,
   ArrowUp,
+  BookOpen,
   Box,
+  Bug,
+  ChevronDown,
+  CircleQuestionMark,
+  Ellipsis,
+  FolderPlus,
+  Keyboard,
+  Lock,
+  LockOpen,
+  Monitor,
+  Moon,
+  PanelLeft,
+  Sun,
   Check,
   CircleX,
   ChevronRight,
@@ -91,3 +104,16 @@ export const EyeOffIcon = base(EyeOff)
 export const GaugeIcon = base(Gauge)
 export const SaveIcon = base(Save)
 export const WarningIcon = base(TriangleAlert)
+export const HelpIcon = base(CircleQuestionMark)
+export const MoreIcon = base(Ellipsis)
+export const FolderPlusIcon = base(FolderPlus)
+export const KeyboardIcon = base(Keyboard)
+export const LockIcon = base(Lock)
+export const LockOpenIcon = base(LockOpen)
+export const SidebarIcon = base(PanelLeft)
+export const SunIcon = base(Sun)
+export const MoonIcon = base(Moon)
+export const MonitorIcon = base(Monitor)
+export const BookIcon = base(BookOpen)
+export const BugIcon = base(Bug)
+export const ChevronDownIcon = base(ChevronDown)

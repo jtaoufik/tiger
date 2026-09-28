@@ -26,7 +26,7 @@ interface Props {
 type PageTab = 'requests' | 'docs' | 'auth'
 const PAGE_TABS: { id: PageTab; label: string }[] = [
   { id: 'requests', label: 'Requests' },
-  { id: 'docs', label: 'Docs' },
+  { id: 'docs', label: 'Notes' },
   { id: 'auth', label: 'Auth' }
 ]
 
@@ -67,10 +67,10 @@ export function FolderView({
         </div>
         <div className="cv-actions">
           <button type="button" className="btn accent" onClick={onNewRequest}>
-            <PlusIcon size={14} /> New request here
+            <PlusIcon size={14} /> New request
           </button>
-          <button type="button" className="btn" onClick={onRun} title="Run every request in this folder">
-            <PlayIcon size={14} /> Run
+          <button type="button" className="btn" onClick={onRun} title="Send every request of this folder in order and check their tests">
+            <PlayIcon size={14} /> Run folder
           </button>
         </div>
       </div>

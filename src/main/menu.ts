@@ -8,38 +8,45 @@ import {
   type MenuItemConstructorOptions
 } from 'electron'
 import { join } from 'node:path'
+import {
+  accelerator,
+  docsUrl,
+  getAction,
+  menuLabel,
+  REPO_URL,
+  type ActionId
+} from '../core/actions'
 
-const REPO = 'https://github.com/jtaoufik/tiger'
-
-/** The window a menu action should target: whichever has focus, else the first. */
-function targetWindow(): BrowserWindow | null {
-  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null
-}
-
-/** Forward a menu action to the renderer, reusing the shortcut channel. */
-function emit(name: string): void {
-  targetWindow()?.webContents.send('tiger:shortcut', name)
+/** Everything the menu needs from the outside world, injectable for tests. */
+export interface MenuDeps {
+  isMac: boolean
+  isDev: boolean
+  /** Forward an action id to the focused renderer. */
+  emit: (id: ActionId) => void
+  openExternal: (url: string) => void
+  showAbout: () => void
 }
 
 /**
- * A menu item that triggers a renderer action. `register` controls whether the OS
- * binds the accelerator: actions the renderer already handles through its own
- * keydown listener pass `register: false`, so the shortcut still shows next to the
- * label without firing the action twice.
+ * The application menu, built from the shared action registry so every label
+ * and shortcut matches what the app shows in its palette, tooltips, context
+ * menus and shortcuts overlay.
  */
-function action(
-  label: string,
-  accelerator: string | undefined,
-  name: string,
-  register = true
-): MenuItemConstructorOptions {
-  return { label, accelerator, registerAccelerator: register, click: () => emit(name) }
-}
+export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] {
+  const { isMac, isDev, emit } = deps
+  const sep: MenuItemConstructorOptions = { type: 'separator' }
 
-/** Install Tiger's application menu. Replaces Electron's stock default menu. */
-export function buildAppMenu(): void {
-  const isMac = process.platform === 'darwin'
-  const isDev = !app.isPackaged
+  /** A menu item that triggers a renderer action. Actions whose shortcut the
+   * renderer handles itself show the accelerator without registering it, so
+   * the key never fires twice. */
+  const item = (id: ActionId): MenuItemConstructorOptions => ({
+    id,
+    label: menuLabel(id),
+    accelerator: accelerator(id),
+    registerAccelerator: !getAction(id).rendererKey,
+    click: () => emit(id)
+  })
+
   const template: MenuItemConstructorOptions[] = []
 
   if (isMac) {
@@ -47,16 +54,17 @@ export function buildAppMenu(): void {
       label: 'Tiger',
       submenu: [
         { role: 'about', label: 'About Tiger' },
-        action('Check for Updates…', undefined, 'check-update'),
-        { type: 'separator' },
-        action('Settings…', 'CmdOrCtrl+,', 'settings'),
-        { type: 'separator' },
+        item('check-update'),
+        sep,
+        // macOS keeps Settings in the app menu; elsewhere it closes the File menu.
+        item('settings'),
+        sep,
         { role: 'services' },
-        { type: 'separator' },
+        sep,
         { role: 'hide', label: 'Hide Tiger' },
         { role: 'hideOthers' },
         { role: 'unhide' },
-        { type: 'separator' },
+        sep,
         { role: 'quit', label: 'Quit Tiger' }
       ]
     })
@@ -65,111 +73,146 @@ export function buildAppMenu(): void {
   template.push({
     label: 'File',
     submenu: [
-      // The renderer owns ⌘T, so register: false avoids a double trigger.
-      action('New Request', 'CmdOrCtrl+T', 'new-request', false),
-      action('New Collection…', 'CmdOrCtrl+N', 'new-collection'),
-      action('Open Collection…', 'CmdOrCtrl+O', 'open-collection'),
-      { type: 'separator' },
-      action('Import / Export…', undefined, 'import-export'),
-      { type: 'separator' },
-      // The menu owns ⌘W in the desktop app; it closes the active tab, not the window.
-      action('Close Tab', 'CmdOrCtrl+W', 'close-tab'),
+      item('new-request'),
+      item('new-folder'),
+      item('new-collection'),
+      item('new-environment'),
+      sep,
+      item('open-collection'),
+      sep,
+      item('import'),
+      item('export'),
+      sep,
+      ...(isMac ? [] : [item('settings'), sep]),
+      // The menu owns Cmd/Ctrl+W: it closes the active tab, not the window.
+      item('close-tab'),
       isMac
-        ? { role: 'close', label: 'Close Window', accelerator: 'Shift+CmdOrCtrl+W' }
+        ? { role: 'close', label: 'Close window', accelerator: 'Shift+CmdOrCtrl+W' }
         : { role: 'quit', label: 'Exit' }
     ]
   })
 
-  const editMac: MenuItemConstructorOptions[] = [
-    { role: 'pasteAndMatchStyle' },
-    { role: 'delete' },
-    { role: 'selectAll' }
-  ]
-  const editOther: MenuItemConstructorOptions[] = [
-    { role: 'delete' },
-    { type: 'separator' },
-    { role: 'selectAll' }
-  ]
   template.push({
     label: 'Edit',
     submenu: [
       { role: 'undo' },
       { role: 'redo' },
-      { type: 'separator' },
+      sep,
       { role: 'cut' },
       { role: 'copy' },
       { role: 'paste' },
-      ...(isMac ? editMac : editOther)
+      ...(isMac
+        ? ([{ role: 'pasteAndMatchStyle' }, { role: 'delete' }, { role: 'selectAll' }] as const)
+        : ([{ role: 'delete' }, sep, { role: 'selectAll' }] as const))
     ]
   })
 
   template.push({
     label: 'Request',
     submenu: [
-      action('Send', 'CmdOrCtrl+Return', 'send', false),
-      action('Save', 'CmdOrCtrl+S', 'save', false),
-      { type: 'separator' },
-      action('Command Palette…', 'CmdOrCtrl+K', 'command-palette', false),
-      action('Environments…', undefined, 'environments'),
-      action('History…', undefined, 'history')
+      item('send'),
+      item('save'),
+      sep,
+      item('duplicate-request'),
+      item('copy-curl'),
+      sep,
+      item('load-test'),
+      item('run-collection')
     ]
   })
 
-  const devView: MenuItemConstructorOptions[] = [
-    { role: 'reload' },
-    { role: 'forceReload' },
-    { role: 'toggleDevTools' },
-    { type: 'separator' }
-  ]
   template.push({
     label: 'View',
     submenu: [
-      ...(isDev ? devView : []),
-      { role: 'resetZoom' },
-      { role: 'zoomIn' },
-      { role: 'zoomOut' },
-      { type: 'separator' },
-      { role: 'togglefullscreen' }
+      item('command-palette'),
+      item('toggle-sidebar'),
+      sep,
+      item('environments'),
+      item('history'),
+      sep,
+      {
+        label: 'Theme',
+        submenu: [item('theme-system'), item('theme-light'), item('theme-dark')]
+      },
+      sep,
+      // Ctrl+= is what people press on Windows and Linux; the stock role only
+      // listens to Ctrl+Plus (Shift+= on most layouts). Keep both.
+      { role: 'zoomIn', label: menuLabel('zoom-in'), accelerator: accelerator('zoom-in') },
+      { role: 'zoomIn', label: menuLabel('zoom-in'), accelerator: 'CmdOrCtrl+Plus', visible: false },
+      { role: 'zoomOut', label: menuLabel('zoom-out'), accelerator: accelerator('zoom-out') },
+      { role: 'resetZoom', label: menuLabel('zoom-reset'), accelerator: accelerator('zoom-reset') },
+      sep,
+      { role: 'togglefullscreen' },
+      ...(isDev
+        ? ([sep, { role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' }] as const)
+        : [])
     ]
   })
 
-  const windowMac: MenuItemConstructorOptions[] = [{ type: 'separator' }, { role: 'front' }]
-  const windowOther: MenuItemConstructorOptions[] = [{ role: 'close' }]
   template.push({
     label: 'Window',
-    submenu: [{ role: 'minimize' }, { role: 'zoom' }, ...(isMac ? windowMac : windowOther)]
+    submenu: [
+      { role: 'minimize' },
+      { role: 'zoom' },
+      ...(isMac ? ([sep, { role: 'front' }] as const) : ([{ role: 'close' }] as const))
+    ]
   })
 
-  const aboutOther: MenuItemConstructorOptions[] = [
-    { type: 'separator' },
-    // macOS gets these in the app menu; everywhere else they live under Help.
-    action('Check for Updates…', undefined, 'check-update'),
-    {
-      label: 'About Tiger',
-      click: () => {
-        const win = targetWindow()
-        const options = {
-          type: 'info' as const,
-          title: 'About Tiger',
-          message: 'Tiger',
-          detail: `Version ${app.getVersion()}\n${REPO}`,
-          icon: nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
-        }
-        if (win) dialog.showMessageBox(win, options)
-        else dialog.showMessageBox(options)
-      }
-    }
-  ]
   template.push({
     role: 'help',
     submenu: [
-      action('Keyboard Shortcuts', undefined, 'shortcuts'),
-      { type: 'separator' },
-      { label: 'Tiger on GitHub', click: () => shell.openExternal(REPO) },
-      { label: 'Report an Issue', click: () => shell.openExternal(`${REPO}/issues`) },
-      ...(isMac ? [] : aboutOther)
+      item('getting-started'),
+      item('shortcuts'),
+      {
+        id: 'docs',
+        label: menuLabel('docs'),
+        click: () => deps.openExternal(docsUrl('getting-started'))
+      },
+      sep,
+      {
+        id: 'report-issue',
+        label: menuLabel('report-issue'),
+        click: () => deps.openExternal(`${REPO_URL}/issues`)
+      },
+      // macOS has these in the app menu.
+      ...(isMac
+        ? []
+        : [
+            sep,
+            item('check-update'),
+            { id: 'about', label: menuLabel('about'), click: () => deps.showAbout() }
+          ])
     ]
   })
 
+  return template
+}
+
+/** The window a menu action should target: whichever has focus, else the first. */
+function targetWindow(): BrowserWindow | null {
+  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null
+}
+
+/** Install Tiger's application menu. Replaces Electron's stock default menu. */
+export function buildAppMenu(): void {
+  const template = buildMenuTemplate({
+    isMac: process.platform === 'darwin',
+    isDev: !app.isPackaged,
+    // Reuses the shortcut channel; App.tsx dispatches by action id.
+    emit: (id) => targetWindow()?.webContents.send('tiger:shortcut', id),
+    openExternal: (url) => void shell.openExternal(url),
+    showAbout: () => {
+      const win = targetWindow()
+      const options = {
+        type: 'info' as const,
+        title: 'About Tiger',
+        message: 'Tiger',
+        detail: `Version ${app.getVersion()}\n${REPO_URL}`,
+        icon: nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
+      }
+      if (win) dialog.showMessageBox(win, options)
+      else dialog.showMessageBox(options)
+    }
+  })
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }

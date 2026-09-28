@@ -7,6 +7,8 @@ import './KeyValueEditor.css'
 interface Props {
   items: KeyValue[]
   placeholder?: [string, string]
+  /** Column headings when they should differ from the placeholders. */
+  columns?: [string, string]
   /** Singular noun for accessible labels ("Header" -> "Header 3 name"). Defaults to placeholder[0]. */
   noun?: string
   onChange: (items: KeyValue[]) => void
@@ -15,7 +17,13 @@ interface Props {
 /** Values longer than this get a tooltip so truncated text stays readable. */
 const TOOLTIP_AT = 32
 
-export function KeyValueEditor({ items, placeholder = ['Key', 'Value'], noun, onChange }: Props) {
+export function KeyValueEditor({
+  items,
+  placeholder = ['Key', 'Value'],
+  columns,
+  noun,
+  onChange
+}: Props) {
   const rows = [...items, { name: '', value: '', enabled: true }]
   const label = noun ?? placeholder[0]
   const lower = label.toLowerCase()
@@ -49,8 +57,8 @@ export function KeyValueEditor({ items, placeholder = ['Key', 'Value'], noun, on
     <div className="kv-editor" ref={listRef} role="group" aria-label={`${label} list`}>
       <div className="kv kv-head" aria-hidden="true">
         <span />
-        <span>{placeholder[0]}</span>
-        <span>{placeholder[1]}</span>
+        <span>{(columns ?? placeholder)[0]}</span>
+        <span>{(columns ?? placeholder)[1]}</span>
         <span />
       </div>
       {rows.map((row, i) => {

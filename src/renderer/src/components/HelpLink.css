@@ -1,0 +1,20 @@
+/* "?" help affordance that links a panel to its website guide. */
+.help-link {
+  min-width: 24px;
+  min-height: 24px;
+  flex: none;
+}
+
+/* One-line explanation at the top of a less obvious panel. */
+.panel-intro {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.panel-intro > span {
+  flex: 1;
+  min-width: 0;
+}

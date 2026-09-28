@@ -285,3 +285,14 @@
     color: HighlightText;
   }
 }
+
+/* Labelled response actions: Copy, Save to file. */
+.response-head .resp-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

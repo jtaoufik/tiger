@@ -1,5 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { searchItems, type SearchItem } from '@core/search'
+import { matchActions, shortcutKeys, type ActionDef, type ActionId } from '@core/actions'
+import { actionIcon } from '../actions'
+import { MOD } from '../platform'
 import { ArrowDownIcon, ArrowUpIcon, SearchIcon } from './Icons'
 import { useDialog } from './useDialog'
 import './a11y.css'
@@ -9,15 +12,22 @@ import './PaletteModal.css'
 interface Props {
   items: SearchItem[]
   onPick: (id: string) => void
+  /** Run a command from the action registry. Omit to search requests only. */
+  onCommand?: (id: ActionId) => void
   onClose: () => void
 }
 
+type Row = { kind: 'request'; item: SearchItem } | { kind: 'command'; action: ActionDef }
+
 /**
- * Command palette: a combobox (input) driving a listbox of requests.
+ * Command palette: one combobox that finds requests and runs commands. The
+ * commands come from the action registry, so they carry the same names as the
+ * menus. Start the query with ">" to list commands only.
+ *
  * Focus never leaves the input; aria-activedescendant points at the
  * highlighted option so screen readers follow the arrow keys.
  */
-export function PaletteModal({ items, onPick, onClose }: Props) {
+export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -27,9 +37,30 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
   const optionId = (i: number) => `${uid}-opt-${i}`
   useDialog(backdropRef, dialogRef, onClose)
 
-  const results = useMemo(() => searchItems(items, query, 8), [items, query])
-  const clamped = Math.min(index, Math.max(0, results.length - 1))
-  const active = results[clamped]
+  const commandsOnly = query.trimStart().startsWith('>')
+  const text = commandsOnly ? query.trimStart().slice(1) : query
+  const requests = useMemo(
+    () => (commandsOnly ? [] : searchItems(items, text, 8)),
+    [items, text, commandsOnly]
+  )
+  const commands = useMemo(
+    () => (onCommand ? matchActions(text, commandsOnly ? 12 : 6) : []),
+    [text, commandsOnly, onCommand]
+  )
+  const rows: Row[] = useMemo(
+    () => [
+      ...requests.map((item) => ({ kind: 'request' as const, item })),
+      ...commands.map((action) => ({ kind: 'command' as const, action }))
+    ],
+    [requests, commands]
+  )
+  const clamped = Math.min(index, Math.max(0, rows.length - 1))
+  const active = rows[clamped]
+
+  const choose = (row: Row) => {
+    if (row.kind === 'request') onPick(row.item.id)
+    else onCommand?.(row.action.id as ActionId)
+  }
 
   // Arrow keys and Enter are handled at window level so they work even when
   // focus drifted (e.g. after a click on the backdrop edge).
@@ -37,38 +68,92 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setIndex((i) => (results.length ? (Math.min(i, results.length - 1) + 1) % results.length : 0))
+        setIndex((i) => (rows.length ? (Math.min(i, rows.length - 1) + 1) % rows.length : 0))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
-        setIndex((i) =>
-          results.length ? (Math.min(i, results.length - 1) - 1 + results.length) % results.length : 0
-        )
+        setIndex((i) => (rows.length ? (Math.min(i, rows.length - 1) - 1 + rows.length) % rows.length : 0))
       } else if (e.key === 'Home' && e.altKey) {
         e.preventDefault()
         setIndex(0)
       } else if (e.key === 'End' && e.altKey) {
         e.preventDefault()
-        setIndex(Math.max(0, results.length - 1))
-      } else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && results[clamped]) {
+        setIndex(Math.max(0, rows.length - 1))
+      } else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && rows[clamped]) {
         e.preventDefault()
-        onPick(results[clamped].id)
+        choose(rows[clamped])
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [results, clamped, onPick])
+  })
 
   // Keep the highlighted option in view.
   useEffect(() => {
     document.getElementById(optionId(clamped))?.scrollIntoView?.({ block: 'nearest' })
     // optionId derives from uid, which is stable for the component's life.
-  }, [clamped, results])
+  }, [clamped, rows])
 
-  const countText = !query.trim()
-    ? `${results.length} request${results.length === 1 ? '' : 's'}. Type to filter, arrows to move, Enter to open.`
-    : results.length
-      ? `${results.length} matching request${results.length === 1 ? '' : 's'}`
-      : 'No matching requests'
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+  const countText = !text.trim()
+    ? `${plural(requests.length, 'request')}${onCommand ? ` and ${plural(commands.length, 'command')}` : ''}. Type to filter, arrows to move, Enter to open.`
+    : rows.length
+      ? onCommand
+        ? `${plural(requests.length, 'matching request')}, ${plural(commands.length, 'matching command')}`
+        : plural(requests.length, 'matching request')
+      : onCommand
+        ? 'No matching requests or commands'
+        : 'No matching requests'
+
+  const name = onCommand ? 'Command palette' : 'Go to request'
+
+  const renderRow = (row: Row, i: number) => {
+    const common = {
+      id: optionId(i),
+      role: 'option' as const,
+      'aria-selected': i === clamped,
+      className: `palette-row ${row.kind === 'command' ? 'palette-cmd ' : ''}${i === clamped ? 'sel' : ''}`,
+      onMouseEnter: () => setIndex(i),
+      // Keep focus in the input when clicking an option.
+      onMouseDown: (e: React.MouseEvent) => e.preventDefault(),
+      onClick: () => choose(row)
+    }
+    if (row.kind === 'request') {
+      const r = row.item
+      return (
+        <div key={`r-${r.id}`} {...common}>
+          <span className={`method-pill m-${r.method}`}>{r.method.toUpperCase()}</span>
+          <span className="row-label" title={r.name}>
+            {r.name}
+          </span>
+          <span className="palette-col" title={r.collection}>
+            {r.collection}
+          </span>
+        </div>
+      )
+    }
+    const a = row.action
+    const keys = shortcutKeys(a.id as ActionId, MOD)
+    return (
+      <div key={`c-${a.id}`} {...common} aria-describedby={`${uid}-d-${a.id}`}>
+        <span className="palette-cmd-icon" aria-hidden="true">
+          {actionIcon(a.id as ActionId, 15)}
+        </span>
+        <span className="palette-cmd-text">
+          <span className="row-label">{a.label}</span>
+          <span className="palette-cmd-desc" id={`${uid}-d-${a.id}`}>
+            {a.description}
+          </span>
+        </span>
+        {keys.length > 0 && (
+          <span className="palette-keys" aria-hidden="true">
+            {keys.map((k) => (
+              <kbd key={k}>{k}</kbd>
+            ))}
+          </span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -82,7 +167,7 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
         ref={dialogRef}
         className="modal palette"
         role="dialog"
-        aria-label="Go to request"
+        aria-label={name}
         aria-modal="true"
         tabIndex={-1}
       >
@@ -91,12 +176,12 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
           <input
             data-autofocus
             role="combobox"
-            aria-expanded={results.length > 0}
+            aria-expanded={rows.length > 0}
             aria-controls={listId}
             aria-autocomplete="list"
             aria-activedescendant={active ? optionId(clamped) : undefined}
-            aria-label="Go to request"
-            placeholder="Go to request…"
+            aria-label={name}
+            placeholder={onCommand ? 'Search requests and commands…' : 'Go to request…'}
             value={query}
             spellCheck={false}
             autoComplete="off"
@@ -107,38 +192,33 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
           />
           <kbd aria-hidden="true">esc</kbd>
         </div>
-        <div
-          id={listId}
-          className="palette-list"
-          role="listbox"
-          aria-label="Requests"
-        >
-          {results.map((r, i) => (
-            <div
-              key={r.id}
-              id={optionId(i)}
-              role="option"
-              aria-selected={i === clamped}
-              className={`palette-row ${i === clamped ? 'sel' : ''}`}
-              onMouseEnter={() => setIndex(i)}
-              // Keep focus in the input when clicking an option.
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onPick(r.id)}
-            >
-              <span className={`method-pill m-${r.method}`}>{r.method.toUpperCase()}</span>
-              <span className="row-label" title={r.name}>
-                {r.name}
-              </span>
-              <span className="palette-col" title={r.collection}>
-                {r.collection}
-              </span>
+        <div id={listId} className="palette-list" role="listbox" aria-label={name}>
+          {requests.length > 0 && (
+            <div role="group" aria-label="Requests">
+              {commands.length > 0 && (
+                <div className="palette-group" aria-hidden="true">
+                  Requests
+                </div>
+              )}
+              {rows.slice(0, requests.length).map((row, i) => renderRow(row, i))}
             </div>
-          ))}
+          )}
+          {commands.length > 0 && (
+            <div role="group" aria-label="Commands">
+              <div className="palette-group" aria-hidden="true">
+                Commands
+              </div>
+              {rows.slice(requests.length).map((row, i) => renderRow(row, requests.length + i))}
+            </div>
+          )}
         </div>
-        {results.length === 0 && (
+        {rows.length === 0 && (
           <div className="palette-empty">
-            <b>No matching requests</b>
-            <span>Try part of the name, the method (get, post) or the collection.</span>
+            <b>{onCommand ? 'Nothing matches' : 'No matching requests'}</b>
+            <span>
+              Try part of the name, the method (get, post) or the collection
+              {onCommand ? ', or a command like "import" or "environment"' : ''}.
+            </span>
           </div>
         )}
         <div className="palette-foot" aria-hidden="true">
@@ -154,6 +234,11 @@ export function PaletteModal({ items, onPick, onClose }: Props) {
           <span>
             <kbd>Enter</kbd> open
           </span>
+          {onCommand && (
+            <span>
+              <kbd>&gt;</kbd> commands only
+            </span>
+          )}
           <span>
             <kbd>esc</kbd> close
           </span>

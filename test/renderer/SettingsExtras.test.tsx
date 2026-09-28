@@ -44,10 +44,10 @@ const fallbackSettings: Settings = {
 }
 
 describe('SettingsView extras', () => {
-  it('renders the MCP tab', () => {
+  it('renders the AI assistants (MCP) tab', () => {
     render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
-    expect(screen.getByRole('tab', { name: 'MCP' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('tab', { name: 'MCP' }))
+    expect(screen.getByRole('tab', { name: 'AI assistants (MCP)' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'AI assistants (MCP)' }))
     expect(screen.getByText(/MCP server/i)).toBeInTheDocument()
   })
 
@@ -104,7 +104,7 @@ describe('SettingsView extras', () => {
     })
 
     render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
-    fireEvent.click(screen.getByRole('tab', { name: 'MCP' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'AI assistants (MCP)' }))
     const codeBlock = await screen.findByText((content) =>
       content.includes('/abs/path/to/server.mjs')
     )

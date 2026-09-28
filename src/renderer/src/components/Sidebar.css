@@ -123,3 +123,28 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Labelled primary actions under the sidebar title: New (menu), Open, Import. */
+.sidebar .sidebar-head {
+  padding-bottom: 6px;
+  border-bottom: none;
+}
+.sidebar-actions {
+  display: flex;
+  gap: 4px;
+  padding: 0 9px 9px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-actions .sidebar-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sidebar-actions .sidebar-action:first-child {
+  color: var(--accent-text);
+}

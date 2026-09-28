@@ -16,6 +16,7 @@ import {
 } from './Icons'
 import { JsonView } from './JsonView'
 import { tablist } from './tablist'
+import { HelpLink } from './HelpLink'
 import './a11y.css'
 import './ResponsePanel.css'
 import { MOD } from '../platform'
@@ -279,22 +280,25 @@ export function ResponsePanel({ state }: Props) {
         <span className="resp-spacer" />
         <button
           type="button"
-          className="icon-btn"
-          title="Copy response body"
+          className="btn ghost resp-action"
+          title="Copy the response body to the clipboard"
           aria-label={copied === 'ok' ? 'Response body copied' : 'Copy response body'}
           onClick={() => copyBody(res.body)}
         >
-          {copied === 'ok' ? <CheckIcon size={15} /> : <CopyIcon size={15} />}
+          {copied === 'ok' ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+          <span aria-hidden="true">{copied === 'ok' ? 'Copied' : 'Copy'}</span>
         </button>
         <button
           type="button"
-          className="icon-btn"
-          title="Save response to file"
-          aria-label="Save response to file"
+          className="btn ghost resp-action"
+          title="Save the response body to a file"
+          aria-label="Save to file: response body"
           onClick={saveToFile}
         >
-          <SaveIcon size={15} />
+          <SaveIcon size={14} />
+          <span aria-hidden="true">Save to file</span>
         </button>
+        <HelpLink page="response" topic="Response tools" />
         <span className="tg-sr-only" role="status" aria-live="polite">
           {copied === 'ok'
             ? 'Response body copied to clipboard'

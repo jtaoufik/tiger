@@ -5,44 +5,18 @@ import './ShortcutsModal.css'
 // Re-exported so existing imports keep working; the source of truth is platform.ts.
 export { IS_MAC, MOD } from '../platform'
 import { IS_MAC, MOD } from '../platform'
+import { SHORTCUT_GROUPS, getAction, shortcutKeys, type ActionId } from '@core/actions'
 
-interface Shortcut {
-  keys: string[]
-  what: string
-}
-
-const GROUPS: Array<{ title: string; items: Shortcut[] }> = [
-  {
-    title: 'General',
-    items: [
-      { keys: [MOD, 'K'], what: 'Command palette: jump to any request' },
-      { keys: [MOD, 'N'], what: 'New collection' },
-      { keys: [MOD, 'O'], what: 'Open collection' },
-      ...(IS_MAC ? [{ keys: [MOD, ','], what: 'Settings' }] : []),
-      { keys: [MOD, '/'], what: 'Show this shortcuts overlay' }
-    ]
-  },
-  {
-    title: 'Request',
-    items: [
-      { keys: [MOD, 'Enter'], what: 'Send the request' },
-      { keys: [MOD, 'S'], what: 'Save the request to disk' },
-      { keys: [MOD, 'T'], what: 'New request in the active collection' },
-      { keys: [MOD, 'L'], what: 'Focus the URL bar' },
-      { keys: [MOD, 'F'], what: 'Search in the response' },
-      { keys: ['F2'], what: 'Rename the selected request' }
-    ]
-  },
-  {
-    title: 'Tabs',
-    items: [
-      { keys: [MOD, 'W'], what: 'Close the active tab' },
-      { keys: ['Ctrl', 'Tab'], what: 'Next tab' },
-      { keys: ['Ctrl', 'Shift', 'Tab'], what: 'Previous tab' },
-      { keys: [MOD, '1-9'], what: 'Jump to tab (9 is the last tab)' }
-    ]
-  }
-]
+/**
+ * Shortcut groups come from the action registry (src/core/actions.ts), the
+ * same source the native menu and the command palette read, so the overlay
+ * can never list a shortcut or a name the rest of the app does not use.
+ */
+export const GROUPS: Array<{ title: string; items: Array<{ id: ActionId; keys: string[]; what: string }> }> =
+  SHORTCUT_GROUPS.map((g) => ({
+    title: g.title,
+    items: g.ids.map((id) => ({ id, keys: shortcutKeys(id, MOD), what: getAction(id).label }))
+  }))
 
 export function ShortcutsModal({ onClose }: { onClose: () => void }) {
   return (
@@ -50,7 +24,7 @@ export function ShortcutsModal({ onClose }: { onClose: () => void }) {
       title="Keyboard shortcuts"
       onClose={onClose}
       width={540}
-      description={`${MOD} is the ${IS_MAC ? 'Command' : 'Control'} key.`}
+      description={`${MOD} is the ${IS_MAC ? 'Command' : 'Control'} key. Every command is also in the command palette (${MOD}+K).`}
     >
       <div className="shortcuts">
         {GROUPS.map((g) => (
@@ -60,7 +34,7 @@ export function ShortcutsModal({ onClose }: { onClose: () => void }) {
             </h3>
             <dl className="shortcut-list">
               {g.items.map((s) => (
-                <div key={s.what} className="shortcut-row">
+                <div key={s.id} className="shortcut-row">
                   <dt className="shortcut-keys">
                     <span className="tg-sr-only">{s.keys.join(' + ')}</span>
                     <span className="shortcut-kbds" aria-hidden="true">
