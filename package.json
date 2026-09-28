@@ -81,7 +81,8 @@
     "files": [
       "out/**",
       "package.json",
-      "build/icon.png"
+      "build/icon.png",
+      "build/icon.ico"
     ],
     "asarUnpack": [
       "out/mcp/**"
@@ -104,7 +105,8 @@
       "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "win": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.ico",
+      "publisherName": "Taoufik Jabbari",
       "target": [
         {
           "target": "nsis",
@@ -117,19 +119,20 @@
           "arch": [
             "x64"
           ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64"
-          ]
         }
       ]
     },
     "nsis": {
       "artifactName": "Tiger-Setup-${version}-windows-${arch}.${ext}",
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Tiger",
+      "runAfterFinish": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "portable": {
       "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}"

@@ -11,7 +11,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="macOS, Windows and Linux" />
-  <img src="https://img.shields.io/badge/version-0.4.1-orange" alt="v0.4.1" />
+  <img src="https://img.shields.io/badge/version-0.6.0-orange" alt="v0.6.0" />
   <a href="https://codecov.io/gh/jtaoufik/tiger"><img src="https://codecov.io/gh/jtaoufik/tiger/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml"><img src="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://buymeacoffee.com/tigerapi"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00.svg?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
@@ -22,7 +22,19 @@
 
 ## Download
 
-Get the latest macOS and Windows builds from the [**releases page**](https://github.com/jtaoufik/tiger/releases/latest), or visit [the website](https://jtaoufik.github.io/tiger/). Builds are not yet code-signed, so on macOS right-click the app and choose Open the first time.
+| Platform | Download | Notes |
+|---|---|---|
+| Windows | [**Setup installer**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe) | Recommended. Or `winget install jtaoufik.Tiger` once published. Portable exe also available on the [releases page](https://github.com/jtaoufik/tiger/releases/latest). |
+| macOS (Apple Silicon) | [**Download .dmg**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg) | Signed and notarized. |
+| macOS (Intel) | [Download .dmg](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.dmg) | Signed and notarized. |
+| Linux | [**AppImage**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage) | Or `.deb` on the [releases page](https://github.com/jtaoufik/tiger/releases/latest). |
+
+See [all downloads and checksums](https://github.com/jtaoufik/tiger/releases/latest) or [the install docs](https://jtaoufik.github.io/tiger/docs/install/).
+
+The Windows build is signed when Azure Trusted Signing / SignPath / a certificate is configured
+in CI (see `.github/workflows/release.yml`); otherwise it's unsigned and SmartScreen shows an
+"unknown publisher" warning on first run - click **More info**, then **Run anyway**. macOS
+builds are signed and notarized with an Apple Developer ID.
 
 ---
 
