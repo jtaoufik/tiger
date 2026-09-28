@@ -139,7 +139,7 @@ tiger.test("responds under 500 ms", () => {
     <h2>Chaining requests with captures</h2>
     <p>
       The runner shares a single variable map across all requests in the run. Captures declared in
-      the <code>.tiger</code> file (or via the Captures tab in the editor) automatically feed that
+      the <code>.tiger</code> file (or via the <strong>Save values</strong> tab in the editor) automatically feed that
       map as each response arrives. A common pattern: authenticate first, capture the token, then
       use it in every subsequent request.
     </p>
@@ -149,7 +149,7 @@ tiger.test("responds under 500 ms", () => {
         <thead>
           <tr>
             <th>Capture source</th>
-            <th>Syntax in the Captures tab</th>
+            <th>Syntax in the Save values tab</th>
             <th>Example</th>
           </tr>
         </thead>
@@ -251,12 +251,12 @@ capture {
       results and marks the run as stopped. You can re-run immediately using the same Run button.
     </p>
 
-    <h2>Runner vs performance runner</h2>
+    <h2 id="load-test">Runner vs load test</h2>
     <p>
       The collection runner is for correctness: it runs each request once, in sequence, and grades
-      pass/fail. The <a href="/tiger/docs/response/">performance runner</a> is for load: it
-      fires N requests at a configurable concurrency level and reports min, max, avg, p50 and p95
-      timings. They are separate tools on the same collection/folder page.
+      pass/fail. The <strong>Load test</strong> tab of a request (also <strong>Request &gt; Load
+      test</strong> in the menu) is for load: it fires the open request N times at a configurable
+      concurrency level and reports min, max, avg, p50 and p95 timings.
     </p>
 
     <h2>Related pages</h2>
@@ -274,8 +274,8 @@ capture {
         <div class="d">Named variable sets, secret values and {{variable}} interpolation.</div>
       </a>
       <a class="card" href="/tiger/docs/response/">
-        <div class="t">Performance runner</div>
-        <div class="d">Fire N concurrent requests and get timing percentiles back.</div>
+        <div class="t">Response tools</div>
+        <div class="d">Status, timing, headers, cookies and test results of a single send.</div>
       </a>
     </div>
   </article>

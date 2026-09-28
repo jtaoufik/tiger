@@ -130,3 +130,32 @@ empty state or next-step hint.
 6. Welcome view gets a three-step getting started block.
 7. Settings: `AI assistants (MCP)`, intro line per section, one line per setting.
 8. Help links ("?") on complex panels, only to pages that exist in `website/docs`.
+
+## Result: before and after
+
+| surface | before | after |
+|---|---|---|
+| Request tab | Capture | Save values (+ one-line description, guide link) |
+| Request tab | Perf | Load test |
+| Request tab | Scripts | Scripts & tests |
+| Request tab | Docs | Notes (collection and folder pages too) |
+| Request tab | Code | Code snippet |
+| Request tab order | Params, Headers, Auth, Body, … | Params, Body, Headers, Auth, … |
+| Settings tab | MCP | AI assistants (MCP), each tab has an intro line |
+| Sidebar header | 4 bare icons | labelled New (menu), Open, Import; Clone kept |
+| Sidebar rows | right click only | "More actions" button opens the same menu |
+| New folder | did not exist | New > New folder, File menu, folder and collection menus |
+| New environment | only inside the modal | New menu, File menu, palette |
+| Import / Export | one entry everywhere | Import and Export are separate actions; collection page says Export |
+| Open | Open collection folder / Open a folder / Open Collection… | Open collection everywhere |
+| Copy | Copy as cURL / Request as cURL | Copy as curl |
+| Close collection | trash icon | X icon, tooltip says files stay on disk |
+| Collection auth… | context menu | Auth for all requests… |
+| Folder menu | Open folder / New request here / Run folder / Duplicate | New request, New folder, Run folder, Folder overview, Rename, Duplicate folder |
+| Palette | Go to request (requests only) | Command palette: requests and commands, ">" for commands only |
+| Response toolbar | bare copy / save icons | Copy, Save to file, guide link |
+| Env manager | pencil icon; eye icon for secret | gear icon; lock icon for secret |
+| Native Request menu | Send, Save, Palette, Environments, History | Send, Save, Duplicate request, Copy as curl, Load test, Run collection |
+| Native View menu | zoom roles only | Command palette, Toggle sidebar (Cmd/Ctrl+B), environments, History, Theme, zoom with Ctrl+= |
+| Native Help menu | Shortcuts, GitHub, Report | Getting started, Keyboard shortcuts, Documentation, Report an issue |
+| Welcome | 10 equal tiles | 3-step Getting started checklist first |

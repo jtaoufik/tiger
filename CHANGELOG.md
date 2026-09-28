@@ -3,6 +3,14 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## Unreleased
+
+- Clearer menus and names. Every action has one name everywhere: the native menu, the command palette, context menus, tooltips and the shortcuts overlay all read the same list. Request tabs are renamed and reordered by use: Params, Body, Headers, Auth, Save values (was Capture), Scripts & tests, Notes (was Docs), Code snippet (was Code), Load test (was Perf). Settings > MCP is now AI assistants (MCP).
+- The sidebar leads with labelled buttons: New (request, folder, collection, environment), Open and Import. Every row has a "More actions" button with the same menu as right click, including Rename. You can now create folders from the app.
+- The command palette (Cmd/Ctrl+K) finds commands as well as requests; type ">" for commands only.
+- Native menu reorganised: File creates, opens, imports and exports; Request holds Send, Save, Duplicate, Copy as curl, Load test and Run collection; View adds Toggle sidebar (Cmd/Ctrl+B), Theme and zoom that answers Ctrl+= on Windows; Help adds Getting started and Documentation.
+- The home screen has a three-step Getting started checklist, and complex panels (Save values, Scripts & tests, Load test, Auth, Environments, Import and export, Runner, Response, AI assistants) carry a "?" that opens their guide.
+
 ## 0.6.0
 
 - Sync conflicts are now resolved inside Tiger. When you and a teammate change the same thing, the sync card asks whose version should win where the changes overlap: "Keep my version" or "Use the team's version". Everything that does not overlap is combined automatically, and the shared history keeps both sides. No editor, no merge tools, no git knowledge required.

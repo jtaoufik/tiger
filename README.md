@@ -74,14 +74,14 @@ Full breakdown: https://jtaoufik.github.io/tiger/compare/
 - **No account, fully offline, local-first.** Tiger never phones home for your data. Everything lives in a folder you own.
 - **MCP server for AI assistants.** Claude, Cursor, and any MCP-compatible assistant can list, read, and run requests from your collection without leaving the chat. Tiger is the only MCP API client built this way from the ground up.
 - **Environments and secrets.** Named variable sets with `{{variable}}` interpolation in URLs, headers, query params, bodies, and auth fields. Secret variables are masked in the UI.
-- **Request chaining.** Capture values from a response (status code, header, or a JSON path like `body.data[0].id`) and write them into environment variables for the next request.
+- **Request chaining.** In the **Save values** tab, capture values from a response (status code, header, or a JSON path like `body.data[0].id`) and write them into environment variables for the next request.
 - **Dynamic variables.** `{{$uuid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, and `{{$randomInt}}` are re-evaluated on every send.
 - **OAuth 2.0, proxy, client certificates (mTLS).** Client credentials grant, Bearer, Basic, and API key auth. HTTP/HTTPS/SOCKS proxy support. Custom CA bundles and client certificate authentication via PEM pair or PFX/PKCS12 file.
 - **GraphQL.** Dedicated body type with a separate variables pane.
 - **SOAP and XML.** Send raw XML bodies for SOAP/WS-* APIs the same way you would for REST.
 - **JSON prettify and minify.** Format button and syntax highlighting in the editor and response panel, with Pretty/Raw and word-wrap toggles.
 - **Collection runner.** Run every request in a collection or folder sequentially with live pass/fail verdicts from your script tests, capture chaining between requests, and a stop button.
-- **Performance runs.** Fire N requests with a configurable concurrency level and get back min, max, avg, p50, and p95 timings.
+- **Load test.** From a request's **Load test** tab, fire N requests with a configurable concurrency level and get back min, max, avg, p50, and p95 timings.
 - **Multipart and file upload.** multipart/form-data bodies mix text fields and file rows with a per-row file picker; file paths live in the .tiger format as @file: values.
 - **Response power tools.** Search inside any response with Cmd/Ctrl+F (match cycling and highlights), preview HTML responses in a sandboxed frame, and view image responses inline.
 - **Keyboard-first.** A shortcuts overlay on Cmd/Ctrl+/, tab cycling, close-tab, quick-create, and focus-URL shortcuts. Inline rename (double-click or F2) and drag-and-drop to move requests between folders.
@@ -104,7 +104,7 @@ Full breakdown: https://jtaoufik.github.io/tiger/compare/
 | Client certificates (mTLS) | Yes | Yes | No |
 | GraphQL | Yes | Yes | Yes |
 | SOAP / XML | Yes | Yes | Yes |
-| Performance runner | Yes | Yes | No |
+| Load test (performance runner) | Yes | Yes | No |
 | Collection runner with test assertions | Yes | Paid tiers | Limited |
 | Multipart file upload | Yes | Yes | Yes |
 | Offline, local-first | Yes | Partial | Yes |
