@@ -1,0 +1,31 @@
+/* Import / Export modal: cURL paste box. */
+.curl-box {
+  margin-top: 10px;
+}
+.curl-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.modal-backdrop .curl-area {
+  min-height: 96px;
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--glass-strong);
+}
+.curl-hint {
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+/* Disabled export tiles still explain themselves; keep text readable. */
+.modal-backdrop .choice:disabled {
+  opacity: 0.6;
+}
+.modal-backdrop .choice {
+  min-height: 64px;
+}

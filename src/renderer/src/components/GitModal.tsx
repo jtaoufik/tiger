@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { splitDiff } from '@core/diffView'
 import type { GitBranches, GitCommit, GitStatus } from '../../../main/git'
 import { Modal } from './Modal'
@@ -11,6 +11,8 @@ import {
   GitBranchIcon,
   RefreshIcon
 } from './Icons'
+import './a11y.css'
+import './GitModal.css'
 
 interface Props {
   collectionName: string
@@ -55,6 +57,16 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
   const [conflict, setConflict] = useState(false)
   const [advanced, setAdvanced] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const uid = useId()
+  const keepRef = useRef<HTMLButtonElement>(null)
+  const discardRef = useRef<HTMLButtonElement>(null)
+  const wasConfirming = useRef(false)
+  // The discard buttons swap in place; keep focus on the safe choice.
+  useEffect(() => {
+    if (confirmDiscard) keepRef.current?.focus()
+    else if (wasConfirming.current) discardRef.current?.focus()
+    wasConfirming.current = confirmDiscard
+  }, [confirmDiscard])
 
   const refresh = useCallback(async () => {
     if (!window.tiger?.git) {
@@ -144,7 +156,11 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
 
   return (
     <Modal title={`Team sync · ${collectionName}`} onClose={onClose} width={640}>
-      {screen === 'loading' && <div style={{ color: 'var(--text-dim)' }}>Checking repository…</div>}
+      {screen === 'loading' && (
+        <div className="cv-dim" role="status">
+          Checking repository…
+        </div>
+      )}
 
       {screen === 'no-electron' && (
         <div className="git-empty">
@@ -199,12 +215,16 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
 
       {screen === 'repo' && status && !status.hasRemote && (
         <div className="cv-card" style={{ marginBottom: 14 }}>
-          <b>Connect a shared repository to sync with your team.</b>
-          <div className="cv-dim" style={{ margin: '4px 0 10px' }}>
+          <label htmlFor={`${uid}-remote`}>
+            <b>Connect a shared repository to sync with your team.</b>
+          </label>
+          <div className="cv-dim" style={{ margin: '4px 0 10px' }} id={`${uid}-remote-hint`}>
             Create an empty repository on GitHub, GitLab or your company server, then paste its URL.
           </div>
           <div className="cv-remote-row">
             <input
+              id={`${uid}-remote`}
+              aria-describedby={`${uid}-remote-hint`}
               placeholder="https://github.com/your-team/payments-api.git"
               value={remoteUrl}
               spellCheck={false}
@@ -224,8 +244,8 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
       {screen === 'repo' && status && (
         <>
           {conflict ? (
-            <div className="git-conflict">
-              <b>You and a teammate changed the same thing.</b>
+            <div className="git-conflict" role="alert" aria-labelledby={`${uid}-conflict`}>
+              <b id={`${uid}-conflict`}>You and a teammate changed the same thing.</b>
               <p>
                 Pick whose version to keep where the changes overlap. Everything that doesn't
                 overlap is combined automatically, and the team's history keeps both.
@@ -252,7 +272,7 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
             </div>
           ) : (
             <div className="git-simple">
-              <div className="git-summary">
+              <div className="git-summary" role="status">
                 {status.dirtyCount > 0
                   ? `You have ${status.dirtyCount} change${status.dirtyCount > 1 ? 's' : ''} not yet shared with the team.`
                   : status.behind > 0
@@ -269,21 +289,29 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
 
           {status.dirtyCount > 0 && (
             <>
-              <div className="section-label">What you changed</div>
-              <div className="git-files">
+              <h3 className="section-label" id={`${uid}-changes`}>
+                What you changed
+              </h3>
+              <ul className="git-files" aria-labelledby={`${uid}-changes`}>
                 {status.changedFiles.map((f) => {
                   const c = plainChange(f.status, f.path)
                   return (
-                    <div className="git-file" key={f.path}>
+                    <li className="git-file" key={f.path}>
                       <span className={`git-st st-${f.status[0]?.toLowerCase() ?? 'q'}`}>{c.word}</span>
-                      <span className="row-label">{c.label}</span>
-                    </div>
+                      <span className="row-label" title={f.path}>
+                        {c.label}
+                      </span>
+                    </li>
                   )
                 })}
-              </div>
+              </ul>
               <div className="git-commit">
+                <label className="tg-sr-only" htmlFor={`${uid}-msg`}>
+                  Describe your changes (optional)
+                </label>
                 <input
-                  placeholder="Describe your changes (optional)…"
+                  id={`${uid}-msg`}
+                  placeholder="Describe your changes (optional), e.g. Add refund endpoint"
                   value={message}
                   spellCheck={false}
                   onChange={(e) => setMessage(e.target.value)}
@@ -298,13 +326,14 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
           <button
             className="btn ghost adv-toggle"
             aria-expanded={advanced}
+            aria-controls={`${uid}-adv`}
             onClick={() => setAdvanced((a) => !a)}
           >
             <ChevronIcon size={13} className={`chev ${advanced ? 'open' : ''}`} /> Advanced
           </button>
 
           {advanced && (
-            <div className="git-advanced">
+            <div className="git-advanced" id={`${uid}-adv`}>
               <div className="git-head">
                 <span className="git-branch">
                   <GitBranchIcon size={14} /> {status.branch ?? 'detached'}
@@ -325,7 +354,13 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
                   </span>
                 )}
                 <span style={{ flex: 1 }} />
-                <button className="icon-btn" title="Refresh" onClick={refresh}>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="Refresh"
+                  aria-label="Refresh repository status"
+                  onClick={refresh}
+                >
                   <RefreshIcon size={14} />
                 </button>
                 <button
@@ -374,9 +409,13 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
                     ))}
                   </select>
                 </label>
+                <label className="tg-sr-only" htmlFor={`${uid}-branch`}>
+                  New branch name
+                </label>
                 <input
+                  id={`${uid}-branch`}
                   className="git-newbranch"
-                  placeholder="new branch name"
+                  placeholder="new branch, e.g. feature/refunds"
                   value={newBranch}
                   spellCheck={false}
                   onChange={(e) => setNewBranch(e.target.value)}
@@ -395,7 +434,9 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
                 {status.dirtyCount > 0 &&
                   (confirmDiscard ? (
                     <>
-                      <span className="cv-dim">Discard everything?</span>
+                      <span className="cv-dim" id={`${uid}-discard-q`}>
+                        Discard everything?
+                      </span>
                       <button
                         className="btn danger"
                         disabled={busy !== null}
@@ -406,12 +447,20 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
                       >
                         Yes, discard
                       </button>
-                      <button className="btn ghost" onClick={() => setConfirmDiscard(false)}>
+                      <button
+                        type="button"
+                        ref={keepRef}
+                        className="btn ghost"
+                        aria-describedby={`${uid}-discard-q`}
+                        onClick={() => setConfirmDiscard(false)}
+                      >
                         Keep
                       </button>
                     </>
                   ) : (
                     <button
+                      type="button"
+                      ref={discardRef}
                       className="btn ghost"
                       disabled={busy !== null}
                       title="Discard all uncommitted changes"
@@ -422,12 +471,14 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
                   ))}
               </div>
 
-              <div className="git-history">
+              <div className="git-history" role="list" aria-label="Recent commits">
                 {log.length === 0 ? (
-                  <div className="cv-dim">No commits yet.</div>
+                  <div className="cv-dim" role="listitem">
+                    No commits yet.
+                  </div>
                 ) : (
                   log.map((c) => (
-                    <div className="git-commit-row" key={c.hash}>
+                    <div className="git-commit-row" role="listitem" key={c.hash}>
                       <span className="git-hash">{c.hash}</span>
                       <span className="row-label">{c.subject}</span>
                       <span className="cv-dim">
@@ -441,7 +492,7 @@ export function GitModal({ collectionName, root, onToast, onWorkingTreeChanged, 
               {diff.trim() && (
                 <>
                   <div className="section-label">Diff</div>
-                  <div className="git-diff">
+                  <div className="git-diff" role="region" aria-label="Uncommitted diff" tabIndex={0}>
                     {splitDiff(diff).map((line, i) => (
                       <div key={i} className={`dl-${line.kind}`}>
                         {line.text || ' '}

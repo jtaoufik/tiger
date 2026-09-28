@@ -1,4 +1,5 @@
 import { Modal } from './Modal'
+import './a11y.css'
 import './ShortcutsModal.css'
 
 // Re-exported so existing imports keep working; the source of truth is platform.ts.
@@ -45,22 +46,34 @@ const GROUPS: Array<{ title: string; items: Shortcut[] }> = [
 
 export function ShortcutsModal({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="Keyboard shortcuts" onClose={onClose} width={520}>
+    <Modal
+      title="Keyboard shortcuts"
+      onClose={onClose}
+      width={540}
+      description={`${MOD} is the ${IS_MAC ? 'Command' : 'Control'} key.`}
+    >
       <div className="shortcuts">
         {GROUPS.map((g) => (
-          <div key={g.title} className="shortcut-group">
-            <div className="shortcut-group-title">{g.title}</div>
-            {g.items.map((s) => (
-              <div key={s.what} className="shortcut-row">
-                <span className="shortcut-keys">
-                  {s.keys.map((k) => (
-                    <kbd key={k}>{k}</kbd>
-                  ))}
-                </span>
-                <span className="shortcut-what">{s.what}</span>
-              </div>
-            ))}
-          </div>
+          <section key={g.title} className="shortcut-group" aria-labelledby={`sc-${g.title}`}>
+            <h3 id={`sc-${g.title}`} className="shortcut-group-title">
+              {g.title}
+            </h3>
+            <dl className="shortcut-list">
+              {g.items.map((s) => (
+                <div key={s.what} className="shortcut-row">
+                  <dt className="shortcut-keys">
+                    <span className="tg-sr-only">{s.keys.join(' + ')}</span>
+                    <span className="shortcut-kbds" aria-hidden="true">
+                      {s.keys.map((k) => (
+                        <kbd key={k}>{k}</kbd>
+                      ))}
+                    </span>
+                  </dt>
+                  <dd className="shortcut-what">{s.what}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         ))}
       </div>
     </Modal>
