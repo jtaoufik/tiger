@@ -134,7 +134,7 @@ Optional automation once the app is live: add `MSSTORE_TENANT_ID`, `MSSTORE_SELL
 `MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` and `MSSTORE_PRODUCT_ID` as secrets (see the
 Entra app registration + Partner Center steps in
 [Microsoft's GitHub Actions guide](https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/github-actions))
-and the `publish-msstore` job (disabled while `MSSTORE_CLIENT_SECRET` is unset) uploads the
+and the `publish-msstore` job (runs only when repo variable `MSSTORE_AUTOPUBLISH` is `true`) uploads the
 new `.appx` via the MSStore Developer CLI (`microsoft/microsoft-store-apppublisher` action +
 `msstore publish`) on every tagged release. Until then, upload the `tiger-msstore-appx`
 artifact by hand from Partner Center → Packages → Update package.
@@ -151,7 +151,7 @@ manifest set for the NSIS installer (`InstallerType: nullsoft`, `Scope: user`). 
 versions by hand with the [`wingetcreate`](https://github.com/microsoft/winget-create) CLI or
 a PR to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs), or automatically:
 add a fine-grained GitHub PAT (with permission to open PRs against `winget-pkgs`) as the
-`WINGET_TOKEN` secret and the `publish-winget` job (disabled while that secret is unset) will
+`WINGET_TOKEN` secret and the `publish-winget` job (runs only when repo variable `WINGET_ENABLED` is `true`) will
 run `vedantmgoyal9/winget-releaser` on every tagged release.
 
 `packaging/scoop/tiger.json` is a [Scoop](https://scoop.sh) manifest for the portable exe,

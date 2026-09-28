@@ -89,8 +89,8 @@ jobs:
           AZURE_SIGN_PUBLISHER: ${{ secrets.AZURE_SIGN_PUBLISHER }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
         run: |
-          EB_ARGS=""
           if [ -n "$AZURE_TENANT_ID" ] && [ -n "$AZURE_CLIENT_ID" ] && [ -n "$AZURE_CLIENT_SECRET" ] && [ -n "$AZURE_SIGN_ENDPOINT" ] && [ -n "$AZURE_SIGN_ACCOUNT" ] && [ -n "$AZURE_SIGN_PROFILE" ]; then
             echo "Azure Trusted Signing secrets present; the Windows build will be signed via Azure Trusted Signing."
             # AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET are read directly
@@ -98,10 +98,6 @@ jobs:
             # already exported as env vars for this job step and the Package step below.
             # azureSignOptions is only set here (not in package.json) so an unsigned build
             # never has it and never gets forced into signing.
-            EB_ARGS="-c.win.azureSignOptions.endpoint=$AZURE_SIGN_ENDPOINT -c.win.azureSignOptions.certificateProfileName=$AZURE_SIGN_PROFILE -c.win.azureSignOptions.codeSigningAccountName=$AZURE_SIGN_ACCOUNT"
-            if [ -n "$AZURE_SIGN_PUBLISHER" ]; then
-              EB_ARGS="$EB_ARGS -c.win.publisherName=$AZURE_SIGN_PUBLISHER"
-            fi
             echo "WIN_SIGN_METHOD=azure" >> "$GITHUB_ENV"
           elif [ -n "$WIN_CSC_LINK" ] && [ -n "$WIN_CSC_KEY_PASSWORD" ]; then
             echo "PFX certificate secrets present; the Windows build will be signed with the provided certificate."
@@ -113,19 +109,36 @@ jobs:
             echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
             echo "WIN_SIGN_METHOD=none" >> "$GITHUB_ENV"
           fi
-          echo "EB_EXTRA_ARGS=$EB_ARGS" >> "$GITHUB_ENV"
+          # Secrets cannot appear in `if:` expressions, so expose a plain flag instead.
+          if [ -n "$SIGNPATH_API_TOKEN" ]; then echo "HAS_SIGNPATH=1" >> "$GITHUB_ENV"; fi
 
       # Build the installers locally (no electron-updater metadata upload), so the
       # GitHub release stays clean: just the installers below + the source code that
       # GitHub attaches automatically. This intentionally omits latest*.yml / .blockmap
       # files, which means in-app auto-update is not served from these releases.
+      # azureSignOptions is only passed here (never in package.json) so an unsigned
+      # build is never forced into signing. A bash array keeps values with spaces
+      # (e.g. a publisher name) as single arguments.
       - name: Package
-        run: npx electron-builder --publish never ${{ env.EB_EXTRA_ARGS }}
+        shell: bash
+        run: |
+          ARGS=(--publish never)
+          if [ "${WIN_SIGN_METHOD:-}" = "azure" ]; then
+            ARGS+=("-c.win.azureSignOptions.endpoint=$AZURE_SIGN_ENDPOINT"
+                   "-c.win.azureSignOptions.certificateProfileName=$AZURE_SIGN_PROFILE"
+                   "-c.win.azureSignOptions.codeSigningAccountName=$AZURE_SIGN_ACCOUNT")
+            if [ -n "$AZURE_SIGN_PUBLISHER" ]; then ARGS+=("-c.win.publisherName=$AZURE_SIGN_PUBLISHER"); fi
+          fi
+          npx electron-builder "${ARGS[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGN_ENDPOINT: ${{ secrets.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ secrets.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ secrets.AZURE_SIGN_PROFILE }}
+          AZURE_SIGN_PUBLISHER: ${{ secrets.AZURE_SIGN_PUBLISHER }}
 
       # SignPath Foundation fallback: only runs when Azure/PFX signing above was not
       # configured. Signs the outer NSIS installer exe after the fact. Note: this signs
@@ -134,7 +147,7 @@ jobs:
       # which electron-builder signs before packing. Prefer Azure Trusted Signing when
       # you need every exe signed.
       - name: Find unsigned installer for SignPath
-        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && secrets.SIGNPATH_API_TOKEN != ''
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
         id: find-installer
         shell: bash
         run: |
@@ -143,7 +156,7 @@ jobs:
           echo "name=$(basename "$FILE")" >> "$GITHUB_OUTPUT"
 
       - name: Upload unsigned installer artifact
-        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && secrets.SIGNPATH_API_TOKEN != ''
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
         id: upload-unsigned
         uses: actions/upload-artifact@v4
         with:
@@ -152,7 +165,7 @@ jobs:
           retention-days: 1
 
       - name: Sign installer with SignPath
-        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && secrets.SIGNPATH_API_TOKEN != ''
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
         uses: signpath/github-action-submit-signing-request@v1
         with:
           api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
@@ -164,7 +177,7 @@ jobs:
           output-artifact-directory: 'signpath-signed'
 
       - name: Replace installer with the SignPath-signed copy
-        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && secrets.SIGNPATH_API_TOKEN != ''
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
         shell: bash
         run: |
           cp "signpath-signed/${{ steps.find-installer.outputs.name }}" "${{ steps.find-installer.outputs.path }}"
@@ -296,7 +309,7 @@ jobs:
   # packaging/winget/manifests for the manifest checked in for the current release.
   publish-winget:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/') && secrets.WINGET_TOKEN != ''
+    if: startsWith(github.ref, 'refs/tags/') && vars.WINGET_ENABLED == 'true'
     runs-on: windows-latest
     steps:
       - uses: vedantmgoyal9/winget-releaser@main
@@ -314,7 +327,7 @@ jobs:
   # update automation is what this action supports.
   publish-msstore:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/') && secrets.MSSTORE_CLIENT_SECRET != ''
+    if: startsWith(github.ref, 'refs/tags/') && vars.MSSTORE_AUTOPUBLISH == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/download-artifact@v4
