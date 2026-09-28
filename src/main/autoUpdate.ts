@@ -15,7 +15,10 @@ import electronUpdater from 'electron-updater'
 const { autoUpdater } = electronUpdater
 
 export function initAutoUpdate(): void {
-  if (!app.isPackaged) return
+  // Never in dev, and never in a Microsoft Store build: the Store owns updates for
+  // MSIX installs (policy requires it), and electron-updater's GitHub-releases flow
+  // would try to replace a Store-managed install out from under it.
+  if (!app.isPackaged || process.windowsStore) return
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
@@ -44,5 +47,5 @@ export function initAutoUpdate(): void {
 
 /** Quit and install a downloaded update (called from the renderer). */
 export function quitAndInstall(): void {
-  if (app.isPackaged) autoUpdater.quitAndInstall()
+  if (app.isPackaged && !process.windowsStore) autoUpdater.quitAndInstall()
 }

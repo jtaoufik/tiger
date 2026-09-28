@@ -34,8 +34,11 @@ then a Microsoft Entra app registration with permission to sign through it, and 
 - `AZURE_SIGN_ENDPOINT` - the Trusted Signing account's regional endpoint URI.
 - `AZURE_SIGN_ACCOUNT` - the Code Signing Account name.
 - `AZURE_SIGN_PROFILE` - the Certificate Profile name.
-- `AZURE_SIGN_PUBLISHER` (optional) - publisher name to stamp on the installer; defaults to
-  `Taoufik Jabbari` from `package.json`'s `build.win.publisherName`.
+- `AZURE_SIGN_PUBLISHER` (optional) - publisher name to stamp on the installer
+  (`win.publisherName`). Left unset, electron-builder just reads it off the signing
+  certificate. Do not hardcode a `publisherName` in `package.json`: electron-updater's NSIS
+  updater checks a future installer's Authenticode signer against it, so a stale or
+  mismatched value (or one present on an unsigned build) breaks in-app updates.
 
 These are passed to electron-builder as `-c.win.azureSignOptions.*` CLI overrides rather than
 baked into `package.json`, so an unsigned build never has `azureSignOptions` set (which would
@@ -72,6 +75,74 @@ macOS signing above.
 Every Windows run logs `Get-AuthenticodeSignature` for each `.exe` under `release/` ("Report
 Windows signature status" step), so the Actions log always states signed vs. unsigned and
 which certificate signed it - check that after any signing-secret change.
+
+## Microsoft Store (MSIX)
+
+The Store route sidesteps SmartScreen and code signing entirely - Microsoft signs the
+package on ingestion. This only needs doing once per machine/account; after that, tagging a
+release is enough (see "Submitting future versions" below).
+
+### One-time setup (Taoufik does this by hand in Partner Center)
+
+1. Create a free individual developer account at
+   [partner.microsoft.com](https://partner.microsoft.com/dashboard) (no company registration
+   or fee for an individual account).
+2. **Reserve the app name**: Apps and games → New product → MSIX or PWA app → name it
+   `Tiger`. If that's taken, fall back to `Tiger API Client`.
+3. Open the new product's **Product identity** page (under Store setup) and copy three
+   values into this repo's GitHub Actions **repository variables** (Settings → Secrets and
+   variables → Actions → Variables - these aren't secret, they're just identifiers):
+   - `Package/Identity/Name` → repo variable `MSSTORE_IDENTITY_NAME`
+   - `Package/Identity/Publisher` (looks like `CN=XXXXXXXX-XXXX-...`) → `MSSTORE_PUBLISHER`
+   - `Publisher display name` → `MSSTORE_PUBLISHER_DISPLAY_NAME`
+4. Note the **Store Product ID** (Product management → Product ID, a 12-character code) for
+   later automation - that's `MSSTORE_PRODUCT_ID` below.
+5. **First submission is manual** (the CLI/Action route only updates an app that's already
+   live). Under Store setup → Properties:
+   - Category: **Developer tools**.
+   - Age rating: run the rating questionnaire - Tiger has no user-generated content, ads, or
+     data collection beyond the optional analytics toggle, so it should clear at the lowest
+     tier.
+   - Privacy policy URL: `https://jtaoufik.github.io/tiger/privacy/`.
+   - Screenshots: at least one 1366x768 (or larger, 16:9) desktop screenshot;
+     `website/screenshot.png` works, or capture fresh ones.
+   - Packages: upload the `tiger-msstore-appx` workflow artifact's `.appx` from a tagged
+     release run (Actions → that run → Artifacts).
+   - Capabilities: Tiger's `runFullTrust` capability (implicit in every Electron/Win32 MSIX
+     packaged app - it's not a sandboxed UWP app) needs no extra justification text in the
+     submission form beyond what Partner Center's own checklist asks; if asked why, it's
+     "packages a Win32/Electron desktop app, which requires full trust to run."
+   - Submit and wait for certification (usually well under 24h).
+
+### Building the package
+
+`.github/workflows/release.yml`'s `build` job (windows-latest leg) builds `build/appx` into
+an unsigned `.appx` whenever `MSSTORE_IDENTITY_NAME`, `MSSTORE_PUBLISHER` and
+`MSSTORE_PUBLISHER_DISPLAY_NAME` are all set as repo variables - real values from step 3
+above, never hardcoded in `package.json`. It's uploaded as a workflow artifact named
+`tiger-msstore-appx`, not attached to the GitHub release (the Store is a separate
+distribution channel from the GitHub installers).
+
+Store tile assets live in `build/appx/` (`StoreLogo.png`, `Square44x44Logo.png`,
+`Square150x150Logo.png`, `Wide310x150Logo.png`, `LargeTile.png`, `SmallTile.png`,
+`SplashScreen.png`, plus `.scale-200` variants of the four logos). Regenerate them from
+`build/icon.png` with `python3 scripts/generate-appx-assets.py` if the icon changes.
+
+### Submitting future versions
+
+Optional automation once the app is live: add `MSSTORE_TENANT_ID`, `MSSTORE_SELLER_ID`,
+`MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` and `MSSTORE_PRODUCT_ID` as secrets (see the
+Entra app registration + Partner Center steps in
+[Microsoft's GitHub Actions guide](https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/github-actions))
+and the `publish-msstore` job (disabled while `MSSTORE_CLIENT_SECRET` is unset) uploads the
+new `.appx` via the MSStore Developer CLI (`microsoft/microsoft-store-apppublisher` action +
+`msstore publish`) on every tagged release. Until then, upload the `tiger-msstore-appx`
+artifact by hand from Partner Center → Packages → Update package.
+
+Store policy requires the Store to own updates for MSIX installs, so `checkForUpdate()`
+(`src/main/http.ts`) and the background `electron-updater` check (`src/main/autoUpdate.ts`)
+both no-op when `process.windowsStore` is true - a Store install never sees Tiger's own
+"update available" prompt.
 
 ## winget and Scoop
 

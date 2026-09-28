@@ -181,6 +181,34 @@ jobs:
             Write-Host "$($_.Name): $($sig.Status) $(if ($sig.SignerCertificate) { '(' + $sig.SignerCertificate.Subject + ')' })"
           }
 
+      # Microsoft Store (MSIX/appx) submission package. Only built once the app's identity
+      # is reserved in Partner Center (see docs/RELEASING.md) - those values are real,
+      # per-publisher identifiers, never hardcoded, so this step (and everything below it)
+      # is a no-op until MSSTORE_IDENTITY_NAME / MSSTORE_PUBLISHER / MSSTORE_PUBLISHER_
+      # DISPLAY_NAME are set as repo variables. Microsoft signs the package on ingestion,
+      # so it's built and uploaded unsigned - it never goes near the GitHub release assets,
+      # only a workflow artifact for manual or automated Store upload.
+      - name: Build Microsoft Store package (appx)
+        if: matrix.os == 'windows-latest' && vars.MSSTORE_IDENTITY_NAME != '' && vars.MSSTORE_PUBLISHER != '' && vars.MSSTORE_PUBLISHER_DISPLAY_NAME != ''
+        shell: bash
+        env:
+          MSSTORE_IDENTITY_NAME: ${{ vars.MSSTORE_IDENTITY_NAME }}
+          MSSTORE_PUBLISHER: ${{ vars.MSSTORE_PUBLISHER }}
+          MSSTORE_PUBLISHER_DISPLAY_NAME: ${{ vars.MSSTORE_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          npx electron-builder --win appx --x64 --publish never \
+            "-c.appx.identityName=$MSSTORE_IDENTITY_NAME" \
+            "-c.appx.publisher=$MSSTORE_PUBLISHER" \
+            "-c.appx.publisherDisplayName=$MSSTORE_PUBLISHER_DISPLAY_NAME"
+
+      - name: Upload Microsoft Store package artifact
+        if: matrix.os == 'windows-latest' && vars.MSSTORE_IDENTITY_NAME != '' && vars.MSSTORE_PUBLISHER != '' && vars.MSSTORE_PUBLISHER_DISPLAY_NAME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiger-msstore-appx
+          path: release/*.appx
+          retention-days: 30
+
       # Attach a version-less copy of every installer alongside the versioned one, so
       # the website and README can link to a stable /releases/latest/download/<name>
       # URL that never needs to change between releases.
@@ -276,6 +304,40 @@ jobs:
           identifier: jtaoufik.Tiger
           installers-regex: 'Tiger-Setup-.*-windows-x64\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
+
+  # Submit the appx built above to the Microsoft Store via the MSStore Developer CLI.
+  # Disabled by default (no-op until MSSTORE_CLIENT_SECRET exists): syntax verified
+  # against Microsoft's own GitHub Actions doc (learn.microsoft.com, "Publish app
+  # updates to Microsoft Store with GitHub Actions" > MSIX tab), not guessed. First
+  # submission is still manual through Partner Center (see docs/RELEASING.md) - the
+  # Store requires an app to already be live before CLI updates work, and free-product
+  # update automation is what this action supports.
+  publish-msstore:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/') && secrets.MSSTORE_CLIENT_SECRET != ''
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tiger-msstore-appx
+          path: msstore
+
+      - uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Configure Microsoft Store CLI
+        shell: pwsh
+        run: |
+          msstore reconfigure `
+            --tenantId ${{ secrets.MSSTORE_TENANT_ID }} `
+            --sellerId ${{ secrets.MSSTORE_SELLER_ID }} `
+            --clientId ${{ secrets.MSSTORE_CLIENT_ID }} `
+            --clientSecret ${{ secrets.MSSTORE_CLIENT_SECRET }}
+
+      - name: Publish app package to the Microsoft Store
+        shell: pwsh
+        run: |
+          $appx = Get-ChildItem -Path msstore -Filter *.appx | Select-Object -First 1
+          msstore publish "$($appx.FullName)" -id ${{ secrets.MSSTORE_PRODUCT_ID }}
 
   # Keep only the release for the tag that just shipped. Runs once after every
   # matrix build attached its installers, so the new release is fully populated

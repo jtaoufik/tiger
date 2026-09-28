@@ -372,6 +372,10 @@ const UPDATE_MANIFEST = 'https://jtaoufik.github.io/tiger/version.json'
  * disturb startup.
  */
 export async function checkForUpdate(currentVersion: string): Promise<UpdateInfo | null> {
+  // Microsoft Store builds are updated by the Store, not by Tiger. Offering a manual
+  // "you're out of date, download this exe" path would both violate Store policy and
+  // hand the user the wrong (unsigned, non-Store) installer.
+  if (process.windowsStore) return null
   try {
     const res = await net.fetch(UPDATE_MANIFEST, { cache: 'no-store' })
     if (!res.ok) return null

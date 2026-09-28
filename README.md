@@ -29,6 +29,11 @@
 | macOS (Intel) | [Download .dmg](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.dmg) | Signed and notarized. |
 | Linux | [**AppImage**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage) | Or `.deb` on the [releases page](https://github.com/jtaoufik/tiger/releases/latest). |
 
+<!-- Get it from Microsoft Store: uncomment once Tiger is live on the Store (see
+docs/RELEASING.md "Microsoft Store") and fill in the real product URL.
+| Windows (Store) | [Microsoft Store](https://apps.microsoft.com/detail/<STORE-PRODUCT-ID>) | No SmartScreen prompt, updates itself. |
+-->
+
 See [all downloads and checksums](https://github.com/jtaoufik/tiger/releases/latest) or [the install docs](https://jtaoufik.github.io/tiger/docs/install/).
 
 The Windows build is signed when Azure Trusted Signing / SignPath / a certificate is configured

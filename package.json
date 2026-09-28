@@ -106,7 +106,6 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "publisherName": "Taoufik Jabbari",
       "target": [
         {
           "target": "nsis",
@@ -136,6 +135,13 @@
     },
     "portable": {
       "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}"
+    },
+    "appx": {
+      "artifactName": "Tiger-${version}-windows-${arch}.${ext}",
+      "displayName": "Tiger",
+      "backgroundColor": "#ff6a1a",
+      "languages": ["en-US"],
+      "showNameOnTiles": true
     },
     "appImage": {
       "artifactName": "Tiger-${version}-linux-x64.AppImage"
