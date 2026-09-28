@@ -2,7 +2,7 @@
 .folder-row.drop-target,
 .col-head.drop-target {
   background: var(--accent-weak);
-  box-shadow: 0 0 0 1.5px var(--accent) inset;
+  box-shadow: 0 0 0 2px var(--accent-fill) inset;
   border-radius: var(--radius-sm);
 }
 .rename-input {

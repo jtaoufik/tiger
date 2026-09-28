@@ -1464,7 +1464,7 @@ button {
 /* ---------- performance runner ---------- */
 .perf-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .perf-bar { flex: 1; height: 8px; border-radius: 99px; background: var(--glass-strong); overflow: hidden; border: 1px solid var(--border); }
-.perf-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
+.perf-fill { height: 100%; background: var(--accent-fill); transition: width 0.2s ease; }
 .perf-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
 .perf-cell { background: var(--glass-strong); border: 1px solid var(--border); border-radius: 11px; padding: 12px; text-align: center; }
 .perf-cell .n { display: block; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.02em; }
