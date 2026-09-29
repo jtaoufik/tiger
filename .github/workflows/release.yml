@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-15  # macos-26 (latest) breaks electron-builder's keychain import (set-key-partition-list)
           - os: windows-latest
           - os: ubuntu-latest
     runs-on: ${{ matrix.os }}
@@ -58,7 +58,7 @@ jobs:
       # separate DMG-level step below (via the App Store Connect API key), so the
       # afterSign hook (build/notarize.cjs) intentionally stays a no-op.
       - name: Configure macOS signing
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
@@ -239,7 +239,7 @@ jobs:
       # Notarize + staple the signed DMGs with Apple using an App Store Connect API
       # key (no app-specific password needed). Skips cleanly when the key is absent.
       - name: Notarize and staple macOS DMGs
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         env:
           MAC_NOTARY_KEY: ${{ secrets.MAC_NOTARY_KEY }}
           MAC_NOTARY_KEY_ID: ${{ secrets.MAC_NOTARY_KEY_ID }}
