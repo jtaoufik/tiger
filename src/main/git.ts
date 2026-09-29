@@ -325,7 +325,10 @@ export async function gitPush(root: string): Promise<GitActionResult> {
 }
 
 export async function gitInit(root: string): Promise<GitActionResult> {
-  const result = await run(['init'], root)
+  // Start on `main` whatever the machine's init.defaultBranch says, so a new team
+  // collection matches GitHub/GitLab defaults. Git older than 2.28 lacks the flag.
+  let result = await run(['init', '--initial-branch=main'], root)
+  if (!result.ok) result = await run(['init'], root)
   return result.ok
     ? { ok: true, message: 'Version tracking is on' }
     : { ok: false, message: result.stderr.trim() || 'git init failed' }
