@@ -44,16 +44,16 @@ const fallbackSettings: Settings = {
 }
 
 describe('SettingsView extras', () => {
-  it('renders the MCP tab', () => {
+  it('renders the AI assistants (MCP) tab', () => {
     render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'MCP' }))
+    expect(screen.getByRole('tab', { name: 'AI assistants (MCP)' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'AI assistants (MCP)' }))
     expect(screen.getByText(/MCP server/i)).toBeInTheDocument()
   })
 
   it('renders the Certificates group inside the Advanced tab', () => {
     render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Advanced' }))
     expect(screen.getByTestId('certificates-group')).toBeInTheDocument()
     expect(screen.getByText('CA bundle (PEM)')).toBeInTheDocument()
     expect(screen.getByText('Client certificate (PEM)')).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('SettingsView extras', () => {
 
   it('renders the cookie jar toggle in the Network tab', () => {
     render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Network' }))
     expect(screen.getByText('Persistent cookie jar')).toBeInTheDocument()
     expect(screen.getByText('Clear cookies')).toBeInTheDocument()
   })
@@ -71,7 +71,7 @@ describe('SettingsView extras', () => {
   it('cookie jar toggle calls onChange with cookieJarEnabled flipped', () => {
     const onChange = vi.fn()
     render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Network' }))
     const cookieRow = screen.getByText('Persistent cookie jar').closest('.setting-row')!
     const toggle = cookieRow.querySelector('.switch')!
     fireEvent.click(toggle)
@@ -87,7 +87,7 @@ describe('SettingsView extras', () => {
     })
 
     render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Network' }))
     fireEvent.click(screen.getByText('Clear cookies'))
     expect(await screen.findByText('Cleared')).toBeInTheDocument()
 
@@ -104,7 +104,7 @@ describe('SettingsView extras', () => {
     })
 
     render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'MCP' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'AI assistants (MCP)' }))
     const codeBlock = await screen.findByText((content) =>
       content.includes('/abs/path/to/server.mjs')
     )
@@ -122,7 +122,7 @@ describe('SettingsView extras', () => {
           onChange={vi.fn()}
         />
       )
-      fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Network' }))
       const sw = screen.getByRole('switch', { name: 'Follow redirects' })
       expect(sw).toBeInTheDocument()
       expect(sw).toHaveAttribute('aria-checked', 'true')
@@ -135,7 +135,7 @@ describe('SettingsView extras', () => {
           onChange={vi.fn()}
         />
       )
-      fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Network' }))
       const sw = screen.getByRole('switch', { name: 'Follow redirects' })
       expect(sw).toHaveAttribute('aria-checked', 'false')
     })
@@ -147,7 +147,7 @@ describe('SettingsView extras', () => {
           onChange={vi.fn()}
         />
       )
-      fireEvent.click(screen.getByRole('button', { name: 'Privacy' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Privacy' }))
       const sw = screen.getByRole('switch', { name: 'Analytics' })
       expect(sw).toBeInTheDocument()
       expect(sw).toHaveAttribute('aria-checked', 'false')
@@ -158,7 +158,7 @@ describe('SettingsView extras', () => {
     it('does not call onChange while typing in certPassphrase', () => {
       const onChange = vi.fn()
       render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Advanced' }))
 
       const input = screen.getByPlaceholderText('passphrase')
       fireEvent.change(input, { target: { value: 'secret' } })
@@ -169,7 +169,7 @@ describe('SettingsView extras', () => {
     it('calls onChange with certPassphrase when the input blurs', () => {
       const onChange = vi.fn()
       render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Advanced' }))
 
       const input = screen.getByPlaceholderText('passphrase')
       fireEvent.change(input, { target: { value: 'mysecret' } })
@@ -180,7 +180,7 @@ describe('SettingsView extras', () => {
     it('calls onChange with certPassphrase when Enter is pressed', () => {
       const onChange = vi.fn()
       render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Advanced' }))
 
       const input = screen.getByPlaceholderText('passphrase')
       fireEvent.change(input, { target: { value: 'enterkey' } })
@@ -193,7 +193,7 @@ describe('SettingsView extras', () => {
       const { rerender } = render(
         <SettingsView settings={fallbackSettings} onChange={onChange} />
       )
-      fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Advanced' }))
 
       rerender(
         <SettingsView

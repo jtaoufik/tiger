@@ -1,9 +1,13 @@
+/* Dialog chrome. styles.css loads after component CSS, so every override here
+   carries one extra class of specificity (.modal-backdrop .modal ...). */
+
 /* Consistent modal enter transition (fade backdrop, lift content). */
 .modal-backdrop {
   animation: modal-fade 0.16s ease-out;
 }
-.modal {
+.modal-backdrop .modal {
   animation: modal-lift 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+  max-width: min(92vw, calc(100vw - 32px));
 }
 @keyframes modal-fade {
   from { opacity: 0; }
@@ -13,7 +17,182 @@
   from { opacity: 0; transform: translateY(10px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
+
+/* Header: title left, close right, one line with a tooltip when truncated. */
+.modal-backdrop .modal-head {
+  gap: 12px;
+  padding: 14px 14px 14px 20px;
+}
+.modal-backdrop .modal-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modal-backdrop .modal-close {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+}
+.modal-backdrop .modal-body {
+  padding: 18px 20px 20px;
+}
+.modal-desc {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.modal-desc:last-child {
+  margin-bottom: 0;
+}
+
+/* Footer: actions right-aligned, Cancel before the primary action. */
+.modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--glass-strong) 55%, transparent);
+}
+.modal-foot .modal-foot-start {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* In-body action rows (forms inside tabs etc.) follow the same order. */
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Buttons inside dialogs: >= 32px tall, icon buttons >= 24px square. */
+.modal-backdrop .btn {
+  min-height: 32px;
+}
+.modal-backdrop .icon-btn {
+  min-width: 26px;
+  min-height: 26px;
+}
+
+/* Destructive actions read as destructive even without color. */
+.modal-backdrop .btn.danger {
+  font-weight: 650;
+}
+
+/* Visible keyboard focus for everything a dialog can hold. */
+.modal-backdrop .modal:focus {
+  outline: none;
+}
+.modal-backdrop :is(button, a, [role='option'], [role='tab'], summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 2px;
+}
+.modal-backdrop :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 1px;
+}
+.modal-backdrop input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 4px;
+  accent-color: var(--accent);
+}
+
+/* Field-level validation (PromptModal and friends). */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b42318;
+}
+[data-theme='dark'] .field-error {
+  color: #ff8b7a;
+}
+.modal-backdrop .field input[aria-invalid='true'] {
+  border-color: #b42318;
+}
+[data-theme='dark'] .modal-backdrop .field input[aria-invalid='true'] {
+  border-color: #ff8b7a;
+}
+.req-mark {
+  color: var(--text-dim);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+/* Empty states inside dialogs: icon, one line, one action. */
+.modal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 26px 16px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.modal-empty > svg {
+  color: var(--accent);
+  opacity: 0.85;
+}
+.modal-empty h3 {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.modal-empty p {
+  margin: 0;
+  max-width: 380px;
+  line-height: 1.5;
+}
+.modal-empty .btn {
+  margin-top: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .modal-backdrop,
-  .modal { animation: none; }
+  .modal-backdrop .modal {
+    animation: none;
+  }
+}
+
+/* Windows High Contrast / forced colors: glass and shadows vanish, so draw
+   real borders and keep buttons distinguishable. */
+@media (forced-colors: active) {
+  .modal-backdrop .modal {
+    border: 2px solid CanvasText;
+  }
+  .modal-backdrop .modal-head,
+  .modal-foot {
+    border-color: CanvasText;
+  }
+  .modal-backdrop .btn,
+  .modal-backdrop .icon-btn {
+    border: 1px solid ButtonText;
+    forced-color-adjust: auto;
+  }
+  .modal-backdrop :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* Help "?" sits right of the title; the close button follows it directly. */
+.modal-head .help-link + .modal-close {
+  margin-left: 0;
 }

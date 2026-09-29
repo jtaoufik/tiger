@@ -93,3 +93,206 @@
   color: var(--text);
   font-weight: 650;
 }
+
+/* ---------- Layout: status line, then tabs + body tools ---------- */
+.panel.response .response-head {
+  gap: 12px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.response-subhead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 13px;
+  border-bottom: 1px solid var(--border);
+}
+.resp-spacer {
+  flex: 1;
+}
+.resp-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.resp-panel:focus {
+  outline: none;
+}
+
+/* ---------- Status: icon + words, not color alone ---------- */
+.panel.response .resp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Method greens/reds measured 2.6-3.8:1 on the pill; these pass 4.5:1. */
+.panel.response .status-pill.status-ok { color: #146b41; background: rgba(44, 163, 106, 0.12); }
+.panel.response .status-pill.status-bad { color: #b42318; background: rgba(224, 83, 61, 0.12); }
+[data-theme='dark'] .panel.response .status-pill.status-ok { color: #4cc38a; background: rgba(76, 195, 138, 0.14); }
+[data-theme='dark'] .panel.response .status-pill.status-bad { color: #ff8b7a; background: rgba(255, 139, 122, 0.14); }
+.panel.response .resp-sending {
+  color: var(--text);
+}
+.resp-error-text {
+  max-width: 560px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+/* Timing popover also opens on keyboard focus. */
+.timing-wrap:focus-within .timing-pop { display: flex; }
+.timing-wrap .meta-chip.timing:focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ---------- Tabs (seg styling, tab semantics) ---------- */
+.panel.response .resp-tabs button {
+  min-height: 28px;
+}
+
+/* ---------- Toolbar icon buttons: 28px targets, pressed state ---------- */
+.panel.response .icon-btn {
+  min-width: 28px;
+  min-height: 28px;
+}
+.panel.response .icon-btn.on {
+  color: var(--text);
+  background: var(--accent-weak);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.panel.response .icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---------- Focus ---------- */
+.panel.response :is(button, [role='tab'], .response-body, iframe):focus-visible {
+  outline: 2px solid var(--tg-focus);
+  outline-offset: 2px;
+}
+.panel.response .response-body:focus-visible {
+  outline-offset: -2px;
+}
+.panel.response .resp-search input:focus-visible {
+  outline: none;
+}
+.panel.response .resp-search:focus-within {
+  box-shadow: inset 0 -2px 0 var(--tg-focus);
+}
+
+/* ---------- Search ---------- */
+.panel.response .resp-search-count {
+  color: var(--text-dim);
+  min-width: 34px;
+  text-align: right;
+}
+/* Active match: white on the accent is 2.5:1 on light, so darken it there. */
+.panel.response .response-body mark.hit.active {
+  background: #b4500a;
+  color: #fff;
+  outline: 1px solid #b4500a;
+}
+[data-theme='dark'] .panel.response .response-body mark.hit.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  outline-color: var(--accent);
+}
+
+/* ---------- Headers / cookies as definition lists ---------- */
+.panel.response .resp-list {
+  white-space: normal;
+}
+.resp-kv {
+  margin: 0;
+}
+.resp-kv-row {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.resp-kv-row:last-child {
+  border-bottom: none;
+}
+.resp-kv dt {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.resp-kv dd {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+/* Header names: the accent orange is 2.4:1 on light glass; darker on light. */
+.panel.response .resp-kv .token {
+  color: #b4500a;
+}
+[data-theme='dark'] .panel.response .resp-kv .token {
+  color: var(--accent);
+}
+.resp-cookie-attrs {
+  color: var(--text-dim);
+}
+.resp-empty-body {
+  font-family: var(--sans);
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* ---------- Tests ---------- */
+.resp-test-summary {
+  font-family: var(--sans);
+  font-weight: 650;
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+.resp-tests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.panel.response .test-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.panel.response .test-row.pass .test-badge { color: #146b41; }
+.panel.response .test-row.fail .test-badge,
+.panel.response .test-err { color: #b42318; }
+[data-theme='dark'] .panel.response .test-row.pass .test-badge { color: #4cc38a; }
+[data-theme='dark'] .panel.response .test-row.fail .test-badge,
+[data-theme='dark'] .panel.response .test-err { color: #ff8b7a; }
+
+@media (forced-colors: active) {
+  .panel.response .status-pill,
+  .panel.response .test-badge {
+    border: 1px solid CanvasText;
+  }
+  .panel.response .icon-btn.on,
+  .panel.response .seg button[aria-selected='true'],
+  .panel.response .seg button[aria-pressed='true'] {
+    outline: 2px solid Highlight;
+  }
+  .panel.response .response-body mark.hit.active {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/* Labelled response actions: Copy, Save to file. */
+.response-head .resp-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

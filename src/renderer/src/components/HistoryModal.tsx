@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { HistoryEntry } from '../../../main/history'
-import { CheckIcon, CopyIcon } from './Icons'
+import { CheckIcon, ClockIcon, CopyIcon, TrashIcon, XCircleIcon } from './Icons'
+import './a11y.css'
+import './HistoryModal.css'
 import { Modal } from './Modal'
 
 interface Props {
@@ -40,6 +42,16 @@ export function HistoryModal({
   const [filter, setFilter] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
+  const keepRef = useRef<HTMLButtonElement>(null)
+  const clearRef = useRef<HTMLButtonElement>(null)
+  const wasConfirming = useRef(false)
+  // The buttons swap in place; keep focus on the safe choice each way so it
+  // never falls back to the document.
+  useEffect(() => {
+    if (confirmClear) keepRef.current?.focus()
+    else if (wasConfirming.current) clearRef.current?.focus()
+    wasConfirming.current = confirmClear
+  }, [confirmClear])
 
   const idSet = useMemo(() => new Set(collectionEntryIds), [collectionEntryIds])
 
@@ -66,34 +78,47 @@ export function HistoryModal({
     : scoped
 
   return (
-    <Modal title="History" onClose={onClose} width={660}>
-      <div className="hist-toolbar">
-        <div className="seg">
+    <Modal title="History" onClose={onClose} width={700}>
+      <div className="hist-toolbar hist-bar">
+        <div className="seg" role="group" aria-label="History scope">
           <button
+            type="button"
             className={scope === 'request' ? 'on' : ''}
+            aria-pressed={scope === 'request'}
             disabled={!activeRequestId}
             onClick={() => setScope('request')}
             title={activeRequestName ? `History for "${activeRequestName}"` : 'No request open'}
           >
             This request
           </button>
-          <button className={scope === 'collection' ? 'on' : ''} onClick={() => setScope('collection')}>
+          <button
+            type="button"
+            className={scope === 'collection' ? 'on' : ''}
+            aria-pressed={scope === 'collection'}
+            onClick={() => setScope('collection')}
+            title={collectionName ?? undefined}
+          >
             {collectionName ? `Collection: ${collectionName}` : 'This collection'}
           </button>
         </div>
-        <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+        <div className="field hist-filter">
           <input
-            type="text"
-            placeholder="Filter by URL or method"
+            type="search"
+            placeholder="Filter: /users, POST, 404…"
             value={filter}
+            spellCheck={false}
             onChange={(ev) => setFilter(ev.target.value)}
-            aria-label="Filter history"
+            aria-label="Filter history by URL or method"
           />
         </div>
         {confirmClear ? (
-          <>
+          <span className="hist-confirm" role="group" aria-label="Clear all history?">
             {/* Same two-step confirm as Git discard: wiping history is irreversible. */}
+            <button type="button" className="btn ghost" ref={keepRef} onClick={() => setConfirmClear(false)}>
+              Keep
+            </button>
             <button
+              type="button"
               className="btn danger"
               onClick={() => {
                 setConfirmClear(false)
@@ -102,38 +127,80 @@ export function HistoryModal({
             >
               Clear everything
             </button>
-            <button className="btn ghost" onClick={() => setConfirmClear(false)}>
-              Keep
-            </button>
-          </>
+          </span>
         ) : (
-          <button className="btn ghost" onClick={() => setConfirmClear(true)} title="Clear all history">
-            Clear
+          <button
+            type="button"
+            ref={clearRef}
+            className="btn ghost"
+            onClick={() => setConfirmClear(true)}
+            title="Clear all history"
+            disabled={entries.length === 0}
+          >
+            <TrashIcon size={13} /> Clear
           </button>
         )}
       </div>
 
+      <div className="tg-sr-only" role="status" aria-live="polite">
+        {q ? `${visible.length} matching send${visible.length === 1 ? '' : 's'}` : ''}
+        {copiedId ? ' URL copied to clipboard' : ''}
+      </div>
+
       {visible.length === 0 ? (
-        <div style={{ color: 'var(--text-dim)', padding: '8px 2px' }}>
-          {scope === 'request'
-            ? 'No sends recorded for this request yet.'
-            : 'No sends recorded in this collection yet.'}
+        <div className="modal-empty">
+          <ClockIcon size={28} />
+          <h3>{q ? 'No matches' : 'Nothing sent yet'}</h3>
+          <p>
+            {q
+              ? `No send in this ${scope} matches "${filter.trim()}".`
+              : scope === 'request'
+                ? 'No sends recorded for this request yet. Hit Send and it shows up here.'
+                : 'No sends recorded in this collection yet.'}
+          </p>
+          {q ? (
+            <button type="button" className="btn" onClick={() => setFilter('')}>
+              Clear filter
+            </button>
+          ) : scope === 'request' ? (
+            <button type="button" className="btn" onClick={() => setScope('collection')}>
+              Show the whole collection
+            </button>
+          ) : (
+            <button type="button" className="btn" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
       ) : (
-        visible.map((e) => (
-          <div className="hist-row" key={e.id}>
-            <span className={`method-pill m-${e.method.toLowerCase()}`}>{e.method}</span>
-            <span className="url">{e.url}</span>
-            <span className={e.ok ? 'status-ok' : 'status-bad'} style={{ fontWeight: 700 }}>
-              {e.status}
-            </span>
-            <span className="meta-chip">{e.timeMs} ms</span>
-            <span className="meta-chip">{ago(e.at)}</span>
-            <button className="icon-btn" title="Copy URL" onClick={() => copyUrl(e)}>
-              {copiedId === e.id ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-            </button>
-          </div>
-        ))
+        <ul className="hist-list" aria-label={`${visible.length} send${visible.length === 1 ? '' : 's'}`}>
+          {visible.map((e) => (
+            <li className="hist-row" key={e.id}>
+              <span className={`method-pill m-${e.method.toLowerCase()}`}>{e.method}</span>
+              <span className="url" title={e.url}>
+                {e.url}
+              </span>
+              <span className={`hist-status ${e.ok ? 'ok' : 'bad'}`} title={e.ok ? 'Succeeded' : 'Failed'}>
+                {e.ok ? <CheckIcon size={12} aria-hidden="true" /> : <XCircleIcon size={12} aria-hidden="true" />}
+                {e.status}
+                <span className="tg-sr-only">{e.ok ? ' ok' : ' failed'}</span>
+              </span>
+              <span className="meta-chip">{e.timeMs} ms</span>
+              <span className="meta-chip" title={new Date(e.at).toLocaleString()}>
+                {ago(e.at)}
+              </span>
+              <button
+                type="button"
+                className="icon-btn"
+                title="Copy URL"
+                aria-label={copiedId === e.id ? 'URL copied' : `Copy URL ${e.url}`}
+                onClick={() => copyUrl(e)}
+              >
+                {copiedId === e.id ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </Modal>
   )

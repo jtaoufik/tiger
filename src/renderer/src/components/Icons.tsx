@@ -10,7 +10,20 @@ import {
   ArrowDown,
   ArrowRightToLine,
   ArrowUp,
+  BookOpen,
   Box,
+  Bug,
+  ChevronDown,
+  CircleQuestionMark,
+  Ellipsis,
+  FolderPlus,
+  Keyboard,
+  Lock,
+  LockOpen,
+  Monitor,
+  Moon,
+  PanelLeft,
+  Sun,
   Check,
   CircleX,
   ChevronRight,
@@ -38,12 +51,14 @@ import {
   Square,
   ArrowRightLeft,
   Trash2,
+  TriangleAlert,
   Upload,
   WrapText,
   X,
   type LucideIcon,
   type LucideProps
 } from 'lucide-react'
+import { CircleCheck, CircleDashed, CloudUpload, History, Laptop, Undo2, Users } from 'lucide-react'
 
 export type IconProps = LucideProps & { size?: number }
 
@@ -89,3 +104,26 @@ export const EyeIcon = base(Eye)
 export const EyeOffIcon = base(EyeOff)
 export const GaugeIcon = base(Gauge)
 export const SaveIcon = base(Save)
+export const WarningIcon = base(TriangleAlert)
+export const HelpIcon = base(CircleQuestionMark)
+export const MoreIcon = base(Ellipsis)
+export const FolderPlusIcon = base(FolderPlus)
+export const KeyboardIcon = base(Keyboard)
+export const LockIcon = base(Lock)
+export const LockOpenIcon = base(LockOpen)
+export const SidebarIcon = base(PanelLeft)
+export const SunIcon = base(Sun)
+export const MoonIcon = base(Moon)
+export const MonitorIcon = base(Monitor)
+export const BookIcon = base(BookOpen)
+export const BugIcon = base(Bug)
+export const ChevronDownIcon = base(ChevronDown)
+
+// Team sync (git) status and actions.
+export const CircleDashedIcon = base(CircleDashed)
+export const CircleCheckIcon = base(CircleCheck)
+export const LaptopIcon = base(Laptop)
+export const UsersIcon = base(Users)
+export const UndoIcon = base(Undo2)
+export const CloudUploadIcon = base(CloudUpload)
+export const HistoryIcon = base(History)

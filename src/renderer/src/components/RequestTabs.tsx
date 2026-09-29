@@ -2,12 +2,17 @@
  * Workspace tabs (Postman-style). A tab is a request, a collection page or a
  * folder page. Labels and methods come from the App's collections state at
  * render time, so renames stay in sync. Middle-click closes a tab.
+ *
+ * Keyboard (WAI-ARIA tabs, manual activation): one tab stop; Left/Right/Home/
+ * End move focus, Enter/Space activate, Delete closes, Shift+F10 or the
+ * ContextMenu key opens the tab menu.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { HttpMethod } from '@core/types'
 import { BoxIcon, CloseIcon, FolderIcon } from './Icons'
 import './RequestTabs.css'
 import { MOD } from '../platform'
+import { isContextMenuKey, menuAnchor, rovingIndex } from '../a11y'
 
 export interface RequestTab {
   key: string
@@ -25,11 +30,43 @@ interface RequestTabsProps {
   onClose: (key: string) => void
   onTabMenu: (key: string, x: number, y: number) => void
   onReorder: (sourceKey: string, targetKey: string, side: 'before' | 'after') => void
+  /** id of the element showing the active tab's content (role=tabpanel). */
+  panelId?: string
 }
 
-export function RequestTabs({ tabs, activeKey, onSelect, onClose, onTabMenu, onReorder }: RequestTabsProps) {
+/** Accessible name: "GET Create user, unsaved changes" / "Folder Orders". */
+export function tabAccessibleName(tab: RequestTab): string {
+  const kind =
+    tab.kind === 'request' ? (tab.method?.toUpperCase() ?? '') : tab.kind === 'folder' ? 'Folder' : 'Collection'
+  return `${kind} ${tab.label}${tab.dirty ? ', unsaved changes' : ''}`.trim()
+}
+
+export function RequestTabs({
+  tabs,
+  activeKey,
+  onSelect,
+  onClose,
+  onTabMenu,
+  onReorder,
+  panelId
+}: RequestTabsProps) {
   const stripRef = useRef<HTMLDivElement>(null)
   const [drop, setDrop] = useState<{ key: string; side: 'before' | 'after' } | null>(null)
+  const idBase = useId()
+  /** Keyboard focus may sit on a tab other than the active one (manual activation). */
+  const [focusKey, setFocusKey] = useState<string | null>(null)
+  /** After a keyboard close, focus lands on the tab at this index. */
+  const refocusIndex = useRef<number | null>(null)
+  const pendingFocus = useRef<string | null>(null)
+
+  const stopKey =
+    (focusKey && tabs.some((t) => t.key === focusKey) && focusKey) ||
+    (activeKey && tabs.some((t) => t.key === activeKey) && activeKey) ||
+    tabs[0]?.key ||
+    null
+
+  const tabEls = () =>
+    Array.from(stripRef.current?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])
 
   // Keep the active tab visible when activating or opening at the end.
   useEffect(() => {
@@ -37,77 +74,146 @@ export function RequestTabs({ tabs, activeKey, onSelect, onClose, onTabMenu, onR
     el?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
   }, [activeKey, tabs.length])
 
+  useEffect(() => {
+    if (refocusIndex.current !== null) {
+      const els = tabEls()
+      const el = els[Math.min(refocusIndex.current, els.length - 1)]
+      refocusIndex.current = null
+      if (el) {
+        setFocusKey(el.dataset.tabKey ?? null)
+        el.focus()
+      }
+      return
+    }
+    const key = pendingFocus.current
+    if (!key) return
+    pendingFocus.current = null
+    tabEls()
+      .find((el) => el.dataset.tabKey === key)
+      ?.focus()
+  })
+
+  const focusTab = (key: string | undefined) => {
+    if (!key) return
+    pendingFocus.current = key
+    setFocusKey(key)
+  }
+
+  const closeFromKeyboard = (key: string, index: number) => {
+    refocusIndex.current = index
+    onClose(key)
+  }
+
   return (
-    <div className="request-tabs" role="tablist" ref={stripRef}>
-      {tabs.map((tab) => (
-        <div
-          key={tab.key}
-          role="tab"
-          aria-selected={tab.key === activeKey}
-          tabIndex={0}
-          className={`request-tab${tab.key === activeKey ? ' active' : ''}${
-            drop?.key === tab.key ? ` drop-${drop.side}` : ''
-          }`}
-          title={tab.label}
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.setData('application/x-tiger-tab', tab.key)
-            e.dataTransfer.effectAllowed = 'move'
-          }}
-          onDragOver={(e) => {
-            if (!e.dataTransfer.types.includes('application/x-tiger-tab')) return
-            e.preventDefault()
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-            const side = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-            setDrop({ key: tab.key, side })
-          }}
-          onDragLeave={() => setDrop((d) => (d?.key === tab.key ? null : d))}
-          onDrop={(e) => {
-            e.preventDefault()
-            const source = e.dataTransfer.getData('application/x-tiger-tab')
-            if (source && drop) onReorder(source, tab.key, drop.side)
-            setDrop(null)
-          }}
-          onDragEnd={() => setDrop(null)}
-          onClick={() => onSelect(tab.key)}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            onTabMenu(tab.key, e.clientX, e.clientY)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+    <div
+      className="request-tabs"
+      role="tablist"
+      aria-label="Open tabs"
+      aria-orientation="horizontal"
+      ref={stripRef}
+    >
+      {tabs.map((tab, index) => {
+        const active = tab.key === activeKey
+        const name = tabAccessibleName(tab)
+        return (
+          <div
+            key={tab.key}
+            id={`${idBase}-tab-${index}`}
+            role="tab"
+            data-tab-key={tab.key}
+            aria-selected={active}
+            aria-controls={active ? panelId : undefined}
+            aria-label={name}
+            tabIndex={tab.key === stopKey ? 0 : -1}
+            className={`request-tab${active ? ' active' : ''}${
+              drop?.key === tab.key ? ` drop-${drop.side}` : ''
+            }`}
+            title={tab.dirty ? `${tab.label} (unsaved changes)` : tab.label}
+            draggable
+            onFocus={(e) => {
+              if (e.target === e.currentTarget) setFocusKey(tab.key)
+            }}
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/x-tiger-tab', tab.key)
+              e.dataTransfer.effectAllowed = 'move'
+            }}
+            onDragOver={(e) => {
+              if (!e.dataTransfer.types.includes('application/x-tiger-tab')) return
               e.preventDefault()
-              onSelect(tab.key)
-            }
-          }}
-          onAuxClick={(e) => {
-            if (e.button === 1) {
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              const side = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+              setDrop({ key: tab.key, side })
+            }}
+            onDragLeave={() => setDrop((d) => (d?.key === tab.key ? null : d))}
+            onDrop={(e) => {
               e.preventDefault()
-              onClose(tab.key)
-            }
-          }}
-        >
-          {tab.kind === 'request' ? (
-            <span className={`method-pill m-${tab.method}`}>{tab.method?.toUpperCase()}</span>
-          ) : tab.kind === 'folder' ? (
-            <FolderIcon size={13} />
-          ) : (
-            <BoxIcon size={13} />
-          )}
-          <span className="request-tab-name">{tab.label}</span>
-          {tab.dirty && <span className="request-tab-dirty" title="Unsaved changes" />}
-          <button
-            className="request-tab-close"
-            title={`Close tab (${MOD}+W)`}
-            onClick={(e) => {
-              e.stopPropagation()
-              onClose(tab.key)
+              const source = e.dataTransfer.getData('application/x-tiger-tab')
+              if (source && drop) onReorder(source, tab.key, drop.side)
+              setDrop(null)
+            }}
+            onDragEnd={() => setDrop(null)}
+            onClick={() => onSelect(tab.key)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              onTabMenu(tab.key, e.clientX, e.clientY)
+            }}
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return
+              if (isContextMenuKey(e)) {
+                e.preventDefault()
+                const { x, y } = menuAnchor(e.currentTarget)
+                onTabMenu(tab.key, x, y)
+                return
+              }
+              const next = rovingIndex(e.key, index, tabs.length, 'horizontal')
+              if (next !== null) {
+                e.preventDefault()
+                focusTab(tabs[next]?.key)
+                return
+              }
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelect(tab.key)
+              } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault()
+                closeFromKeyboard(tab.key, index)
+              }
+            }}
+            onAuxClick={(e) => {
+              if (e.button === 1) {
+                e.preventDefault()
+                onClose(tab.key)
+              }
             }}
           >
-            <CloseIcon size={12} />
-          </button>
-        </div>
-      ))}
+            {tab.kind === 'request' ? (
+              <span className={`method-pill m-${tab.method}`} aria-hidden>
+                {tab.method?.toUpperCase()}
+              </span>
+            ) : tab.kind === 'folder' ? (
+              <FolderIcon size={13} />
+            ) : (
+              <BoxIcon size={13} />
+            )}
+            <span className="request-tab-name">{tab.label}</span>
+            {tab.dirty && <span className="request-tab-dirty" aria-hidden />}
+            <button
+              type="button"
+              className="request-tab-close"
+              title={`Close tab (${MOD}+W)`}
+              aria-label={`Close ${tab.label}`}
+              tabIndex={-1}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose(tab.key)
+              }}
+            >
+              <CloseIcon size={12} />
+            </button>
+          </div>
+        )
+      })}
     </div>
   )
 }

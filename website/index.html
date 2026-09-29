@@ -47,11 +47,22 @@
         own Git repo, runs every request on your machine, and ships a built-in MCP server
         so AI assistants can drive your API. No account, no cloud, no lock-in.
       </p>
-      <div class="cta">
+      <div class="cta" id="download-cta">
         <a class="btn primary" href="/tiger/docs/getting-started/">Get started →</a>
-        <a class="btn" href="https://github.com/jtaoufik/tiger/releases/latest">Download</a>
+        <a class="btn" id="dl-windows" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe">Download for Windows</a>
+        <a class="btn" id="dl-mac" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg">Download for macOS</a>
+        <a class="btn" id="dl-linux" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage">Download for Linux</a>
+        <!-- Get it from Microsoft Store: uncomment once Tiger is live on the Store
+             (see docs/RELEASING.md "Microsoft Store") and fill in the real product URL.
+        <a class="btn" href="https://apps.microsoft.com/detail/<STORE-PRODUCT-ID>">Get it from Microsoft Store</a>
+        -->
         <a class="btn" href="https://github.com/jtaoufik/tiger">Star on GitHub</a>
       </div>
+      <p class="hero-note">
+        <a href="/tiger/docs/install/">All platforms and checksums</a> ·
+        Windows build may show a SmartScreen "unknown publisher" prompt until it's signed -
+        <a href="/tiger/docs/install/#windows">click through it here</a>.
+      </p>
     </section>
 
     <div class="card-grid">
@@ -97,6 +108,25 @@
       <a href="/tiger/docs/first-request/">your first request</a>.</p>
     </div>
   </article>
+  <script>
+    // Progressive enhancement only: every download button above is a real link
+    // that works with JS off. This just marks the one matching the visitor's OS
+    // as the primary/recommended button so they don't have to read all three.
+    (function () {
+      var ua = navigator.userAgent || ''
+      var plat = navigator.platform || ''
+      var id = /Win/.test(plat) || /Windows/.test(ua) ? 'dl-windows'
+        : /Mac/.test(plat) || /Macintosh/.test(ua) ? 'dl-mac'
+        : /Linux/.test(plat) || /Linux/.test(ua) ? 'dl-linux'
+        : null
+      if (!id) return
+      document.querySelectorAll('#download-cta a[id^="dl-"]').forEach(function (a) {
+        a.classList.remove('primary')
+      })
+      var match = document.getElementById(id)
+      if (match) match.classList.add('primary')
+    })()
+  </script>
   <script src="/tiger/nav.js"></script>
 </body>
 </html>

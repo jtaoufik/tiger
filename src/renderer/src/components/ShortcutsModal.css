@@ -38,6 +38,27 @@
   box-shadow: 0 1px 0 var(--border-strong);
 }
 .shortcut-what {
-  color: var(--text-dim);
+  color: var(--text);
   font-size: 13px;
+}
+
+/* Semantic markup resets: groups are h3 + dl, rows are dt (keys) / dd. */
+h3.shortcut-group-title {
+  margin-top: 0;
+}
+.shortcut-list {
+  margin: 0;
+}
+.shortcut-row dt,
+.shortcut-row dd {
+  margin: 0;
+}
+.shortcut-kbds {
+  display: inline-flex;
+  gap: 4px;
+}
+.shortcut-keys kbd {
+  min-width: 22px;
+  text-align: center;
+  color: var(--text);
 }

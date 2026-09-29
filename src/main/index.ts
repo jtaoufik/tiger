@@ -22,16 +22,22 @@ import {
   gitCheckout,
   gitClone,
   gitCommitAll,
+  gitConflicts,
   gitDiff,
-  gitDiscardAll,
+  gitDiffFile,
+  gitDiscard,
+  gitFetch,
   gitInit,
   gitLog,
   gitPull,
   gitPush,
+  gitRequestNames,
+  gitSetIdentity,
   gitSetRemote,
   gitStatus,
   gitSync,
   gitSyncResolve,
+  gitUndoDiscard,
   repoNameFromUrl
 } from './git'
 import { sanitizeCollectionName } from '../core/newCollection'
@@ -326,9 +332,32 @@ function registerIpc(): void {
   ipcMain.handle('tiger:git:pull', (_e, root: string) => gitPull(root))
   ipcMain.handle('tiger:git:push', (_e, root: string) => gitPush(root))
   ipcMain.handle('tiger:git:init', (_e, root: string) => gitInit(root))
-  ipcMain.handle('tiger:git:sync', (_e, root: string, message: string) => gitSync(root, message))
-  ipcMain.handle('tiger:git:syncResolve', (_e, root: string, prefer: 'mine' | 'theirs', message: string) =>
-    gitSyncResolve(root, prefer, message)
+  ipcMain.handle('tiger:git:sync', (e, root: string, message: string) =>
+    gitSync(root, message, (phase) => {
+      if (!e.sender.isDestroyed()) e.sender.send('tiger:git:progress', { root, phase })
+    })
+  )
+  ipcMain.handle(
+    'tiger:git:syncResolve',
+    (
+      _e,
+      root: string,
+      prefer: 'mine' | 'theirs',
+      message: string,
+      choices?: Record<string, 'mine' | 'theirs'>
+    ) => gitSyncResolve(root, prefer, message, choices)
+  )
+  ipcMain.handle('tiger:git:fetch', (_e, root: string) => gitFetch(root))
+  ipcMain.handle('tiger:git:diffFile', (_e, root: string, path: string) => gitDiffFile(root, path))
+  ipcMain.handle('tiger:git:requestNames', (_e, root: string, paths: string[]) =>
+    gitRequestNames(root, paths)
+  )
+  ipcMain.handle('tiger:git:conflicts', (_e, root: string) => gitConflicts(root))
+  ipcMain.handle('tiger:git:setIdentity', (_e, root: string, name: string, email: string) =>
+    gitSetIdentity(root, name, email)
+  )
+  ipcMain.handle('tiger:git:undoDiscard', (_e, root: string, token: string) =>
+    gitUndoDiscard(root, token)
   )
   ipcMain.handle('tiger:git:setRemote', (_e, root: string, url: string) => gitSetRemote(root, url))
   ipcMain.handle('tiger:git:branches', (_e, root: string) => gitBranches(root))
@@ -336,17 +365,18 @@ function registerIpc(): void {
     gitCheckout(root, branch, create)
   )
   ipcMain.handle('tiger:git:log', (_e, root: string) => gitLog(root))
-  ipcMain.handle('tiger:git:discard', (_e, root: string) => gitDiscardAll(root))
+  ipcMain.handle('tiger:git:discard', (_e, root: string, paths?: string[]) => gitDiscard(root, paths))
   ipcMain.handle('tiger:git:clone', async (_e, url: string) => {
     const dest = await dialog.showOpenDialog(parentWindow()!, {
-      title: 'Choose where to clone the collection',
+      title: 'Choose where to save the team collection',
+      buttonLabel: 'Save here',
       properties: ['openDirectory', 'createDirectory']
     })
     if (dest.canceled || !dest.filePaths[0]) return null
     const { join: pjoin } = await import('node:path')
     const target = pjoin(dest.filePaths[0], repoNameFromUrl(url))
     const result = await gitClone(url, target)
-    if (!result.ok) return { error: result.message }
+    if (!result.ok) return { error: result.message, code: result.code }
     return readOpenedCollection(target)
   })
   ipcMain.handle('tiger:openExternal', (_e, url: string) => {

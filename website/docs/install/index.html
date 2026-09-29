@@ -39,13 +39,24 @@
 
     <h2 id="download">Download</h2>
     <p>
-      All builds for the current release (v0.4.1) are on the GitHub Releases page.
+      All builds for the current release (v0.6.0) are on the GitHub Releases page.
       Pick the package for your platform below, or go straight to the releases page
       to see checksums and release notes.
     </p>
     <p>
-      <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">
-        View all downloads on GitHub Releases
+      <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe">
+        Download for Windows
+      </a>
+      <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg">
+        Download for macOS
+      </a>
+      <a class="btn primary" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage">
+        Download for Linux
+      </a>
+    </p>
+    <p>
+      <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">
+        View all downloads and checksums on GitHub Releases →
       </a>
     </p>
 
@@ -63,8 +74,8 @@
         Go to <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">github.com/jtaoufik/tiger/releases/latest</a>
         and download the <code>.dmg</code> that matches your chip:
         <ul>
-          <li><code>Tiger-0.4.1-mac-arm64.dmg</code> - Apple Silicon (M1 and later)</li>
-          <li><code>Tiger-0.4.1-mac-x64.dmg</code> - Intel</li>
+          <li><code>Tiger-0.6.0-mac-arm64.dmg</code> - Apple Silicon (M1 and later)</li>
+          <li><code>Tiger-0.6.0-mac-x64.dmg</code> - Intel</li>
         </ul>
       </li>
       <li>Open the downloaded <code>.dmg</code>.</li>
@@ -85,27 +96,33 @@
 
     <h2 id="windows">Windows</h2>
     <p>
-      Tiger is available for Windows x64 in three forms: a <strong>winget package</strong>
-      (recommended), a graphical <strong>Setup installer</strong> (NSIS), and a
-      <strong>portable EXE</strong> that needs no installation. A <code>.zip</code> archive
-      is also provided for manual extraction.
+      Tiger is available for Windows x64 in two forms: the <strong>Setup installer</strong>
+      (NSIS, recommended) and a <strong>portable EXE</strong> that needs no installation.
+      Both are also installable via <strong>winget</strong> once the package is live.
     </p>
+    <!-- Get it from Microsoft Store: uncomment once Tiger is live on the Store (see
+         docs/RELEASING.md "Microsoft Store") and fill in the real product URL.
+    <p>
+      <a class="btn primary" href="https://apps.microsoft.com/detail/<STORE-PRODUCT-ID>" target="_blank" rel="noopener">
+        Get it from Microsoft Store
+      </a> - no SmartScreen prompt, and the Store keeps it updated automatically.
+    </p>
+    -->
 
     <div class="callout note">
       <span class="ic">i</span>
       <p>
-        The Windows builds are not yet code-signed. Installing via
-        <strong>winget skips the SmartScreen prompt</strong> entirely. If you use the Setup
-        EXE or portable EXE directly, Windows SmartScreen may show a warning the first time
-        you run the file. Click <strong>More info</strong> and then <strong>Run anyway</strong>
-        to continue. This is a known limitation and will be resolved once Windows code signing
-        is in place.
+        <strong>Windows says "Windows protected your PC" / "unknown publisher"?</strong>
+        That's Microsoft SmartScreen, which flags any exe from a publisher it hasn't seen
+        enough downloads from yet - it doesn't mean the file is unsafe. Click
+        <strong>More info</strong>, then <strong>Run anyway</strong>. Installing via winget
+        skips the prompt entirely once the package is published there.
       </p>
     </div>
 
     <h3>Option 1: winget (recommended)</h3>
     <p>Open a terminal and run:</p>
-    <pre><code>winget install TaoufikJabbari.Tiger</code></pre>
+    <pre><code>winget install jtaoufik.Tiger</code></pre>
     <p>
       winget downloads the verified package directly from the Windows Package Manager
       community repository. No SmartScreen prompt appears. Tiger is added to your
@@ -115,7 +132,7 @@
     <h3>Option 2: Setup installer</h3>
     <ol>
       <li>
-        Download <code>Tiger-Setup-0.4.1-windows-x64.exe</code> from the
+        Download <code>Tiger-Setup-0.6.0-windows-x64.exe</code> from the
         <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">releases page</a>.
       </li>
       <li>
@@ -130,7 +147,7 @@
 
     <h3>Option 3: Portable EXE</h3>
     <p>
-      Download <code>Tiger-Portable-0.4.1-windows-x64.exe</code>. This is a self-contained
+      Download <code>Tiger-Portable-0.6.0-windows-x64.exe</code>. This is a self-contained
       executable that you can run from any folder or USB drive without installing anything.
       Right-click the file and choose <strong>Run as administrator</strong> if you need to
       write to a restricted folder; otherwise run it directly. User data is stored in
@@ -155,14 +172,14 @@
     </p>
     <ol>
       <li>
-        Download <code>Tiger-0.4.1-linux-x64.AppImage</code> from the
+        Download <code>Tiger-0.6.0-linux-x64.AppImage</code> from the
         <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">releases page</a>.
       </li>
       <li>Make it executable:
-        <pre><code>chmod +x Tiger-0.4.1-linux-x64.AppImage</code></pre>
+        <pre><code>chmod +x Tiger-0.6.0-linux-x64.AppImage</code></pre>
       </li>
       <li>Run it:
-        <pre><code>./Tiger-0.4.1-linux-x64.AppImage</code></pre>
+        <pre><code>./Tiger-0.6.0-linux-x64.AppImage</code></pre>
       </li>
     </ol>
     <p>
@@ -179,11 +196,11 @@
     </p>
     <ol>
       <li>
-        Download <code>Tiger-0.4.1-linux-amd64.deb</code> from the
+        Download <code>Tiger-0.6.0-linux-amd64.deb</code> from the
         <a href="https://github.com/jtaoufik/tiger/releases/latest" target="_blank" rel="noopener">releases page</a>.
       </li>
       <li>Install it with apt (preferred over dpkg - it resolves dependencies automatically):
-        <pre><code>sudo apt install ./Tiger-0.4.1-linux-amd64.deb</code></pre>
+        <pre><code>sudo apt install ./Tiger-0.6.0-linux-amd64.deb</code></pre>
       </li>
       <li>Launch Tiger from your application menu or run <code>tiger-api-client</code> in a terminal.</li>
     </ol>

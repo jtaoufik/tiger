@@ -8,7 +8,16 @@ import type { ImportKind } from '../main/importers'
 import type { ImportResult } from '../core/import'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { UpdateInfo } from '../core/version'
-import type { GitActionResult, GitAvailability, GitBranches, GitCommit, GitStatus } from '../main/git'
+import type {
+  GitActionResult,
+  GitAvailability,
+  GitBranches,
+  GitCommit,
+  GitConflict,
+  GitErrorCode,
+  GitStatus,
+  SyncPhase
+} from '../main/git'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
@@ -55,16 +64,40 @@ const api = {
     init: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:init', root),
     sync: (root: string, message: string): Promise<GitActionResult> =>
       ipcRenderer.invoke('tiger:git:sync', root, message),
-    syncResolve: (root: string, prefer: 'mine' | 'theirs', message: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:syncResolve', root, prefer, message),
+    syncResolve: (
+      root: string,
+      prefer: 'mine' | 'theirs',
+      message: string,
+      choices?: Record<string, 'mine' | 'theirs'>
+    ): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:syncResolve', root, prefer, message, choices),
+    /** Sync phases as they happen; returns an unsubscribe function. */
+    onProgress: (cb: (event: { root: string; phase: SyncPhase }) => void): (() => void) => {
+      const listener = (_e: unknown, event: { root: string; phase: SyncPhase }): void => cb(event)
+      ipcRenderer.on('tiger:git:progress', listener)
+      return () => {
+        ipcRenderer.removeListener('tiger:git:progress', listener)
+      }
+    },
+    fetch: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:fetch', root),
+    diffFile: (root: string, path: string): Promise<string> =>
+      ipcRenderer.invoke('tiger:git:diffFile', root, path),
+    requestNames: (root: string, paths: string[]): Promise<Record<string, string>> =>
+      ipcRenderer.invoke('tiger:git:requestNames', root, paths),
+    conflicts: (root: string): Promise<GitConflict[]> => ipcRenderer.invoke('tiger:git:conflicts', root),
+    setIdentity: (root: string, name: string, email: string): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:setIdentity', root, name, email),
+    undoDiscard: (root: string, token: string): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:undoDiscard', root, token),
     setRemote: (root: string, url: string): Promise<GitActionResult> =>
       ipcRenderer.invoke('tiger:git:setRemote', root, url),
     branches: (root: string): Promise<GitBranches> => ipcRenderer.invoke('tiger:git:branches', root),
     checkout: (root: string, branch: string, create: boolean): Promise<GitActionResult> =>
       ipcRenderer.invoke('tiger:git:checkout', root, branch, create),
     log: (root: string): Promise<GitCommit[]> => ipcRenderer.invoke('tiger:git:log', root),
-    discard: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:discard', root),
-    clone: (url: string): Promise<OpenedCollection | { error: string } | null> =>
+    discard: (root: string, paths?: string[]): Promise<GitActionResult> =>
+      ipcRenderer.invoke('tiger:git:discard', root, paths),
+    clone: (url: string): Promise<OpenedCollection | { error: string; code?: GitErrorCode } | null> =>
       ipcRenderer.invoke('tiger:git:clone', url)
   },
   checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),

@@ -1,0 +1,81 @@
+/* Key/value rows (params, headers, form fields, captures, variables).
+   Base .kv grid lives in styles.css; the extra .kv-editor class outranks it. */
+.kv-editor .kv {
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.4fr) 28px;
+  gap: 6px 8px;
+  margin-bottom: 5px;
+}
+.kv-editor .kv-head {
+  margin-bottom: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.kv-editor .kv-head span {
+  padding-left: 10px;
+}
+
+/* Cells: monospace, ellipsis for long values (full text in the tooltip). */
+.kv-editor .kv input[type='text'] {
+  min-width: 0;
+  width: 100%;
+  min-height: 30px;
+  text-overflow: ellipsis;
+}
+.kv-editor .kv input[type='text']::placeholder {
+  color: var(--text-faint);
+}
+.kv-editor .kv input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 4px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.kv-editor .kv input[type='checkbox']:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+/* Disabled rows fade the text but keep it readable (was 0.45 opacity). */
+.kv-editor .kv.disabled input[type='text'] {
+  opacity: 1;
+  color: var(--text-dim);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-dim) 60%, transparent);
+}
+.kv-editor .kv-blank input[type='text'] {
+  border-style: dashed;
+}
+
+.kv-editor .kv-remove {
+  width: 28px;
+  height: 28px;
+}
+.kv-editor .kv-add {
+  margin-top: 4px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.kv-editor .kv-add:hover {
+  color: var(--text);
+}
+
+/* Keyboard focus: a real ring, not just an accent border. */
+.kv-editor .kv input:focus-visible,
+.kv-editor .kv-remove:focus-visible,
+.kv-editor .kv-add:focus-visible {
+  outline: 2px solid var(--tg-focus, var(--focus-ring, #2563eb));
+  outline-offset: 1px;
+}
+
+@media (forced-colors: active) {
+  .kv-editor .kv input[type='text'] {
+    border: 1px solid CanvasText;
+  }
+  .kv-editor .kv-blank input[type='text'] {
+    border-style: dashed;
+  }
+}

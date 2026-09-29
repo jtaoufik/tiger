@@ -11,7 +11,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="macOS, Windows and Linux" />
-  <img src="https://img.shields.io/badge/version-0.4.1-orange" alt="v0.4.1" />
+  <img src="https://img.shields.io/badge/version-0.6.0-orange" alt="v0.6.0" />
   <a href="https://codecov.io/gh/jtaoufik/tiger"><img src="https://codecov.io/gh/jtaoufik/tiger/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml"><img src="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://buymeacoffee.com/tigerapi"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00.svg?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
@@ -22,7 +22,24 @@
 
 ## Download
 
-Get the latest macOS and Windows builds from the [**releases page**](https://github.com/jtaoufik/tiger/releases/latest), or visit [the website](https://jtaoufik.github.io/tiger/). Builds are not yet code-signed, so on macOS right-click the app and choose Open the first time.
+| Platform | Download | Notes |
+|---|---|---|
+| Windows | [**Setup installer**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe) | Recommended. Or `winget install jtaoufik.Tiger` once published. Portable exe also available on the [releases page](https://github.com/jtaoufik/tiger/releases/latest). |
+| macOS (Apple Silicon) | [**Download .dmg**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg) | Signed and notarized. |
+| macOS (Intel) | [Download .dmg](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.dmg) | Signed and notarized. |
+| Linux | [**AppImage**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage) | Or `.deb` on the [releases page](https://github.com/jtaoufik/tiger/releases/latest). |
+
+<!-- Get it from Microsoft Store: uncomment once Tiger is live on the Store (see
+docs/RELEASING.md "Microsoft Store") and fill in the real product URL.
+| Windows (Store) | [Microsoft Store](https://apps.microsoft.com/detail/<STORE-PRODUCT-ID>) | No SmartScreen prompt, updates itself. |
+-->
+
+See [all downloads and checksums](https://github.com/jtaoufik/tiger/releases/latest) or [the install docs](https://jtaoufik.github.io/tiger/docs/install/).
+
+The Windows build is signed when Azure Trusted Signing / SignPath / a certificate is configured
+in CI (see `.github/workflows/release.yml`); otherwise it's unsigned and SmartScreen shows an
+"unknown publisher" warning on first run - click **More info**, then **Run anyway**. macOS
+builds are signed and notarized with an Apple Developer ID.
 
 ---
 
@@ -57,14 +74,14 @@ Full breakdown: https://jtaoufik.github.io/tiger/compare/
 - **No account, fully offline, local-first.** Tiger never phones home for your data. Everything lives in a folder you own.
 - **MCP server for AI assistants.** Claude, Cursor, and any MCP-compatible assistant can list, read, and run requests from your collection without leaving the chat. Tiger is the only MCP API client built this way from the ground up.
 - **Environments and secrets.** Named variable sets with `{{variable}}` interpolation in URLs, headers, query params, bodies, and auth fields. Secret variables are masked in the UI.
-- **Request chaining.** Capture values from a response (status code, header, or a JSON path like `body.data[0].id`) and write them into environment variables for the next request.
+- **Request chaining.** In the **Save values** tab, capture values from a response (status code, header, or a JSON path like `body.data[0].id`) and write them into environment variables for the next request.
 - **Dynamic variables.** `{{$uuid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, and `{{$randomInt}}` are re-evaluated on every send.
 - **OAuth 2.0, proxy, client certificates (mTLS).** Client credentials grant, Bearer, Basic, and API key auth. HTTP/HTTPS/SOCKS proxy support. Custom CA bundles and client certificate authentication via PEM pair or PFX/PKCS12 file.
 - **GraphQL.** Dedicated body type with a separate variables pane.
 - **SOAP and XML.** Send raw XML bodies for SOAP/WS-* APIs the same way you would for REST.
 - **JSON prettify and minify.** Format button and syntax highlighting in the editor and response panel, with Pretty/Raw and word-wrap toggles.
 - **Collection runner.** Run every request in a collection or folder sequentially with live pass/fail verdicts from your script tests, capture chaining between requests, and a stop button.
-- **Performance runs.** Fire N requests with a configurable concurrency level and get back min, max, avg, p50, and p95 timings.
+- **Load test.** From a request's **Load test** tab, fire N requests with a configurable concurrency level and get back min, max, avg, p50, and p95 timings.
 - **Multipart and file upload.** multipart/form-data bodies mix text fields and file rows with a per-row file picker; file paths live in the .tiger format as @file: values.
 - **Response power tools.** Search inside any response with Cmd/Ctrl+F (match cycling and highlights), preview HTML responses in a sandboxed frame, and view image responses inline.
 - **Keyboard-first.** A shortcuts overlay on Cmd/Ctrl+/, tab cycling, close-tab, quick-create, and focus-URL shortcuts. Inline rename (double-click or F2) and drag-and-drop to move requests between folders.
@@ -87,7 +104,7 @@ Full breakdown: https://jtaoufik.github.io/tiger/compare/
 | Client certificates (mTLS) | Yes | Yes | No |
 | GraphQL | Yes | Yes | Yes |
 | SOAP / XML | Yes | Yes | Yes |
-| Performance runner | Yes | Yes | No |
+| Load test (performance runner) | Yes | Yes | No |
 | Collection runner with test assertions | Yes | Paid tiers | Limited |
 | Multipart file upload | Yes | Yes | Yes |
 | Offline, local-first | Yes | Partial | Yes |

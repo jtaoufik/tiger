@@ -16,15 +16,19 @@
   --sidebar-bg: #fbfcfd;
   --text: #1b1f27;
   --text-dim: #545b68;
-  --text-faint: #828a99;
+  --text-faint: #646c7c;
   --border: #e7e9ee;
   --border-strong: #d7dae1;
   --accent: #ff6a1a;
-  --accent-ink: #ffffff;
+  /* --accent-text: same hue, darkened so text/icons set in accent read at WCAG AA (4.5:1) on
+     white, --bg-soft and --accent-weak. --accent itself stays the brand orange for buttons,
+     borders and other non-text uses where the 4.5:1 text ratio does not apply. */
+  --accent-text: #bd4200;
+  --accent-ink: #14100c;
   --accent-weak: rgba(255, 106, 26, 0.1);
-  --good: #1f9d57;
-  --bad: #d23f3f;
-  --warn: #c98a00;
+  --good: #106e3c;
+  --bad: #c33030;
+  --warn: #8f6200;
   --shadow: 0 8px 30px rgba(20, 26, 40, 0.08);
   --radius: 12px;
   --radius-sm: 8px;
@@ -45,6 +49,7 @@
   --border: #232936;
   --border-strong: #2e3543;
   --accent: #ff8442;
+  --accent-text: #ff8442;
   --accent-ink: #14100c;
   --accent-weak: rgba(255, 132, 66, 0.14);
   --good: #46c483;
@@ -68,7 +73,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ---------- Top bar ---------- */
@@ -110,7 +115,7 @@ a:hover { text-decoration: underline; }
   background: var(--bg-soft);
   color: var(--text);
 }
-.topbar .search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+.topbar .search input:focus { outline: 2px solid var(--accent-text); outline-offset: 1px; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
 .topbar .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-faint); }
 .topbar .tb-link { color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
 .topbar .tb-link:hover { color: var(--text); text-decoration: none; }
@@ -127,6 +132,12 @@ a:hover { text-decoration: underline; }
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   align-items: start;
+  /* .topbar is position:fixed and reserves no space in normal flow. .sidebar compensates via
+     its own sticky top offset, but .main/.content has nothing pushing it down, so the first
+     content on every page (the breadcrumb) rendered underneath the topbar and overlapped its
+     controls - which is also why that breadcrumb link measured as "too close to another
+     target": it shared screen space with the topbar's menu button. */
+  margin-top: var(--topbar-h);
 }
 .sidebar {
   position: sticky;
@@ -152,7 +163,7 @@ a:hover { text-decoration: underline; }
   line-height: 1.35;
 }
 .sidebar a:hover { background: var(--bg-soft); color: var(--text); text-decoration: none; }
-.sidebar a.active { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
+.sidebar a.active { background: var(--accent-weak); color: var(--accent-text); font-weight: 600; }
 .sidebar a.hidden { display: none; }
 
 .main {
@@ -181,7 +192,7 @@ article { min-width: 0; }
 .toc a { display: block; padding: 4px 0; color: var(--text-dim); }
 .toc a:hover { color: var(--text); text-decoration: none; }
 .toc a.h3 { padding-left: 14px; font-size: 12.5px; }
-.toc a.active { color: var(--accent); font-weight: 600; }
+.toc a.active { color: var(--accent-text); font-weight: 600; }
 
 /* ---------- Typography ---------- */
 .content h1 { font-size: 33px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 10px; }
@@ -193,7 +204,7 @@ article { min-width: 0; }
 .content li { margin: 5px 0; }
 .content hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
 .breadcrumb { font-size: 13px; color: var(--text-faint); margin-bottom: 14px; }
-.breadcrumb a { color: var(--text-faint); }
+.breadcrumb a { color: var(--text-faint); display: inline-block; padding: 5px 2px; margin: -5px -2px; }
 
 /* code */
 code {
@@ -230,7 +241,7 @@ table .yes { color: var(--good); font-weight: 700; }
 table .no { color: var(--bad); font-weight: 700; }
 table .partial { color: var(--warn); font-weight: 700; }
 table .col-tiger { background: var(--accent-weak); }
-th.col-tiger { color: var(--accent); }
+th.col-tiger { color: var(--accent-text); }
 
 /* callouts */
 .callout {
@@ -248,7 +259,7 @@ th.col-tiger { color: var(--accent); }
 .callout.warn { border-left-color: var(--warn); }
 .callout .ic { flex: none; font-weight: 800; }
 .callout.tip .ic { color: var(--good); }
-.callout.note .ic { color: var(--accent); }
+.callout.note .ic { color: var(--accent-text); }
 .callout.warn .ic { color: var(--warn); }
 .callout p { margin: 0; }
 
@@ -268,6 +279,7 @@ th.col-tiger { color: var(--accent); }
 .hero h1 { font-size: 44px; line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 14px; }
 .hero .lead { font-size: 20px; max-width: 620px; }
 .hero .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.hero-note { font-size: 13.5px; color: var(--text-dim); margin: 10px 0 0; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 24px 0; }
 .card {
   display: block; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius);
@@ -276,7 +288,7 @@ th.col-tiger { color: var(--accent); }
 .card:hover { border-color: var(--accent); transform: translateY(-2px); text-decoration: none; }
 .card .t { font-weight: 700; font-size: 15.5px; margin-bottom: 4px; }
 .card .d { font-size: 13.5px; color: var(--text-dim); }
-.pill { display: inline-block; font: 600 11px/1.4 var(--mono); color: var(--accent); background: var(--accent-weak); padding: 3px 9px; border-radius: 999px; }
+.pill { display: inline-block; font: 600 11px/1.4 var(--mono); color: var(--accent-text); background: var(--accent-weak); padding: 3px 9px; border-radius: 999px; }
 
 /* prev / next */
 .page-nav { display: flex; justify-content: space-between; gap: 14px; margin-top: 48px; border-top: 1px solid var(--border); padding-top: 20px; }

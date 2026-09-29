@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Modal } from './Modal'
 
 interface Props {
@@ -22,32 +22,73 @@ export function PromptModal({
   onCancel
 }: Props) {
   const [value, setValue] = useState(initialValue)
+  const [error, setError] = useState<string | null>(null)
+  const inputId = useId()
+  const errorId = useId()
+
   const submit = () => {
-    if (value.trim()) onSubmit(value.trim())
+    const v = value.trim()
+    if (!v) {
+      setError(`${label} is required.`)
+      return
+    }
+    onSubmit(v)
   }
+
   return (
-    <Modal title={title} onClose={onCancel} width={440}>
-      <div className="field" style={{ marginBottom: 16 }}>
-        <label>{label}</label>
-        <input
-          autoFocus
-          value={value}
-          placeholder={placeholder}
-          spellCheck={false}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') submit()
-          }}
-        />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button className="btn" onClick={onCancel}>
-          Cancel
-        </button>
-        <button className="btn accent" disabled={!value.trim()} onClick={submit}>
-          {confirmLabel}
-        </button>
-      </div>
+    <Modal
+      title={title}
+      onClose={onCancel}
+      width={440}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit" form={`${inputId}-form`} className="btn accent">
+            {confirmLabel}
+          </button>
+        </>
+      }
+    >
+      <form
+        id={`${inputId}-form`}
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor={inputId}>
+            <span>{label}</span>
+            <span className="req-mark" aria-hidden="true">
+              (required)
+            </span>
+          </label>
+          <input
+            id={inputId}
+            autoFocus
+            required
+            aria-required="true"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            value={value}
+            placeholder={placeholder}
+            spellCheck={false}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => {
+              setValue(e.target.value)
+              if (error && e.target.value.trim()) setError(null)
+            }}
+          />
+          {error && (
+            <div id={errorId} className="field-error" role="alert">
+              {error}
+            </div>
+          )}
+        </div>
+      </form>
     </Modal>
   )
 }

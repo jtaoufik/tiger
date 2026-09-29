@@ -1,0 +1,28 @@
+{
+  "version": "0.6.0",
+  "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
+  "homepage": "https://jtaoufik.github.io/tiger/",
+  "license": "MIT",
+  "notes": "Tiger stores its data in %APPDATA%\\Tiger regardless of where this portable exe runs from.",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/jtaoufik/tiger/releases/download/v0.6.0/Tiger-Portable-0.6.0-windows-x64.exe#/tiger.exe",
+      "hash": "3ed23f248614d42e879d63facc87bb4b490e535b1cb82cf070c06913904a856c"
+    }
+  },
+  "bin": "tiger.exe",
+  "shortcuts": [
+    ["tiger.exe", "Tiger"]
+  ],
+  "persist": [],
+  "checkver": {
+    "github": "https://github.com/jtaoufik/tiger"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/jtaoufik/tiger/releases/download/v$version/Tiger-Portable-$version-windows-x64.exe#/tiger.exe"
+      }
+    }
+  }
+}

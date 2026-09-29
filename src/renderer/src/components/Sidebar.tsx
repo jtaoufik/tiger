@@ -1,29 +1,34 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
 import './Sidebar.css'
-import { MOD } from '../platform'
+import { actionTitle } from '../actions'
+import { isContextMenuKey, menuAnchor } from '../a11y'
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckIcon,
   ChevronIcon,
   CloseIcon,
   CopyIcon,
   FolderIcon,
   FolderOpenIcon,
+  ChevronDownIcon,
   GitBranchIcon,
+  MoreIcon,
   PlusIcon,
+  UploadIcon,
   SearchIcon,
-  SwapIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from './Icons'
+import { summarizeSync, useConflictRoots } from '../gitUx'
+import { SyncBadge } from './TeamSync'
 
 export interface SyncState {
   isRepo: boolean
   dirtyCount: number
   ahead: number
   behind: number
+  hasRemote?: boolean
+  hasUpstream?: boolean
 }
 
 export interface SidebarEntry {
@@ -48,7 +53,10 @@ interface Props {
   onOpenCollection: () => void
   onNewCollection: () => void
   onClone: () => void
+  /** Opens the import half of the Import and export dialog. */
   onImportExport: () => void
+  /** Opens the "New" menu (request, folder, collection, environment) at x, y. */
+  onNewMenu?: (x: number, y: number) => void
   onNewRequest: (collectionId: string) => void
   onCloseCollection: (collectionId: string) => void
   onDeleteRequest: (entryId: string) => void
@@ -56,6 +64,8 @@ interface Props {
   onGit: (collectionId: string) => void
   onRequestMenu: (entryId: string, x: number, y: number) => void
   onCollectionMenu: (collectionId: string, x: number, y: number) => void
+  /** Context menu for a folder row (right click, Shift+F10, ContextMenu key). */
+  onFolderMenu?: (collectionId: string, path: string[], x: number, y: number) => void
   onInspectCollection: (collectionId: string) => void
   onInspectFolder: (collectionId: string, path: string[]) => void
   onEmptyMenu: (x: number, y: number) => void
@@ -65,6 +75,10 @@ interface Props {
   onMoveRequest: (entryId: string, collectionId: string, folderPath: string[]) => void
   /** Expand ancestors and flash this request row (nonce re-triggers). */
   reveal?: { id: string; nonce: number } | null
+  /** The collection or folder page currently shown (path [] = collection). */
+  inspected?: { colId: string; path: string[] } | null
+  /** Start renaming a request (id) or folder (colId + path); nonce re-triggers. */
+  renameTarget?: { id?: string; colId?: string; path?: string[]; nonce: number } | null
 }
 
 interface TreeFolder {
@@ -105,6 +119,22 @@ function buildTree(collectionId: string, entries: SidebarEntry[]): TreeFolder {
   return root
 }
 
+/** Tree node key for a request row (collection/folder rows use their JSON key). */
+const reqKey = (id: string) => `req:${id}`
+
+/** One visible row of the ARIA tree, in document order. */
+interface FlatNode {
+  key: string
+  kind: 'collection' | 'folder' | 'request'
+  label: string
+  parent: string | null
+  colId: string
+  path: string[]
+  entry?: SidebarEntry
+  /** undefined for leaves. */
+  expanded?: boolean
+}
+
 export function Sidebar({
   collections,
   activeId,
@@ -120,18 +150,24 @@ export function Sidebar({
   onDuplicateRequest,
   onGit,
   onRequestMenu,
+  onFolderMenu,
   onRenameRequest,
   onRenameFolder,
   onDuplicateFolder,
   onMoveRequest,
   reveal,
+  inspected,
   onCollectionMenu,
   onInspectCollection,
   onInspectFolder,
-  onEmptyMenu
+  onEmptyMenu,
+  onNewMenu,
+  renameTarget
 }: Props) {
+  const conflictRoots = useConflictRoots()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
+  const treeRef = useRef<HTMLDivElement>(null)
 
   // Inline rename: which row is being renamed, and the draft text.
   const [renaming, setRenaming] = useState<
@@ -141,10 +177,17 @@ export function Sidebar({
   // Folder/collection key currently hovered by a request drag.
   const [dropKey, setDropKey] = useState<string | null>(null)
 
-  // F2 renames the selected request, like file managers.
+  /** Roving tabindex: the one tree item that is in the Tab order. */
+  const [focusKey, setFocusKey] = useState<string | null>(null)
+  /** Set when keyboard navigation should move DOM focus after the next render. */
+  const pendingFocus = useRef<string | null>(null)
+  const typeahead = useRef<{ text: string; at: number }>({ text: '', at: 0 })
+
+  // F2 renames the selected request, like file managers. Inside the tree the
+  // focused row owns F2 (handled below), so skip events it already consumed.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'F2' || !activeId || renaming) return
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'F2' || e.defaultPrevented || !activeId || renaming) return
       const entry = collections.flatMap((c) => c.entries).find((x) => x.id === activeId)
       if (entry) {
         e.preventDefault()
@@ -155,6 +198,33 @@ export function Sidebar({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [activeId, renaming, collections])
+
+  // Rename started from a context menu ("Rename" item) rather than F2.
+  useEffect(() => {
+    if (!renameTarget) return
+    if (renameTarget.id) {
+      const entry = collections.flatMap((c) => c.entries).find((x) => x.id === renameTarget.id)
+      if (entry) {
+        setDraft(entry.name)
+        setRenaming({ kind: 'request', id: entry.id })
+      }
+    } else if (renameTarget.colId && renameTarget.path?.length) {
+      const path = renameTarget.path
+      setQuery('')
+      // Make sure the row exists: expand the collection and every ancestor.
+      setCollapsed((prev) => {
+        const next = new Set(prev)
+        for (let i = 0; i < path.length; i++) {
+          next.delete(JSON.stringify([renameTarget.colId, ...path.slice(0, i)]))
+        }
+        return next
+      })
+      setDraft(path[path.length - 1])
+      setRenaming({ kind: 'folder', key: JSON.stringify([renameTarget.colId, ...path]) })
+    }
+    // Only a new nonce should restart a rename; collections changing mid-rename must not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameTarget])
 
   const [flashId, setFlashId] = useState<string | null>(null)
 
@@ -173,6 +243,7 @@ export function Sidebar({
       }
       return next
     })
+    setFocusKey(reqKey(reveal.id))
     setFlashId(reveal.id)
     const timer = setTimeout(() => setFlashId(null), 1300)
     setTimeout(() => {
@@ -195,16 +266,24 @@ export function Sidebar({
     if (renaming.kind === 'folder' && folderColId && folderPath) {
       onRenameFolder(folderColId, folderPath, draft)
     }
+    // Keyboard users keep their place: focus returns to the renamed row.
+    pendingFocus.current = focusKey
+    setRenaming(null)
+  }
+  const cancelRename = () => {
+    pendingFocus.current = focusKey
     setRenaming(null)
   }
 
-  const toggle = (key: string) =>
+  const setOpen = (key: string, open: boolean) =>
     setCollapsed((prev) => {
+      if (open === !prev.has(key)) return prev
       const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
+      if (open) next.delete(key)
       else next.add(key)
       return next
     })
+  const toggle = (key: string) => setOpen(key, collapsed.has(key))
 
   const trees = useMemo(
     () => collections.map((col) => ({ col, tree: buildTree(col.id, col.entries) })),
@@ -213,101 +292,385 @@ export function Sidebar({
 
   const q = query.trim().toLowerCase()
 
-  function renderRequest(entry: SidebarEntry, depth: number, colId: string) {
+  const searchHits = useMemo(
+    () =>
+      q
+        ? trees
+            .map(({ col }) => ({ col, hits: col.entries.filter((e) => e.name.toLowerCase().includes(q)) }))
+            .filter((x) => x.hits.length > 0)
+        : [],
+    [trees, q]
+  )
+
+  /** Every visible tree item in document order: the keyboard model. */
+  const flat = useMemo(() => {
+    const out: FlatNode[] = []
+    const pushRequest = (entry: SidebarEntry, parent: string, colId: string) =>
+      out.push({
+        key: reqKey(entry.id),
+        kind: 'request',
+        label: entry.name,
+        parent,
+        colId,
+        path: entry.folderPath,
+        entry
+      })
+    if (q) {
+      for (const { col, hits } of searchHits) {
+        const key = JSON.stringify([col.id])
+        out.push({ key, kind: 'collection', label: col.name, parent: null, colId: col.id, path: [], expanded: true })
+        for (const e of hits) pushRequest(e, key, col.id)
+      }
+      return out
+    }
+    const walk = (folder: TreeFolder, colId: string) => {
+      for (const f of folder.folders) {
+        const open = !collapsed.has(f.key)
+        out.push({
+          key: f.key,
+          kind: 'folder',
+          label: f.name,
+          parent: folder.key,
+          colId,
+          path: (JSON.parse(f.key) as string[]).slice(1),
+          expanded: open
+        })
+        if (open) walk(f, colId)
+      }
+      for (const r of folder.requests) pushRequest(r, folder.key, colId)
+    }
+    for (const { col, tree } of trees) {
+      const open = !collapsed.has(tree.key)
+      out.push({ key: tree.key, kind: 'collection', label: col.name, parent: null, colId: col.id, path: [], expanded: open })
+      if (open) walk(tree, col.id)
+    }
+    return out
+  }, [trees, collapsed, q, searchHits])
+
+  // The tabbable item: last focused if still visible, else the active request,
+  // else the first row. Exactly one item carries tabIndex=0.
+  const tabbableKey =
+    (focusKey && flat.some((n) => n.key === focusKey) && focusKey) ||
+    (activeId && flat.some((n) => n.key === reqKey(activeId)) && reqKey(activeId)) ||
+    flat[0]?.key ||
+    null
+
+  useEffect(() => {
+    const key = pendingFocus.current
+    if (!key) return
+    pendingFocus.current = null
+    const items = treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? []
+    for (const el of items) {
+      if (el.dataset.nodeKey === key) {
+        el.focus()
+        el.scrollIntoView?.({ block: 'nearest' })
+        break
+      }
+    }
+  })
+
+  const moveTo = (key: string | undefined) => {
+    if (!key) return
+    pendingFocus.current = key
+    setFocusKey(key)
+  }
+
+  const activate = (node: FlatNode) => {
+    if (node.kind === 'request' && node.entry) onSelect(node.entry.id)
+    else if (node.kind === 'folder') onInspectFolder(node.colId, node.path)
+    else onInspectCollection(node.colId)
+  }
+
+  const openMenuFor = (node: FlatNode, el: Element) => {
+    const { x, y } = menuAnchor(el.firstElementChild ?? el)
+    if (node.kind === 'request' && node.entry) onRequestMenu(node.entry.id, x, y)
+    else if (node.kind === 'folder') onFolderMenu?.(node.colId, node.path, x, y)
+    else onCollectionMenu(node.colId, x, y)
+  }
+
+  const onTreeKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    if (target.getAttribute('role') !== 'treeitem') return
+    const index = flat.findIndex((n) => n.key === target.dataset.nodeKey)
+    const node = flat[index]
+    if (!node) return
+    const handled = () => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    if (isContextMenuKey(e)) {
+      handled()
+      openMenuFor(node, target)
+      return
+    }
+    switch (e.key) {
+      case 'ArrowDown':
+        handled()
+        moveTo(flat[index + 1]?.key)
+        return
+      case 'ArrowUp':
+        handled()
+        moveTo(flat[index - 1]?.key)
+        return
+      case 'Home':
+        handled()
+        moveTo(flat[0]?.key)
+        return
+      case 'End':
+        handled()
+        moveTo(flat[flat.length - 1]?.key)
+        return
+      case 'ArrowRight':
+        handled()
+        if (node.expanded === false) setOpen(node.key, true)
+        else if (node.expanded && flat[index + 1]?.parent === node.key) moveTo(flat[index + 1].key)
+        return
+      case 'ArrowLeft':
+        handled()
+        if (node.expanded && !q) setOpen(node.key, false)
+        else if (node.parent) moveTo(node.parent)
+        return
+      case 'Enter':
+      case ' ':
+        handled()
+        activate(node)
+        return
+      case 'F2':
+        if (node.kind === 'request' && node.entry) {
+          handled()
+          setDraft(node.entry.name)
+          setRenaming({ kind: 'request', id: node.entry.id })
+        } else if (node.kind === 'folder') {
+          handled()
+          setDraft(node.label)
+          setRenaming({ kind: 'folder', key: node.key })
+        }
+        return
+      case 'Delete':
+        if (node.kind === 'request' && node.entry) {
+          handled()
+          onDeleteRequest(node.entry.id)
+        }
+        return
+    }
+    // Type-ahead: printable characters jump to the next row starting with them.
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== ' ') {
+      const now = Date.now()
+      const ta = typeahead.current
+      ta.text = now - ta.at > 700 ? e.key.toLowerCase() : ta.text + e.key.toLowerCase()
+      ta.at = now
+      const order = [...flat.slice(index + 1), ...flat.slice(0, index + 1)]
+      const hit =
+        order.find((n) => n.label.toLowerCase().startsWith(ta.text)) ??
+        (ta.text.length > 1 ? undefined : order.find((n) => n.label.toLowerCase().startsWith(e.key.toLowerCase())))
+      if (hit) {
+        handled()
+        moveTo(hit.key)
+      }
+    }
+  }
+
+  /** Common ARIA + roving props for a tree item. */
+  const itemProps = (
+    key: string,
+    level: number,
+    setsize: number,
+    posinset: number,
+    label: string,
+    selected: boolean,
+    expanded?: boolean
+  ) => ({
+    role: 'treeitem' as const,
+    className: 'tree-node',
+    'data-node-key': key,
+    'aria-level': level,
+    'aria-setsize': setsize,
+    'aria-posinset': posinset,
+    'aria-selected': selected,
+    'aria-expanded': expanded,
+    'aria-label': label,
+    tabIndex: tabbableKey === key ? 0 : -1,
+    onFocus: (e: React.FocusEvent<HTMLElement>) => {
+      if (e.target === e.currentTarget) setFocusKey(key)
+    }
+  })
+
+  /** Row buttons are pointer shortcuts; keyboard users get the context menu. */
+  const rowButton = (
+    title: string,
+    icon: ReactNode,
+    onClick: () => void,
+    danger = false
+  ) => (
+    <button
+      type="button"
+      className={`icon-btn${danger ? ' danger' : ''}`}
+      title={title}
+      aria-label={title}
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+    >
+      {icon}
+    </button>
+  )
+
+  /** "More actions": the row's context menu, for people who never right-click. */
+  const moreButton = (what: string, open: (x: number, y: number) => void) => (
+    <button
+      type="button"
+      className="icon-btn"
+      title={`More actions for ${what}`}
+      aria-label={`More actions for ${what}`}
+      aria-haspopup="menu"
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        const r = e.currentTarget.getBoundingClientRect()
+        open(r.left, r.bottom + 2)
+      }}
+    >
+      <MoreIcon size={13} />
+    </button>
+  )
+
+  const chevron = (open: boolean, what: 'folder' | 'collection', key: string) => (
+    <button
+      type="button"
+      className="icon-btn chev-btn"
+      title={open ? `Collapse ${what}` : `Expand ${what}`}
+      aria-hidden
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        toggle(key)
+      }}
+    >
+      <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
+    </button>
+  )
+
+  function renderRequest(
+    entry: SidebarEntry,
+    depth: number,
+    colId: string,
+    level: number,
+    setsize: number,
+    posinset: number
+  ) {
     const isRenaming = renaming?.kind === 'request' && renaming.id === entry.id
+    const key = reqKey(entry.id)
+    const method = entry.method.toUpperCase()
+    const active = entry.id === activeId
     return (
-      <div
-        key={entry.id}
-        className={`tree-row ${entry.id === activeId ? 'active' : ''} ${entry.id === flashId ? 'flash' : ''}`}
-        style={{ paddingLeft: 8 + depth * 16 }}
-        data-entry-id={entry.id}
-        draggable={!isRenaming}
-        role="treeitem"
-        aria-selected={entry.id === activeId}
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (isRenaming) return
-          if (e.key === 'Enter' || e.key === ' ') {
+      <div key={entry.id} {...itemProps(key, level, setsize, posinset, `${method} ${entry.name}`, active)}>
+        <div
+          className={`tree-row ${active ? 'active' : ''} ${entry.id === flashId ? 'flash' : ''}`}
+          style={{ paddingLeft: 8 + depth * 16 }}
+          data-entry-id={entry.id}
+          draggable={!isRenaming}
+          onDragStart={(e) => {
+            e.dataTransfer.setData(
+              'application/x-tiger-request',
+              JSON.stringify({ id: entry.id, colId })
+            )
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onClick={() => onSelect(entry.id)}
+          onContextMenu={(e) => {
             e.preventDefault()
-            onSelect(entry.id)
-          }
-        }}
-        onDragStart={(e) => {
-          e.dataTransfer.setData(
-            'application/x-tiger-request',
-            JSON.stringify({ id: entry.id, colId })
-          )
-          e.dataTransfer.effectAllowed = 'move'
-        }}
-        onClick={() => onSelect(entry.id)}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          onRequestMenu(entry.id, e.clientX, e.clientY)
-        }}
-      >
-        <span className={`method-pill m-${entry.method}`}>{entry.method.toUpperCase()}</span>
-        {isRenaming ? (
-          <input
-            className="rename-input"
-            autoFocus
-            value={draft}
-            spellCheck={false}
-            onChange={(e) => setDraft(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onBlur={() => commitRename(entry)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename(entry)
-              if (e.key === 'Escape') setRenaming(null)
-            }}
-          />
-        ) : (
-          <span
-            className="row-label"
-            title="Double-click to rename (F2)"
-            onDoubleClick={(e) => {
-              e.stopPropagation()
-              setDraft(entry.name)
-              setRenaming({ kind: 'request', id: entry.id })
-            }}
-          >
-            {entry.name}
+            onRequestMenu(entry.id, e.clientX, e.clientY)
+          }}
+        >
+          <span className={`method-pill m-${entry.method}`} aria-hidden>
+            {method}
           </span>
-        )}
-        <span className="row-actions">
-          <button
-            className="icon-btn"
-            title="Duplicate request"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDuplicateRequest(entry.id)
-            }}
-          >
-            <CopyIcon size={13} />
-          </button>
-          <button
-            className="icon-btn danger"
-            title="Delete request"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDeleteRequest(entry.id)
-            }}
-          >
-            <TrashIcon size={13} />
-          </button>
-        </span>
+          {isRenaming ? (
+            <input
+              className="rename-input"
+              aria-label={`Rename ${entry.name}`}
+              autoFocus
+              value={draft}
+              spellCheck={false}
+              onChange={(e) => setDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={() => commitRename(entry)}
+              onKeyDown={(e) => {
+                e.stopPropagation()
+                if (e.key === 'Enter') commitRename(entry)
+                if (e.key === 'Escape') cancelRename()
+              }}
+            />
+          ) : (
+            <span
+              className="row-label"
+              title={`${entry.name}\nDouble-click to rename (F2)`}
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                setDraft(entry.name)
+                setRenaming({ kind: 'request', id: entry.id })
+              }}
+            >
+              {entry.name}
+            </span>
+          )}
+          <span className="row-actions">
+            {rowButton('Duplicate request', <CopyIcon size={13} />, () => onDuplicateRequest(entry.id))}
+            {rowButton('Delete request', <TrashIcon size={13} />, () => onDeleteRequest(entry.id), true)}
+            {moreButton(entry.name, (x, y) => onRequestMenu(entry.id, x, y))}
+          </span>
+        </div>
       </div>
     )
   }
 
-  function renderFolder(folder: TreeFolder, depth: number, colId: string) {
+  /** Children of a collection or folder, with sibling position info. */
+  function renderChildren(
+    folder: TreeFolder,
+    depth: number,
+    colId: string,
+    level: number,
+    requestDepth = depth + 0.4
+  ) {
+    const size = folder.folders.length + folder.requests.length
+    return (
+      <div role="group">
+        {folder.folders.map((f, i) => renderFolder(f, depth, colId, level, size, i + 1))}
+        {folder.requests.map((r, i) =>
+          renderRequest(r, requestDepth, colId, level, size, folder.folders.length + i + 1)
+        )}
+      </div>
+    )
+  }
+
+  function renderFolder(
+    folder: TreeFolder,
+    depth: number,
+    colId: string,
+    level: number,
+    setsize: number,
+    posinset: number
+  ) {
     const open = !collapsed.has(folder.key)
     const path = (JSON.parse(folder.key) as string[]).slice(1)
+    const selected =
+      !!inspected && inspected.colId === colId && inspected.path.join('/') === path.join('/')
     return (
-      <div key={folder.key}>
+      <div key={folder.key} {...itemProps(folder.key, level, setsize, posinset, folder.name, selected, open)}>
         <div
-          className={`folder-row ${dropKey === folder.key ? 'drop-target' : ''}`}
+          className={`folder-row ${selected ? 'active' : ''} ${dropKey === folder.key ? 'drop-target' : ''}`}
           style={{ paddingLeft: 8 + depth * 16 }}
           onClick={() => onInspectFolder(colId, path)}
+          onContextMenu={(e) => {
+            if (!onFolderMenu) return
+            e.preventDefault()
+            onFolderMenu(colId, path, e.clientX, e.clientY)
+          }}
           onDragOver={(e) => {
             if (e.dataTransfer.types.includes('application/x-tiger-request')) {
               e.preventDefault()
@@ -326,20 +689,12 @@ export function Sidebar({
             }
           }}
         >
-          <button
-            className="icon-btn chev-btn"
-            title={open ? 'Collapse folder' : 'Expand folder'}
-            onClick={(e) => {
-              e.stopPropagation()
-              toggle(folder.key)
-            }}
-          >
-            <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
-          </button>
+          {chevron(open, 'folder', folder.key)}
           <FolderIcon size={14} />
           {renaming?.kind === 'folder' && renaming.key === folder.key ? (
             <input
               className="rename-input"
+              aria-label={`Rename folder ${folder.name}`}
               autoFocus
               value={draft}
               spellCheck={false}
@@ -347,14 +702,15 @@ export function Sidebar({
               onClick={(e) => e.stopPropagation()}
               onBlur={() => commitRename(undefined, colId, path)}
               onKeyDown={(e) => {
+                e.stopPropagation()
                 if (e.key === 'Enter') commitRename(undefined, colId, path)
-                if (e.key === 'Escape') setRenaming(null)
+                if (e.key === 'Escape') cancelRename()
               }}
             />
           ) : (
             <span
               className="row-label"
-              title="Double-click to rename"
+              title={`${folder.name}\nDouble-click to rename (F2)`}
               onDoubleClick={(e) => {
                 e.stopPropagation()
                 setDraft(folder.name)
@@ -365,58 +721,217 @@ export function Sidebar({
             </span>
           )}
           <span className="row-actions">
-            <button
-              className="icon-btn"
-              title="Duplicate folder"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDuplicateFolder(colId, path)
-              }}
-            >
-              <CopyIcon size={13} />
-            </button>
+            {rowButton('Duplicate folder', <CopyIcon size={13} />, () => onDuplicateFolder(colId, path))}
+            {onFolderMenu && moreButton(folder.name, (x, y) => onFolderMenu(colId, path, x, y))}
           </span>
         </div>
-        {open && (
-          <>
-            {folder.folders.map((f) => renderFolder(f, depth + 1, colId))}
-            {folder.requests.map((r) => renderRequest(r, depth + 1.4, colId))}
-          </>
-        )}
+        {open && renderChildren(folder, depth + 1, colId, level + 1)}
       </div>
     )
   }
 
-  return (
-    <aside className="panel sidebar">
-      <header>
-        <span className="title">Collections</span>
-        <button className="icon-btn" title="Open collection folder" onClick={onOpenCollection}>
-          <FolderOpenIcon />
-        </button>
-        <button className="icon-btn" title="New collection" onClick={onNewCollection}>
-          <PlusIcon size={15} />
-        </button>
-        <button className="icon-btn" title="Clone from Git" onClick={onClone}>
-          <GitBranchIcon />
-        </button>
-        <button className="icon-btn" title="Import / Export" onClick={onImportExport}>
-          <SwapIcon />
-        </button>
-      </header>
+  /** Team sync status for a tracked collection: icon + short text, full sentence on hover. */
+  function syncChips(colId: string, root?: string) {
+    const sync = syncStates[colId]
+    if (!sync?.isRepo) return null
+    const summary = summarizeSync(sync, { conflict: !!root && conflictRoots.has(root) })
+    const label = `Team sync: ${summary.label}`
+    return (
+      <button
+        type="button"
+        className="sync-chips"
+        title={`${label}. ${summary.detail}`}
+        aria-label={label}
+        tabIndex={-1}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation()
+          onGit(colId)
+        }}
+      >
+        <SyncBadge summary={summary} short />
+      </button>
+    )
+  }
 
-      <div className="sidebar-search">
+  const headerButton = (title: string, icon: ReactNode, onClick: () => void) => (
+    <button type="button" className="icon-btn" title={title} aria-label={title} onClick={onClick}>
+      {icon}
+    </button>
+  )
+
+  let tree: ReactNode
+  if (collections.length === 0) {
+    tree = (
+      <div className="sidebar-empty">
+        <FolderOpenIcon size={26} />
+        <h3>No collections open.</h3>
+        <p>
+          A collection is a folder of .tiger request files. Open one or start a new one. Coming
+          from Postman, Insomnia or Bruno? Use Import above.
+        </p>
+        <div className="sidebar-empty-actions">
+          <button type="button" className="btn accent" onClick={onOpenCollection}>
+            Open collection
+          </button>
+          <button type="button" className="btn" onClick={onNewCollection}>
+            New collection
+          </button>
+        </div>
+      </div>
+    )
+  } else if (q && searchHits.length === 0) {
+    tree = (
+      <div className="sidebar-empty" role="status">
+        <SearchIcon size={22} />
+        <p>
+          No requests match <b>{query.trim()}</b>.
+        </p>
+        <button type="button" className="btn ghost" onClick={() => setQuery('')}>
+          Clear search
+        </button>
+      </div>
+    )
+  } else if (q) {
+    tree = searchHits.map(({ col, hits }, ci) => {
+      const key = JSON.stringify([col.id])
+      return (
+        <div key={col.id} {...itemProps(key, 1, searchHits.length, ci + 1, col.name, false, true)}>
+          <div className="col-head search-head">
+            <span className="row-label" title={col.name}>
+              {col.name}
+            </span>
+            <span className="col-count" aria-hidden>
+              {hits.length}
+            </span>
+          </div>
+          <div role="group">
+            {hits.map((e, i) => renderRequest(e, 1, col.id, 2, hits.length, i + 1))}
+          </div>
+        </div>
+      )
+    })
+  } else {
+    tree = trees.map(({ col, tree: root }, ci) => {
+      const colKey = root.key
+      const open = !collapsed.has(colKey)
+      const selected = !!inspected && inspected.colId === col.id && inspected.path.length === 0
+      return (
+        <div key={col.id} {...itemProps(colKey, 1, trees.length, ci + 1, col.name, selected, open)}>
+          <div
+            className={`col-head ${selected ? 'active' : ''} ${dropKey === colKey ? 'drop-target' : ''}`}
+            onClick={() => onInspectCollection(col.id)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              onCollectionMenu(col.id, e.clientX, e.clientY)
+            }}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes('application/x-tiger-request')) {
+                e.preventDefault()
+                setDropKey(colKey)
+              }
+            }}
+            onDragLeave={() => setDropKey((k) => (k === colKey ? null : k))}
+            onDrop={(e) => {
+              e.preventDefault()
+              setDropKey(null)
+              try {
+                const payload = JSON.parse(e.dataTransfer.getData('application/x-tiger-request'))
+                if (payload.colId === col.id) onMoveRequest(payload.id, col.id, [])
+              } catch {
+                /* not ours */
+              }
+            }}
+          >
+            {chevron(open, 'collection', colKey)}
+            <span className="row-label" title={col.root ? `${col.name}\n${col.root}` : col.name}>
+              {col.name}
+            </span>
+            {syncChips(col.id, col.root)}
+            <span className="row-actions">
+              {col.root && rowButton(actionTitle('team-sync'), <GitBranchIcon size={13} />, () => onGit(col.id))}
+              {rowButton(actionTitle('new-request'), <PlusIcon size={13} />, () => onNewRequest(col.id))}
+              {rowButton('Close collection', <CloseIcon size={13} />, () => onCloseCollection(col.id), true)}
+              {moreButton(col.name, (x, y) => onCollectionMenu(col.id, x, y))}
+            </span>
+          </div>
+          {open && renderChildren(root, 1, col.id, 2, 1)}
+        </div>
+      )
+    })
+  }
+
+  return (
+    <nav className="panel sidebar" aria-labelledby="sidebar-title">
+      <div className="sidebar-head">
+        <h2 className="title" id="sidebar-title">
+          Collections
+        </h2>
+        {headerButton(actionTitle('join-team'), <UsersIcon />, onClone)}
+      </div>
+      <div className="sidebar-actions" role="group" aria-label="Collection actions">
+        <button
+          type="button"
+          className="btn ghost sidebar-action"
+          title="New request, folder, collection or environment"
+          aria-haspopup="menu"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            if (onNewMenu) onNewMenu(r.left, r.bottom + 4)
+            else onNewCollection()
+          }}
+        >
+          <PlusIcon size={14} />
+          New
+          <ChevronDownIcon size={12} />
+        </button>
+        <button
+          type="button"
+          className="btn ghost sidebar-action"
+          title={actionTitle('open-collection')}
+          onClick={onOpenCollection}
+        >
+          <FolderOpenIcon size={14} />
+          Open
+        </button>
+        <button
+          type="button"
+          className="btn ghost sidebar-action"
+          title="Import from Postman, Insomnia, Bruno, OpenAPI or curl"
+          onClick={onImportExport}
+        >
+          <UploadIcon size={14} />
+          Import
+        </button>
+      </div>
+
+      <div className="sidebar-search" role="search">
         <SearchIcon size={13} />
         <input
+          type="search"
+          aria-label="Search requests"
           placeholder="Search requests"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && query) {
+              e.preventDefault()
+              setQuery('')
+            } else if (e.key === 'ArrowDown' && flat.length) {
+              e.preventDefault()
+              moveTo(q ? (flat.find((n) => n.kind === 'request')?.key ?? flat[0].key) : flat[0].key)
+            }
+          }}
           spellCheck={false}
         />
       </div>
 
       <div
         className="tree"
+        ref={treeRef}
+        role={flat.length ? 'tree' : undefined}
+        aria-labelledby={flat.length ? 'sidebar-title' : undefined}
+        onKeyDown={onTreeKeyDown}
         onContextMenu={(e) => {
           if (e.target === e.currentTarget) {
             e.preventDefault()
@@ -424,155 +939,15 @@ export function Sidebar({
           }
         }}
       >
-        {collections.length === 0 && (
-          <div className="empty" style={{ height: 'auto', padding: '40px 12px' }}>
-            <div>No collections open.</div>
-            <button className="btn" onClick={onOpenCollection}>
-              Open a folder
-            </button>
-          </div>
-        )}
-
-        {q
-          ? trees.map(({ col }) => {
-              const hits = col.entries.filter((e) => e.name.toLowerCase().includes(q))
-              if (!hits.length) return null
-              return (
-                <div key={col.id}>
-                  <div className="col-head" style={{ cursor: 'default' }}>
-                    <span className="row-label">{col.name}</span>
-                  </div>
-                  {hits.map((e) => renderRequest(e, 1, col.id))}
-                </div>
-              )
-            })
-          : trees.map(({ col, tree }) => {
-              const colKey = JSON.stringify([col.id])
-              const open = !collapsed.has(colKey)
-              return (
-                <div key={col.id}>
-                  <div
-                    className={`col-head ${dropKey === colKey ? 'drop-target' : ''}`}
-                    onClick={() => onInspectCollection(col.id)}
-                    onContextMenu={(e) => {
-                      e.preventDefault()
-                      onCollectionMenu(col.id, e.clientX, e.clientY)
-                    }}
-                    onDragOver={(e) => {
-                      if (e.dataTransfer.types.includes('application/x-tiger-request')) {
-                        e.preventDefault()
-                        setDropKey(colKey)
-                      }
-                    }}
-                    onDragLeave={() => setDropKey((k) => (k === colKey ? null : k))}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      setDropKey(null)
-                      try {
-                        const payload = JSON.parse(
-                          e.dataTransfer.getData('application/x-tiger-request')
-                        )
-                        if (payload.colId === col.id) onMoveRequest(payload.id, col.id, [])
-                      } catch {
-                        /* not ours */
-                      }
-                    }}
-                  >
-                    <button
-                      className="icon-btn chev-btn"
-                      title={open ? 'Collapse collection' : 'Expand collection'}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggle(colKey)
-                      }}
-                    >
-                      <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
-                    </button>
-                    <span className="row-label">{col.name}</span>
-                    {(() => {
-                      const sync = syncStates[col.id]
-                      if (!sync?.isRepo) return null
-                      const clean = sync.dirtyCount === 0 && sync.ahead === 0 && sync.behind === 0
-                      return (
-                        <span
-                          className="sync-chips"
-                          title="Team sync — click to open"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onGit(col.id)
-                          }}
-                        >
-                          {sync.dirtyCount > 0 && (
-                            <span className="git-chip dirty" title={`${sync.dirtyCount} change(s) not yet shared`}>
-                              {sync.dirtyCount}
-                            </span>
-                          )}
-                          {sync.ahead > 0 && (
-                            <span className="git-chip ahead" title={`${sync.ahead} update(s) ready to share`}>
-                              <ArrowUpIcon size={10} />
-                              {sync.ahead}
-                            </span>
-                          )}
-                          {sync.behind > 0 && (
-                            <span className="git-chip behind" title={`${sync.behind} team update(s) to fetch`}>
-                              <ArrowDownIcon size={10} />
-                              {sync.behind}
-                            </span>
-                          )}
-                          {clean && (
-                            <span className="git-chip synced" title="In sync with your team">
-                              <CheckIcon size={10} />
-                            </span>
-                          )}
-                        </span>
-                      )
-                    })()}
-                    <span className="row-actions" onClick={(e) => e.stopPropagation()}>
-                      {col.root && (
-                        <button className="icon-btn" title="Team sync" onClick={() => onGit(col.id)}>
-                          <GitBranchIcon size={13} />
-                        </button>
-                      )}
-                      <button
-                        className="icon-btn"
-                        title={`New request (${MOD}+T)`}
-                        onClick={() => onNewRequest(col.id)}
-                      >
-                        <PlusIcon size={13} />
-                      </button>
-                      <button
-                        className="icon-btn danger"
-                        title="Close collection"
-                        onClick={() => onCloseCollection(col.id)}
-                      >
-                        <CloseIcon size={13} />
-                      </button>
-                    </span>
-                  </div>
-                  {open && (
-                    <>
-                      {tree.folders.map((f) => renderFolder(f, 1, col.id))}
-                      {tree.requests.map((r) => renderRequest(r, 1, col.id))}
-                    </>
-                  )}
-                </div>
-              )
-            })}
+        {tree}
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 7,
-          padding: '9px 12px',
-          borderTop: '1px solid var(--border)',
-          color: 'var(--text-dim)',
-          fontSize: 11
-        }}
-      >
-        <Logo size={16} /> Tiger · local-first API client
+      <div className="sidebar-foot">
+        <span aria-hidden>
+          <Logo size={16} />
+        </span>
+        <span>Tiger · local-first API client</span>
       </div>
-    </aside>
+    </nav>
   )
 }

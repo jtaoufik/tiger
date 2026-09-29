@@ -1,0 +1,94 @@
+/* Environments manager. Base .env-* rules live in styles.css; the extra
+   .envs-modal class outranks them (styles.css loads after component CSS). */
+.envs-modal .env-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+}
+.envs-modal .env-row {
+  padding: 3px 4px;
+  gap: 4px;
+  cursor: default;
+}
+.envs-modal .env-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.envs-modal .env-pick[aria-current='true'] {
+  font-weight: 650;
+}
+.env-active-tag {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  padding: 0 5px;
+}
+/* Actions stay reachable by keyboard, not only on hover. */
+.envs-modal .env-row:focus-within .row-actions {
+  display: inline-flex;
+}
+.envs-modal .env-activate {
+  width: 26px;
+  height: 26px;
+  opacity: 0.55;
+}
+.envs-modal .env-activate.on {
+  opacity: 1;
+}
+.envs-modal .env-confirm {
+  min-height: 26px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.envs-modal .env-kv {
+  /* Fixed action column (secret, reveal, remove) so every row lines up,
+     including the blank one with no actions. */
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.4fr) 90px;
+}
+.env-kv-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+.env-kv-actions .icon-btn.on {
+  color: var(--accent-text);
+}
+.env-hint {
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.envs-modal .env-main .modal-empty {
+  height: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .envs-modal.env-layout {
+    grid-template-columns: 1fr;
+  }
+  .envs-modal .env-side {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+}

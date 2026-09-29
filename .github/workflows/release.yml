@@ -4,7 +4,20 @@ name: Release
 # (e.g. v0.4.0) and attach ONLY the installers + source code to the release.
 # macOS is signed + notarized for free with an Apple Developer ID when the
 # MAC_CSC_LINK / APPLE_* secrets are set; otherwise it builds unsigned.
-# Windows is signed for free by SignPath Foundation once approved (docs/RELEASING.md).
+#
+# Windows signing is tried in this order, all conditional on secrets so the
+# build still works unsigned when none are configured:
+#   1. Azure Trusted Signing  - AZURE_TENANT_ID / AZURE_CLIENT_ID /
+#      AZURE_CLIENT_SECRET / AZURE_SIGN_ENDPOINT / AZURE_SIGN_ACCOUNT /
+#      AZURE_SIGN_PROFILE (+ optional AZURE_SIGN_PUBLISHER). electron-builder
+#      signs the NSIS installer and the portable exe as part of `Package`.
+#   2. SignPath Foundation    - SIGNPATH_API_TOKEN secret plus the
+#      SIGNPATH_ORG_ID / SIGNPATH_PROJECT_SLUG / SIGNPATH_POLICY_SLUG vars.
+#      Only used as a fallback when Azure secrets are absent: the unsigned
+#      NSIS installer is uploaded, submitted for signing and swapped back in.
+#   3. Plain PFX certificate  - WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD secrets,
+#      passed to electron-builder as CSC_LINK / CSC_KEY_PASSWORD.
+# See website/docs/install for the user-facing SmartScreen guidance.
 
 on:
   push:
@@ -20,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-15  # macos-26 (latest) breaks electron-builder's keychain import (set-key-partition-list)
           - os: windows-latest
           - os: ubuntu-latest
     runs-on: ${{ matrix.os }}
@@ -45,7 +58,7 @@ jobs:
       # separate DMG-level step below (via the App Store Connect API key), so the
       # afterSign hook (build/notarize.cjs) intentionally stays a no-op.
       - name: Configure macOS signing
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
@@ -59,19 +72,174 @@ jobs:
             echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
           fi
 
+      # Pick a Windows signing method from whichever secrets are configured, in the
+      # order documented above. Nothing here fails the build when secrets are absent;
+      # it just falls through to an unsigned build (WIN_SIGN_METHOD=none), which
+      # SignPath can still sign afterwards as a fallback.
+      - name: Configure Windows signing
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGN_ENDPOINT: ${{ secrets.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ secrets.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ secrets.AZURE_SIGN_PROFILE }}
+          AZURE_SIGN_PUBLISHER: ${{ secrets.AZURE_SIGN_PUBLISHER }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          if [ -n "$AZURE_TENANT_ID" ] && [ -n "$AZURE_CLIENT_ID" ] && [ -n "$AZURE_CLIENT_SECRET" ] && [ -n "$AZURE_SIGN_ENDPOINT" ] && [ -n "$AZURE_SIGN_ACCOUNT" ] && [ -n "$AZURE_SIGN_PROFILE" ]; then
+            echo "Azure Trusted Signing secrets present; the Windows build will be signed via Azure Trusted Signing."
+            # AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET are read directly
+            # by electron-builder's Azure signing manager (azure/identity EnvironmentCredential),
+            # already exported as env vars for this job step and the Package step below.
+            # azureSignOptions is only set here (not in package.json) so an unsigned build
+            # never has it and never gets forced into signing.
+            echo "WIN_SIGN_METHOD=azure" >> "$GITHUB_ENV"
+          elif [ -n "$WIN_CSC_LINK" ] && [ -n "$WIN_CSC_KEY_PASSWORD" ]; then
+            echo "PFX certificate secrets present; the Windows build will be signed with the provided certificate."
+            echo "CSC_LINK=$WIN_CSC_LINK" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$WIN_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "WIN_SIGN_METHOD=pfx" >> "$GITHUB_ENV"
+          else
+            echo "No Azure/PFX signing secrets; building unsigned (SignPath may sign it afterward if configured)."
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "WIN_SIGN_METHOD=none" >> "$GITHUB_ENV"
+          fi
+          # Secrets cannot appear in `if:` expressions, so expose a plain flag instead.
+          if [ -n "$SIGNPATH_API_TOKEN" ]; then echo "HAS_SIGNPATH=1" >> "$GITHUB_ENV"; fi
+
       # Build the installers locally (no electron-updater metadata upload), so the
       # GitHub release stays clean: just the installers below + the source code that
       # GitHub attaches automatically. This intentionally omits latest*.yml / .blockmap
       # files, which means in-app auto-update is not served from these releases.
+      # azureSignOptions is only passed here (never in package.json) so an unsigned
+      # build is never forced into signing. A bash array keeps values with spaces
+      # (e.g. a publisher name) as single arguments.
       - name: Package
-        run: npx electron-builder --publish never
+        shell: bash
+        run: |
+          ARGS=(--publish never)
+          if [ "${WIN_SIGN_METHOD:-}" = "azure" ]; then
+            ARGS+=("-c.win.azureSignOptions.endpoint=$AZURE_SIGN_ENDPOINT"
+                   "-c.win.azureSignOptions.certificateProfileName=$AZURE_SIGN_PROFILE"
+                   "-c.win.azureSignOptions.codeSigningAccountName=$AZURE_SIGN_ACCOUNT")
+            if [ -n "$AZURE_SIGN_PUBLISHER" ]; then ARGS+=("-c.win.publisherName=$AZURE_SIGN_PUBLISHER"); fi
+          fi
+          npx electron-builder "${ARGS[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGN_ENDPOINT: ${{ secrets.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ secrets.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ secrets.AZURE_SIGN_PROFILE }}
+          AZURE_SIGN_PUBLISHER: ${{ secrets.AZURE_SIGN_PUBLISHER }}
+
+      # SignPath Foundation fallback: only runs when Azure/PFX signing above was not
+      # configured. Signs the outer NSIS installer exe after the fact. Note: this signs
+      # the installer wrapper only - the app.exe packed inside it (and the portable exe)
+      # stay unsigned with this path, unlike Azure Trusted Signing or a PFX certificate,
+      # which electron-builder signs before packing. Prefer Azure Trusted Signing when
+      # you need every exe signed.
+      - name: Find unsigned installer for SignPath
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
+        id: find-installer
+        shell: bash
+        run: |
+          FILE=$(ls release/Tiger-Setup-*.exe | head -n1)
+          echo "path=$FILE" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$FILE")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload unsigned installer artifact
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: ${{ steps.find-installer.outputs.path }}
+          retention-days: 1
+
+      - name: Sign installer with SignPath
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ vars.SIGNPATH_ORG_ID }}'
+          project-slug: '${{ vars.SIGNPATH_PROJECT_SLUG }}'
+          signing-policy-slug: '${{ vars.SIGNPATH_POLICY_SLUG }}'
+          github-artifact-id: '${{ steps.upload-unsigned.outputs.artifact-id }}'
+          wait-for-completion: true
+          output-artifact-directory: 'signpath-signed'
+
+      - name: Replace installer with the SignPath-signed copy
+        if: matrix.os == 'windows-latest' && env.WIN_SIGN_METHOD == 'none' && env.HAS_SIGNPATH == '1'
+        shell: bash
+        run: |
+          cp "signpath-signed/${{ steps.find-installer.outputs.name }}" "${{ steps.find-installer.outputs.path }}"
+          echo "WIN_SIGN_METHOD=signpath" >> "$GITHUB_ENV"
+
+      # Prints Authenticode status for every Windows exe so the run log always shows
+      # signed vs unsigned, whichever of the methods above ran (or none).
+      - name: Report Windows signature status
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path release -Filter *.exe -Recurse | ForEach-Object {
+            $sig = Get-AuthenticodeSignature -FilePath $_.FullName
+            Write-Host "$($_.Name): $($sig.Status) $(if ($sig.SignerCertificate) { '(' + $sig.SignerCertificate.Subject + ')' })"
+          }
+
+      # Microsoft Store (MSIX/appx) submission package. Only built once the app's identity
+      # is reserved in Partner Center (see docs/RELEASING.md) - those values are real,
+      # per-publisher identifiers, never hardcoded, so this step (and everything below it)
+      # is a no-op until MSSTORE_IDENTITY_NAME / MSSTORE_PUBLISHER / MSSTORE_PUBLISHER_
+      # DISPLAY_NAME are set as repo variables. Microsoft signs the package on ingestion,
+      # so it's built and uploaded unsigned - it never goes near the GitHub release assets,
+      # only a workflow artifact for manual or automated Store upload.
+      - name: Build Microsoft Store package (appx)
+        if: matrix.os == 'windows-latest' && vars.MSSTORE_IDENTITY_NAME != '' && vars.MSSTORE_PUBLISHER != '' && vars.MSSTORE_PUBLISHER_DISPLAY_NAME != ''
+        shell: bash
+        env:
+          MSSTORE_IDENTITY_NAME: ${{ vars.MSSTORE_IDENTITY_NAME }}
+          MSSTORE_PUBLISHER: ${{ vars.MSSTORE_PUBLISHER }}
+          MSSTORE_PUBLISHER_DISPLAY_NAME: ${{ vars.MSSTORE_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          npx electron-builder --win appx --x64 --publish never \
+            "-c.appx.identityName=$MSSTORE_IDENTITY_NAME" \
+            "-c.appx.publisher=$MSSTORE_PUBLISHER" \
+            "-c.appx.publisherDisplayName=$MSSTORE_PUBLISHER_DISPLAY_NAME"
+
+      - name: Upload Microsoft Store package artifact
+        if: matrix.os == 'windows-latest' && vars.MSSTORE_IDENTITY_NAME != '' && vars.MSSTORE_PUBLISHER != '' && vars.MSSTORE_PUBLISHER_DISPLAY_NAME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiger-msstore-appx
+          path: release/*.appx
+          retention-days: 30
+
+      # Attach a version-less copy of every installer alongside the versioned one, so
+      # the website and README can link to a stable /releases/latest/download/<name>
+      # URL that never needs to change between releases.
+      - name: Add version-less installer aliases
+        shell: bash
+        run: |
+          cd release
+          for f in Tiger-*.dmg Tiger-Setup-*.exe Tiger-Portable-*.exe Tiger-*.AppImage Tiger-*.deb; do
+            [ -e "$f" ] || continue
+            alias=$(echo "$f" | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+//')
+            cp "$f" "$alias"
+          done
+          ls -la
 
       # Notarize + staple the signed DMGs with Apple using an App Store Connect API
       # key (no app-specific password needed). Skips cleanly when the key is absent.
       - name: Notarize and staple macOS DMGs
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         env:
           MAC_NOTARY_KEY: ${{ secrets.MAC_NOTARY_KEY }}
           MAC_NOTARY_KEY_ID: ${{ secrets.MAC_NOTARY_KEY_ID }}
@@ -91,6 +259,18 @@ jobs:
           done
           rm -f "$KEYFILE"
 
+      - name: Generate release notes
+        if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
+        run: node scripts/release-notes.mjs "${{ github.ref_name }}" > release-notes.md
+
+      - name: Upload release notes
+        if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 1
+
       - name: Attach installers to the release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -102,15 +282,83 @@ jobs:
             release/*.exe
             release/*.AppImage
             release/*.deb
-            release/*.zip
+
+  # Publish the generated release-notes.md as the release body once every OS has
+  # attached its installers. Runs after `build` so the notes land on a fully
+  # populated release rather than racing the per-OS uploads above.
+  publish-notes:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - name: Set release body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --repo "$REPO" --notes-file release-notes.md
+
+  # winget: submit new versions automatically once WINGET_TOKEN is configured (a
+  # fine-grained PAT with permission to open PRs against microsoft/winget-pkgs).
+  # Disabled by default so this job is a no-op until that secret exists - see
+  # packaging/winget/manifests for the manifest checked in for the current release.
+  publish-winget:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/') && vars.WINGET_ENABLED == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: jtaoufik.Tiger
+          installers-regex: 'Tiger-Setup-.*-windows-x64\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+
+  # Submit the appx built above to the Microsoft Store via the MSStore Developer CLI.
+  # Disabled by default (no-op until MSSTORE_CLIENT_SECRET exists): syntax verified
+  # against Microsoft's own GitHub Actions doc (learn.microsoft.com, "Publish app
+  # updates to Microsoft Store with GitHub Actions" > MSIX tab), not guessed. First
+  # submission is still manual through Partner Center (see docs/RELEASING.md) - the
+  # Store requires an app to already be live before CLI updates work, and free-product
+  # update automation is what this action supports.
+  publish-msstore:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/') && vars.MSSTORE_AUTOPUBLISH == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tiger-msstore-appx
+          path: msstore
+
+      - uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Configure Microsoft Store CLI
+        shell: pwsh
+        run: |
+          msstore reconfigure `
+            --tenantId ${{ secrets.MSSTORE_TENANT_ID }} `
+            --sellerId ${{ secrets.MSSTORE_SELLER_ID }} `
+            --clientId ${{ secrets.MSSTORE_CLIENT_ID }} `
+            --clientSecret ${{ secrets.MSSTORE_CLIENT_SECRET }}
+
+      - name: Publish app package to the Microsoft Store
+        shell: pwsh
+        run: |
+          $appx = Get-ChildItem -Path msstore -Filter *.appx | Select-Object -First 1
+          msstore publish "$($appx.FullName)" -id ${{ secrets.MSSTORE_PRODUCT_ID }}
 
   # Keep only the release for the tag that just shipped. Runs once after every
   # matrix build attached its installers, so the new release is fully populated
   # before we delete the previous ones. Git tags are intentionally preserved
   # (cheap, and `compare/` diff links rely on them).
   cleanup-old-releases:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, publish-notes]
+    if: always() && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write

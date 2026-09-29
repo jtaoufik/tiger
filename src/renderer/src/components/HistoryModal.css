@@ -1,0 +1,42 @@
+/* History modal. Base .hist-* rules live in styles.css. */
+.hist-bar {
+  flex-wrap: wrap;
+}
+.hist-bar .hist-filter {
+  flex: 1;
+  min-width: 180px;
+  margin-bottom: 0;
+}
+.hist-confirm {
+  display: inline-flex;
+  gap: 6px;
+}
+.hist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.modal-backdrop .hist-list .hist-row {
+  gap: 10px;
+  padding: 7px 4px;
+}
+.hist-list .hist-row .url {
+  min-width: 0;
+}
+.hist-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 12px;
+}
+/* >= 4.5:1 on the modal glass in both themes. */
+.hist-status.ok { color: #146b41; }
+.hist-status.bad { color: #b42318; }
+[data-theme='dark'] .hist-status.ok { color: #4cc38a; }
+[data-theme='dark'] .hist-status.bad { color: #ff8b7a; }
+.hist-list .meta-chip {
+  white-space: nowrap;
+  font-size: 12px;
+}

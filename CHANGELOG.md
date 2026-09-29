@@ -3,6 +3,21 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## Unreleased
+
+- Clearer menus and names. Every action has one name everywhere: the native menu, the command palette, context menus, tooltips and the shortcuts overlay all read the same list. Request tabs are renamed and reordered by use: Params, Body, Headers, Auth, Save values (was Capture), Scripts & tests, Notes (was Docs), Code snippet (was Code), Load test (was Perf). Settings > MCP is now AI assistants (MCP).
+- The sidebar leads with labelled buttons: New (request, folder, collection, environment), Open and Import. Every row has a "More actions" button with the same menu as right click, including Rename. You can now create folders from the app.
+- The command palette (Cmd/Ctrl+K) finds commands as well as requests; type ">" for commands only.
+- Native menu reorganised: File creates, opens, imports and exports; Request holds Send, Save, Duplicate, Copy as curl, Load test and Run collection; View adds Toggle sidebar (Cmd/Ctrl+B), Theme and zoom that answers Ctrl+= on Windows; Help adds Getting started and Documentation.
+- Team sync for people who do not use git. One status, with an icon and words, shows everywhere a collection appears (collection header, overview, sidebar row, dialog): Not tracked, Only on this computer, Not shared yet, 3 local changes, 2 updates from team, Up to date, or Conflict: needs a decision. The git term stays in small print for those who know it.
+- Sharing a collection is a three-step guide: turn on version tracking, connect a shared repository (the address is checked as you type, with a one-click fix for a browser page or a missing https://), then share. The first sync now publishes a brand-new collection instead of failing, and an address that cannot be reached no longer leaves a half-connected collection.
+- Your changes are listed as requests, grouped Added / Changed / Removed, with the diff of each one on click and a suggested version note ("Update Get user, add Create post") you can edit. Sync shows what it is doing ("Getting team's changes…") and what it did ("Synced: 2 updates received, 3 sent.").
+- Discarding changes, all of them or one request, asks first and names what will be lost, now includes new requests, and can be undone right after.
+- Conflicts show your version and the team's version side by side for each request, with Keep mine / Keep theirs per request, Keep all mine / Keep all theirs, or Decide later (the conflict stays flagged until you choose).
+- Sign-in problems stay on screen with steps for your system and links: Git Credential Manager (built into Git for Windows), a personal access token, or an SSH key. If git does not know your name yet, Tiger asks for it inline.
+- "Clone from Git" is now "Join a team collection", a guided dialog that keeps errors and the fix in view. New commands in the menu and palette: Join a team collection, Team sync, Sync with team, Save a version, Share with your team. Version lines (branches), get-only and share-only steps and the full diff stay under Advanced.
+- The home screen has a three-step Getting started checklist, and complex panels (Save values, Scripts & tests, Load test, Auth, Environments, Import and export, Runner, Response, AI assistants) carry a "?" that opens their guide.
+
 ## 0.6.0
 
 - Sync conflicts are now resolved inside Tiger. When you and a teammate change the same thing, the sync card asks whose version should win where the changes overlap: "Keep my version" or "Use the team's version". Everything that does not overlap is combined automatically, and the shared history keeps both sides. No editor, no merge tools, no git knowledge required.

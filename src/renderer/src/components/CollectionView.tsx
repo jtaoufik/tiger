@@ -1,21 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useId, useState } from 'react'
 import type { TigerAuth } from '@core/types'
-import type { GitStatus } from '../../../main/git'
 import type { HistoryEntry } from '../../../main/history'
 import { AuthEditor } from './AuthEditor'
 import { REVEAL_LABEL } from '../platform'
+import { rovingIndex } from '../a11y'
+import { setupStep, summarizeSync } from '../gitUx'
+import { ErrorPanel, ProgressLine, SyncBadge, useTeamSync } from './TeamSync'
 import './PageTabs.css'
 import {
   CheckIcon,
   ClockIcon,
+  CloseIcon,
+  DownloadIcon,
   FolderOpenIcon,
-  GitBranchIcon,
   PlayIcon,
   PlusIcon,
   RefreshIcon,
-  SwapIcon,
-  TrashIcon
+  UsersIcon
 } from './Icons'
+import { actionTitle, actionLabel } from '../actions'
+import { HelpLink } from './HelpLink'
 
 export interface CollectionInfo {
   id: string
@@ -43,7 +47,13 @@ interface Props {
   onWorkingTreeChanged?: () => void
 }
 
-type SyncScreen = 'loading' | 'browser' | 'no-git' | 'no-repo' | 'no-remote' | 'ready'
+type PageTab = 'overview' | 'docs' | 'auth' | 'activity'
+const PAGE_TABS: { id: PageTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'docs', label: 'Notes' },
+  { id: 'auth', label: 'Auth' },
+  { id: 'activity', label: 'Activity' }
+]
 
 /**
  * Full-page view for a collection: team sync first, then auth, contents and
@@ -62,114 +72,79 @@ export function CollectionView({
   onOpenGitDetails,
   onWorkingTreeChanged
 }: Props) {
-  const [pageTab, setPageTab] = useState<'overview' | 'docs' | 'auth' | 'activity'>('overview')
-  const [screen, setScreen] = useState<SyncScreen>('loading')
-  const [status, setStatus] = useState<GitStatus | null>(null)
-  const [remoteUrl, setRemoteUrl] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [conflict, setConflict] = useState(false)
+  const [pageTab, setPageTab] = useState<PageTab>('overview')
+  const uid = useId()
+  const sync = useTeamSync(collection.root, { onToast, onWorkingTreeChanged })
+  const summary = summarizeSync(sync.status, { conflict: sync.conflict })
+  const step = setupStep(sync.status)
 
-  const refresh = useCallback(async () => {
-    if (!collection.root || !window.tiger?.git) return setScreen('browser')
-    if (!(await window.tiger.git.check()).ok) return setScreen('no-git')
-    const next = await window.tiger.git.status(collection.root)
-    setStatus(next)
-    if (!next.isRepo) return setScreen('no-repo')
-    setScreen(next.hasRemote ? 'ready' : 'no-remote')
-  }, [collection.root])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  const act = useCallback(
-    async (run: () => Promise<{ ok: boolean; message: string }>) => {
-      setBusy(true)
-      try {
-        const result = await run()
-        onToast(result.message)
-        await refresh()
-      } finally {
-        setBusy(false)
-      }
-    },
-    [onToast, refresh]
-  )
-
-  /** One-button sync; a conflict flips the card to "keep mine / take theirs". */
-  const doSync = useCallback(async () => {
-    setBusy(true)
-    try {
-      const result = await window.tiger!.git.sync(collection.root!, '')
-      if (result.conflict) {
-        setConflict(true)
-      } else {
-        onToast(result.message)
-        if (result.ok) onWorkingTreeChanged?.()
-      }
-      await refresh()
-    } finally {
-      setBusy(false)
-    }
-  }, [collection.root, onToast, onWorkingTreeChanged, refresh])
-
-  const doResolve = useCallback(
-    async (prefer: 'mine' | 'theirs') => {
-      setBusy(true)
-      try {
-        const result = await window.tiger!.git.syncResolve(collection.root!, prefer, '')
-        onToast(result.message)
-        if (result.ok) {
-          setConflict(false)
-          onWorkingTreeChanged?.()
-        }
-        await refresh()
-      } finally {
-        setBusy(false)
-      }
-    },
-    [collection.root, onToast, onWorkingTreeChanged, refresh]
-  )
-
-  const summary = !status
-    ? ''
-    : status.dirtyCount > 0
-      ? `${status.dirtyCount} change${status.dirtyCount > 1 ? 's' : ''} not yet shared with the team.`
-      : status.behind > 0
-        ? `Your team made ${status.behind} update${status.behind > 1 ? 's' : ''} you don't have yet.`
-        : status.ahead > 0
-          ? `${status.ahead} update${status.ahead > 1 ? 's' : ''} ready to share.`
-          : 'Everything is in sync with your team.'
+  /** Sync from the page; a conflict opens the dialog where both versions show. */
+  const doSync = async (): Promise<void> => {
+    const result = await sync.sync()
+    if (result?.conflict) onOpenGitDetails()
+  }
 
   return (
-    <section className="panel collection-view">
+    <section className="panel collection-view" aria-labelledby={`${uid}-title`}>
       <div className="cv-head">
-        <div>
-          <h2>{collection.name}</h2>
-          {collection.root && <div className="cv-path">{collection.root}</div>}
+        <div className="cv-title">
+          <h2 id={`${uid}-title`} title={collection.name}>
+            <span className="cv-name">{collection.name}</span>
+          </h2>
+          {collection.root && (
+            <div className="cv-path" title={collection.root}>
+              {collection.root}
+            </div>
+          )}
+          {collection.root && sync.availability === 'ready' && (
+            <button
+              type="button"
+              className="ts-pill"
+              aria-label={`Team sync: ${summary.label}. Open team sync`}
+              title={summary.detail}
+              onClick={onOpenGitDetails}
+            >
+              <SyncBadge summary={summary} />
+            </button>
+          )}
         </div>
-        <span style={{ flex: 1 }} />
-        <button className="btn" onClick={onRun} title="Run every request in this collection">
-          <PlayIcon size={14} /> Run
-        </button>
-        <button className="btn" onClick={onNewRequest}>
-          <PlusIcon size={14} /> New request
-        </button>
-        <button className="btn" onClick={onImportExport}>
-          <SwapIcon size={14} /> Import / Export
-        </button>
-        {collection.root && (
-          <button
-            className="icon-btn"
-            title={REVEAL_LABEL}
-            onClick={() => window.tiger?.reveal?.(collection.root!)}
-          >
-            <FolderOpenIcon />
+        <div className="cv-actions">
+          <button type="button" className="btn accent" onClick={onNewRequest}>
+            <PlusIcon size={14} /> New request
           </button>
-        )}
-        <button className="icon-btn danger" title="Close collection" onClick={onClose}>
-          <TrashIcon />
-        </button>
+          <button type="button" className="btn" onClick={onRun} title={actionTitle('run-collection')}>
+            <PlayIcon size={14} /> {actionLabel('run-collection')}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={onImportExport}
+            title="Export this collection as Postman or OpenAPI"
+          >
+            <DownloadIcon size={14} /> {actionLabel('export')}
+          </button>
+          {collection.root && (
+            <button
+              type="button"
+              className="icon-btn"
+              title={REVEAL_LABEL}
+              aria-label={REVEAL_LABEL}
+              onClick={() => window.tiger?.reveal?.(collection.root!)}
+            >
+              <FolderOpenIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            className="icon-btn danger"
+            title="Close collection (the files stay on disk)"
+            aria-label="Close collection"
+            onClick={onClose}
+          >
+            <CloseIcon />
+          </button>
+          <HelpLink page="collections" topic="Collections" />
+        </div>
       </div>
 
       <div className="cv-stats">
@@ -189,40 +164,66 @@ export function CollectionView({
       </div>
 
       <div className="cv-tabcard">
-      <div className="tabs cv-tabs">
-        <button
-          className={`tab ${pageTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setPageTab('overview')}
-        >
-          Overview
-        </button>
-        <button
-          className={`tab ${pageTab === 'docs' ? 'active' : ''}`}
-          onClick={() => setPageTab('docs')}
-        >
-          Docs {!!collection.docs?.trim() && <span className="dot" />}
-        </button>
-        <button
-          className={`tab ${pageTab === 'auth' ? 'active' : ''}`}
-          onClick={() => setPageTab('auth')}
-        >
-          Auth {!!collection.auth && collection.auth.type !== 'none' && <span className="dot" />}
-        </button>
-        <button
-          className={`tab ${pageTab === 'activity' ? 'active' : ''}`}
-          onClick={() => setPageTab('activity')}
-        >
-          Activity {history.length > 0 && <span className="count">{Math.min(history.length, 8)}</span>}
-        </button>
+      <div className="tabs cv-tabs" role="tablist" aria-label="Collection sections">
+        {PAGE_TABS.map((t, i) => {
+          const on = pageTab === t.id
+          const marker =
+            t.id === 'docs' && collection.docs?.trim() ? (
+              <>
+                {' '}
+                <span className="dot" aria-hidden />
+                <span className="sr-only">(written)</span>
+              </>
+            ) : t.id === 'auth' && collection.auth && collection.auth.type !== 'none' ? (
+              <>
+                {' '}
+                <span className="dot" aria-hidden />
+                <span className="sr-only">(set)</span>
+              </>
+            ) : t.id === 'activity' && history.length > 0 ? (
+              <>
+                {' '}
+                <span className="count">{Math.min(history.length, 8)}</span>
+              </>
+            ) : null
+          return (
+            <button
+              type="button"
+              key={t.id}
+              role="tab"
+              id={`${uid}-tab-${t.id}`}
+              aria-selected={on}
+              aria-controls={`${uid}-panel`}
+              tabIndex={on ? 0 : -1}
+              className={`tab ${on ? 'active' : ''}`}
+              onClick={() => setPageTab(t.id)}
+              onKeyDown={(e) => {
+                const next = rovingIndex(e.key, i, PAGE_TABS.length)
+                if (next === null) return
+                e.preventDefault()
+                setPageTab(PAGE_TABS[next].id)
+                ;(e.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus()
+              }}
+            >
+              {t.label}
+              {marker}
+            </button>
+          )
+        })}
       </div>
-      <div className="cv-tabbody">
+      <div
+        className="cv-tabbody"
+        role="tabpanel"
+        id={`${uid}-panel`}
+        aria-labelledby={`${uid}-tab-${pageTab}`}
+      >
       {pageTab === 'overview' && (
         <>
-      <div className="section-label">Team sync</div>
-      <div className="cv-card">
-        {screen === 'loading' && <div className="cv-dim">Checking…</div>}
+      <h3 className="section-label">Team sync</h3>
+      <div className="cv-card" aria-busy={sync.busy !== null || sync.availability === 'loading' || undefined}>
+        {sync.availability === 'loading' && <div className="cv-dim">Checking…</div>}
 
-        {screen === 'browser' && (
+        {sync.availability === 'browser' && (
           <div className="cv-dim">
             {collection.root
               ? 'Sync is available in the desktop app.'
@@ -230,106 +231,64 @@ export function CollectionView({
           </div>
         )}
 
-        {screen === 'no-git' && (
+        {sync.availability === 'no-git' && (
           <div className="cv-sync-row">
             <div>
               <b>Install Git to enable team sync.</b>
               <div className="cv-dim">One install, no restart needed afterwards.</div>
             </div>
             <button
+              type="button"
               className="btn accent"
               onClick={() => window.tiger?.openExternal?.('https://git-scm.com/downloads')}
             >
               Download Git
             </button>
-            <button className="icon-btn" title="Check again" onClick={refresh}>
+            <button type="button" className="icon-btn" title="Check again" aria-label="Check again for Git" onClick={sync.refresh}>
               <RefreshIcon size={14} />
             </button>
           </div>
         )}
 
-        {screen === 'no-repo' && (
-          <div className="cv-sync-row">
-            <div>
-              <b>Track changes in this collection.</b>
-              <div className="cv-dim">
-                Step 1 of 2: turn on change tracking. Nothing leaves your machine yet.
+        {sync.availability === 'ready' && sync.status && (
+          <>
+            <div className="cv-sync-row">
+              <div>
+                <SyncBadge summary={summary} />
+                <div className="cv-dim cv-sync-detail">{summary.detail}</div>
               </div>
-            </div>
-            <button
-              className="btn accent"
-              disabled={busy}
-              onClick={() => act(() => window.tiger!.git.init(collection.root!))}
-            >
-              <GitBranchIcon size={14} /> Turn on tracking
-            </button>
-          </div>
-        )}
-
-        {screen === 'no-remote' && (
-          <div>
-            <b>Step 2 of 2: connect a shared repository.</b>
-            <div className="cv-dim" style={{ margin: '4px 0 10px' }}>
-              Create an empty repository on GitHub, GitLab or your company server, then paste
-              its URL here. Tiger publishes the collection and keeps it in sync.
-            </div>
-            <div className="cv-remote-row">
-              <input
-                placeholder="https://github.com/your-team/payments-api.git"
-                value={remoteUrl}
-                spellCheck={false}
-                onChange={(e) => setRemoteUrl(e.target.value)}
-              />
-              <button
-                className="btn accent"
-                disabled={busy || !remoteUrl.trim()}
-                onClick={() => act(() => window.tiger!.git.setRemote(collection.root!, remoteUrl))}
-              >
-                {busy ? 'Connecting…' : 'Connect'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {screen === 'ready' && status && conflict && (
-          <div className="git-conflict">
-            <b>You and a teammate changed the same thing.</b>
-            <p>
-              Pick whose version to keep where the changes overlap. Everything that doesn't
-              overlap is combined automatically, and the team's history keeps both.
-            </p>
-            <div className="git-conflict-actions">
-              <button className="btn accent" disabled={busy} onClick={() => doResolve('mine')}>
-                {busy ? 'Working…' : 'Keep my version'}
-              </button>
-              <button className="btn" disabled={busy} onClick={() => doResolve('theirs')}>
-                Use the team's version
-              </button>
-              <button className="btn ghost" disabled={busy} onClick={() => setConflict(false)}>
-                Decide later
-              </button>
-            </div>
-          </div>
-        )}
-
-        {screen === 'ready' && status && !conflict && (
-          <div className="cv-sync-row">
-            <div>
-              <b>{summary}</b>
-              {status.dirtyCount > 0 && (
-                <div className="cv-dim">{status.dirtyCount} file(s) changed</div>
+              {sync.conflict ? (
+                <button type="button" className="btn accent" onClick={onOpenGitDetails}>
+                  Choose versions…
+                </button>
+              ) : step !== null ? (
+                <button type="button" className="btn accent" onClick={onOpenGitDetails}>
+                  <UsersIcon size={14} /> {step === 1 ? `${actionLabel('share-collection')}…` : 'Continue setup…'}
+                </button>
+              ) : (
+                <button type="button" className="btn accent" disabled={sync.busy !== null} onClick={doSync}>
+                  <RefreshIcon size={14} /> {actionLabel('sync')}
+                </button>
+              )}
+              {!sync.conflict && (
+                <button type="button" className="btn ghost" onClick={onOpenGitDetails}>
+                  {sync.status.dirtyCount > 0 ? 'See changes' : 'Details'}
+                </button>
               )}
             </div>
-            <button className="btn accent" disabled={busy} onClick={doSync}>
-              {busy ? 'Syncing…' : 'Sync now'}
-            </button>
-            <button className="btn ghost" onClick={onOpenGitDetails}>
-              Details
-            </button>
-            <button className="icon-btn" title="Refresh" onClick={refresh}>
-              <RefreshIcon size={14} />
-            </button>
-          </div>
+            <ProgressLine text={sync.busy} />
+            {sync.error && (
+              <ErrorPanel
+                error={sync.error}
+                root={collection.root}
+                onRetry={() => {
+                  sync.setError(null)
+                  void doSync()
+                }}
+                onDismiss={() => sync.setError(null)}
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -340,6 +299,7 @@ export function CollectionView({
         <div className="cv-card">
           <textarea
             className="docs-area"
+            aria-label="Collection docs (Markdown)"
             placeholder="Document this collection in Markdown: what it covers, how to authenticate, gotchas…"
             defaultValue={collection.docs ?? ''}
             key={collection.id}
@@ -353,7 +313,7 @@ export function CollectionView({
 
       {pageTab === 'auth' && (
         <>
-          <div className="section-label">Default auth (inherited by requests)</div>
+          <h3 className="section-label">Default auth (inherited by requests)</h3>
           <div className="cv-card">
             <AuthEditor noInherit auth={collection.auth} onChange={onSaveAuth} />
           </div>
@@ -362,9 +322,9 @@ export function CollectionView({
 
       {pageTab === 'activity' && (
         <>
-      <div className="section-label">
+      <h3 className="section-label">
         <ClockIcon size={12} /> Recent activity in this collection
-      </div>
+      </h3>
       <div className="cv-card">
         {history.length === 0 ? (
           <div className="cv-dim">No requests sent yet from this collection.</div>
@@ -372,7 +332,9 @@ export function CollectionView({
           history.slice(0, 8).map((e) => (
             <div className="hist-row" key={e.id}>
               <span className={`method-pill m-${e.method.toLowerCase()}`}>{e.method}</span>
-              <span className="url">{e.url}</span>
+              <span className="url" title={e.url}>
+                {e.url}
+              </span>
               <span className={e.ok ? 'status-ok' : 'status-bad'} style={{ fontWeight: 700 }}>
                 {e.status}
               </span>
@@ -381,8 +343,13 @@ export function CollectionView({
           ))
         )}
         {history.length === 0 && (
-          <div className="cv-dim" style={{ marginTop: 4 }}>
-            <CheckIcon size={11} /> Activity appears here as the team works.
+          <div className="cv-empty-actions">
+            <span className="cv-dim">
+              <CheckIcon size={11} /> Activity appears here as the team works.
+            </span>
+            <button type="button" className="btn" onClick={onNewRequest}>
+              <PlusIcon size={14} /> New request
+            </button>
           </div>
         )}
       </div>
