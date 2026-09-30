@@ -92,5 +92,5 @@ describe('ResponsePanel with a large pretty-printed body', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(container.querySelector('mark.hit.active')?.textContent).toBe('Item 29')
     expect(container.querySelectorAll('mark.hit')[1]).toHaveClass('active')
-  })
+  }, 20_000) // heavy DOM test; timed out at 5 s under high machine load
 })

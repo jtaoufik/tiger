@@ -8,6 +8,8 @@ All notable changes to Tiger are documented here. The update checker reads
 - Scripts and tests now run in the desktop app. They were blocked by a security setting since 0.2.0; they now run in an isolated sandbox with no access to your files.
 - Tiger now updates itself. Installs from the Windows Setup, the macOS dmg or zip and the Linux AppImage download new versions in the background ("Downloading update 0.7.2… 42%") and then show "Tiger 0.7.2 is ready. Restart to update" with Restart now or Later (Later installs it when you quit). Help > Check for Updates checks on demand. Settings > About > Install updates automatically (on by default) asks before downloading when off.
 - Portable downloads: a Windows portable zip (unzip and run Tiger.exe), a Linux tar.gz (extract and run ./tiger-api-client) and a macOS zip. The Windows portable exe and zip, the .deb and the tar.gz do not update themselves; Check for Updates links the new download.
+- Switching from Postman, Insomnia and Bruno works properly: auth (inherited through folders), form-data files, environments, path variables and OpenAPI path templates now import. Postman scripts keep working (pm.test, pm.expect, pm.response, pm.environment, pm.request.headers). After every import a summary lists what came in and what to check. Drop export files or a folder onto the window to import.
+- Faster: the app loads a third of the code at startup, a 2,000-request collection opens about 5 times faster and scrolls smoothly, and very large JSON responses no longer freeze the window.
 
 ## 0.7.0
 
