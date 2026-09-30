@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseRequest, serializeRequest } from '@core/tigerFormat'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
 import { buildRequest } from '@core/request'
@@ -2026,13 +2026,22 @@ export default function App() {
       ? findMissingVars(sentSurface(activeEffective), envToVars(activeEnv))
       : []
 
-  const paletteItems: SearchItem[] = collections.flatMap((c) =>
-    c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
+  // Derived from collections only: rebuilt when a collection changes, not on
+  // every keystroke in the editor (thousands of entries in big collections).
+  const paletteItems: SearchItem[] = useMemo(
+    () =>
+      collections.flatMap((c) =>
+        c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
+      ),
+    [collections]
   )
 
   // Tab labels come from collections state at render time, so renames in the
   // sidebar/editor stay in sync automatically.
-  const entryById = new Map(collections.flatMap((c) => c.entries).map((e) => [e.id, e]))
+  const entryById = useMemo(
+    () => new Map(collections.flatMap((c) => c.entries).map((e) => [e.id, e])),
+    [collections]
+  )
   const tabItems: RequestTab[] = openTabs.flatMap((t): RequestTab[] => {
     const key = tabKey(t)
     if (t.kind === 'request') {
