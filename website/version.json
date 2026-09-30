@@ -1,11 +1,10 @@
 {
-  "version": "0.7.1",
+  "version": "0.8.0",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Scripts and tests now run in the desktop app, inside an isolated sandbox",
-    "Tiger now updates itself: downloads in the background, then Restart to update",
-    "Portable downloads: Windows zip, macOS zip and Linux tar.gz",
-    "Much better Postman, Insomnia and Bruno import, with Postman scripts that keep working",
-    "Faster startup and smooth scrolling in collections with thousands of requests"
+    "Tiger speaks six languages: English, 中文, हिन्दी, Español, Français and العربية",
+    "Follows your system language by default; switch live in Settings > General > Language",
+    "Arabic uses a full right-to-left layout",
+    "Test and script windows never pop up or steal focus"
   ]
 }
