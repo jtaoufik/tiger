@@ -124,16 +124,35 @@ export async function launchTiger(userDataDir: string, extraEnv: Record<string, 
     cwd: REPO_ROOT,
     env: { ...env, TIGER_E2E: '1', ...extraEnv }
   })
-  const page = await app.firstWindow()
-  const errors: string[] = []
-  page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(m.text())
-  })
-  page.on('pageerror', (e) => errors.push(String(e)))
-  await page.waitForLoadState('domcontentloaded')
-  // The window is created hidden and shown on ready-to-show.
-  await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible())).toBe(true)
-  return { app, page, errors }
+  try {
+    const page = await app.firstWindow()
+    const errors: string[] = []
+    page.on('console', (m) => {
+      if (m.type() === 'error') errors.push(m.text())
+    })
+    page.on('pageerror', (e) => errors.push(String(e)))
+    await page.waitForLoadState('domcontentloaded')
+    // The UI is up once the sidebar tree has rendered.
+    await expect(page.getByRole('tree', { name: 'Collections' })).toBeVisible()
+    return { app, page, errors }
+  } catch (e) {
+    // Never leave an orphan Electron behind a failed launch.
+    await app.close().catch(() => {})
+    throw e
+  }
+}
+
+/** Resolves once the main window has been shown (it is created hidden). */
+export function windowShown(app: ElectronApplication): Promise<boolean> {
+  return app.evaluate(
+    ({ BrowserWindow }) =>
+      new Promise<boolean>((done) => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (!win) return done(false)
+        if (win.isVisible()) return done(true)
+        win.once('show', () => done(true))
+      })
+  )
 }
 
 /** Replace the native folder picker so "Open" picks `dir` without a dialog. */
