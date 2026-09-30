@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { runCollection, type RunnerItem } from '../../src/core/runner'
+import { runScript } from '../../src/core/script'
 import type { TigerRequest } from '../../src/core/types'
 
 function req(partial: Partial<TigerRequest>): TigerRequest {
@@ -29,6 +30,7 @@ describe('runCollection', () => {
       { id: 'b', name: 'B', request: req({}) }
     ]
     const summary = await runCollection(items, {
+      runScript,
       vars: {},
       execute: async (r) => {
         order.push(r.name)
@@ -43,6 +45,7 @@ describe('runCollection', () => {
 
   it('fails a request on 4xx/5xx status', async () => {
     const summary = await runCollection([{ id: 'a', name: 'A', request: req({}) }], {
+      runScript,
       vars: {},
       execute: async () => ({ ...okResponse(), status: 500 })
     })
@@ -67,7 +70,7 @@ describe('runCollection', () => {
         })
       }
     ]
-    const summary = await runCollection(items, { vars: {}, execute: async () => okResponse() })
+    const summary = await runCollection(items, { runScript, vars: {}, execute: async () => okResponse() })
     expect(summary.results[0].passed).toBe(true)
     expect(summary.results[1].passed).toBe(false)
     expect(summary.results[1].tests[0]).toMatchObject({ name: 'is teapot', passed: false })
@@ -84,6 +87,7 @@ describe('runCollection', () => {
       { id: 'me', name: 'Me', request: req({}) }
     ]
     const summary = await runCollection(items, {
+      runScript,
       vars: { base: 'x' },
       execute: async (_r, vars) => {
         seenVars.push({ ...vars })
@@ -106,6 +110,7 @@ describe('runCollection', () => {
         }
       ],
       {
+        runScript,
         vars: {},
         execute: async (_r, vars) => {
           got = { ...vars }
@@ -123,6 +128,7 @@ describe('runCollection', () => {
     ]
     let n = 0
     const summary = await runCollection(items, {
+      runScript,
       vars: {},
       execute: async () => {
         n++
@@ -138,6 +144,7 @@ describe('runCollection', () => {
     let count = 0
     const items: RunnerItem[] = ['a', 'b', 'c'].map((id) => ({ id, name: id, request: req({}) }))
     const summary = await runCollection(items, {
+      runScript,
       vars: {},
       execute: async () => {
         count++
@@ -155,6 +162,7 @@ describe('runCollection', () => {
     await runCollection(
       ['a', 'b'].map((id) => ({ id, name: id.toUpperCase(), request: req({}) })),
       {
+        runScript,
         vars: {},
         execute: async () => okResponse(),
         onResult: (r, i, total) => ticks.push([r.name, i, total])
@@ -164,5 +172,31 @@ describe('runCollection', () => {
       ['A', 0, 2],
       ['B', 1, 2]
     ])
+  })
+})
+
+describe('runCollection with an async (isolated) script runner', () => {
+  it('awaits the injected runner for pre and post scripts', async () => {
+    const calls: string[] = []
+    const summary = await runCollection(
+      [{ id: 'a', name: 'A', request: req({ preScript: 'pre', postScript: 'post' }) }],
+      {
+        vars: { seed: '1' },
+        runScript: async (source, ctx) => {
+          calls.push(`${source}:${ctx.response ? ctx.response.status : '-'}`)
+          await new Promise((r) => setTimeout(r, 1))
+          return source === 'pre'
+            ? { vars: { ...ctx.vars, token: 't' }, logs: [], tests: [] }
+            : { vars: ctx.vars, logs: [], tests: [{ name: 'ok', passed: true }] }
+        },
+        execute: async (_r, vars) => {
+          expect(vars.token).toBe('t')
+          return okResponse()
+        }
+      }
+    )
+    expect(calls).toEqual(['pre:-', 'post:200'])
+    expect(summary.results[0]).toMatchObject({ passed: true, tests: [{ name: 'ok', passed: true }] })
+    expect(summary.vars).toEqual({ seed: '1', token: 't' })
   })
 })

@@ -3,6 +3,7 @@ import { runCollection, type RunnerItem, type RunnerResult } from '@core/runner'
 import { envToVars } from '@core/interpolate'
 import type { TigerEnvironment } from '@core/types'
 import { cancelRequest, runRequest } from '../runRequest'
+import { runScriptIsolated } from '../scriptSandbox'
 import { Modal } from './Modal'
 import { CheckIcon, PlayIcon, StopIcon, XCircleIcon } from './Icons'
 import './a11y.css'
@@ -64,6 +65,7 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
         const data = await runRequest(bare, env, timeoutMs, RUNNER_KEY)
         return { status: data.status, headers: data.headers, body: data.raw, timeMs: data.timeMs }
       },
+      runScript: runScriptIsolated,
       onResult: (result) => setResults((prev) => [...prev, result]),
       shouldStop: () => stopRef.current
     })

@@ -15,7 +15,8 @@ import { importCurl } from '@core/import'
 import { extractCaptures } from '@core/capture'
 import { movedRequestPath, renamedFolderPath, uniqueCopyName } from '@core/treeMove'
 import type { RunnerItem } from '@core/runner'
-import { runScript, type ScriptTestResult } from '@core/script'
+import type { ScriptTestResult } from '@core/script'
+import { runScriptIsolated } from './scriptSandbox'
 import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
 import type { ImportedRequest } from '@core/import'
@@ -818,7 +819,7 @@ export default function App() {
       let envForSend = activeEnv
       const baseVars = envToVars(activeEnv)
       if (active.preScript?.trim()) {
-        const pre = runScript(active.preScript, { vars: baseVars })
+        const pre = await runScriptIsolated(active.preScript, { vars: baseVars })
         if (pre.error) toast(`Pre-request script error: ${pre.error}`)
         const delta = scriptVarDelta(baseVars, pre.vars)
         if (delta.length) {
@@ -850,7 +851,7 @@ export default function App() {
           )
         }
         if (active.postScript?.trim()) {
-          const post = runScript(active.postScript, {
+          const post = await runScriptIsolated(active.postScript, {
             vars: envToVars(envForSend),
             response: {
               status: data.status,

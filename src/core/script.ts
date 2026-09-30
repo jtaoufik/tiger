@@ -1,11 +1,17 @@
 /**
  * Pre-request and post-response scripting. Scripts are small JavaScript snippets
- * run in a constrained Function sandbox with a `tiger` API object — no access to
- * the DOM, Node, network or globals beyond what we inject. They can read/modify
- * variables, read the request, inspect the response (post only) and assert.
+ * run with a `tiger` API object. They can read/modify variables, read the
+ * request, inspect the response (post only) and assert.
  *
- * This module is pure and isolated-realm-friendly: it never touches IO. The
- * caller supplies the variable map and (for post scripts) the response.
+ * `runScript` evaluates source text with `new Function`, so it must never run in
+ * the app window: that window's CSP forbids eval, and it holds `window.tiger`
+ * (file and repository access). The desktop app runs it only inside the
+ * isolated script host (a sandboxed renderer with no preload and no network, see
+ * src/main/scriptHost.ts and src/core/scriptProtocol.ts). App code calls
+ * `window.tiger.runScript` through src/renderer/src/scriptSandbox.ts instead.
+ *
+ * This module is pure: it never touches IO. The caller supplies the variable
+ * map and (for post scripts) the response.
  */
 
 export interface ScriptResponse {
@@ -88,9 +94,9 @@ export function runScript(
 
   if (!source.trim()) return { vars, logs, tests }
 
-  // Shadow ambient globals so scripts can't reach Node/DOM/network by accident.
-  // This is not a hard security boundary against hostile code, but it keeps
-  // scripts to the supported `tiger` API and prevents brittle global access.
+  // Shadow ambient globals so scripts stick to the supported `tiger` API. This is
+  // not the security boundary: isolation comes from the process the script host
+  // runs in (sandboxed, no preload, CSP connect-src 'none', network blocked).
   const shadowed = [
     'process',
     'require',

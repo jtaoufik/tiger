@@ -26,7 +26,11 @@ export default defineConfig({
     plugins: [react()],
     build: {
       rollupOptions: {
-        input: resolve('src/renderer/index.html')
+        input: {
+          index: resolve('src/renderer/index.html'),
+          // Isolated script host page, loaded by src/main/scriptHost.ts.
+          'script-host': resolve('src/renderer/script-host.html')
+        }
       }
     }
   }

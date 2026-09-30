@@ -5,6 +5,7 @@ All notable changes to Tiger are documented here. The update checker reads
 
 ## 0.7.1
 
+- Scripts and tests now run in the desktop app. They were blocked by a security setting since 0.2.0; they now run in an isolated sandbox with no access to your files.
 - Tiger now updates itself. Installs from the Windows Setup, the macOS dmg or zip and the Linux AppImage download new versions in the background ("Downloading update 0.7.2… 42%") and then show "Tiger 0.7.2 is ready. Restart to update" with Restart now or Later (Later installs it when you quit). Help > Check for Updates checks on demand. Settings > About > Install updates automatically (on by default) asks before downloading when off.
 - Portable downloads: a Windows portable zip (unzip and run Tiger.exe), a Linux tar.gz (extract and run ./tiger-api-client) and a macOS zip. The Windows portable exe and zip, the .deb and the tar.gz do not update themselves; Check for Updates links the new download.
 

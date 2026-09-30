@@ -8,7 +8,7 @@
  */
 
 import { extractCaptures } from './capture'
-import { runScript, type ScriptTestResult } from './script'
+import type { ScriptResponse, ScriptRunResult, ScriptTestResult } from './script'
 import type { TigerRequest } from './types'
 
 export interface RunnerItem {
@@ -61,6 +61,15 @@ export interface RunnerOptions {
   onResult?: (result: RunnerResult, index: number, total: number) => void
   /** Checked before each request; return true to stop the run. */
   shouldStop?: () => boolean
+  /**
+   * Evaluates pre-request and post-response scripts. Injected so the desktop
+   * app can run them in its isolated script host; Node callers and tests may
+   * pass `runScript` from ./script.
+   */
+  runScript: (
+    source: string,
+    ctx: { vars: Record<string, string>; response?: ScriptResponse }
+  ) => ScriptRunResult | Promise<ScriptRunResult>
 }
 
 export async function runCollection(
@@ -82,7 +91,7 @@ export async function runCollection(
     try {
       // Pre-request script may set variables used by this and later requests.
       if (request.preScript?.trim()) {
-        const pre = runScript(request.preScript, { vars })
+        const pre = await options.runScript(request.preScript, { vars })
         if (pre.error) throw new Error(`Pre-request script: ${pre.error}`)
         vars = pre.vars
       }
@@ -103,7 +112,7 @@ export async function runCollection(
       }
 
       if (request.postScript?.trim()) {
-        const post = runScript(request.postScript, {
+        const post = await options.runScript(request.postScript, {
           vars,
           response: { status: res.status, headers: res.headers, body: res.body, timeMs: res.timeMs }
         })
