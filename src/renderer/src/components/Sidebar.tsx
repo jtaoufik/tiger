@@ -403,6 +403,9 @@ export function Sidebar({
       openMenuFor(node, target)
       return
     }
+    // App shortcuts (Cmd/Ctrl+Enter sends, Cmd/Ctrl+S saves, ...) must reach
+    // the window listener: plain Enter here would swallow Cmd/Ctrl+Enter.
+    if (e.metaKey || e.ctrlKey) return
     switch (e.key) {
       case 'ArrowDown':
         handled()
