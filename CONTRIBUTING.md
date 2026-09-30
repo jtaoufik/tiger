@@ -28,6 +28,7 @@ npm run typecheck  # strict TS across all processes
 | `src/renderer` | React UI                                               |
 | `src/mcp`      | MCP server (stdio)                                     |
 | `test/`        | Vitest suites mirroring `src/`                         |
+| `e2e/`         | Playwright suites that launch the built Electron app   |
 
 ## Pre-commit checks
 
@@ -37,7 +38,10 @@ You can also run checks manually:
 ```bash
 npm run typecheck  # TypeScript strict check
 npm test           # Vitest suite
+npm run test:e2e   # builds, then drives the real Electron app with Playwright (e2e/)
 ```
+
+The end-to-end suite runs every journey against a temp copy of `examples/jsonplaceholder` and a local HTTP server it starts itself; the app runs with `TIGER_E2E=1`, which blocks any non-loopback request, so it never touches the internet. On Linux without a display, wrap it: `xvfb-run -a npm run test:e2e`.
 
 ## Reporting bugs
 

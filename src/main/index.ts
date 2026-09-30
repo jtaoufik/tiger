@@ -16,6 +16,7 @@ import { importFromDisk, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
 import { clearCookies } from './cookieJar'
 import { initAutoUpdate, quitAndInstall } from './autoUpdate'
+import { blockExternalNetwork, isE2E } from './e2eGuard'
 import {
   gitAvailable,
   gitBranches,
@@ -445,6 +446,7 @@ app.whenReady().then(() => {
     callback(match ?? list[0])
   })
 
+  if (isE2E()) blockExternalNetwork()
   registerIpc()
   applyNetworkSettings()
   buildAppMenu()

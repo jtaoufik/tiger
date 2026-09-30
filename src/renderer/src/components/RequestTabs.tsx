@@ -70,8 +70,17 @@ export function RequestTabs({
 
   // Keep the active tab visible when activating or opening at the end.
   useEffect(() => {
-    const el = stripRef.current?.querySelector('.request-tab.active') as HTMLElement | null
-    el?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
+    const strip = stripRef.current
+    const el = strip?.querySelector('.request-tab.active') as HTMLElement | null
+    if (!strip || !el) return
+    // Scroll the strip itself rather than calling el.scrollIntoView(): Chromium
+    // moves its sequential focus starting point to a scrolled-into-view element,
+    // so on launch the first Tab skipped the skip link and header and landed in
+    // the request editor.
+    const s = strip.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    if (r.left < s.left) strip.scrollLeft -= s.left - r.left
+    else if (r.right > s.right) strip.scrollLeft += r.right - s.right
   }, [activeKey, tabs.length])
 
   useEffect(() => {
