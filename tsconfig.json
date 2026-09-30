@@ -19,5 +19,5 @@
       "@core/*": ["src/core/*"]
     }
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "e2e", "playwright.config.ts"]
 }

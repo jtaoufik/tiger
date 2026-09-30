@@ -27,3 +27,7 @@ CLAUDE.md
 .aider*
 .specstory/
 docs/superpowers/
+
+# Playwright e2e
+test-results/
+playwright-report/
