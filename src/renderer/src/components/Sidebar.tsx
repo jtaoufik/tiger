@@ -1,4 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode
+} from 'react'
 import type { HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
 import './Sidebar.css'
@@ -84,8 +94,55 @@ interface Props {
 interface TreeFolder {
   name: string
   key: string
+  /** Folder segments below the collection (stable identity for memoized rows). */
+  path: string[]
   folders: TreeFolder[]
   requests: SidebarEntry[]
+}
+
+/**
+ * Above this many requests the search box filters after a short pause instead
+ * of on every keystroke, so typing stays fluid in big collections. Small trees
+ * keep instant filtering.
+ */
+export const SEARCH_DEBOUNCE_THRESHOLD = 400
+export const SEARCH_DEBOUNCE_MS = 120
+
+/**
+ * Trees with more visible rows than this render only the rows near the
+ * viewport (plus the focused, tabbable and renaming rows). Skipped siblings
+ * collapse into aria-hidden spacers inside their role=group, so the nesting,
+ * aria-level, aria-setsize and aria-posinset of every rendered item stay
+ * exactly what the full tree would have.
+ */
+export const WINDOW_MIN_ROWS = 300
+/** Rendered beyond each edge of the viewport so a fast scroll never shows a gap. */
+const OVERSCAN_PX = 600
+/** Row height + gap per kind, until the real ones are measured from the DOM. */
+const DEFAULT_STRIDES: Record<FlatNode['kind'], number> = { collection: 44, folder: 32, request: 32 }
+
+/** Smallest i with S[i + 1] > value: the first row whose bottom is below `value`. */
+function firstRowEndingAfter(S: Float64Array, value: number): number {
+  let lo = 0
+  let hi = S.length - 1
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (S[mid + 1] > value) hi = mid
+    else lo = mid + 1
+  }
+  return lo
+}
+
+/** Smallest i with S[i] >= value: the first row starting at or below `value`. */
+function firstRowStartingAt(S: Float64Array, value: number): number {
+  let lo = 0
+  let hi = S.length - 1
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (S[mid] >= value) hi = mid
+    else lo = mid + 1
+  }
+  return lo
 }
 
 /**
@@ -96,20 +153,31 @@ interface TreeFolder {
  * folder name contains the separator character.
  */
 function buildTree(collectionId: string, entries: SidebarEntry[]): TreeFolder {
-  const root: TreeFolder = { name: '', key: JSON.stringify([collectionId]), folders: [], requests: [] }
+  const root: TreeFolder = {
+    name: '',
+    key: JSON.stringify([collectionId]),
+    path: [],
+    folders: [],
+    requests: []
+  }
+  // Child lookup by name per folder: a linear scan made this O(requests x folders).
+  const index = new Map<TreeFolder, Map<string, TreeFolder>>()
   for (const entry of entries) {
     let node = root
-    const segments: string[] = []
     for (const segment of entry.folderPath) {
-      segments.push(segment)
-      let child = node.folders.find((f) => f.name === segment)
+      let children = index.get(node)
+      if (!children) index.set(node, (children = new Map()))
+      let child = children.get(segment)
       if (!child) {
+        const path = [...node.path, segment]
         child = {
           name: segment,
-          key: JSON.stringify([collectionId, ...segments]),
+          key: JSON.stringify([collectionId, ...path]),
+          path,
           folders: [],
           requests: []
         }
+        children.set(segment, child)
         node.folders.push(child)
       }
       node = child
@@ -133,7 +201,298 @@ interface FlatNode {
   entry?: SidebarEntry
   /** undefined for leaves. */
   expanded?: boolean
+  /** Index just past this row's last visible descendant (row + subtree = [i, end)). */
+  end: number
 }
+
+/**
+ * Everything a memoized row can do. The object handed to rows never changes
+ * identity (it reads the latest props through a ref), so a parent re-render,
+ * such as a keystroke in the request editor, re-renders no row at all.
+ */
+interface RowApi {
+  select: (id: string) => void
+  requestMenu: (id: string, x: number, y: number) => void
+  duplicateRequest: (id: string) => void
+  deleteRequest: (id: string) => void
+  startRenameRequest: (entry: SidebarEntry) => void
+  startRenameFolder: (key: string, name: string) => void
+  setDraft: (value: string) => void
+  commitRename: (entry?: SidebarEntry, folderColId?: string, folderPath?: string[]) => void
+  cancelRename: () => void
+  toggle: (key: string) => void
+  inspectFolder: (colId: string, path: string[]) => void
+  folderMenu: (colId: string, path: string[], x: number, y: number) => void
+  duplicateFolder: (colId: string, path: string[]) => void
+  moveRequest: (entryId: string, colId: string, path: string[]) => void
+  setDropKey: (update: (current: string | null) => string | null) => void
+  /** Roving tabindex bookkeeping, shared by every treeitem. */
+  onItemFocus: (e: FocusEvent<HTMLElement>) => void
+}
+
+/** Row buttons are pointer shortcuts; keyboard users get the context menu. */
+function rowButton(title: string, icon: ReactNode, onClick: () => void, danger = false) {
+  return (
+    <button
+      type="button"
+      className={`icon-btn${danger ? ' danger' : ''}`}
+      title={title}
+      aria-label={title}
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+    >
+      {icon}
+    </button>
+  )
+}
+
+/** "More actions": the row's context menu, for people who never right-click. */
+function moreButton(what: string, open: (x: number, y: number) => void) {
+  return (
+    <button
+      type="button"
+      className="icon-btn"
+      title={`More actions for ${what}`}
+      aria-label={`More actions for ${what}`}
+      aria-haspopup="menu"
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        const r = e.currentTarget.getBoundingClientRect()
+        open(r.left, r.bottom + 2)
+      }}
+    >
+      <MoreIcon size={13} />
+    </button>
+  )
+}
+
+function chevron(
+  open: boolean,
+  what: 'folder' | 'collection',
+  key: string,
+  toggle: (key: string) => void
+) {
+  return (
+    <button
+      type="button"
+      className="icon-btn chev-btn"
+      title={open ? `Collapse ${what}` : `Expand ${what}`}
+      aria-hidden
+      tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        toggle(key)
+      }}
+    >
+      <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
+    </button>
+  )
+}
+
+interface RequestRowProps {
+  entry: SidebarEntry
+  colId: string
+  depth: number
+  level: number
+  setsize: number
+  posinset: number
+  active: boolean
+  flash: boolean
+  tabbable: boolean
+  renaming: boolean
+  /** Only meaningful while renaming; '' otherwise, so typing re-renders one row. */
+  draft: string
+  api: RowApi
+}
+
+/** A request leaf of the tree. Memoized: re-renders only when its own props change. */
+const RequestRow = memo(function RequestRow({
+  entry,
+  colId,
+  depth,
+  level,
+  setsize,
+  posinset,
+  active,
+  flash,
+  tabbable,
+  renaming,
+  draft,
+  api
+}: RequestRowProps) {
+  const key = reqKey(entry.id)
+  const method = entry.method.toUpperCase()
+  return (
+    <div
+      role="treeitem"
+      className="tree-node tree-leaf"
+      data-node-key={key}
+      aria-level={level}
+      aria-setsize={setsize}
+      aria-posinset={posinset}
+      aria-selected={active}
+      aria-label={`${method} ${entry.name}`}
+      tabIndex={tabbable ? 0 : -1}
+      onFocus={api.onItemFocus}
+    >
+      <div
+        className={`tree-row ${active ? 'active' : ''} ${flash ? 'flash' : ''}`}
+        style={{ paddingLeft: 8 + depth * 16 }}
+        data-entry-id={entry.id}
+        draggable={!renaming}
+        onDragStart={(e) => {
+          e.dataTransfer.setData(
+            'application/x-tiger-request',
+            JSON.stringify({ id: entry.id, colId })
+          )
+          e.dataTransfer.effectAllowed = 'move'
+        }}
+        onClick={() => api.select(entry.id)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          api.requestMenu(entry.id, e.clientX, e.clientY)
+        }}
+      >
+        <span className={`method-pill m-${entry.method}`} aria-hidden>
+          {method}
+        </span>
+        {renaming ? (
+          <input
+            className="rename-input"
+            aria-label={`Rename ${entry.name}`}
+            autoFocus
+            value={draft}
+            spellCheck={false}
+            onChange={(e) => api.setDraft(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={() => api.commitRename(entry)}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === 'Enter') api.commitRename(entry)
+              if (e.key === 'Escape') api.cancelRename()
+            }}
+          />
+        ) : (
+          <span
+            className="row-label"
+            title={`${entry.name}\nDouble-click to rename (F2)`}
+            onDoubleClick={(e) => {
+              e.stopPropagation()
+              api.startRenameRequest(entry)
+            }}
+          >
+            {entry.name}
+          </span>
+        )}
+        <span className="row-actions">
+          {rowButton('Duplicate request', <CopyIcon size={13} />, () => api.duplicateRequest(entry.id))}
+          {rowButton('Delete request', <TrashIcon size={13} />, () => api.deleteRequest(entry.id), true)}
+          {moreButton(entry.name, (x, y) => api.requestMenu(entry.id, x, y))}
+        </span>
+      </div>
+    </div>
+  )
+})
+
+interface FolderRowProps {
+  folder: TreeFolder
+  colId: string
+  depth: number
+  open: boolean
+  selected: boolean
+  dropTarget: boolean
+  renaming: boolean
+  draft: string
+  hasMenu: boolean
+  api: RowApi
+}
+
+/** The visible row of a folder treeitem; the parent renders its child group. */
+const FolderRow = memo(function FolderRow({
+  folder,
+  colId,
+  depth,
+  open,
+  selected,
+  dropTarget,
+  renaming,
+  draft,
+  hasMenu,
+  api
+}: FolderRowProps) {
+  const path = folder.path
+  return (
+    <div
+      className={`folder-row ${selected ? 'active' : ''} ${dropTarget ? 'drop-target' : ''}`}
+      style={{ paddingLeft: 8 + depth * 16 }}
+      onClick={() => api.inspectFolder(colId, path)}
+      onContextMenu={(e) => {
+        if (!hasMenu) return
+        e.preventDefault()
+        api.folderMenu(colId, path, e.clientX, e.clientY)
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('application/x-tiger-request')) {
+          e.preventDefault()
+          api.setDropKey(() => folder.key)
+        }
+      }}
+      onDragLeave={() => api.setDropKey((k) => (k === folder.key ? null : k))}
+      onDrop={(e) => {
+        e.preventDefault()
+        api.setDropKey(() => null)
+        try {
+          const payload = JSON.parse(e.dataTransfer.getData('application/x-tiger-request'))
+          if (payload.colId === colId) api.moveRequest(payload.id, colId, path)
+        } catch {
+          /* not ours */
+        }
+      }}
+    >
+      {chevron(open, 'folder', folder.key, api.toggle)}
+      <FolderIcon size={14} />
+      {renaming ? (
+        <input
+          className="rename-input"
+          aria-label={`Rename folder ${folder.name}`}
+          autoFocus
+          value={draft}
+          spellCheck={false}
+          onChange={(e) => api.setDraft(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          onBlur={() => api.commitRename(undefined, colId, path)}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') api.commitRename(undefined, colId, path)
+            if (e.key === 'Escape') api.cancelRename()
+          }}
+        />
+      ) : (
+        <span
+          className="row-label"
+          title={`${folder.name}\nDouble-click to rename (F2)`}
+          onDoubleClick={(e) => {
+            e.stopPropagation()
+            api.startRenameFolder(folder.key, folder.name)
+          }}
+        >
+          {folder.name}
+        </span>
+      )}
+      <span className="row-actions">
+        {rowButton('Duplicate folder', <CopyIcon size={13} />, () => api.duplicateFolder(colId, path))}
+        {hasMenu && moreButton(folder.name, (x, y) => api.folderMenu(colId, path, x, y))}
+      </span>
+    </div>
+  )
+})
 
 export function Sidebar({
   collections,
@@ -166,8 +525,28 @@ export function Sidebar({
 }: Props) {
   const conflictRoots = useConflictRoots()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-  const [query, setQuery] = useState('')
+  /** What the search box shows (updates on every keystroke). */
+  const [query, setQueryText] = useState('')
+  /** What the tree is filtered by; trails `query` briefly in large collections. */
+  const [appliedQuery, setAppliedQuery] = useState('')
   const treeRef = useRef<HTMLDivElement>(null)
+
+  const totalEntries = useMemo(
+    () => collections.reduce((n, c) => n + c.entries.length, 0),
+    [collections]
+  )
+  const debounceSearch = totalEntries > SEARCH_DEBOUNCE_THRESHOLD
+  /** Set the search text; clearing (and small trees) apply immediately. */
+  const setQuery = (value: string) => {
+    setQueryText(value)
+    if (!debounceSearch || !value.trim()) setAppliedQuery(value)
+  }
+  useEffect(() => {
+    if (!debounceSearch || query === appliedQuery) return
+    const timer = setTimeout(() => setAppliedQuery(query), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [debounceSearch, query, appliedQuery])
+  const effectiveQuery = debounceSearch ? appliedQuery : query
 
   // Inline rename: which row is being renamed, and the draft text.
   const [renaming, setRenaming] = useState<
@@ -283,20 +662,91 @@ export function Sidebar({
       else next.add(key)
       return next
     })
-  const toggle = (key: string) => setOpen(key, collapsed.has(key))
+
+  // Memoized rows get one api object for their whole life; it forwards to the
+  // latest props and closures, so new callback identities from the parent
+  // never force 2,000 rows to re-render.
+  const latest = useRef({
+    onSelect,
+    onRequestMenu,
+    onDuplicateRequest,
+    onDeleteRequest,
+    onInspectFolder,
+    onFolderMenu,
+    onDuplicateFolder,
+    onMoveRequest,
+    commitRename,
+    cancelRename
+  })
+  latest.current = {
+    onSelect,
+    onRequestMenu,
+    onDuplicateRequest,
+    onDeleteRequest,
+    onInspectFolder,
+    onFolderMenu,
+    onDuplicateFolder,
+    onMoveRequest,
+    commitRename,
+    cancelRename
+  }
+  const api = useMemo<RowApi>(
+    () => ({
+      select: (id) => latest.current.onSelect(id),
+      requestMenu: (id, x, y) => latest.current.onRequestMenu(id, x, y),
+      duplicateRequest: (id) => latest.current.onDuplicateRequest(id),
+      deleteRequest: (id) => latest.current.onDeleteRequest(id),
+      startRenameRequest: (entry) => {
+        setDraft(entry.name)
+        setRenaming({ kind: 'request', id: entry.id })
+      },
+      startRenameFolder: (key, name) => {
+        setDraft(name)
+        setRenaming({ kind: 'folder', key })
+      },
+      setDraft,
+      commitRename: (entry, colId, path) => latest.current.commitRename(entry, colId, path),
+      cancelRename: () => latest.current.cancelRename(),
+      toggle: (key) =>
+        setCollapsed((prev) => {
+          const next = new Set(prev)
+          if (next.has(key)) next.delete(key)
+          else next.add(key)
+          return next
+        }),
+      inspectFolder: (colId, path) => latest.current.onInspectFolder(colId, path),
+      folderMenu: (colId, path, x, y) => latest.current.onFolderMenu?.(colId, path, x, y),
+      duplicateFolder: (colId, path) => latest.current.onDuplicateFolder(colId, path),
+      moveRequest: (id, colId, path) => latest.current.onMoveRequest(id, colId, path),
+      setDropKey: (update) => setDropKey(update),
+      onItemFocus: (e) => {
+        if (e.target === e.currentTarget) setFocusKey(e.currentTarget.dataset.nodeKey ?? null)
+      }
+    }),
+    []
+  )
 
   const trees = useMemo(
-    () => collections.map((col) => ({ col, tree: buildTree(col.id, col.entries) })),
+    () =>
+      collections.map((col) => ({
+        col,
+        tree: buildTree(col.id, col.entries),
+        // Lower-cased once per collection change, not once per keystroke.
+        lowerNames: col.entries.map((e) => e.name.toLowerCase())
+      })),
     [collections]
   )
 
-  const q = query.trim().toLowerCase()
+  const q = effectiveQuery.trim().toLowerCase()
 
   const searchHits = useMemo(
     () =>
       q
         ? trees
-            .map(({ col }) => ({ col, hits: col.entries.filter((e) => e.name.toLowerCase().includes(q)) }))
+            .map(({ col, lowerNames }) => ({
+              col,
+              hits: col.entries.filter((_, i) => lowerNames[i].includes(q))
+            }))
             .filter((x) => x.hits.length > 0)
         : [],
     [trees, q]
@@ -313,47 +763,168 @@ export function Sidebar({
         parent,
         colId,
         path: entry.folderPath,
-        entry
+        entry,
+        end: out.length + 1
       })
     if (q) {
       for (const { col, hits } of searchHits) {
         const key = JSON.stringify([col.id])
-        out.push({ key, kind: 'collection', label: col.name, parent: null, colId: col.id, path: [], expanded: true })
+        const at = out.length
+        out.push({ key, kind: 'collection', label: col.name, parent: null, colId: col.id, path: [], expanded: true, end: 0 })
         for (const e of hits) pushRequest(e, key, col.id)
+        out[at].end = out.length
       }
       return out
     }
     const walk = (folder: TreeFolder, colId: string) => {
       for (const f of folder.folders) {
         const open = !collapsed.has(f.key)
+        const at = out.length
         out.push({
           key: f.key,
           kind: 'folder',
           label: f.name,
           parent: folder.key,
           colId,
-          path: (JSON.parse(f.key) as string[]).slice(1),
-          expanded: open
+          path: f.path,
+          expanded: open,
+          end: 0
         })
         if (open) walk(f, colId)
+        out[at].end = out.length
       }
       for (const r of folder.requests) pushRequest(r, folder.key, colId)
     }
     for (const { col, tree } of trees) {
       const open = !collapsed.has(tree.key)
-      out.push({ key: tree.key, kind: 'collection', label: col.name, parent: null, colId: col.id, path: [], expanded: open })
+      const at = out.length
+      out.push({ key: tree.key, kind: 'collection', label: col.name, parent: null, colId: col.id, path: [], expanded: open, end: 0 })
       if (open) walk(tree, col.id)
+      out[at].end = out.length
     }
     return out
   }, [trees, collapsed, q, searchHits])
 
+  /** Row index by key: keyboard handling and roving tabindex look rows up per event. */
+  const flatIndex = useMemo(() => new Map(flat.map((n, i) => [n.key, i])), [flat])
+
   // The tabbable item: last focused if still visible, else the active request,
   // else the first row. Exactly one item carries tabIndex=0.
   const tabbableKey =
-    (focusKey && flat.some((n) => n.key === focusKey) && focusKey) ||
-    (activeId && flat.some((n) => n.key === reqKey(activeId)) && reqKey(activeId)) ||
+    (focusKey && flatIndex.has(focusKey) && focusKey) ||
+    (activeId && flatIndex.has(reqKey(activeId)) && reqKey(activeId)) ||
     flat[0]?.key ||
     null
+
+  // ---- Windowing (large trees only) ----
+  const windowed = flat.length > WINDOW_MIN_ROWS
+  const [viewport, setViewport] = useState({ top: 0, height: 0 })
+  const [strides, setStrides] = useState(DEFAULT_STRIDES)
+
+  /** S[i] = distance from the first row's top to row i's top. */
+  const offsets = useMemo(() => {
+    if (!windowed) return null
+    const S = new Float64Array(flat.length + 1)
+    for (let i = 0; i < flat.length; i++) S[i + 1] = S[i] + strides[flat[i].kind]
+    return S
+  }, [windowed, flat, strides])
+
+  /** Rows [first, last) are near the viewport; `pinned` rows render wherever they are. */
+  const renderWindow = useMemo(() => {
+    if (!offsets) return null
+    const height = viewport.height || window.innerHeight || 800
+    const first = firstRowEndingAfter(offsets, viewport.top - OVERSCAN_PX)
+    const last = Math.max(first, firstRowStartingAt(offsets, viewport.top + height + OVERSCAN_PX))
+    return { first, last }
+  }, [offsets, viewport])
+
+  const pinnedKeys = [
+    tabbableKey,
+    focusKey,
+    renaming ? (renaming.kind === 'request' ? reqKey(renaming.id) : renaming.key) : null
+  ]
+  const pinned = pinnedKeys
+    .map((k) => (k ? flatIndex.get(k) : undefined))
+    .filter((i): i is number => i !== undefined)
+
+  /** Does the row range [a, b) contain anything that must be in the DOM? */
+  const needsRender = (a: number, b: number): boolean =>
+    !renderWindow ||
+    (a < renderWindow.last && b > renderWindow.first) ||
+    pinned.some((p) => p >= a && p < b)
+
+  /** A placeholder with the exact height of the skipped rows [a, b). */
+  const spacer = (a: number, b: number) => (
+    <div
+      key={`spacer:${a}`}
+      className="tree-spacer"
+      aria-hidden="true"
+      style={{ height: offsets ? offsets[b] - offsets[a] : 0 }}
+    />
+  )
+
+  // Real row heights (font size, zoom and theme all change them).
+  useLayoutEffect(() => {
+    if (!windowed) return
+    const el = treeRef.current
+    if (!el) return
+    const next = { ...strides }
+    const gap = (node: Element | null) =>
+      node ? parseFloat(getComputedStyle(node).marginTop) || 0 : 0
+    const leaf = el.querySelector('.tree-leaf')
+    const leafH = leaf?.getBoundingClientRect().height ?? 0
+    if (leafH > 0) next.request = leafH + gap(leaf)
+    const folderRow = el.querySelector('.tree-node > .folder-row')
+    const folderH = folderRow?.getBoundingClientRect().height ?? 0
+    if (folderH > 0) next.folder = folderH + gap(folderRow!.parentElement)
+    const head = el.querySelector('.tree-node > .col-head')
+    const headH = head?.getBoundingClientRect().height ?? 0
+    if (headH > 0) next.collection = headH + gap(head) + gap(head!.parentElement)
+    const changed = (Object.keys(next) as FlatNode['kind'][]).some(
+      (k) => Math.abs(next[k] - strides[k]) > 0.25
+    )
+    if (changed) setStrides(next)
+  })
+
+  // Track the scroll position and viewport height of the tree.
+  const scrollFrame = useRef(0)
+  const syncViewport = () => {
+    const el = treeRef.current
+    if (!el) return
+    const top = el.scrollTop
+    const height = el.clientHeight
+    setViewport((v) => (v.top === top && v.height === height ? v : { top, height }))
+  }
+  const onTreeScroll = () => {
+    if (!windowed || scrollFrame.current) return
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = 0
+      syncViewport()
+    })
+  }
+  useLayoutEffect(() => {
+    if (!windowed) return
+    syncViewport()
+    const el = treeRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => syncViewport())
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [windowed])
+  useEffect(() => () => cancelAnimationFrame(scrollFrame.current), [])
+
+  // ArrowDown from the search box while a debounced filter is still pending:
+  // apply it first, then land on the first result.
+  const focusFirstResult = useRef(false)
+  useEffect(() => {
+    if (!focusFirstResult.current) return
+    focusFirstResult.current = false
+    const key = q ? (flat.find((n) => n.kind === 'request')?.key ?? flat[0]?.key) : flat[0]?.key
+    if (key) {
+      pendingFocus.current = key
+      setFocusKey(key)
+    }
+  })
 
   useEffect(() => {
     const key = pendingFocus.current
@@ -362,8 +933,11 @@ export function Sidebar({
     const items = treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? []
     for (const el of items) {
       if (el.dataset.nodeKey === key) {
-        el.focus()
-        el.scrollIntoView?.({ block: 'nearest' })
+        // Scroll the row, not the treeitem: a collection or folder item wraps
+        // its whole subtree, taller than the viewport, so "nearest" on it was
+        // a no-op and Home from the bottom left its row off screen.
+        el.focus({ preventScroll: true })
+        ;(el.firstElementChild ?? el).scrollIntoView?.({ block: 'nearest' })
         break
       }
     }
@@ -391,7 +965,7 @@ export function Sidebar({
   const onTreeKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
     if (target.getAttribute('role') !== 'treeitem') return
-    const index = flat.findIndex((n) => n.key === target.dataset.nodeKey)
+    const index = flatIndex.get(target.dataset.nodeKey ?? '') ?? -1
     const node = flat[index]
     if (!node) return
     const handled = () => {
@@ -470,7 +1044,7 @@ export function Sidebar({
     }
   }
 
-  /** Common ARIA + roving props for a tree item. */
+  /** Common ARIA + roving props for a collection or folder treeitem. */
   const itemProps = (
     key: string,
     level: number,
@@ -490,70 +1064,10 @@ export function Sidebar({
     'aria-expanded': expanded,
     'aria-label': label,
     tabIndex: tabbableKey === key ? 0 : -1,
-    onFocus: (e: React.FocusEvent<HTMLElement>) => {
-      if (e.target === e.currentTarget) setFocusKey(key)
-    }
+    onFocus: api.onItemFocus
   })
 
-  /** Row buttons are pointer shortcuts; keyboard users get the context menu. */
-  const rowButton = (
-    title: string,
-    icon: ReactNode,
-    onClick: () => void,
-    danger = false
-  ) => (
-    <button
-      type="button"
-      className={`icon-btn${danger ? ' danger' : ''}`}
-      title={title}
-      aria-label={title}
-      tabIndex={-1}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick()
-      }}
-    >
-      {icon}
-    </button>
-  )
-
-  /** "More actions": the row's context menu, for people who never right-click. */
-  const moreButton = (what: string, open: (x: number, y: number) => void) => (
-    <button
-      type="button"
-      className="icon-btn"
-      title={`More actions for ${what}`}
-      aria-label={`More actions for ${what}`}
-      aria-haspopup="menu"
-      tabIndex={-1}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={(e) => {
-        e.stopPropagation()
-        const r = e.currentTarget.getBoundingClientRect()
-        open(r.left, r.bottom + 2)
-      }}
-    >
-      <MoreIcon size={13} />
-    </button>
-  )
-
-  const chevron = (open: boolean, what: 'folder' | 'collection', key: string) => (
-    <button
-      type="button"
-      className="icon-btn chev-btn"
-      title={open ? `Collapse ${what}` : `Expand ${what}`}
-      aria-hidden
-      tabIndex={-1}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={(e) => {
-        e.stopPropagation()
-        toggle(key)
-      }}
-    >
-      <ChevronIcon size={12} className={`chev ${open ? 'open' : ''}`} />
-    </button>
-  )
+  const inspectedPath = inspected ? inspected.path.join('/') : null
 
   function renderRequest(
     entry: SidebarEntry,
@@ -564,68 +1078,22 @@ export function Sidebar({
     posinset: number
   ) {
     const isRenaming = renaming?.kind === 'request' && renaming.id === entry.id
-    const key = reqKey(entry.id)
-    const method = entry.method.toUpperCase()
-    const active = entry.id === activeId
     return (
-      <div key={entry.id} {...itemProps(key, level, setsize, posinset, `${method} ${entry.name}`, active)}>
-        <div
-          className={`tree-row ${active ? 'active' : ''} ${entry.id === flashId ? 'flash' : ''}`}
-          style={{ paddingLeft: 8 + depth * 16 }}
-          data-entry-id={entry.id}
-          draggable={!isRenaming}
-          onDragStart={(e) => {
-            e.dataTransfer.setData(
-              'application/x-tiger-request',
-              JSON.stringify({ id: entry.id, colId })
-            )
-            e.dataTransfer.effectAllowed = 'move'
-          }}
-          onClick={() => onSelect(entry.id)}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            onRequestMenu(entry.id, e.clientX, e.clientY)
-          }}
-        >
-          <span className={`method-pill m-${entry.method}`} aria-hidden>
-            {method}
-          </span>
-          {isRenaming ? (
-            <input
-              className="rename-input"
-              aria-label={`Rename ${entry.name}`}
-              autoFocus
-              value={draft}
-              spellCheck={false}
-              onChange={(e) => setDraft(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={() => commitRename(entry)}
-              onKeyDown={(e) => {
-                e.stopPropagation()
-                if (e.key === 'Enter') commitRename(entry)
-                if (e.key === 'Escape') cancelRename()
-              }}
-            />
-          ) : (
-            <span
-              className="row-label"
-              title={`${entry.name}\nDouble-click to rename (F2)`}
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                setDraft(entry.name)
-                setRenaming({ kind: 'request', id: entry.id })
-              }}
-            >
-              {entry.name}
-            </span>
-          )}
-          <span className="row-actions">
-            {rowButton('Duplicate request', <CopyIcon size={13} />, () => onDuplicateRequest(entry.id))}
-            {rowButton('Delete request', <TrashIcon size={13} />, () => onDeleteRequest(entry.id), true)}
-            {moreButton(entry.name, (x, y) => onRequestMenu(entry.id, x, y))}
-          </span>
-        </div>
-      </div>
+      <RequestRow
+        key={entry.id}
+        entry={entry}
+        colId={colId}
+        depth={depth}
+        level={level}
+        setsize={setsize}
+        posinset={posinset}
+        active={entry.id === activeId}
+        flash={entry.id === flashId}
+        tabbable={tabbableKey === reqKey(entry.id)}
+        renaming={isRenaming}
+        draft={isRenaming ? draft : ''}
+        api={api}
+      />
     )
   }
 
@@ -638,14 +1106,46 @@ export function Sidebar({
     requestDepth = depth + 0.4
   ) {
     const size = folder.folders.length + folder.requests.length
-    return (
-      <div role="group">
-        {folder.folders.map((f, i) => renderFolder(f, depth, colId, level, size, i + 1))}
-        {folder.requests.map((r, i) =>
-          renderRequest(r, requestDepth, colId, level, size, folder.folders.length + i + 1)
-        )}
-      </div>
+    if (!renderWindow) {
+      return (
+        <div role="group">
+          {folder.folders.map((f, i) => renderFolder(f, depth, colId, level, size, i + 1))}
+          {folder.requests.map((r, i) =>
+            renderRequest(r, requestDepth, colId, level, size, folder.folders.length + i + 1)
+          )}
+        </div>
+      )
+    }
+    // Windowed: consecutive children with nothing to show become one spacer.
+    const items: ReactNode[] = []
+    let skipFrom = -1
+    let skipTo = -1
+    const flush = () => {
+      if (skipFrom >= 0) items.push(spacer(skipFrom, skipTo))
+      skipFrom = -1
+    }
+    const visit = (key: string, render: () => ReactNode) => {
+      const i = flatIndex.get(key)
+      if (i === undefined) return
+      const end = flat[i].end
+      if (needsRender(i, end)) {
+        flush()
+        items.push(render())
+      } else {
+        if (skipFrom < 0) skipFrom = i
+        skipTo = end
+      }
+    }
+    folder.folders.forEach((f, i) =>
+      visit(f.key, () => renderFolder(f, depth, colId, level, size, i + 1))
     )
+    folder.requests.forEach((r, i) =>
+      visit(reqKey(r.id), () =>
+        renderRequest(r, requestDepth, colId, level, size, folder.folders.length + i + 1)
+      )
+    )
+    flush()
+    return <div role="group">{items}</div>
   }
 
   function renderFolder(
@@ -657,77 +1157,47 @@ export function Sidebar({
     posinset: number
   ) {
     const open = !collapsed.has(folder.key)
-    const path = (JSON.parse(folder.key) as string[]).slice(1)
     const selected =
-      !!inspected && inspected.colId === colId && inspected.path.join('/') === path.join('/')
+      !!inspected && inspected.colId === colId && inspectedPath === folder.path.join('/')
+    const isRenaming = renaming?.kind === 'folder' && renaming.key === folder.key
     return (
       <div key={folder.key} {...itemProps(folder.key, level, setsize, posinset, folder.name, selected, open)}>
-        <div
-          className={`folder-row ${selected ? 'active' : ''} ${dropKey === folder.key ? 'drop-target' : ''}`}
-          style={{ paddingLeft: 8 + depth * 16 }}
-          onClick={() => onInspectFolder(colId, path)}
-          onContextMenu={(e) => {
-            if (!onFolderMenu) return
-            e.preventDefault()
-            onFolderMenu(colId, path, e.clientX, e.clientY)
-          }}
-          onDragOver={(e) => {
-            if (e.dataTransfer.types.includes('application/x-tiger-request')) {
-              e.preventDefault()
-              setDropKey(folder.key)
-            }
-          }}
-          onDragLeave={() => setDropKey((k) => (k === folder.key ? null : k))}
-          onDrop={(e) => {
-            e.preventDefault()
-            setDropKey(null)
-            try {
-              const payload = JSON.parse(e.dataTransfer.getData('application/x-tiger-request'))
-              if (payload.colId === colId) onMoveRequest(payload.id, colId, path)
-            } catch {
-              /* not ours */
-            }
-          }}
-        >
-          {chevron(open, 'folder', folder.key)}
-          <FolderIcon size={14} />
-          {renaming?.kind === 'folder' && renaming.key === folder.key ? (
-            <input
-              className="rename-input"
-              aria-label={`Rename folder ${folder.name}`}
-              autoFocus
-              value={draft}
-              spellCheck={false}
-              onChange={(e) => setDraft(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={() => commitRename(undefined, colId, path)}
-              onKeyDown={(e) => {
-                e.stopPropagation()
-                if (e.key === 'Enter') commitRename(undefined, colId, path)
-                if (e.key === 'Escape') cancelRename()
-              }}
-            />
-          ) : (
-            <span
-              className="row-label"
-              title={`${folder.name}\nDouble-click to rename (F2)`}
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                setDraft(folder.name)
-                setRenaming({ kind: 'folder', key: folder.key })
-              }}
-            >
-              {folder.name}
-            </span>
-          )}
-          <span className="row-actions">
-            {rowButton('Duplicate folder', <CopyIcon size={13} />, () => onDuplicateFolder(colId, path))}
-            {onFolderMenu && moreButton(folder.name, (x, y) => onFolderMenu(colId, path, x, y))}
-          </span>
-        </div>
+        <FolderRow
+          folder={folder}
+          colId={colId}
+          depth={depth}
+          open={open}
+          selected={selected}
+          dropTarget={dropKey === folder.key}
+          renaming={isRenaming}
+          draft={isRenaming ? draft : ''}
+          hasMenu={!!onFolderMenu}
+          api={api}
+        />
         {open && renderChildren(folder, depth + 1, colId, level + 1)}
       </div>
     )
+  }
+
+  /** Search results of one collection, windowed: only rows near the viewport. */
+  function renderHits(hits: SidebarEntry[], colId: string) {
+    const items: ReactNode[] = []
+    let skipFrom = -1
+    let skipTo = -1
+    hits.forEach((e, n) => {
+      const i = flatIndex.get(reqKey(e.id))
+      if (i === undefined) return
+      if (needsRender(i, i + 1)) {
+        if (skipFrom >= 0) items.push(spacer(skipFrom, skipTo))
+        skipFrom = -1
+        items.push(renderRequest(e, 1, colId, 2, hits.length, n + 1))
+      } else {
+        if (skipFrom < 0) skipFrom = i
+        skipTo = i + 1
+      }
+    })
+    if (skipFrom >= 0) items.push(spacer(skipFrom, skipTo))
+    return items
   }
 
   /** Team sync status for a tracked collection: icon + short text, full sentence on hover. */
@@ -785,7 +1255,7 @@ export function Sidebar({
       <div className="sidebar-empty" role="status">
         <SearchIcon size={22} />
         <p>
-          No requests match <b>{query.trim()}</b>.
+          No requests match <b>{effectiveQuery.trim()}</b>.
         </p>
         <button type="button" className="btn ghost" onClick={() => setQuery('')}>
           Clear search
@@ -806,7 +1276,9 @@ export function Sidebar({
             </span>
           </div>
           <div role="group">
-            {hits.map((e, i) => renderRequest(e, 1, col.id, 2, hits.length, i + 1))}
+            {renderWindow
+              ? renderHits(hits, col.id)
+              : hits.map((e, i) => renderRequest(e, 1, col.id, 2, hits.length, i + 1))}
           </div>
         </div>
       )
@@ -843,7 +1315,7 @@ export function Sidebar({
               }
             }}
           >
-            {chevron(open, 'collection', colKey)}
+            {chevron(open, 'collection', colKey, api.toggle)}
             <span className="row-label" title={col.root ? `${col.name}\n${col.root}` : col.name}>
               {col.name}
             </span>
@@ -917,6 +1389,11 @@ export function Sidebar({
             if (e.key === 'Escape' && query) {
               e.preventDefault()
               setQuery('')
+            } else if (e.key === 'ArrowDown' && query !== effectiveQuery) {
+              // A debounced filter is pending: apply it now, then enter the results.
+              e.preventDefault()
+              focusFirstResult.current = true
+              setAppliedQuery(query)
             } else if (e.key === 'ArrowDown' && flat.length) {
               e.preventDefault()
               moveTo(q ? (flat.find((n) => n.kind === 'request')?.key ?? flat[0].key) : flat[0].key)
@@ -932,6 +1409,7 @@ export function Sidebar({
         role={flat.length ? 'tree' : undefined}
         aria-labelledby={flat.length ? 'sidebar-title' : undefined}
         onKeyDown={onTreeKeyDown}
+        onScroll={onTreeScroll}
         onContextMenu={(e) => {
           if (e.target === e.currentTarget) {
             e.preventDefault()
