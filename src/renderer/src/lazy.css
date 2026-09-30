@@ -1,0 +1,18 @@
+/* Placeholder while a lazily loaded surface's chunk arrives. */
+.lazy-loading {
+  padding: 16px;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+.lazy-loading.overlay {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--glass-strong);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}

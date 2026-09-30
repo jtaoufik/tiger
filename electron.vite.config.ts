@@ -39,6 +39,9 @@ export default defineConfig({
         : [])
     ],
     build: {
+      // electron-vite leaves the renderer unminified by default; the startup
+      // chunk is parsed and compiled on every launch, so ship it minified.
+      minify: 'esbuild',
       rollupOptions: {
         input: resolve('src/renderer/index.html')
       }

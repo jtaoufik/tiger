@@ -3,15 +3,13 @@
  * GA4 property; the user toggle in Settings gates everything. Event shapes
  * come from core/analytics so the privacy rules (no URLs, no headers, no
  * bodies, bucketed status codes) hold here too.
+ *
+ * The Firebase SDK (~200 KB of JavaScript) is imported on demand by
+ * initAnalytics, which App calls only after the persisted opt-in resolves to
+ * "on". It is never on the startup path, and never loaded for people who
+ * opted out.
  */
-import { initializeApp } from 'firebase/app'
-import {
-  getAnalytics,
-  isSupported,
-  logEvent,
-  setAnalyticsCollectionEnabled,
-  type Analytics
-} from 'firebase/analytics'
+import type { Analytics } from 'firebase/analytics'
 import type { AnalyticsEvent } from '@core/analytics'
 
 const firebaseConfig = {
@@ -24,6 +22,9 @@ const firebaseConfig = {
   measurementId: 'G-9243WRQYTM'
 }
 
+type AnalyticsSdk = typeof import('firebase/analytics')
+
+let sdk: AnalyticsSdk | null = null
 let analytics: Analytics | null = null
 // Default to disabled until the persisted setting resolves, so the opt-out is
 // honored even on the very first event (no race where app_opened fires before
@@ -32,9 +33,14 @@ let enabled = false
 
 export async function initAnalytics(): Promise<void> {
   try {
-    if (await isSupported()) {
-      analytics = getAnalytics(initializeApp(firebaseConfig))
-      setAnalyticsCollectionEnabled(analytics, enabled)
+    const [{ initializeApp }, lib] = await Promise.all([
+      import('firebase/app'),
+      import('firebase/analytics')
+    ])
+    if (await lib.isSupported()) {
+      analytics = lib.getAnalytics(initializeApp(firebaseConfig))
+      sdk = lib
+      lib.setAnalyticsCollectionEnabled(analytics, enabled)
     }
   } catch {
     // Offline, blocked, or unsupported: the app must not care.
@@ -43,9 +49,9 @@ export async function initAnalytics(): Promise<void> {
 
 export function setAnalyticsEnabled(value: boolean): void {
   enabled = value
-  if (analytics) {
+  if (analytics && sdk) {
     try {
-      setAnalyticsCollectionEnabled(analytics, value)
+      sdk.setAnalyticsCollectionEnabled(analytics, value)
     } catch {
       /* never disrupt the app */
     }
@@ -55,7 +61,7 @@ export function setAnalyticsEnabled(value: boolean): void {
 export function trackEvent(event: AnalyticsEvent): void {
   if (!enabled) return
   try {
-    if (analytics) logEvent(analytics, event.name, event.params)
+    if (analytics && sdk) sdk.logEvent(analytics, event.name, event.params)
     // Legacy GA4 Measurement Protocol path (user-supplied credentials).
     window.tiger?.track?.(event)
   } catch {

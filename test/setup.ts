@@ -17,3 +17,12 @@ Object.defineProperty(window, 'localStorage', {
     }
   }
 })
+
+// Rarely used surfaces are code-split (src/renderer/src/surfaces.ts) and load
+// on first render in the app. Tests exercise the surfaces themselves, so load
+// every chunk up front: a lazy surface whose chunk is loaded renders
+// synchronously, exactly as in the app once its idle warm-up has run.
+// test/renderer/lazy.test.tsx covers the loading path itself.
+import { preloadAllSurfaces } from '../src/renderer/src/lazy'
+import '../src/renderer/src/surfaces'
+await preloadAllSurfaces()

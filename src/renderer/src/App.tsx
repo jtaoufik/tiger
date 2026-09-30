@@ -11,7 +11,7 @@ import {
 import type { SearchItem } from '@core/search'
 import { exportOpenApi, exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
-import { importCurl } from '@core/import'
+import { importCurl } from '@core/import/curl'
 import { extractCaptures } from '@core/capture'
 import { movedRequestPath, renamedFolderPath, uniqueCopyName } from '@core/treeMove'
 import type { RunnerItem } from '@core/runner'
@@ -26,7 +26,6 @@ import type { HistoryEntry } from '../../main/history'
 import type { ImportKind } from '../../main/importers'
 import { Logo } from './Logo'
 import { Sidebar, type SidebarEntry, type SyncState } from './components/Sidebar'
-import { GitModal } from './components/GitModal'
 import { JoinTeamModal } from './components/TeamSync'
 import { onGitChanged } from './gitUx'
 import { CollectionView } from './components/CollectionView'
@@ -35,14 +34,9 @@ import { WelcomeView } from './components/WelcomeView'
 import { RequestEditor } from './components/RequestEditor'
 import { RequestTabs, tabAccessibleName, type RequestTab } from './components/RequestTabs'
 import { ResponsePanel } from './components/ResponsePanel'
-import { SettingsView } from './components/SettingsView'
-import { ImportExportModal, type ExportFormat } from './components/ImportExportModal'
-import { HistoryModal } from './components/HistoryModal'
-import { EnvironmentsModal } from './components/EnvironmentsModal'
+import type { ExportFormat } from './components/ImportExportModal'
 import { ConfirmModal } from './components/ConfirmModal'
 import { PromptModal } from './components/PromptModal'
-import { RunnerModal } from './components/RunnerModal'
-import { ShortcutsModal } from './components/ShortcutsModal'
 import { REVEAL_LABEL } from './platform'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
@@ -85,6 +79,16 @@ import { cancelRequest, runRequest } from './runRequest'
 import { announce, ensureLiveRegions, looksLikeError } from './a11y'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
 import { rendererPerfMark } from './perf'
+import {
+  EnvironmentsModal,
+  GitModal,
+  HistoryModal,
+  ImportExportModal,
+  RunnerModal,
+  SettingsView,
+  ShortcutsModal
+} from './surfaces'
+import { preloadSurfacesWhenIdle } from './lazy'
 import { sampleEnvironment, sampleRequests } from './sample'
 
 interface ResponseState {
@@ -359,6 +363,9 @@ export default function App() {
     ensureLiveRegions()
     // Dev-only startup trace: the frame after the first App commit.
     requestAnimationFrame(() => rendererPerfMark('app-rendered'))
+    // Rarely used surfaces are split out of the startup chunk; fetch them
+    // once the first screen is up so opening one later is still instant.
+    preloadSurfacesWhenIdle()
   }, [])
 
   useEffect(() => {
