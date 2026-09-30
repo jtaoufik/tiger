@@ -4,7 +4,9 @@ import {
   ensureLiveRegions,
   isContextMenuKey,
   looksLikeError,
-  rovingIndex
+  rovingIndex,
+  logicalArrow,
+  isRtlDocument
 } from '../../src/renderer/src/a11y'
 
 const polite = () => document.getElementById('tiger-live-polite')!
@@ -93,5 +95,28 @@ describe('isContextMenuKey()', () => {
     expect(isContextMenuKey({ key: 'F10', shiftKey: true })).toBe(true)
     expect(isContextMenuKey({ key: 'ContextMenu', shiftKey: false })).toBe(true)
     expect(isContextMenuKey({ key: 'F10', shiftKey: false })).toBe(false)
+  })
+})
+
+describe('right-to-left arrow keys', () => {
+  afterEach(() => {
+    document.documentElement.dir = 'ltr'
+  })
+
+  it('swaps Left and Right only in RTL', () => {
+    expect(logicalArrow('ArrowLeft', false)).toBe('ArrowLeft')
+    expect(logicalArrow('ArrowLeft', true)).toBe('ArrowRight')
+    expect(logicalArrow('ArrowRight', true)).toBe('ArrowLeft')
+    expect(logicalArrow('ArrowUp', true)).toBe('ArrowUp')
+  })
+
+  it('follows <html dir> by default, for horizontal widgets only', () => {
+    document.documentElement.dir = 'rtl'
+    expect(isRtlDocument()).toBe(true)
+    expect(rovingIndex('ArrowLeft', 0, 3)).toBe(1)
+    expect(rovingIndex('ArrowRight', 0, 3)).toBe(2)
+    expect(rovingIndex('ArrowDown', 0, 3, 'vertical')).toBe(1)
+    document.documentElement.dir = 'ltr'
+    expect(rovingIndex('ArrowLeft', 0, 3)).toBe(2)
   })
 })

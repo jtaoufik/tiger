@@ -1,0 +1,31 @@
+{
+  "_comment": "Literals scripts/i18n-check.mjs accepts as not-to-translate: product and format names, protocol words, code. Keep it short; prefer an // i18n-ignore comment with a reason for one-off cases.",
+  "strings": [
+    "Tiger",
+    "Tiger API Client",
+    "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
+    "HTTP", "HTTPS", "URL", "JSON", "XML", "YAML", "HTML", "GraphQL", "SOAP", "WSDL", "REST",
+    "curl", "cURL", "fetch", "Python", "JavaScript", "Node", "Markdown",
+    "Postman", "Insomnia", "Bruno", "OpenAPI", "Swagger", "HAR",
+    "MCP", "Claude", "Cursor", "GitHub", "GitLab", "git",
+    "OAuth 2.0", "OAuth2", "JWT", "Bearer", "Basic", "Digest", "NTLM", "AWS", "API key", "AWS Sig v4",
+    "PEM", "PFX", "P12", "CA", "TLS", "SSL", "mTLS",
+    "Cmd", "Ctrl", "Shift", "Alt", "Option", "Enter", "Esc", "Tab", "F2",
+    "ms", "KB", "MB", "B", "px",
+    "form-data", "x-www-form-urlencoded", "raw", "binary", "none", "multipart/form-data",
+    "application/json", "Content-Type", "Authorization", "Accept", "User-Agent",
+    "dev", "staging", "prod",
+    "English", "中文", "हिन्दी", "Español", "Français", "العربية"
+  ],
+  "patterns": [
+    "^\\{\\{[^}]*\\}\\}$",
+    "^https?://",
+    "^[a-z]+://",
+    "^[./~]",
+    "^\\$\\{?[a-zA-Z_]",
+    "^[A-Z0-9_]+$",
+    "^[a-z][a-zA-Z0-9]*\\([^)]*\\)",
+    "^(pm|tiger|res|req|bru)\\.[a-zA-Z]"
+  ],
+  "files": []
+}

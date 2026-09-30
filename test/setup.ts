@@ -1,4 +1,9 @@
 import '@testing-library/jest-dom/vitest'
+import { setLocale } from '../src/renderer/src/i18n'
+
+// The renderer loads its catalogs on demand (English too); load English once
+// so every suite renders real text, as the app does before its first paint.
+await setLocale('en')
 
 // A few suites opt into the node environment (// @vitest-environment node);
 // everything below is for the DOM ones.

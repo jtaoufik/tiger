@@ -1,0 +1,38 @@
+import type { NamespaceCatalog } from '../../translator'
+import type { menu as en } from '../en/menu'
+
+export const menu: NamespaceCatalog<typeof en> = {
+  'menu.app': 'Tiger',
+  'menu.file': 'फ़ाइल',
+  'menu.edit': 'संपादन',
+  'menu.request': 'अनुरोध',
+  'menu.view': 'दृश्य',
+  'menu.theme': 'थीम',
+  'menu.window': 'विंडो',
+  'menu.help': 'सहायता',
+  'menu.about': 'Tiger के बारे में',
+  'menu.services': 'सेवाएँ',
+  'menu.hide': 'Tiger छिपाएँ',
+  'menu.hideOthers': 'अन्य छिपाएँ',
+  'menu.unhide': 'सभी दिखाएँ',
+  'menu.quit': 'Tiger बंद करें',
+  'menu.closeWindow': 'विंडो बंद करें',
+  'menu.exit': 'बाहर निकलें',
+  'menu.undo': 'पूर्ववत करें',
+  'menu.redo': 'फिर से करें',
+  'menu.cut': 'काटें',
+  'menu.copy': 'कॉपी करें',
+  'menu.paste': 'पेस्ट करें',
+  'menu.pasteAndMatchStyle': 'पेस्ट करें और शैली मिलाएँ',
+  'menu.delete': 'हटाएँ',
+  'menu.selectAll': 'सभी चुनें',
+  'menu.toggleFullScreen': 'फ़ुल स्क्रीन चालू/बंद करें',
+  'menu.reload': 'फिर से लोड करें',
+  'menu.forceReload': 'ज़बरदस्ती फिर से लोड करें',
+  'menu.toggleDevTools': 'डेवलपर टूल',
+  'menu.minimize': 'छोटा करें',
+  'menu.zoomWindow': 'ज़ूम',
+  'menu.front': 'सभी को सामने लाएँ',
+  'menu.close': 'बंद करें',
+  'menu.aboutDetail': 'संस्करण {version}'
+}

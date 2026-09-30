@@ -2,6 +2,7 @@ import { app, safeStorage } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { isLanguageChoice, type LanguageChoice } from '../core/i18n/locales'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
@@ -16,6 +17,8 @@ export interface WindowState {
 
 export interface Settings {
   theme: ThemeChoice
+  /** UI language: a supported locale, or 'system' to follow the OS. */
+  language: LanguageChoice
   timeoutMs: number
   fontSize: number
 
@@ -58,6 +61,7 @@ export interface Settings {
 function defaults(): Settings {
   return {
     theme: 'system',
+    language: 'system',
     timeoutMs: 30000,
     fontSize: 13,
     followRedirects: true,
@@ -140,6 +144,8 @@ export function loadSettings(): Settings {
       for (const field of SECRET_FIELDS) {
         if (typeof parsed[field] === 'string') parsed[field] = decryptSecret(parsed[field])
       }
+      // A hand-edited or future value must not leave the app without a language.
+      if (!isLanguageChoice(parsed.language)) parsed.language = 'system'
       loaded = parsed
     } catch {
       // Existing file is unreadable/corrupt: use defaults in memory but DO NOT

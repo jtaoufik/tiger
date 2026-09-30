@@ -1,20 +1,27 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { PaletteModal } from '../../src/renderer/src/components/PaletteModal'
-import { GROUPS, ShortcutsModal } from '../../src/renderer/src/components/ShortcutsModal'
-import { SHORTCUT_GROUPS, getAction, paletteActions } from '../../src/core/actions'
+import { shortcutGroups, ShortcutsModal } from '../../src/renderer/src/components/ShortcutsModal'
+import {
+  SHORTCUT_GROUPS,
+  actionDescription,
+  actionLabel,
+  paletteActions,
+  type ActionId
+} from '../../src/core/actions'
+import { englishT as t } from '../../src/core/i18n/english'
 import { actionItem } from '../../src/renderer/src/actions'
 
 const items = [{ id: 'a', name: 'List users', collection: 'Demo', method: 'get' }]
 
 describe('shortcuts overlay reads the action registry', () => {
   it('lists every registry shortcut group, labelled as the registry names it', () => {
-    expect(GROUPS.map((g) => g.title)).toEqual(SHORTCUT_GROUPS.map((g) => g.title))
+    expect(shortcutGroups(t).map((g) => g.title)).toEqual(SHORTCUT_GROUPS.map((g) => t(g.titleKey)))
     render(<ShortcutsModal onClose={() => {}} />)
     const dialog = screen.getByRole('dialog', { name: 'Keyboard shortcuts' })
     for (const g of SHORTCUT_GROUPS) {
       for (const id of g.ids) {
-        expect(within(dialog).getByText(getAction(id).label, { selector: '.shortcut-what' })).toBeInTheDocument()
+        expect(within(dialog).getByText(actionLabel(id, t), { selector: '.shortcut-what' })).toBeInTheDocument()
       }
     }
   })
@@ -27,8 +34,8 @@ describe('command palette reads the action registry', () => {
     expect(screen.getByRole('group', { name: 'Requests' })).toBeInTheDocument()
     const commands = screen.getByRole('group', { name: 'Commands' })
     const first = paletteActions()[0]
-    expect(within(commands).getByText(first.label)).toBeInTheDocument()
-    expect(within(commands).getByText(first.description)).toBeInTheDocument()
+    expect(within(commands).getByText(actionLabel(first.id as ActionId, t))).toBeInTheDocument()
+    expect(within(commands).getByText(actionDescription(first.id as ActionId, t))).toBeInTheDocument()
   })
 
   it('lists only commands after ">" and runs the picked one by id', () => {

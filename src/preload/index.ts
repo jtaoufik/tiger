@@ -24,10 +24,29 @@ import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 import type { ScriptJob } from '../core/scriptProtocol'
 import type { ScriptRunResult } from '../core/script'
+import type { Locale } from '../core/i18n/locales'
+
+/** The language main resolved at window creation (--tiger-locale=xx). */
+function initialLocale(): string | undefined {
+  const arg = process.argv.find((a) => a.startsWith('--tiger-locale='))
+  return arg ? arg.slice('--tiger-locale='.length) : undefined
+}
 
 export type OpenedCollection = OpenedCollectionPayload
 
 const api = {
+  /** Language to render the first frame in; validated by the renderer. */
+  initialLocale: initialLocale(),
+  /** The app's current language, resolved by main (settings or system). */
+  locale: (): Promise<Locale> => ipcRenderer.invoke('tiger:locale'),
+  /** Language changes (Settings > Language); returns an unsubscribe function. */
+  onLocale: (cb: (locale: Locale) => void): (() => void) => {
+    const listener = (_e: unknown, locale: Locale): void => cb(locale)
+    ipcRenderer.on('tiger:locale', listener)
+    return () => {
+      ipcRenderer.removeListener('tiger:locale', listener)
+    }
+  },
   openCollection: (): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openCollection'),
   newCollection: (name: string): Promise<OpenedCollection | null> =>
     ipcRenderer.invoke('tiger:newCollection', name),
