@@ -1,10 +1,11 @@
 {
-  "version": "0.7.0",
+  "version": "0.7.1",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Clearer everywhere: one name per action, labelled New / Open / Import, plain tab names (Save values, Load test, Notes)",
-    "Team sync without git jargon: one status, one-click Sync with team, guided sharing, side-by-side conflict choices",
-    "Accessibility: readable contrast, full keyboard use, screen reader announcements, Windows High Contrast support",
-    "Windows: one recommended installer with Start menu and desktop shortcuts, plus a Portable version"
+    "Scripts and tests now run in the desktop app, inside an isolated sandbox",
+    "Tiger now updates itself: downloads in the background, then Restart to update",
+    "Portable downloads: Windows zip, macOS zip and Linux tar.gz",
+    "Much better Postman, Insomnia and Bruno import, with Postman scripts that keep working",
+    "Faster startup and smooth scrolling in collections with thousands of requests"
   ]
 }
