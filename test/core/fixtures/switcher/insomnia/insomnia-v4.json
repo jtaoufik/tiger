@@ -1,0 +1,180 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-09-12T08:30:00.000Z",
+  "__export_source": "insomnia.desktop.app:v9.3.3",
+  "resources": [
+    {
+      "_id": "req_login",
+      "parentId": "fld_auth",
+      "modified": 1726130000000,
+      "created": 1726120000000,
+      "url": "{{ _.api.url }}/auth/login",
+      "name": "Log in",
+      "description": "Returns a session token.",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.user.email }}\",\n  \"password\": \"{{ _.user.password }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "none" },
+      "afterResponseScript": "insomnia.test('logged in', () => {\n  insomnia.expect(insomnia.response.code).to.equal(200);\n});\ninsomnia.environment.set('sessionToken', insomnia.response.json().token);",
+      "_type": "request"
+    },
+    {
+      "_id": "req_me",
+      "parentId": "fld_account",
+      "url": "{{ _.api.url }}/users/:userId",
+      "name": "Get my profile",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        { "id": "pair_1", "name": "fields", "value": "name,email", "disabled": false },
+        { "id": "pair_2", "name": "trace", "value": "{% uuid 'v4' %}", "disabled": true }
+      ],
+      "pathParameters": [{ "name": "userId", "value": "{{ _.user.id }}" }],
+      "headers": [
+        { "name": "X-Request-Time", "value": "{% now 'unix', '' %}" },
+        { "name": "X-Last-Order", "value": "{% response 'body', 'req_orders', 'b64::JC5pZA==::46b', 'never', 60 %}" }
+      ],
+      "authentication": {},
+      "_type": "request"
+    },
+    {
+      "_id": "req_avatar",
+      "parentId": "fld_account",
+      "url": "{{ _.api.url }}/users/me/avatar",
+      "name": "Upload avatar",
+      "method": "PUT",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          { "id": "p1", "name": "caption", "value": "me at the beach" },
+          { "id": "p2", "name": "file", "value": "", "fileName": "/Users/ada/Pictures/avatar.jpg", "type": "file" },
+          { "id": "p3", "name": "private", "value": "true", "disabled": true }
+        ]
+      },
+      "headers": [],
+      "authentication": { "type": "apikey", "key": "X-Api-Key", "value": "{{ _.apiKey }}", "addTo": "header" },
+      "_type": "request"
+    },
+    {
+      "_id": "req_orders",
+      "parentId": "wrk_shop",
+      "url": "{{ _.api.url }}/orders",
+      "name": "List orders",
+      "method": "GET",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "oauth2",
+        "grantType": "client_credentials",
+        "accessTokenUrl": "{{ _.api.url }}/oauth/token",
+        "clientId": "{{ _.oauth.clientId }}",
+        "clientSecret": "{{ _.oauth.clientSecret }}",
+        "scope": "orders:read"
+      },
+      "_type": "request"
+    },
+    {
+      "_id": "req_graphql",
+      "parentId": "wrk_shop",
+      "url": "{{ _.api.url }}/graphql",
+      "name": "Catalogue (GraphQL)",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/graphql",
+        "text": "{\"query\":\"query { products { id } }\",\"variables\":{\"first\":5}}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "digest", "username": "u", "password": "p" },
+      "_type": "request"
+    },
+    {
+      "_id": "req_form",
+      "parentId": "wrk_shop",
+      "url": "{{ _.api.url }}/newsletter",
+      "name": "Subscribe",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "email", "value": "{{ _.user.email }}" },
+          { "name": "promo", "value": "yes", "disabled": true }
+        ]
+      },
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.sessionToken }}", "prefix": "Token" },
+      "_type": "request"
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_shop",
+      "name": "Auth",
+      "description": "",
+      "environment": {},
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_account",
+      "parentId": "fld_auth",
+      "name": "Account",
+      "description": "Needs a session.",
+      "environment": { "pageSize": 50 },
+      "authentication": { "type": "bearer", "token": "{{ _.sessionToken }}" },
+      "preRequestScript": "insomnia.request.headers.add({ key: 'X-Client', value: 'tiger-import' });",
+      "_type": "request_group"
+    },
+    {
+      "_id": "greq_stream",
+      "parentId": "wrk_shop",
+      "name": "Order stream",
+      "url": "grpc.example.com:443",
+      "protoMethodName": "/orders.Orders/Stream",
+      "_type": "grpc_request"
+    },
+    {
+      "_id": "wrk_shop",
+      "parentId": null,
+      "name": "Shop (Insomnia)",
+      "description": "",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_base",
+      "parentId": "wrk_shop",
+      "name": "Base Environment",
+      "data": {
+        "api": { "url": "https://shop.example.com/api", "version": 2 },
+        "user": { "email": "ada@example.com", "password": "hunter2", "id": "u-1" },
+        "tags": ["a", "b"]
+      },
+      "_type": "environment"
+    },
+    {
+      "_id": "env_dev",
+      "parentId": "env_base",
+      "name": "Development",
+      "data": { "api": { "url": "http://localhost:8080/api" }, "apiKey": "dev-key" },
+      "_type": "environment"
+    },
+    {
+      "_id": "env_prod",
+      "parentId": "env_base",
+      "name": "Production",
+      "data": { "apiKey": "{% prompt 'API key', '', '', '', false, true %}" },
+      "isPrivate": true,
+      "_type": "environment"
+    },
+    {
+      "_id": "jar_1",
+      "parentId": "wrk_shop",
+      "name": "Default Jar",
+      "cookies": [],
+      "_type": "cookie_jar"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+type: collection.insomnia.rest/5.0
+name: Weather (Insomnia 11)
+meta:
+  id: wrk_weather
+  created: 1726120000000
+  modified: 1726130000000
+collection:
+  - name: Forecast
+    meta:
+      id: fld_forecast
+      created: 1726120000000
+      modified: 1726130000000
+      sortKey: -1726120000000
+    authentication:
+      type: apikey
+      key: appid
+      value: "{{ _.owmKey }}"
+      addTo: queryParams
+    children:
+      - url: "{{ _.base }}/forecast/:city"
+        name: City forecast
+        meta:
+          id: req_city
+          created: 1726120000000
+          modified: 1726130000000
+          isPrivate: false
+          sortKey: -1726120000000
+        method: GET
+        parameters:
+          - name: units
+            value: metric
+            disabled: false
+        pathParameters:
+          - name: city
+            value: Paris
+        headers:
+          - name: Accept
+            value: application/json
+        scripts:
+          afterResponse: |-
+            insomnia.test('ok', () => {
+              insomnia.expect(insomnia.response.code).to.eql(200);
+            });
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+  - url: "{{ _.base }}/alerts"
+    name: Post alert
+    meta:
+      id: req_alert
+      created: 1726120000000
+      modified: 1726130000000
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "level": "red"
+        }
+    headers:
+      - name: Content-Type
+        value: application/json
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_weather
+environments:
+  name: Base Environment
+  meta:
+    id: env_weather
+  data:
+    base: https://api.weather.example.com
+    owmKey: base-key
+  subEnvironments:
+    - name: Staging
+      meta:
+        id: env_weather_staging
+      data:
+        base: https://staging.weather.example.com

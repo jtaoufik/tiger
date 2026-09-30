@@ -28,7 +28,9 @@ export const tabKey = (t: OpenTab): string =>
 export const SESSION_KEYS = {
   roots: 'tiger.session.roots',
   tabs: 'tiger.session.tabs',
-  active: 'tiger.session.active'
+  active: 'tiger.session.active',
+  /** Set once the first-run home screen (with the import cards) was shown. */
+  welcomed: 'tiger.welcomed'
 } as const
 
 /** Parse the persisted list of open collection roots; junk in, empty out. */

@@ -1,0 +1,17 @@
+meta {
+  name: User management
+  seq: 2
+}
+
+auth {
+  mode: basic
+}
+
+auth:basic {
+  username: admin
+  password: {{adminPassword}}
+}
+
+headers {
+  Accept: application/vnd.shop.v2+json
+}

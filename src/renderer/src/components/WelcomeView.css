@@ -73,3 +73,63 @@
     color: HighlightText;
   }
 }
+
+/* Coming from another tool: one card per tool with its export hint. */
+.welcome-switch {
+  margin: 4px 0 22px;
+}
+.welcome-switch-lead {
+  margin: 6px 0 10px;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  max-width: 72ch;
+}
+.welcome-switch-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.welcome-switch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--glass);
+}
+.welcome-switch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.welcome-switch-name {
+  font-weight: 650;
+  font-size: 0.875rem;
+}
+.welcome-switch-head .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.welcome-switch-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.7812rem;
+  line-height: 1.5;
+}
+.welcome-switch-where {
+  font-weight: 600;
+  color: var(--text);
+}
+@media (forced-colors: active) {
+  .welcome-switch-card {
+    border: 1px solid CanvasText;
+  }
+}

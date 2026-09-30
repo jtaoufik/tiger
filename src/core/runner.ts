@@ -8,7 +8,7 @@
  */
 
 import { extractCaptures } from './capture'
-import { runScript, type ScriptTestResult } from './script'
+import { applyHeaderChanges, runScript, type ScriptTestResult } from './script'
 import type { TigerRequest } from './types'
 
 export interface RunnerItem {
@@ -81,13 +81,24 @@ export async function runCollection(
 
     try {
       // Pre-request script may set variables used by this and later requests.
+      const scriptRequest = {
+        name: request.name,
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        body: request.body.content
+      }
+      let toSend = request
       if (request.preScript?.trim()) {
-        const pre = runScript(request.preScript, { vars })
+        const pre = runScript(request.preScript, { vars, request: scriptRequest })
         if (pre.error) throw new Error(`Pre-request script: ${pre.error}`)
         vars = pre.vars
+        if (pre.headerChanges) {
+          toSend = { ...request, headers: applyHeaderChanges(request.headers, pre.headerChanges) }
+        }
       }
 
-      const res = await options.execute(request, vars)
+      const res = await options.execute(toSend, vars)
       result.status = res.status
       result.timeMs = res.timeMs
 
@@ -105,6 +116,7 @@ export async function runCollection(
       if (request.postScript?.trim()) {
         const post = runScript(request.postScript, {
           vars,
+          request: scriptRequest,
           response: { status: res.status, headers: res.headers, body: res.body, timeMs: res.timeMs }
         })
         if (post.error) throw new Error(`Post-response script: ${post.error}`)

@@ -1,0 +1,25 @@
+headers {
+  X-Client: bruno-import
+  Accept: application/json
+}
+
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+vars:pre-request {
+  apiVersion: v2
+}
+
+script:pre-request {
+  bru.setVar("startedAt", Date.now());
+}
+
+docs {
+  # Bruno Shop
+  Collection docs in markdown.
+}

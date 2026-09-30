@@ -75,7 +75,7 @@ Full breakdown: https://jtaoufik.github.io/tiger/compare/
 - **MCP server for AI assistants.** Claude, Cursor, and any MCP-compatible assistant can list, read, and run requests from your collection without leaving the chat. Tiger is the only MCP API client built this way from the ground up.
 - **Environments and secrets.** Named variable sets with `{{variable}}` interpolation in URLs, headers, query params, bodies, and auth fields. Secret variables are masked in the UI.
 - **Request chaining.** In the **Save values** tab, capture values from a response (status code, header, or a JSON path like `body.data[0].id`) and write them into environment variables for the next request.
-- **Dynamic variables.** `{{$uuid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, and `{{$randomInt}}` are re-evaluated on every send.
+- **Dynamic variables.** `{{$uuid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, and `{{$randomInt}}` are re-evaluated on every send. The Postman spellings `{{$guid}}`, `{{$randomUUID}}`, `{{$randomBoolean}}` and `{{$randomAlphaNumeric}}` work too.
 - **OAuth 2.0, proxy, client certificates (mTLS).** Client credentials grant, Bearer, Basic, and API key auth. HTTP/HTTPS/SOCKS proxy support. Custom CA bundles and client certificate authentication via PEM pair or PFX/PKCS12 file.
 - **GraphQL.** Dedicated body type with a separate variables pane.
 - **SOAP and XML.** Send raw XML bodies for SOAP/WS-* APIs the same way you would for REST.
@@ -86,9 +86,42 @@ Full breakdown: https://jtaoufik.github.io/tiger/compare/
 - **Response power tools.** Search inside any response with Cmd/Ctrl+F (match cycling and highlights), preview HTML responses in a sandboxed frame, and view image responses inline.
 - **Keyboard-first.** A shortcuts overlay on Cmd/Ctrl+/, tab cycling, close-tab, quick-create, and focus-URL shortcuts. Inline rename (double-click or F2) and drag-and-drop to move requests between folders.
 - **Native application menu.** A proper File / Edit / Request / View / Window / Help menu that lists every core action with its shortcut, on macOS, Windows, and Linux. The window remembers its size, position, and maximized state between launches.
-- **Import and export Postman, OpenAPI, and more.** Import a Postman v2.0/v2.1 export, an Insomnia v4 export, a Bruno folder, an OpenAPI 3 / Swagger 2 spec, or a pasted curl command. Export collections back to Postman v2.1 or OpenAPI 3.0, and single requests as `.tiger` or curl.
+- **Import and export Postman, OpenAPI, and more.** Import a Postman v2.0/v2.1 collection, environment or globals export, an Insomnia v4 or v5 export, a Bruno folder, an OpenAPI 3 / Swagger 2 spec, a WSDL, or a pasted curl command. Or just drop the file or folder on the window. After every import a short report lists what came in and anything to double check. Export collections back to Postman v2.1 or OpenAPI 3.0, and single requests as `.tiger` or curl.
 - **Code generation.** Turn any request into a curl command or a JavaScript fetch snippet.
 - **Cookie jar.** Persist cookies between sends and sessions, with automatic cross-origin stripping on redirects.
+
+## Switching from Postman, Insomnia or Bruno
+
+On first launch the home screen has an import card for each tool, with where to find the export. You can also drop an export file (or a Bruno folder) anywhere on the window. Tiger works out which tool it came from, imports it, and shows a report: how many requests, folders and environments came in, and a list of anything that only partly mapped, with the request name and what to check. Nothing is thrown away: an unsupported script call or auth type is kept and flagged, not dropped.
+
+| What you have | Postman | Insomnia | Bruno |
+|---|---|---|---|
+| Requests, folders, method, URL, query, headers | Yes | Yes | Yes |
+| Disabled headers and params | Yes | Yes | Yes |
+| JSON, text, XML, form, GraphQL bodies | Yes | Yes | Yes |
+| Multipart form-data with files | Yes, file paths kept (check they exist) | Yes | Yes |
+| Binary file body | Flagged | Flagged | Not in Bruno |
+| Path variables (`/users/:id`) | Yes, value written into the URL | Yes | Yes |
+| Collection auth | Yes | Not in Insomnia | Yes (`collection.bru`) |
+| Folder auth, inherited by nested folders | Yes | Yes | Yes (`folder.bru`) |
+| Bearer, Basic, API key, OAuth 2 client credentials | Yes | Yes | Yes |
+| Other auth (Digest, AWS, NTLM, OAuth 1, other OAuth 2 grants) | Flagged, set to no auth (a saved OAuth 2 token becomes Bearer) | Flagged | Flagged |
+| Environments | Yes, including secret and disabled values | Yes, sub environments merged over the base | Yes |
+| Nested environment JSON | Not in Postman | Yes, as dotted names (`{{api.url}}`) | Not in Bruno |
+| Collection variables | Added to every imported environment | Not in Insomnia | Added to every imported environment |
+| Globals | Become an environment named Globals | Not in Insomnia | Not in Bruno |
+| Folder variables | Not in Postman | Flagged | Flagged |
+| Collection and folder headers | Not in Postman | Not in Insomnia | Copied into each request |
+| Pre-request and test scripts | Yes, runs through a `pm.*` compatibility layer | Yes (`insomnia.*`) | Yes (`bru`, `res`, `req`, `test`, `expect`) |
+| Collection and folder scripts | Copied into each request | Copied into each request | Copied into each request |
+| Declarative assertions | Not in Postman | Not in Insomnia | Converted to tests where the operator maps |
+| `pm.sendRequest`, `pm.cookies`, `require()`, CryptoJS, async code | Kept and flagged | Kept and flagged | Kept and flagged |
+| Dynamic variables | `$guid`, `$timestamp`, `$isoTimestamp`, `$randomInt`, `$randomUUID`; faker ones are flagged | `{% uuid %}` and `{% now %}`; other tags are flagged | Same as Postman |
+| gRPC and WebSocket requests | Not in Postman exports | Skipped and counted | Not supported |
+
+The `pm.*` layer covers `pm.test`, `pm.expect` (the common Chai assertions), `pm.response` (`code`, `status`, `json()`, `text()`, `headers`, `responseTime`, `to.have.status`, `to.have.header`, `to.be.ok`), `pm.environment`, `pm.variables`, `pm.collectionVariables`, `pm.globals`, `pm.request` (read, plus adding or removing headers in a pre-request script), `pm.info`, and the legacy `tests[...]`, `responseBody`, `responseCode` and `postman.setEnvironmentVariable`. Tiger has one variable scope, so every Postman scope reads and writes the active environment.
+
+Full guide: https://jtaoufik.github.io/tiger/docs/importing/
 
 ## Tiger vs Postman vs Bruno
 

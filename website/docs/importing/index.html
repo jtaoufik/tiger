@@ -36,16 +36,16 @@
         </thead>
         <tbody>
           <tr>
-            <td>Postman v2.0 / v2.1 <code>.json</code></td>
+            <td>Postman v2.0 / v2.1 <code>.json</code>, environments and globals</td>
             <td class="col-tiger"><span class="yes">Yes</span></td>
             <td class="col-tiger"><span class="yes">Yes</span> (v2.1)</td>
-            <td><code>{{variables}}</code> carry over untouched</td>
+            <td>Auth, scripts and <code>{{variables}}</code> carry over; see the matrix below</td>
           </tr>
           <tr>
-            <td>Insomnia v4 <code>.json</code></td>
+            <td>Insomnia v4 <code>.json</code> / <code>.yaml</code> and v5 <code>.yaml</code></td>
             <td class="col-tiger"><span class="yes">Yes</span></td>
             <td class="col-tiger"><span class="no">No</span></td>
-            <td>Folder hierarchy rebuilt from parent IDs</td>
+            <td>Environments, folder auth and scripts carry over</td>
           </tr>
           <tr>
             <td>Bruno folder of <code>.bru</code> files</td>
@@ -81,52 +81,255 @@
       the sidebar (the arrow-into-box icon next to "Collections") or from the welcome screen.
       Then choose one of the sources below.
     </p>
+    <p>
+      Faster still: <strong>drop</strong> an export file, several files, or a folder anywhere on
+      the Tiger window. Tiger works out which tool each file came from. Drop a Postman collection
+      together with its environment exports and you get one collection with those environments.
+      Drop a Bruno collection folder and it is read as a whole.
+    </p>
+    <h3>The import report</h3>
+    <p>
+      After every import Tiger shows a short report: how many requests, folders and environments
+      came in, and a list of anything that only partly mapped. Each entry names the request (and
+      its folder) and says in plain words what to check, for example a file upload whose file lives
+      on another machine, or a script that calls <code>pm.sendRequest</code>. Nothing is thrown
+      away: unsupported pieces are kept as they were and flagged.
+    </p>
+
+    <h2 id="switching">Switching from Postman, Insomnia or Bruno</h2>
+    <p>
+      On first launch the home screen has an import card per tool, each with a hint on where to
+      find the export. Here is what carries over.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>What you have</th>
+            <th>Postman</th>
+            <th>Insomnia</th>
+            <th>Bruno</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Requests, folders, method, URL, query, headers</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Disabled headers and params</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>JSON, text, XML, form and GraphQL bodies</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Multipart form-data with files</td>
+            <td><span class="yes">Yes</span> (check the file paths exist)</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Binary file body</td>
+            <td><span class="partial">Flagged</span></td>
+            <td><span class="partial">Flagged</span></td>
+            <td>Not in Bruno</td>
+          </tr>
+          <tr>
+            <td>Path variables such as <code>/users/:id</code></td>
+            <td><span class="yes">Yes</span>, the value is written into the URL</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Collection auth</td>
+            <td><span class="yes">Yes</span></td>
+            <td>Not in Insomnia</td>
+            <td><span class="yes">Yes</span> (<code>collection.bru</code>)</td>
+          </tr>
+          <tr>
+            <td>Folder auth, inherited by nested folders</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span> (<code>folder.bru</code>)</td>
+          </tr>
+          <tr>
+            <td>Bearer, Basic, API key, OAuth 2 client credentials</td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Digest, AWS, NTLM, OAuth 1, other OAuth 2 grants</td>
+            <td><span class="partial">Flagged</span>, set to no auth. A saved OAuth 2 token becomes Bearer</td>
+            <td><span class="partial">Flagged</span></td>
+            <td><span class="partial">Flagged</span></td>
+          </tr>
+          <tr>
+            <td>Environments</td>
+            <td><span class="yes">Yes</span>, with secret and disabled values</td>
+            <td><span class="yes">Yes</span>, sub environments merged over the base</td>
+            <td><span class="yes">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Nested environment JSON</td>
+            <td>Not in Postman</td>
+            <td><span class="yes">Yes</span>, as dotted names like <code>{{api.url}}</code></td>
+            <td>Not in Bruno</td>
+          </tr>
+          <tr>
+            <td>Collection variables</td>
+            <td><span class="yes">Yes</span>, added to every imported environment</td>
+            <td>Not in Insomnia</td>
+            <td><span class="yes">Yes</span>, added to every imported environment</td>
+          </tr>
+          <tr>
+            <td>Globals</td>
+            <td><span class="yes">Yes</span>, as an environment named Globals</td>
+            <td>Not in Insomnia</td>
+            <td>Not in Bruno</td>
+          </tr>
+          <tr>
+            <td>Folder variables</td>
+            <td>Not in Postman</td>
+            <td><span class="partial">Flagged</span></td>
+            <td><span class="partial">Flagged</span></td>
+          </tr>
+          <tr>
+            <td>Collection and folder headers</td>
+            <td>Not in Postman</td>
+            <td>Not in Insomnia</td>
+            <td><span class="yes">Yes</span>, copied into each request</td>
+          </tr>
+          <tr>
+            <td>Pre-request and test scripts</td>
+            <td><span class="yes">Yes</span> through the <code>pm.*</code> layer</td>
+            <td><span class="yes">Yes</span> (<code>insomnia.*</code>)</td>
+            <td><span class="yes">Yes</span> (<code>bru</code>, <code>res</code>, <code>req</code>)</td>
+          </tr>
+          <tr>
+            <td>Collection and folder scripts</td>
+            <td><span class="yes">Yes</span>, copied into each request</td>
+            <td><span class="yes">Yes</span>, copied into each request</td>
+            <td><span class="yes">Yes</span>, copied into each request</td>
+          </tr>
+          <tr>
+            <td>Declarative assertions</td>
+            <td>Not in Postman</td>
+            <td>Not in Insomnia</td>
+            <td><span class="yes">Yes</span>, converted to tests where the operator maps</td>
+          </tr>
+          <tr>
+            <td><code>pm.sendRequest</code>, cookies, <code>require()</code>, CryptoJS, async code</td>
+            <td><span class="partial">Flagged</span>, kept</td>
+            <td><span class="partial">Flagged</span>, kept</td>
+            <td><span class="partial">Flagged</span>, kept</td>
+          </tr>
+          <tr>
+            <td>Dynamic variables</td>
+            <td><span class="yes">Yes</span>: <code>$guid</code>, <code>$timestamp</code>, <code>$isoTimestamp</code>, <code>$randomInt</code>, <code>$randomUUID</code>. Faker ones are flagged</td>
+            <td><span class="yes">Yes</span>: <code>{% uuid %}</code>, <code>{% now %}</code>. Other tags are flagged</td>
+            <td>Same as Postman</td>
+          </tr>
+          <tr>
+            <td>gRPC and WebSocket requests</td>
+            <td>Not in exports</td>
+            <td><span class="partial">Flagged</span>, skipped and counted</td>
+            <td>Not supported</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <h3>Postman (v2.0 / v2.1)</h3>
     <p>
-      Export your Postman collection as a JSON file (<em>Collection &rarr; Export &rarr; Collection v2.1</em>).
-      In Tiger, choose <strong>Postman JSON</strong>, pick the file, and click Import.
-      Tiger reads both the v2.0 and v2.1 schema variants.
+      In Postman, open the <em>...</em> menu next to the collection, choose <em>Export</em> and keep
+      <em>Collection v2.1</em>. Export environments the same way from <em>Environments</em>, and
+      globals from the globals page. Pick all the files together in Tiger (or drop them on the
+      window). Tiger reads both the v2.0 and v2.1 schema variants.
     </p>
-    <p>What carries over:</p>
     <ul>
-      <li>Folder hierarchy (nested item groups become Tiger sub-folders)</li>
-      <li>Request name, method, URL, query parameters, and headers</li>
-      <li>Body - <code>raw</code> (JSON or text), URL-encoded form, GraphQL</li>
-      <li><code>{{variable}}</code> references - Postman uses the same syntax as Tiger, so they round-trip cleanly</li>
-      <li>Disabled items (Postman's <code>disabled: true</code> maps to Tiger's <code>~</code> prefix)</li>
+      <li>Collection auth becomes the Tiger collection auth, folder auth becomes folder auth, and
+          requests set to "inherit" inherit through nested folders like they do in Postman.
+          <code>noauth</code> becomes an explicit "no auth".</li>
+      <li>Postman has several variable scopes; Tiger has one, the active environment. Collection
+          variables are added to every imported environment (the environment value wins), or become
+          an environment named "&lt;collection&gt; variables" when there is none. Globals become an
+          environment named Globals. The first imported environment is selected for you.</li>
+      <li>Collection and folder scripts are copied into each request below them, outermost first,
+          because Tiger runs scripts per request.</li>
+      <li>Path variables (<code>/users/:id</code>) are resolved into the URL. One without a value
+          becomes <code>{{id}}</code> so you can set it in an environment.</li>
+      <li>Descriptions become request, folder and collection notes. Saved response examples are
+          not imported.</li>
     </ul>
+    <h3>Scripts written for Postman</h3>
     <p>
-      You can also export the active environment alongside the collection: Tiger embeds the
-      environment's variables as Postman collection variables, so a single exported file
-      carries both requests and variable values.
+      Tiger runs Postman scripts through a compatibility layer. It covers <code>pm.test</code>,
+      <code>pm.expect</code> with the common Chai assertions (<code>equal</code>, <code>eql</code>,
+      <code>a</code>/<code>an</code>, <code>include</code>, <code>property</code>,
+      <code>lengthOf</code>, <code>above</code>/<code>below</code>, <code>match</code>,
+      <code>oneOf</code>, <code>empty</code>, <code>not</code> and friends),
+      <code>pm.response</code> (<code>code</code>, <code>status</code>, <code>json()</code>,
+      <code>text()</code>, <code>headers</code>, <code>responseTime</code>,
+      <code>to.have.status</code>, <code>to.have.header</code>, <code>to.be.ok</code>),
+      <code>pm.environment</code>, <code>pm.variables</code>, <code>pm.collectionVariables</code>,
+      <code>pm.globals</code>, <code>pm.request</code> (read it, and add or remove headers from a
+      pre-request script), <code>pm.info</code>, and the legacy <code>tests[...]</code>,
+      <code>responseBody</code>, <code>responseCode</code> and
+      <code>postman.setEnvironmentVariable</code>. Insomnia's <code>insomnia.*</code> API is the
+      same layer.
+    </p>
+    <p>
+      Not supported: <code>pm.sendRequest</code>, <code>pm.cookies</code>, <code>pm.vault</code>,
+      <code>require()</code> of libraries such as lodash or CryptoJS, asynchronous code, and flow
+      control (<code>setNextRequest</code> is skipped, the runner goes in order). The import report
+      lists every request that uses one, and the script is kept so you can adapt it.
     </p>
 
-    <h3>Insomnia (v4)</h3>
+    <h3>Insomnia (v4 and v5)</h3>
     <p>
-      In Insomnia, go to <em>Application &rarr; Preferences &rarr; Data &rarr; Export Data &rarr; All</em>
-      and save the JSON file. Choose <strong>Insomnia v4</strong> in Tiger and pick the file.
+      In Insomnia, open the <em>...</em> menu of the collection (or <em>Preferences</em>, then
+      <em>Data</em>) and choose <em>Export</em>. The JSON and YAML exports both work, including the
+      newer v5 YAML collection files. Choose <strong>Insomnia</strong> in Tiger and pick the file.
     </p>
-    <p>
-      Insomnia stores all resources in a flat array keyed by internal IDs.
-      Tiger resolves the parent chain of each <code>request_group</code> to reconstruct the
-      original folder hierarchy. Body types supported: JSON, XML, plain text, GraphQL,
-      and URL-encoded form. Insomnia's <code>{{variables}}</code> syntax differs slightly -
-      review and remap them in Tiger's environment editor after importing.
-    </p>
+    <ul>
+      <li><code>{{ _.name }}</code> becomes <code>{{name}}</code>. Nested environment JSON is
+          flattened to dotted names, so <code>{{ _.api.url }}</code> becomes
+          <code>{{api.url}}</code> and resolves against the imported environment.</li>
+      <li>Each sub environment is merged over the base environment. Private environments are
+          imported too.</li>
+      <li><code>{% uuid %}</code> and <code>{% now %}</code> become Tiger dynamic variables. Other
+          template tags (<code>response</code>, <code>prompt</code>, <code>base64</code>, ...) are
+          kept as text and flagged.</li>
+      <li>Folder auth and folder scripts carry over; folder variables are flagged.</li>
+    </ul>
 
     <h3>Bruno</h3>
     <p>
-      Bruno stores collections as folders of <code>.bru</code> files.
-      Choose <strong>Bruno folder</strong> in the import dialog, then pick the root folder of
-      the collection. Tiger walks the folder recursively; each <code>.bru</code> file becomes
-      a request, and sub-folders become Tiger folders.
+      Nothing to export: choose <strong>Bruno</strong> and pick the collection folder, the one that
+      holds <code>bruno.json</code> (or drop it on the window). Tiger walks it recursively.
     </p>
-    <p>
-      Bruno's block format is a close cousin of Tiger's <code>.tiger</code> format, so most
-      fields map directly: method, URL, headers, query params, JSON / XML / form / GraphQL
-      bodies, and the <code>seq</code> ordering field.
-    </p>
+    <ul>
+      <li><code>bruno.json</code> gives the collection name, <code>folder.bru</code> gives folder
+          names.</li>
+      <li><code>collection.bru</code> and <code>folder.bru</code> auth become collection and folder
+          auth. Their headers and scripts are copied into each request below them.</li>
+      <li>Request auth follows the <code>auth:</code> mode, including <code>inherit</code> and
+          <code>none</code>.</li>
+      <li><code>params:query</code>, <code>params:path</code>, multipart files
+          (<code>@file(...)</code>), scripts, <code>tests</code> and <code>docs</code> carry over.
+          The <code>assert</code> block becomes equivalent tests where the operator maps.</li>
+      <li>Environments come from <code>environments/*.bru</code>. Bruno never writes secret values
+          to disk, so the report lists the secret names to fill in.</li>
+    </ul>
 
     <h3>OpenAPI 3 / Swagger 2</h3>
     <p>
@@ -321,8 +524,7 @@ SOAPAction: "http://www.webserviceX.NET/GetWeather"</code></pre>
 
     <h2>After importing</h2>
     <p>
-      Imported collections land in a folder on disk just like any collection you create from
-      scratch. Once imported:
+      An imported collection opens in the sidebar straight away, ready to send. Once imported:
     </p>
     <ul>
       <li>Open a terminal in the collection folder and run <code>git init</code> (or use

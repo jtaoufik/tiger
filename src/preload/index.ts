@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { BuiltRequest } from '../core/request'
 import type { RawResponse } from '../core/response'
 import type { RequestEntry, EnvironmentRef, OpenedCollectionPayload } from '../main/collection'
@@ -44,6 +44,11 @@ const api = {
     ipcRenderer.invoke('tiger:oauthToken', auth, vars),
   importCollection: (kind: ImportKind): Promise<ImportResult | null> =>
     ipcRenderer.invoke('tiger:import', kind),
+  /** Import dropped files or folders; the format is detected per file. */
+  importPaths: (paths: string[]): Promise<ImportResult | null> =>
+    ipcRenderer.invoke('tiger:importPaths', paths),
+  /** The disk path of a dropped File (File.path was removed in Electron 32). */
+  pathForFile: (file: File): string => webUtils.getPathForFile(file),
   exportCollection: (defaultName: string, content: string): Promise<string | null> =>
     ipcRenderer.invoke('tiger:export', defaultName, content),
   historyRead: (): Promise<HistoryEntry[]> => ipcRenderer.invoke('tiger:history:read'),

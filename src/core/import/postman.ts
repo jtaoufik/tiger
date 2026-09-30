@@ -1,110 +1,483 @@
 /**
- * Import a Postman collection (schema v2.0 / v2.1). Postman already uses the
- * `{{variable}}` syntax, so variables carry over untouched.
+ * Import Postman exports: a collection (schema v2.0 / v2.1), an environment
+ * (`*.postman_environment.json`) or globals (`*.postman_globals.json`).
+ * Postman already uses the `{{variable}}` syntax, so variables carry over
+ * untouched.
+ *
+ * Mapping notes:
+ *   - Auth on the collection, a folder or a request maps to Tiger's
+ *     collection / folder / request auth, which inherit the same way.
+ *     `noauth` becomes an explicit "no auth"; "inherit" leaves it unset.
+ *   - Collection and folder scripts run before the request's own in Postman;
+ *     Tiger runs scripts per request, so they are copied into each request
+ *     (outermost first). The `pm.*` shim in `script.ts` runs them.
+ *   - `:id` path variables are resolved into the URL.
+ *   - Collection variables are returned as `collectionVariables` and folded
+ *     into the environments by `layerCollectionVariables`.
  */
 
-import { emptyBody, isHttpMethod, type KeyValue, type TigerBody, type TigerRequest } from '../types'
-import type { ImportResult, ImportedRequest } from './types'
-
-type Json = Record<string, unknown>
-
-function asArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : []
-}
-
-function str(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback
-}
+import {
+  emptyBody,
+  isHttpMethod,
+  type KeyValue,
+  type TigerAuth,
+  type TigerBody,
+  type TigerEnvironment,
+  type TigerRequest
+} from '../types'
+import {
+  applyPathVariables,
+  asArray,
+  checkRequest,
+  joinScripts,
+  pathVariableWarning,
+  scalar,
+  str,
+  type Json
+} from './common'
+import type { ImportedFolder, ImportResult, ImportedRequest, ImportWarning } from './types'
 
 function toKeyValues(raw: unknown): KeyValue[] {
+  if (typeof raw === 'string') {
+    // v2.0 allows headers as one "Key: Value" string per line.
+    return raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.includes(':'))
+      .map((line) => {
+        const idx = line.indexOf(':')
+        const disabled = line.startsWith('//')
+        const name = line.slice(disabled ? 2 : 0, idx).trim()
+        return { name, value: line.slice(idx + 1).trim(), enabled: !disabled }
+      })
+  }
   return asArray(raw)
     .map((entry) => {
-      const e = entry as Json
+      const e = (entry ?? {}) as Json
       if (typeof e.key !== 'string') return null
-      return { name: e.key, value: str(e.value), enabled: e.disabled !== true }
+      return { name: e.key, value: scalar(e.value), enabled: e.disabled !== true }
     })
     .filter((kv): kv is KeyValue => kv !== null)
 }
 
-function splitUrl(url: unknown): { url: string; query: KeyValue[] } {
-  if (typeof url === 'string') {
-    const [base] = url.split('?')
-    return { url: base, query: [] }
-  }
-  const u = (url ?? {}) as Json
-  const raw = str(u.raw)
-  const base = raw.split('?')[0]
-  return { url: base || raw, query: toKeyValues(u.query) }
+function queryFromString(qs: string): KeyValue[] {
+  if (!qs) return []
+  return qs
+    .split('&')
+    .filter(Boolean)
+    .map((pair) => {
+      const idx = pair.indexOf('=')
+      return {
+        name: idx === -1 ? pair : pair.slice(0, idx),
+        value: idx === -1 ? '' : pair.slice(idx + 1),
+        enabled: true
+      }
+    })
 }
 
-function toBody(raw: unknown): TigerBody {
+interface UrlParts {
+  url: string
+  query: KeyValue[]
+  pathVars: Array<{ name: string; value: string }>
+}
+
+function splitUrl(url: unknown): UrlParts {
+  if (typeof url === 'string') {
+    const idx = url.indexOf('?')
+    if (idx === -1) return { url, query: [], pathVars: [] }
+    return { url: url.slice(0, idx), query: queryFromString(url.slice(idx + 1)), pathVars: [] }
+  }
+  const u = (url ?? {}) as Json
+  let raw = str(u.raw)
+  if (!raw) {
+    // Some exporters omit `raw`; rebuild it from the parts.
+    const protocol = str(u.protocol)
+    const host = Array.isArray(u.host) ? u.host.join('.') : str(u.host)
+    const port = u.port ? `:${scalar(u.port)}` : ''
+    const path = Array.isArray(u.path) ? u.path.map(scalar).join('/') : str(u.path)
+    raw = `${protocol ? `${protocol}://` : ''}${host}${port}${path ? `/${path}` : ''}`
+  }
+  const idx = raw.indexOf('?')
+  const base = idx === -1 ? raw : raw.slice(0, idx)
+  const query = Array.isArray(u.query) ? toKeyValues(u.query) : queryFromString(idx === -1 ? '' : raw.slice(idx + 1))
+  const pathVars = asArray(u.variable)
+    .map((v) => (v ?? {}) as Json)
+    .filter((v) => typeof v.key === 'string')
+    .map((v) => ({ name: str(v.key), value: scalar(v.value) }))
+  return { url: base, query, pathVars }
+}
+
+function description(raw: unknown): string | undefined {
+  if (typeof raw === 'string') return raw.trim() ? raw : undefined
+  const content = str((raw as Json | undefined)?.content)
+  return content.trim() ? content : undefined
+}
+
+function toBody(raw: unknown, name: string, path: string[], warnings: ImportWarning[]): TigerBody {
   const body = (raw ?? {}) as Json
   const mode = str(body.mode)
 
   if (mode === 'raw') {
     const language = str(((body.options as Json)?.raw as Json)?.language).toLowerCase()
-    return { type: language === 'json' ? 'json' : 'text', content: str(body.raw) }
+    const content = str(body.raw)
+    if (language === 'json') return { type: 'json', content }
+    if (language === 'xml') return { type: 'xml', content }
+    return { type: 'text', content }
   }
-  if (mode === 'urlencoded' || mode === 'formdata') {
-    const items = toKeyValues(body[mode])
-    const content = items
+  if (mode === 'urlencoded') {
+    const content = toKeyValues(body.urlencoded)
       .map((kv) => `${kv.enabled ? '' : '~'}${kv.name}: ${kv.value}`)
       .join('\n')
     return { type: 'form', content }
   }
+  if (mode === 'formdata') {
+    const lines: string[] = []
+    for (const entry of asArray(body.formdata)) {
+      const e = (entry ?? {}) as Json
+      if (typeof e.key !== 'string') continue
+      const prefix = e.disabled === true ? '~' : ''
+      if (e.type === 'file') {
+        const sources = Array.isArray(e.src) ? e.src.map(scalar) : e.src ? [scalar(e.src)] : []
+        if (sources.length === 0) {
+          warnings.push({
+            request: name,
+            path,
+            message: `Form field "${e.key}" is a file upload with no file saved in the export. Pick the file in the body tab.`
+          })
+        } else {
+          warnings.push({
+            request: name,
+            path,
+            message: `Form field "${e.key}" uploads ${sources.join(', ')}. Check the file exists on this machine.${
+              sources.length > 1 ? ' Only the first file was kept.' : ''
+            }`
+          })
+        }
+        lines.push(`${prefix}${e.key}: @file:${sources[0] ?? ''}`)
+      } else {
+        lines.push(`${prefix}${e.key}: ${scalar(e.value)}`)
+      }
+    }
+    return { type: 'multipart', content: lines.join('\n') }
+  }
   if (mode === 'graphql') {
     const gql = (body.graphql ?? {}) as Json
-    const variables = str(gql.variables)
+    const variables = scalar(gql.variables)
     return {
       type: 'graphql',
       content: str(gql.query),
       ...(variables.trim() ? { variables } : {})
     }
   }
+  if (mode === 'file') {
+    warnings.push({
+      request: name,
+      path,
+      message: 'Sends a binary file body, which Tiger does not support yet. The body was left empty.'
+    })
+  }
   return emptyBody()
 }
 
-function toRequest(name: string, request: unknown): TigerRequest | null {
-  const r = (request ?? {}) as Json
-  const method = str(r.method, 'GET').toLowerCase()
-  if (!isHttpMethod(method)) return null
+/** Auth fields: v2.1 stores `[{ key, value }]`, v2.0 a plain object. */
+function authParams(auth: Json, type: string): Record<string, string> {
+  const raw = auth[type]
+  if (Array.isArray(raw)) {
+    return Object.fromEntries(
+      raw.map((p) => (p ?? {}) as Json).map((p) => [str(p.key), scalar(p.value)])
+    )
+  }
+  if (raw && typeof raw === 'object') {
+    return Object.fromEntries(Object.entries(raw as Json).map(([k, v]) => [k, scalar(v)]))
+  }
+  return {}
+}
 
-  const { url, query } = splitUrl(r.url)
-  return {
+const AUTH_NAMES: Record<string, string> = {
+  digest: 'Digest',
+  hawk: 'Hawk',
+  awsv4: 'AWS Signature',
+  ntlm: 'NTLM',
+  oauth1: 'OAuth 1.0',
+  akamai: 'Akamai EdgeGrid',
+  edgegrid: 'Akamai EdgeGrid',
+  jwt: 'JWT Bearer',
+  asap: 'ASAP'
+}
+
+/**
+ * Map Postman auth. Returns undefined for "inherit from parent" (or no auth
+ * object at all), and an explicit `none` for `noauth` and unsupported types
+ * (so an unsupported request never silently sends its parent's credentials).
+ */
+export function toAuth(
+  raw: unknown,
+  label: { request?: string; path: string[] },
+  warnings: ImportWarning[]
+): TigerAuth | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const auth = raw as Json
+  const type = str(auth.type)
+  const p = authParams(auth, type)
+  switch (type) {
+    case '':
+    case 'inherit':
+      return undefined
+    case 'noauth':
+      return { type: 'none' }
+    case 'bearer':
+      return { type: 'bearer', token: p.token ?? '' }
+    case 'basic':
+      return { type: 'basic', username: p.username ?? '', password: p.password ?? '' }
+    case 'apikey':
+      return {
+        type: 'apikey',
+        key: p.key ?? '',
+        value: p.value ?? '',
+        in: p.in === 'query' ? 'query' : 'header'
+      }
+    case 'oauth2': {
+      const grant = p.grant_type || 'authorization_code'
+      if (grant === 'client_credentials') {
+        if (p.client_authentication === 'body') {
+          warnings.push({
+            ...label,
+            message:
+              'OAuth 2.0 sends the client credentials in the body in Postman; Tiger sends them as a Basic header. Check the token request works.'
+          })
+        }
+        return {
+          type: 'oauth2',
+          grantType: 'client_credentials',
+          tokenUrl: p.accessTokenUrl ?? '',
+          clientId: p.clientId ?? '',
+          clientSecret: p.clientSecret ?? '',
+          scope: p.scope ?? ''
+        }
+      }
+      if (p.accessToken) {
+        warnings.push({
+          ...label,
+          message: `OAuth 2.0 "${grant}" is not supported. The saved access token was imported as a Bearer token; it will expire.`
+        })
+        return { type: 'bearer', token: p.accessToken }
+      }
+      warnings.push({
+        ...label,
+        message: `OAuth 2.0 "${grant}" is not supported. Auth was set to none; get a token and use Bearer auth.`
+      })
+      return { type: 'none' }
+    }
+    default:
+      warnings.push({
+        ...label,
+        message: `${AUTH_NAMES[type] ?? type} auth is not supported. Auth was set to none; set it up again.`
+      })
+      return { type: 'none' }
+  }
+}
+
+interface Scripts {
+  pre?: string
+  post?: string
+}
+
+function scriptsOf(events: unknown): Scripts {
+  const out: Scripts = {}
+  for (const entry of asArray(events)) {
+    const e = (entry ?? {}) as Json
+    if (e.disabled === true) continue
+    const script = (e.script ?? {}) as Json
+    const exec = script.exec
+    const source = (Array.isArray(exec) ? exec.map(scalar).join('\n') : str(exec)).trim()
+    if (!source) continue
+    if (e.listen === 'prerequest') out.pre = joinScripts(out.pre, source)
+    else if (e.listen === 'test') out.post = joinScripts(out.post, source)
+  }
+  return out
+}
+
+function toRequest(
+  name: string,
+  request: unknown,
+  path: string[],
+  warnings: ImportWarning[]
+): TigerRequest | null {
+  const r = (typeof request === 'string' ? { url: request } : (request ?? {})) as Json
+  const method = str(r.method, 'GET').toLowerCase()
+  if (!isHttpMethod(method)) {
+    warnings.push({
+      request: name,
+      path,
+      message: `Method ${str(r.method).toUpperCase()} is not supported, so this request was skipped.`
+    })
+    return null
+  }
+
+  const parts = splitUrl(r.url)
+  const { url, missing } = applyPathVariables(parts.url, parts.pathVars)
+  if (missing.length) {
+    warnings.push({ request: name, path, message: pathVariableWarning(missing) })
+  }
+  const req: TigerRequest = {
     name,
     method,
     url,
     headers: toKeyValues(r.header),
-    query,
-    body: toBody(r.body)
+    query: parts.query,
+    body: toBody(r.body, name, path, warnings)
   }
+  const auth = toAuth(r.auth, { request: name, path }, warnings)
+  if (auth) req.auth = auth
+  const docs = description(r.description)
+  if (docs) req.docs = docs
+  return req
 }
 
-function walk(items: unknown[], path: string[], out: ImportedRequest[]): void {
+interface WalkState {
+  out: ImportedRequest[]
+  folders: ImportedFolder[]
+  warnings: ImportWarning[]
+}
+
+function walk(items: unknown[], path: string[], inherited: Scripts, state: WalkState): void {
   let seq = 1
   for (const item of items) {
     const node = (item ?? {}) as Json
     const name = str(node.name, 'Untitled')
+    const scripts = scriptsOf(node.event)
     if (Array.isArray(node.item)) {
-      walk(node.item, [...path, name], out)
-    } else if (node.request) {
-      const request = toRequest(name, node.request)
+      const folderPath = [...path, name]
+      const auth = toAuth(node.auth, { request: name, path }, state.warnings)
+      const docs = description(node.description)
+      if (auth || docs) {
+        state.folders.push({ path: folderPath, ...(auth ? { auth } : {}), ...(docs ? { docs } : {}) })
+      }
+      noteCopiedScripts(`Folder "${name}"`, node.item, scripts, path, state.warnings)
+      walk(
+        node.item,
+        folderPath,
+        { pre: joinScripts(inherited.pre, scripts.pre), post: joinScripts(inherited.post, scripts.post) },
+        state
+      )
+    } else if (node.request !== undefined) {
+      const request = toRequest(name, node.request, path, state.warnings)
       if (request) {
         request.seq = seq++
-        out.push({ path, request })
+        const pre = joinScripts(inherited.pre, scripts.pre)
+        const post = joinScripts(inherited.post, scripts.post)
+        if (pre) request.preScript = pre
+        if (post) request.postScript = post
+        checkRequest(request, path, state.warnings)
+        state.out.push({ path, request })
       }
     }
   }
 }
 
+function countRequests(items: unknown[]): number {
+  let n = 0
+  for (const item of items) {
+    const node = (item ?? {}) as Json
+    if (Array.isArray(node.item)) n += countRequests(node.item)
+    else if (node.request !== undefined) n++
+  }
+  return n
+}
+
+function noteCopiedScripts(
+  owner: string,
+  items: unknown[],
+  scripts: Scripts,
+  path: string[],
+  warnings: ImportWarning[]
+): void {
+  if (!scripts.pre && !scripts.post) return
+  const kinds = [scripts.pre && 'pre-request', scripts.post && 'test'].filter(Boolean).join(' and ')
+  const n = countRequests(items)
+  warnings.push({
+    request: owner,
+    path,
+    message: `${owner} has ${kinds} scripts. Tiger runs scripts per request, so they were copied into its ${n} request${
+      n === 1 ? '' : 's'
+    }. Edit them there.`
+  })
+}
+
+function toEnvironment(name: string, values: unknown): TigerEnvironment {
+  return {
+    name,
+    variables: asArray(values)
+      .map((v) => (v ?? {}) as Json)
+      .filter((v) => typeof v.key === 'string')
+      .map((v) => ({
+        name: str(v.key),
+        value: scalar(v.value),
+        enabled: v.enabled !== false && v.disabled !== true,
+        ...(v.type === 'secret' ? { secret: true } : {})
+      }))
+  }
+}
+
+/** True when the JSON is a Postman environment or globals export. */
+export function isPostmanEnvironment(raw: unknown): boolean {
+  const root = (raw ?? {}) as Json
+  return Array.isArray(root.values) && !Array.isArray(root.item)
+}
+
 export function importPostman(raw: unknown): ImportResult {
   const root = (raw ?? {}) as Json
+  const warnings: ImportWarning[] = []
+
+  if (isPostmanEnvironment(root)) {
+    const scope = str(root._postman_variable_scope)
+    const globals = scope === 'globals'
+    const name = globals ? 'Globals' : str(root.name, 'Postman environment')
+    const env = toEnvironment(name, root.values)
+    if (globals) {
+      warnings.push({
+        request: name,
+        message:
+          'Tiger has no global variables, so Postman globals became an environment named "Globals". Copy the ones you need into your environment.'
+      })
+    }
+    const secrets = env.variables.filter((v) => v.secret && !v.value).map((v) => v.name)
+    if (secrets.length) {
+      warnings.push({
+        request: name,
+        message: `Secret values are not exported by Postman: ${secrets.join(', ')}. Fill them in.`
+      })
+    }
+    return { name, source: 'postman', requests: [], environments: [env], warnings }
+  }
+
   const info = (root.info ?? {}) as Json
+  const name = str(info.name, str(root.name, 'Imported collection'))
+  if (!Array.isArray(root.item) && Array.isArray(root.requests)) {
+    warnings.push({
+      message:
+        'This is a Postman v1 collection. Export it again from Postman as Collection v2.1 and import that file.'
+    })
+    return { name, source: 'postman', requests: [], warnings }
+  }
+
   const requests: ImportedRequest[] = []
-  walk(asArray(root.item), [], requests)
+  const folders: ImportedFolder[] = []
+  const rootScripts = scriptsOf(root.event)
+  noteCopiedScripts('The collection', asArray(root.item), rootScripts, [], warnings)
+  const auth = toAuth(root.auth, { request: 'Collection auth', path: [] }, warnings)
+  walk(asArray(root.item), [], rootScripts, { out: requests, folders, warnings })
+
+  const collectionVariables = toEnvironment(name, root.variable).variables
+  const docs = description(info.description)
   return {
-    name: str(info.name, 'Imported collection'),
+    name,
     source: 'postman',
-    requests
+    requests,
+    ...(collectionVariables.length ? { collectionVariables } : {}),
+    ...(auth ? { auth } : {}),
+    ...(docs ? { docs } : {}),
+    ...(folders.length ? { folders } : {}),
+    ...(warnings.length ? { warnings } : {})
   }
 }

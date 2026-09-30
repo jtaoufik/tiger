@@ -1,0 +1,20 @@
+meta {
+  name: Delete user
+  type: http
+  seq: 1
+}
+
+delete {
+  url: {{baseUrl}}/users/{{userId}}
+  body: none
+  auth: awsv4
+}
+
+auth:awsv4 {
+  accessKeyId: AKIA
+  secretAccessKey: x
+}
+
+script:pre-request {
+  await bru.sendRequest({ url: "https://audit" });
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Upload avatar
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/users/{{userId}}/avatar
+  body: multipartForm
+  auth: apikey
+}
+
+auth:apikey {
+  key: X-Api-Key
+  value: {{apiKey}}
+  placement: queryparams
+}
+
+body:multipart-form {
+  caption: holiday
+  file: @file(/Users/ada/Pictures/avatar.png)
+  ~draft: true
+}

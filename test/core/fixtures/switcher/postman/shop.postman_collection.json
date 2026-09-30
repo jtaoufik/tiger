@@ -1,0 +1,302 @@
+{
+  "info": {
+    "_postman_id": "7c1e1d8e-2f4b-4b8e-9d0a-1f2e3d4c5b6a",
+    "name": "Shop API",
+    "description": "Everything the storefront calls.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345678"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": ["pm.variables.set(\"requestId\", pm.variables.replaceIn(\"{{$guid}}\"));"]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": ["pm.test(\"Response time is acceptable\", function () {", "    pm.expect(pm.response.responseTime).to.be.below(5000);", "});"]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "https://shop.example.com/api", "type": "string" },
+    { "key": "pageSize", "value": 20, "type": "number" },
+    { "key": "legacyFlag", "value": "1", "disabled": true }
+  ],
+  "item": [
+    {
+      "name": "Products",
+      "description": "Catalogue endpoints",
+      "item": [
+        {
+          "name": "List products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Has items\", () => pm.expect(body.items).to.be.an('array').that.is.not.empty);",
+                  "pm.collectionVariables.set(\"firstProductId\", body.items[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Debug", "value": "true", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products?page=1&size={{pageSize}}&sort=price",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "size", "value": "{{pageSize}}" },
+                { "key": "sort", "value": "price", "disabled": true }
+              ]
+            },
+            "description": "Paged product list."
+          },
+          "response": [
+            { "name": "200 OK", "originalRequest": {}, "status": "OK", "code": 200, "body": "{\"items\":[]}" }
+          ]
+        },
+        {
+          "name": "Get product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/:productId/variants/:variantId",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", ":productId", "variants", ":variantId"],
+              "variable": [
+                { "key": "productId", "value": "{{firstProductId}}" },
+                { "key": "variantId", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search (GraphQL)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Search($q: String!) {\n  search(q: $q) { id name }\n}",
+                "variables": "{\n  \"q\": \"lamp\"\n}"
+              }
+            },
+            "url": "{{baseUrl}}/graphql"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "auth": {
+        "type": "basic",
+        "basic": [
+          { "key": "password", "value": "{{adminPassword}}", "type": "string" },
+          { "key": "username", "value": "admin", "type": "string" }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": { "exec": ["pm.request.headers.add({ key: 'X-Admin', value: 'yes' });"], "type": "text/javascript" }
+        }
+      ],
+      "item": [
+        {
+          "name": "Reports",
+          "item": [
+            {
+              "name": "Sales report",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/reports/sales?from={{$isoTimestamp}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "reports", "sales"],
+                  "query": [{ "key": "from", "value": "{{$isoTimestamp}}" }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload product image",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "productId", "value": "42", "type": "text" },
+                { "key": "image", "type": "file", "src": "/Users/ada/Pictures/lamp.png" },
+                { "key": "thumbnail", "type": "file", "src": [] },
+                { "key": "note", "value": "draft", "type": "text", "disabled": true }
+              ]
+            },
+            "url": "{{baseUrl}}/admin/images"
+          }
+        },
+        {
+          "name": "Public health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Checkout",
+      "item": [
+        {
+          "name": "Create order",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.environment.set(\"orderRef\", \"ord-\" + ts);",
+                  "pm.sendRequest(pm.environment.get(\"baseUrl\") + \"/cart\", function (err, res) {",
+                  "  pm.environment.set(\"cartId\", res.json().id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "tests[\"Status code is 201\"] = responseCode.code === 201;",
+                  "var data = JSON.parse(responseBody);",
+                  "postman.setEnvironmentVariable(\"orderId\", data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{$guid}}\",\n  \"createdAt\": {{$timestamp}},\n  \"quantity\": {{$randomInt}},\n  \"customer\": \"{{$randomFirstName}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/orders?dryRun=false"
+          }
+        },
+        {
+          "name": "Pay with API key",
+          "request": {
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                { "key": "in", "value": "query", "type": "string" },
+                { "key": "value", "value": "{{payKey}}", "type": "string" },
+                { "key": "key", "value": "api_key", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "amount", "value": "1999", "type": "text" },
+                { "key": "currency", "value": "EUR", "type": "text", "disabled": true }
+              ]
+            },
+            "url": "{{baseUrl}}/pay"
+          }
+        },
+        {
+          "name": "Legacy SOAP ping",
+          "request": {
+            "auth": {
+              "type": "digest",
+              "digest": [{ "key": "username", "value": "soap", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "<ping/>",
+              "options": { "raw": { "language": "xml" } }
+            },
+            "url": "{{baseUrl}}/soap"
+          }
+        },
+        {
+          "name": "Refund (OAuth)",
+          "request": {
+            "auth": {
+              "type": "oauth2",
+              "oauth2": [
+                { "key": "grant_type", "value": "authorization_code", "type": "string" },
+                { "key": "accessToken", "value": "eyJhbGciOi.saved", "type": "string" },
+                { "key": "tokenType", "value": "Bearer", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/refunds"
+          }
+        },
+        {
+          "name": "Upload invoice PDF",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": { "mode": "file", "file": { "src": "/tmp/invoice.pdf" } },
+            "url": "{{baseUrl}}/invoices/1"
+          }
+        },
+        {
+          "name": "Service token",
+          "request": {
+            "auth": {
+              "type": "oauth2",
+              "oauth2": [
+                { "key": "grant_type", "value": "client_credentials", "type": "string" },
+                { "key": "accessTokenUrl", "value": "https://auth.example.com/token", "type": "string" },
+                { "key": "clientId", "value": "{{clientId}}", "type": "string" },
+                { "key": "clientSecret", "value": "{{clientSecret}}", "type": "string" },
+                { "key": "scope", "value": "orders:write", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/orders"
+          }
+        }
+      ]
+    }
+  ]
+}
