@@ -429,15 +429,6 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   perfMark('main:ready')
-  // Packaged builds get the icon from the bundle; in dev, set the Dock icon
-  // explicitly so the mascot shows instead of the stock Electron logo.
-  if (process.platform === 'darwin' && !app.isPackaged) {
-    try {
-      app.dock.setIcon(join(__dirname, '../../build/icon.png'))
-    } catch {
-      /* missing icon asset must not block startup */
-    }
-  }
   // Proxy authentication: answer 407 challenges with the configured credentials
   // instead of letting Electron fail the request silently.
   app.on('login', (event, _webContents, _request, authInfo, callback) => {
@@ -461,7 +452,24 @@ app.whenReady().then(() => {
   applyNetworkSettings()
   buildAppMenu()
   createWindow()
-  initAutoUpdate()
+
+  // Nothing below is needed for the first frame: run it after the window is
+  // up instead of in front of it.
+  setImmediate(() => {
+    // Packaged builds get the icon from the bundle; in dev, set the Dock icon
+    // explicitly so the mascot shows instead of the stock Electron logo
+    // (decoding the 1024 px PNG took ~60 ms in front of createWindow).
+    if (process.platform === 'darwin' && !app.isPackaged) {
+      try {
+        app.dock.setIcon(join(__dirname, '../../build/icon.png'))
+      } catch {
+        /* missing icon asset must not block startup */
+      }
+    }
+  })
+  // The background update check (and loading electron-updater) waits until
+  // the first window has painted and settled.
+  setTimeout(() => void initAutoUpdate(), 5000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -7,18 +7,36 @@
  * Requires the build to be published with `electron-builder --publish always`
  * (package.json build.publish points at the GitHub repo), so the release
  * carries the latest.yml / latest-mac.yml metadata electron-updater reads.
+ *
+ * electron-updater (and its dependency tree) is imported on demand: loading it
+ * at module scope put it on the startup path before the window was created.
  */
 
 import { app, BrowserWindow } from 'electron'
-import electronUpdater from 'electron-updater'
 
-const { autoUpdater } = electronUpdater
+type AutoUpdater = (typeof import('electron-updater'))['autoUpdater']
 
-export function initAutoUpdate(): void {
+let updater: Promise<AutoUpdater> | null = null
+const loadUpdater = (): Promise<AutoUpdater> =>
+  (updater ??= import('electron-updater').then((m) => (m.default ?? m).autoUpdater))
+
+/** Packaged, non-Store builds only (see initAutoUpdate). */
+function updatesEnabled(): boolean {
+  return app.isPackaged && !process.windowsStore
+}
+
+export async function initAutoUpdate(): Promise<void> {
   // Never in dev, and never in a Microsoft Store build: the Store owns updates for
   // MSIX installs (policy requires it), and electron-updater's GitHub-releases flow
   // would try to replace a Store-managed install out from under it.
-  if (!app.isPackaged || process.windowsStore) return
+  if (!updatesEnabled()) return
+
+  let autoUpdater: AutoUpdater
+  try {
+    autoUpdater = await loadUpdater()
+  } catch {
+    return // never disturb the app over a missing or broken updater
+  }
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
@@ -46,6 +64,6 @@ export function initAutoUpdate(): void {
 }
 
 /** Quit and install a downloaded update (called from the renderer). */
-export function quitAndInstall(): void {
-  if (app.isPackaged && !process.windowsStore) autoUpdater.quitAndInstall()
+export async function quitAndInstall(): Promise<void> {
+  if (updatesEnabled()) (await loadUpdater()).quitAndInstall()
 }
