@@ -1,0 +1,18 @@
+meta {
+  name: Health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.ok: isTruthy
+  ~res.responseTime: lt 500
+  res.body.version: between 1, 3
+}

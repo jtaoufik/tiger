@@ -17,6 +17,7 @@ import { MOD } from './ShortcutsModal'
 import { getAction } from '@core/actions'
 import { actionLabel, actionTitle } from '../actions'
 import { HelpLink } from './HelpLink'
+import type { ImportKind } from '../../../main/importers'
 import './WelcomeView.css'
 
 interface Props {
@@ -25,6 +26,11 @@ interface Props {
   onNewCollection: () => void
   onClone: () => void
   onImportExport: () => void
+  /**
+   * Start one importer directly. When set, the "coming from another tool"
+   * cards show (the app passes it on first run, before a real collection).
+   */
+  onImport?: (kind: ImportKind) => void
   onNewRequest: () => void
   onPalette: () => void
   onHistory: () => void
@@ -39,6 +45,25 @@ interface Props {
   hasSent?: boolean
 }
 
+/** Per-tool export hints for people switching to Tiger. */
+const SWITCHERS: Array<{ kind: ImportKind; name: string; hint: string }> = [
+  {
+    kind: 'postman',
+    name: 'Postman',
+    hint: 'open the ... menu next to the collection, choose Export and keep Collection v2.1. Export environments the same way from Environments. Pick the collection and environment files together.'
+  },
+  {
+    kind: 'insomnia',
+    name: 'Insomnia',
+    hint: 'open the ... menu of the collection (or Preferences, then Data) and choose Export. Both the JSON and the YAML export work.'
+  },
+  {
+    kind: 'bruno',
+    name: 'Bruno',
+    hint: 'nothing to export. Pick the collection folder on disk, the one that holds bruno.json.'
+  }
+]
+
 /** The home screen: every major feature one click away. */
 export function WelcomeView({
   version,
@@ -46,6 +71,7 @@ export function WelcomeView({
   onNewCollection,
   onClone,
   onImportExport,
+  onImport,
   onNewRequest,
   onPalette,
   onHistory,
@@ -80,8 +106,8 @@ export function WelcomeView({
     },
     {
       icon: <UploadIcon size={22} />,
-      title: getAction('import').label,
-      desc: 'Bring in Postman, Insomnia, Bruno or OpenAPI.',
+      title: 'Import from Postman / Insomnia / Bruno',
+      desc: 'Also OpenAPI, WSDL and curl. Or drop an export on this window.',
       onClick: onImportExport
     }
   ]
@@ -208,6 +234,40 @@ export function WelcomeView({
           </li>
         ))}
       </ul>
+
+      {onImport && (
+        <section className="welcome-switch" aria-labelledby={`${uid}-switch`}>
+          <h3 className="welcome-section-label" id={`${uid}-switch`}>
+            Coming from another tool?
+          </h3>
+          <p className="welcome-switch-lead">
+            Requests, folders, auth, environments and test scripts come with you. After the
+            import, a short report lists anything to double check. You can also drop an export
+            file or a Bruno folder anywhere on this window.
+          </p>
+          <ul className="welcome-switch-list" role="list">
+            {SWITCHERS.map((tool) => (
+              <li key={tool.kind} className="welcome-switch-card">
+                <div className="welcome-switch-head">
+                  <span className="welcome-switch-name">{tool.name}</span>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => onImport(tool.kind)}
+                    aria-describedby={`${uid}-${tool.kind}-hint`}
+                  >
+                    <UploadIcon size={14} /> Import from {tool.name}
+                  </button>
+                </div>
+                <p className="welcome-switch-hint" id={`${uid}-${tool.kind}-hint`}>
+                  <span className="welcome-switch-where">Where to find it: </span>
+                  {tool.hint}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <h3 className="welcome-section-label">Tools</h3>
       <ul className="welcome-grid" role="list">

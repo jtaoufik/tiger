@@ -1,0 +1,26 @@
+{
+  "info": {
+    "name": "Legacy v2.0",
+    "_postman_id": "0b7f6a3e-1111-2222-3333-444455556666",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": { "key": "X-API-Key", "value": "{{apiKey}}", "in": "header" }
+  },
+  "item": [
+    {
+      "name": "Ping",
+      "request": {
+        "url": "https://legacy.example.com/ping?verbose=1",
+        "method": "GET",
+        "header": "Accept: text/plain\n//X-Old: 1",
+        "description": { "content": "Checks the service is up.", "type": "text/markdown" }
+      }
+    },
+    {
+      "name": "String request",
+      "request": "https://legacy.example.com/status"
+    }
+  ]
+}

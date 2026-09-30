@@ -1,0 +1,46 @@
+/* Full-window drop target shown while files are dragged over Tiger. */
+.import-drop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+  animation: import-drop-in 0.12s ease-out;
+}
+.import-drop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 360px;
+  padding: 28px 32px;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  background: var(--glass-modal);
+  box-shadow: var(--shadow);
+  text-align: center;
+  color: var(--accent-text);
+}
+.import-drop-title {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text);
+}
+.import-drop-desc {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+@keyframes import-drop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .import-drop {
+    animation: none;
+  }
+}

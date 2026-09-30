@@ -12,7 +12,7 @@ import {
   sendHttp,
   track
 } from './http'
-import { importFromDisk, saveExport, type ImportKind } from './importers'
+import { importFromDisk, importPaths, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
 import { clearCookies } from './cookieJar'
 import {
@@ -323,6 +323,10 @@ function registerIpc(): void {
   )
 
   ipcMain.handle('tiger:import', async (_e, kind: ImportKind) => importFromDisk(kind))
+  // Drag and drop: the renderer resolves dropped File objects to paths.
+  ipcMain.handle('tiger:importPaths', async (_e, paths: unknown) =>
+    Array.isArray(paths) ? importPaths(paths.filter((p): p is string => typeof p === 'string')) : null
+  )
   ipcMain.handle('tiger:export', async (_e, defaultName: string, content: string) =>
     saveExport(defaultName, content)
   )

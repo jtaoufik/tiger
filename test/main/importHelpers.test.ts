@@ -120,4 +120,26 @@ describe('mergeImports', () => {
     const noEnv = mergeImports([{ name: 'a', result: a }], 'postman', 'team')
     expect(noEnv.environments).toBeUndefined()
   })
+
+  it('keeps a lone collection at the root and turns nested collection settings into folder settings', () => {
+    const envOnly: ImportResult = { name: 'Staging', source: 'postman', requests: [], environments: [{ name: 'Staging', variables: [] }] }
+    const withAuth: ImportResult = {
+      ...a,
+      auth: { type: 'bearer', token: 't' },
+      collectionVariables: [{ name: 'baseUrl', value: 'x', enabled: true }],
+      warnings: [{ request: 'Get user', path: ['Users'], message: 'm' }]
+    }
+    const lone = mergeImports([{ name: 'a', result: withAuth }, { name: 'env', result: envOnly }], 'postman', 'team')
+    expect(lone.name).toBe('A')
+    expect(lone.auth).toEqual({ type: 'bearer', token: 't' })
+    expect(lone.requests[0].path).toEqual(['Users'])
+    expect(lone.collectionVariables).toEqual(withAuth.collectionVariables)
+
+    const nested = mergeImports([{ name: 'a', result: withAuth }, { name: 'b', result: b }], 'postman', 'team')
+    expect(nested.auth).toBeUndefined()
+    expect(nested.folders).toEqual([{ path: ['a'], auth: { type: 'bearer', token: 't' } }])
+    expect(nested.warnings?.[0].path).toEqual(['a', 'Users'])
+    // A nested collection's variables become its own environment.
+    expect(nested.environments?.map((e) => e.name)).toEqual(['A variables', 'dev'])
+  })
 })

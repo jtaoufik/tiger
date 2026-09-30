@@ -282,3 +282,90 @@ describe('createScriptHostQueue', () => {
     expect(r.vars.x).toMatch(/truncated 5 chars/)
   })
 })
+
+describe('pm / insomnia / bru compatibility through the host protocol', () => {
+  const request = {
+    name: 'Get user',
+    method: 'get',
+    url: 'https://api.test/users/1?x=1',
+    headers: [
+      { name: 'Accept', value: 'application/json' },
+      { name: 'X-Off', value: '1', enabled: false }
+    ],
+    body: ''
+  }
+
+  it('validateJob keeps the request as plain data', () => {
+    const job = validateJob({
+      source: 'x',
+      vars: {},
+      request: { ...request, extra: 1, headers: [...request.headers, 'junk'] }
+    })
+    expect(job.request).toEqual({
+      name: 'Get user',
+      method: 'get',
+      url: 'https://api.test/users/1?x=1',
+      headers: [
+        { name: 'Accept', value: 'application/json' },
+        { name: 'X-Off', value: '1', enabled: false }
+      ],
+      body: ''
+    })
+    expect(() => validateJob({ source: 'x', vars: {}, request: 'nope' })).toThrow(/request/)
+  })
+
+  it('returns header changes from pm.request.headers and req.setHeader', async () => {
+    const queue = createScriptHostQueue(inProcessHost)
+    const result = await queue.run({
+      source: `
+        pm.request.headers.add({ key: 'X-Sig', value: pm.environment.get('k') })
+        pm.request.headers.remove('Accept')
+        req.setHeader('X-Bru', pm.request.headers.get('x-sig') + '!')
+        pm.collectionVariables.set('seen', pm.request.url.getPath())
+      `,
+      vars: { k: 'secret' },
+      request
+    })
+    expect(result.error).toBeUndefined()
+    expect(result.headerChanges).toEqual([
+      { name: 'X-Sig', value: 'secret' },
+      { name: 'Accept' },
+      { name: 'X-Bru', value: 'secret!' }
+    ])
+    expect(result.vars.seen).toBe('/users/1')
+  })
+
+  it('runs pm.test / pm.expect / pm.response.json() and insomnia.* in the host', async () => {
+    const queue = createScriptHostQueue(inProcessHost)
+    const result = await queue.run({
+      source: `
+        pm.test('status', () => pm.response.to.have.status(200))
+        pm.test('body', () => pm.expect(pm.response.json().user.id).to.equal(7))
+        insomnia.test('fails', () => insomnia.expect(pm.response.json().user.id).to.eql(8))
+        tests['legacy'] = responseCode.code === 200
+      `,
+      vars: {},
+      request,
+      response: { status: 200, headers: [], body: '{"user":{"id":7}}', timeMs: 3 }
+    })
+    expect(result.tests).toEqual([
+      { name: 'status', passed: true },
+      { name: 'body', passed: true },
+      { name: 'fails', passed: false, error: 'expected 7 to deeply equal 8' },
+      { name: 'legacy', passed: true }
+    ])
+  })
+
+  it('sanitizeResult bounds header changes and drops junk', () => {
+    const out = sanitizeResult({
+      vars: {},
+      logs: [],
+      tests: [],
+      headerChanges: [{ name: 'A', value: 1 }, { name: '' }, 'junk', { name: 'B', value: null }]
+    })
+    expect(out.headerChanges).toEqual([{ name: 'A', value: '1' }, { name: 'B' }])
+    expect(
+      sanitizeResult({ vars: {}, logs: [], tests: [], headerChanges: [] }).headerChanges
+    ).toBeUndefined()
+  })
+})

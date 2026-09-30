@@ -55,3 +55,19 @@ export function resolveAuth(
 ): TigerAuth | undefined {
   return request.auth ?? collectionAuth
 }
+
+/**
+ * The folder default auth a request inherits: its own folder's, else the
+ * nearest ancestor folder's (Postman, Insomnia and Bruno all inherit through
+ * nested folders). Undefined when no folder on the path sets one.
+ */
+export function nearestFolderAuth(
+  path: string[],
+  lookup: (path: string[]) => TigerAuth | undefined
+): TigerAuth | undefined {
+  for (let i = path.length; i > 0; i--) {
+    const auth = lookup(path.slice(0, i))
+    if (auth) return auth
+  }
+  return undefined
+}

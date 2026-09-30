@@ -9,6 +9,10 @@
  * - {{$timestamp}} — current epoch seconds
  * - {{$isoTimestamp}} — current ISO 8601 timestamp
  * - {{$randomInt}} — random integer 0-999999
+ *
+ * Postman and Bruno spellings are accepted as aliases so imported collections
+ * keep working: {{$guid}} and {{$randomUUID}} (same as $uuid), plus
+ * {{$randomBoolean}} and {{$randomAlphaNumeric}}.
  */
 
 import type { TigerEnvironment } from './types'
@@ -58,12 +62,30 @@ function generateRandomInt(): string {
   return Math.floor(Math.random() * 1000000).toString()
 }
 
+/** Every dynamic variable name Tiger resolves (with the leading `$`). */
+export const DYNAMIC_VARS: readonly string[] = [
+  '$uuid',
+  '$guid',
+  '$randomUUID',
+  '$timestamp',
+  '$isoTimestamp',
+  '$randomInt',
+  '$randomBoolean',
+  '$randomAlphaNumeric'
+]
+
 /** Resolve a dynamic runtime variable. Returns undefined if not a runtime var. */
 function resolveRuntimeVar(key: string): string | undefined {
   if (!key.startsWith('$')) return undefined
   switch (key) {
     case '$uuid':
+    case '$guid':
+    case '$randomUUID':
       return generateUuid()
+    case '$randomBoolean':
+      return Math.random() < 0.5 ? 'true' : 'false'
+    case '$randomAlphaNumeric':
+      return 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]
     case '$timestamp':
       return generateTimestamp()
     case '$isoTimestamp':
@@ -96,6 +118,19 @@ export function interpolate(template: string, vars: VarMap, maxDepth = 10): stri
     if (!changed) break
   }
   return result
+}
+
+/**
+ * `{{$name}}` tokens in the text that Tiger cannot resolve (for example
+ * Postman's faker variables such as {{$randomFirstName}}). Deduplicated.
+ */
+export function findUnknownDynamicVars(template: string): string[] {
+  const out = new Set<string>()
+  for (const match of template.matchAll(TOKEN)) {
+    const key = match[1]
+    if (key.startsWith('$') && !DYNAMIC_VARS.includes(key)) out.add(key)
+  }
+  return [...out]
 }
 
 /** Variable names referenced in the template that are absent from `vars`. */

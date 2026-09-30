@@ -4,11 +4,11 @@
  * plain-JSON result comes back. Nothing here evaluates code: this window's CSP
  * forbids eval on purpose, and it holds window.tiger.
  */
-import type { ScriptResponse, ScriptRunResult } from '@core/script'
+import type { ScriptRequest, ScriptResponse, ScriptRunResult } from '@core/scriptTypes'
 
 export type ScriptRunner = (
   source: string,
-  ctx: { vars: Record<string, string>; response?: ScriptResponse }
+  ctx: { vars: Record<string, string>; response?: ScriptResponse; request?: ScriptRequest }
 ) => Promise<ScriptRunResult>
 
 export const runScriptIsolated: ScriptRunner = async (source, ctx) => {
@@ -31,8 +31,22 @@ export const runScriptIsolated: ScriptRunner = async (source, ctx) => {
         timeMs: ctx.response.timeMs
       }
     : undefined
+  // Plain JSON only: copy the fields the host reads, nothing else.
+  const request = ctx.request
+    ? {
+        name: ctx.request.name,
+        method: ctx.request.method,
+        url: ctx.request.url,
+        headers: ctx.request.headers.map((h) => ({
+          name: h.name,
+          value: h.value,
+          ...(h.enabled === false ? { enabled: false } : {})
+        })),
+        body: ctx.request.body
+      }
+    : undefined
   try {
-    return await run({ source, vars, response })
+    return await run({ source, vars, response, request })
   } catch (e) {
     return { vars, logs: [], tests: [], error: (e as Error).message }
   }

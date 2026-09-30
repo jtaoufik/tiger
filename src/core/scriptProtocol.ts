@@ -13,7 +13,14 @@
  * killing and respawning a hung host. The Electron wiring injects the host.
  */
 
-import { runScript, type ScriptResponse, type ScriptRunResult, type ScriptTestResult } from './script'
+import { runScript } from './script'
+import type {
+  HeaderChange,
+  ScriptRequest,
+  ScriptResponse,
+  ScriptRunResult,
+  ScriptTestResult
+} from './scriptTypes'
 
 export const SCRIPT_LIMITS = {
   /** Source text of one script. */
@@ -27,6 +34,8 @@ export const SCRIPT_LIMITS = {
   maxLogChars: 10_000,
   maxTests: 1_000,
   maxVars: 2_000,
+  /** Request headers sent in, and header changes a script may return. */
+  maxHeaders: 1_000,
   maxNameChars: 1_000,
   maxValueChars: 1024 * 1024,
   /** Hard ceiling on a whole serialized result. */
@@ -39,6 +48,12 @@ export interface ScriptJob {
   vars: Record<string, string>
   /** Present for post-response scripts. `json` is re-derived from `body` by the host. */
   response?: Omit<ScriptResponse, 'json'>
+  /**
+   * The request as the script sees it (pm.request, req, insomnia.request).
+   * Header changes the script makes come back in `ScriptRunResult.headerChanges`
+   * and the app applies them on send.
+   */
+  request?: ScriptRequest
   timeoutMs?: number
 }
 
@@ -81,6 +96,30 @@ export function validateJob(input: unknown): ScriptJob {
         value: String(h.value ?? '')
       }))
     }
+  }
+
+  if (input.request !== undefined && input.request !== null) {
+    const r = input.request
+    if (!isRecord(r)) throw new Error('request must be an object')
+    const headers = Array.isArray(r.headers) ? r.headers : []
+    const request: ScriptRequest = {
+      method: String(r.method ?? ''),
+      url: String(r.url ?? ''),
+      headers: headers
+        .slice(0, SCRIPT_LIMITS.maxHeaders)
+        .filter(isRecord)
+        .map((h) => {
+          const header: { name: string; value: string; enabled?: boolean } = {
+            name: String(h.name ?? ''),
+            value: String(h.value ?? '')
+          }
+          if (h.enabled === false) header.enabled = false
+          return header
+        })
+    }
+    if (r.name !== undefined && r.name !== null) request.name = String(r.name)
+    if (typeof r.body === 'string') request.body = r.body
+    job.request = request
   }
 
   if (input.timeoutMs !== undefined) {
@@ -149,6 +188,20 @@ export function sanitizeResult(raw: unknown, fallbackVars: Record<string, string
     })
 
   const result: ScriptRunResult = { vars, logs, tests }
+  if (Array.isArray(raw.headerChanges)) {
+    const headerChanges: HeaderChange[] = raw.headerChanges
+      .slice(0, SCRIPT_LIMITS.maxHeaders)
+      .filter(isRecord)
+      .map((h) => {
+        const change: HeaderChange = { name: clip(String(h.name ?? ''), SCRIPT_LIMITS.maxNameChars) }
+        if (h.value !== undefined && h.value !== null) {
+          change.value = clip(String(h.value), SCRIPT_LIMITS.maxValueChars)
+        }
+        return change
+      })
+      .filter((h) => h.name !== '')
+    if (headerChanges.length) result.headerChanges = headerChanges
+  }
   if (raw.error !== undefined && raw.error !== null) {
     result.error = clip(String(raw.error), SCRIPT_LIMITS.maxLogChars)
   }
@@ -176,7 +229,7 @@ export function executeJob(input: unknown): ScriptRunResult {
   } catch (e) {
     return { vars: {}, logs: [], tests: [], error: (e as Error).message }
   }
-  const raw = runScript(job.source, { vars: job.vars, response: job.response })
+  const raw = runScript(job.source, { vars: job.vars, response: job.response, request: job.request })
   return sanitizeResult(raw, job.vars)
 }
 

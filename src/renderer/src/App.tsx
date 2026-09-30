@@ -5,17 +5,24 @@ import { buildRequest } from '@core/request'
 import { envToVars, findMissingVars } from '@core/interpolate'
 import {
   parseCollectionSettings,
+  nearestFolderAuth,
   resolveAuth,
   serializeCollectionSettings
 } from '@core/collectionSettings'
 import type { SearchItem } from '@core/search'
 import { exportOpenApi, exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
-import { importCurl } from '@core/import'
+import {
+  importCurl,
+  layerCollectionVariables,
+  summarizeImport,
+  type ImportResult,
+  type ImportSummary
+} from '@core/import'
 import { extractCaptures } from '@core/capture'
 import { movedRequestPath, renamedFolderPath, uniqueCopyName } from '@core/treeMove'
 import type { RunnerItem } from '@core/runner'
-import type { ScriptTestResult } from '@core/script'
+import { applyHeaderChanges, type HeaderChange, type ScriptTestResult } from '@core/scriptTypes'
 import { runScriptIsolated } from './scriptSandbox'
 import { events } from '@core/analytics'
 import type { FormattedResponse } from '@core/response'
@@ -38,6 +45,8 @@ import { RequestTabs, tabAccessibleName, type RequestTab } from './components/Re
 import { ResponsePanel } from './components/ResponsePanel'
 import { SettingsView } from './components/SettingsView'
 import { ImportExportModal, type ExportFormat } from './components/ImportExportModal'
+import { ImportReportModal, importReportSentence } from './components/ImportReportModal'
+import { ImportDropZone } from './components/ImportDropZone'
 import { HistoryModal } from './components/HistoryModal'
 import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { ConfirmModal } from './components/ConfirmModal'
@@ -224,8 +233,12 @@ let toastSeq = 0
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(FALLBACK_SETTINGS)
-  const [view, setView] = useState<'workspace' | 'settings' | 'home'>('workspace')
   const [modal, setModal] = useState<ModalKind>('none')
+  const [importReport, setImportReport] = useState<{
+    summary: ImportSummary
+    environmentsTarget?: string
+    selectedEnvironment?: string
+  } | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
 
   /**
@@ -239,6 +252,13 @@ export default function App() {
   const [collections, setCollections] = useState<CollectionState[]>(
     bootDemo ? [DEMO_COLLECTION] : []
   )
+  // The very first desktop launch opens on the home screen, where people
+  // coming from Postman, Insomnia or Bruno find the import cards first.
+  const [view, setView] = useState<'workspace' | 'settings' | 'home'>(() => {
+    if (!bootDemo || !window.tiger || readStored(SESSION_KEYS.welcomed)) return 'workspace'
+    writeStored(SESSION_KEYS.welcomed, '1')
+    return 'home'
+  })
   const [requestsById, setRequestsById] = useState<Record<string, TigerRequest>>(
     bootDemo ? Object.fromEntries(sampleRequests.map((r) => [r.id, r.request])) : {}
   )
@@ -527,7 +547,9 @@ export default function App() {
    * default auth, else the collection default (Postman/Bruno semantics).
    */
   const inheritedAuth =
-    (activeCollection && activeEntry ? folderAuth(activeCollection.id, activeEntry.folderPath) : undefined) ??
+    (activeCollection && activeEntry
+      ? nearestFolderAuth(activeEntry.folderPath, (p) => folderAuth(activeCollection.id, p))
+      : undefined) ??
     activeCollection?.auth
   const activeEffective = active
     ? { ...active, auth: resolveAuth(active, inheritedAuth) }
@@ -818,8 +840,20 @@ export default function App() {
       // Pre-request script: may set variables used for interpolation this send.
       let envForSend = activeEnv
       const baseVars = envToVars(activeEnv)
+      const scriptRequest = {
+        name: active.name,
+        method: active.method,
+        url: active.url,
+        headers: active.headers,
+        body: active.body.content
+      }
+      let headerChanges: HeaderChange[] | undefined
       if (active.preScript?.trim()) {
-        const pre = await runScriptIsolated(active.preScript, { vars: baseVars })
+        const pre = await runScriptIsolated(active.preScript, {
+          vars: baseVars,
+          request: scriptRequest
+        })
+        headerChanges = pre.headerChanges
         if (pre.error) toast(`Pre-request script error: ${pre.error}`)
         const delta = scriptVarDelta(baseVars, pre.vars)
         if (delta.length) {
@@ -835,7 +869,11 @@ export default function App() {
         }
       }
 
-      const effective = activeEffective ?? active
+      const base = activeEffective ?? active
+      // pm.request.headers.add/upsert/remove and req.setHeader from the pre-request script.
+      const effective = headerChanges
+        ? { ...base, headers: applyHeaderChanges(base.headers, headerChanges) }
+        : base
       const data = await runRequest(effective, envForSend, settings.timeoutMs, id)
       if (!deletedIds.current.has(id)) {
         let tests: ScriptTestResult[] | undefined
@@ -853,6 +891,7 @@ export default function App() {
         if (active.postScript?.trim()) {
           const post = await runScriptIsolated(active.postScript, {
             vars: envToVars(envForSend),
+            request: scriptRequest,
             response: {
               status: data.status,
               headers: data.headers,
@@ -931,7 +970,10 @@ export default function App() {
       const request = await loadRequest(e.id)
       if (!request) continue
       const inherited =
-        folderSettingsRef.current[`${col.id}${SEP}${e.folderPath.join('/')}`]?.auth ?? col.auth
+        nearestFolderAuth(
+          e.folderPath,
+          (p) => folderSettingsRef.current[`${col.id}${SEP}${p.join('/')}`]?.auth
+        ) ?? col.auth
       items.push({ id: e.id, name: e.name, request: { ...request, auth: resolveAuth(request, inherited) } })
     }
     return items
@@ -1250,45 +1292,122 @@ export default function App() {
     [selectRequest, reviveIds, toast]
   )
 
+  /**
+   * Land an import result: a new in-memory collection with its folder auth,
+   * docs and environments, or (for an environment-only export) environments
+   * added to the collection in front of the user. Then show the report.
+   */
+  const applyImport = useCallback(
+    (raw: ImportResult | null) => {
+      if (!raw) return
+      const result = layerCollectionVariables(raw)
+      const summary = summarizeImport(result)
+      const envRefs: EnvRef[] = (result.environments ?? []).map((e) => ({ name: e.name, data: e }))
+      setModal('none')
+
+      if (result.requests.length === 0) {
+        const target =
+          activeCollection ?? collectionsRef.current[collectionsRef.current.length - 1]
+        if (envRefs.length && target) {
+          const taken = new Set(target.environments.map((e) => e.name))
+          const added = envRefs.map((e) => {
+            let name = e.name
+            for (let n = 2; taken.has(name); n++) name = `${e.name} ${n}`
+            taken.add(name)
+            return { name, data: { ...e.data!, name } }
+          })
+          setCollections((prev) =>
+            prev.map((c) =>
+              c.id === target.id ? { ...c, environments: [...c.environments, ...added] } : c
+            )
+          )
+          setImportReport({ summary, environmentsTarget: target.name })
+          announce(importReportSentence(summary))
+          trackEvent(events.collectionImported(result.source, 0))
+          return
+        }
+        if (envRefs.length === 0 && summary.items.length === 0) {
+          toast(`No importable requests found in ${result.name}`)
+          return
+        }
+      }
+
+      const colId = `import-${++importCount.current}`
+      const entries: SidebarEntry[] = result.requests.map((r, i) => ({
+        id: `${colId}${SEP}${i}`,
+        name: r.request.name,
+        method: r.request.method,
+        folderPath: r.path
+      }))
+      reviveIds(entries.map((e) => e.id))
+      setCollections((prev) => [
+        ...prev,
+        {
+          id: colId,
+          name: result.name,
+          entries,
+          environments: envRefs,
+          ...(result.auth ? { auth: result.auth } : {}),
+          ...(result.docs ? { docs: result.docs } : {})
+        }
+      ])
+      if (result.folders?.length) {
+        setFolderSettings((prev) => {
+          const next = { ...prev }
+          for (const f of result.folders!) {
+            next[`${colId}${SEP}${f.path.join('/')}`] = { auth: f.auth, docs: f.docs }
+          }
+          return next
+        })
+      }
+      setRequestsById((prev) => ({
+        ...prev,
+        ...Object.fromEntries(result.requests.map((r, i) => [`${colId}${SEP}${i}`, r.request]))
+      }))
+      if (entries[0]) {
+        openTab({ kind: 'request', id: entries[0].id })
+        setActiveId(entries[0].id)
+      }
+      setView('workspace')
+      // Select the first imported environment so {{variables}} resolve at once.
+      const firstEnv = envRefs[0]
+      if (firstEnv?.data) {
+        setActiveEnvKey(`${colId}${SEP}${firstEnv.name}`)
+        setActiveEnv(firstEnv.data)
+      }
+      setImportReport({ summary, selectedEnvironment: firstEnv?.name })
+      announce(importReportSentence(summary))
+      trackEvent(events.collectionImported(result.source, result.requests.length))
+    },
+    [activeCollection, openTab, reviveIds, toast]
+  )
+
+  const importFailed = useCallback(
+    (err: unknown) => toast(`Import failed: ${err instanceof Error ? err.message : String(err)}`),
+    [toast]
+  )
+
   const loadImport = useCallback(
     (kind: ImportKind) => {
-      window.tiger
-        ?.importCollection(kind)
-        .then((result) => {
-          if (!result) return
-          if (result.requests.length === 0) {
-            toast(`No importable requests found in ${result.name}`)
-            return
-          }
-          const colId = `import-${++importCount.current}`
-          const entries: SidebarEntry[] = result.requests.map((r, i) => ({
-            id: `${colId}${SEP}${i}`,
-            name: r.request.name,
-            method: r.request.method,
-            folderPath: r.path
-          }))
-          reviveIds(entries.map((e) => e.id))
-          setCollections((prev) => [
-            ...prev,
-            { id: colId, name: result.name, entries, environments: result.environments ?? [] }
-          ])
-          setRequestsById((prev) => ({
-            ...prev,
-            ...Object.fromEntries(result.requests.map((r, i) => [`${colId}${SEP}${i}`, r.request]))
-          }))
-          setModal('none')
-          if (entries[0]) {
-            openTab({ kind: 'request', id: entries[0].id })
-            setActiveId(entries[0].id)
-          }
-          toast(`Imported ${entries.length} requests from ${result.name}`)
-          trackEvent(events.collectionImported(result.source, result.requests.length))
-        })
-        .catch((err: unknown) =>
-          toast(`Import failed: ${err instanceof Error ? err.message : String(err)}`)
-        )
+      window.tiger?.importCollection(kind).then(applyImport).catch(importFailed)
     },
-    [openTab, reviveIds, toast]
+    [applyImport, importFailed]
+  )
+
+  /** Files or folders dropped on the window: detect the tool and import. */
+  const importDropped = useCallback(
+    (paths: string[]) => {
+      if (!window.tiger || paths.length === 0) return
+      toast(`Importing ${paths.length === 1 ? 'the dropped item' : `${paths.length} dropped items`}…`)
+      window.tiger
+        .importPaths(paths)
+        .then((result) => {
+          if (!result) toast('Nothing to import: drop a Postman, Insomnia, Bruno, OpenAPI or WSDL export')
+          else applyImport(result)
+        })
+        .catch(importFailed)
+    },
+    [applyImport, importFailed, toast]
   )
 
   const doExport = useCallback(
@@ -2394,6 +2513,12 @@ export default function App() {
             onNewCollection={newCollection}
             onClone={cloneCollection}
             onImportExport={() => openIo('import')}
+            onImport={
+              // First run: only the built-in demo (or nothing) is open.
+              window.tiger && collections.every((c) => c.id === DEMO_COLLECTION.id)
+                ? loadImport
+                : undefined
+            }
             onNewRequest={() => {
               if (collections[0]) newRequest(collections[0].id)
             }}
@@ -2582,6 +2707,19 @@ export default function App() {
         </main>
       </div>
 
+      <ImportDropZone
+        onDropPaths={importDropped}
+        pathForFile={window.tiger?.pathForFile}
+        enabled={!importReport}
+      />
+      {importReport && (
+        <ImportReportModal
+          summary={importReport.summary}
+          environmentsTarget={importReport.environmentsTarget}
+          selectedEnvironment={importReport.selectedEnvironment}
+          onClose={() => setImportReport(null)}
+        />
+      )}
       {modal === 'io' && (
         <ImportExportModal
           focus={ioFocus}

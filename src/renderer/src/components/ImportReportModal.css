@@ -1,0 +1,93 @@
+/* Import report: three counters, then the "check these" list. */
+.import-report-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.import-report-stat {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-strong);
+}
+.import-report-stat dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.import-report-stat dd {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.import-report-clean {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-dim);
+}
+.import-report-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0;
+}
+.import-report-head svg {
+  color: var(--warn);
+}
+.import-report-hint {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.import-report-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(46vh, 380px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.import-report-item {
+  padding: 10px 12px;
+}
+.import-report-item + .import-report-item {
+  border-top: 1px solid var(--border);
+}
+.import-report-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-weight: 600;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.import-report-path {
+  color: var(--text-faint);
+  font-weight: 400;
+  font-size: 12px;
+}
+.import-report-messages {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 520px) {
+  .import-report-stats {
+    grid-template-columns: 1fr;
+  }
+}

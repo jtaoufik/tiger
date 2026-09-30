@@ -78,3 +78,56 @@ describe('app window code never evaluates scripts itself', () => {
     }
   })
 })
+
+describe('app window never bundles the script evaluator', () => {
+  const core = resolve(__dirname, '../../src/core')
+  const appFiles = sources(join(renderer, 'src'))
+
+  /** Value (non type-only) imports of a file, resolved to paths under src/core. */
+  function coreImports(file: string): string[] {
+    const text = readFileSync(file, 'utf8')
+    const out: string[] = []
+    for (const m of text.matchAll(/^\s*(import|export)\s+(type\s+)?([^'";]*?)\s*from\s+['"]([^'"]+)['"]/gm)) {
+      if (m[2]) continue
+      // `import { type A, type B } from` is type-only too.
+      const names = m[3].replace(/[{}]/g, '').split(',').map((s) => s.trim()).filter(Boolean)
+      if (names.length && names.every((n) => n.startsWith('type '))) continue
+      const spec = m[4]
+      let target: string | null = null
+      if (spec.startsWith('@core/')) target = join(core, spec.slice('@core/'.length))
+      else if (spec.startsWith('.') && file.startsWith(core)) target = resolve(file, '..', spec)
+      if (!target) continue
+      for (const candidate of [`${target}.ts`, join(target, 'index.ts')]) {
+        try {
+          if (statSync(candidate).isFile()) {
+            out.push(candidate)
+            break
+          }
+        } catch {
+          /* try the next candidate */
+        }
+      }
+    }
+    return out
+  }
+
+  it('reaches neither core/script.ts nor core/scriptProtocol.ts through any value import', () => {
+    const forbidden = [join(core, 'script.ts'), join(core, 'scriptProtocol.ts')]
+    const seen = new Map<string, string>()
+    const stack = appFiles.map((f) => [f, f] as const)
+    while (stack.length) {
+      const [file, from] = stack.pop()!
+      for (const dep of coreImports(file)) {
+        if (seen.has(dep)) continue
+        seen.set(dep, from)
+        stack.push([dep, from])
+      }
+    }
+    for (const f of forbidden) {
+      expect(seen.has(f), `${f} is reachable from ${seen.get(f)}`).toBe(false)
+    }
+    // Sanity: the walk does see core modules the app really uses.
+    expect(seen.has(join(core, 'runner.ts'))).toBe(true)
+    expect(seen.has(join(core, 'scriptTypes.ts'))).toBe(true)
+  })
+})

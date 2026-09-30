@@ -8,7 +8,13 @@
  */
 
 import { extractCaptures } from './capture'
-import type { ScriptResponse, ScriptRunResult, ScriptTestResult } from './script'
+import {
+  applyHeaderChanges,
+  type ScriptRequest,
+  type ScriptResponse,
+  type ScriptRunResult,
+  type ScriptTestResult
+} from './scriptTypes'
 import type { TigerRequest } from './types'
 
 export interface RunnerItem {
@@ -68,7 +74,7 @@ export interface RunnerOptions {
    */
   runScript: (
     source: string,
-    ctx: { vars: Record<string, string>; response?: ScriptResponse }
+    ctx: { vars: Record<string, string>; response?: ScriptResponse; request?: ScriptRequest }
   ) => ScriptRunResult | Promise<ScriptRunResult>
 }
 
@@ -90,13 +96,24 @@ export async function runCollection(
 
     try {
       // Pre-request script may set variables used by this and later requests.
+      const scriptRequest = {
+        name: request.name,
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        body: request.body.content
+      }
+      let toSend = request
       if (request.preScript?.trim()) {
-        const pre = await options.runScript(request.preScript, { vars })
+        const pre = await options.runScript(request.preScript, { vars, request: scriptRequest })
         if (pre.error) throw new Error(`Pre-request script: ${pre.error}`)
         vars = pre.vars
+        if (pre.headerChanges) {
+          toSend = { ...request, headers: applyHeaderChanges(request.headers, pre.headerChanges) }
+        }
       }
 
-      const res = await options.execute(request, vars)
+      const res = await options.execute(toSend, vars)
       result.status = res.status
       result.timeMs = res.timeMs
 
@@ -114,6 +131,7 @@ export async function runCollection(
       if (request.postScript?.trim()) {
         const post = await options.runScript(request.postScript, {
           vars,
+          request: scriptRequest,
           response: { status: res.status, headers: res.headers, body: res.body, timeMs: res.timeMs }
         })
         if (post.error) throw new Error(`Post-response script: ${post.error}`)

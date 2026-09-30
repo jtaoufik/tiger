@@ -2,17 +2,21 @@ import { BrowserWindow, dialog } from 'electron'
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, extname, join, relative, sep } from 'node:path'
 import { parse as parseYaml } from 'yaml'
+import { stat } from 'node:fs/promises'
 import {
-  importBrunoEnvironment,
+  detectFormat,
+  importBrunoCollection,
   importBrunoRequest,
   importInsomnia,
   importOpenApi,
   importPostman,
   importWsdl,
+  type BrunoFile,
+  type DetectedFormat,
   type ImportResult,
-  type ImportSource
+  type ImportSource,
+  type ImportWarning
 } from '../core/import'
-import type { TigerEnvironment } from '../core/types'
 import { expandPaths, mergeImports, rootNameFor } from './importHelpers'
 import { targetAppWindow } from './windows'
 
@@ -69,9 +73,44 @@ async function importManyFiles(
     }))
   )
   const results = settled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
-  if (results.length === 0) return null
-  if (results.length === 1) return { ...results[0].result, source }
+  const failures = failureWarnings(files, settled)
+  if (results.length === 0) {
+    if (failures.length === 0) return null
+    throw new Error(failures[0].message)
+  }
+  return withWarnings(combine(results, source, paths), failures)
+}
+
+function combine(
+  results: { name: string; result: ImportResult }[],
+  source: ImportSource,
+  paths: string[]
+): ImportResult {
+  if (results.length === 1) return results[0].result
   return mergeImports(results, source, rootNameFor(paths))
+}
+
+function failureWarnings(
+  files: string[],
+  settled: PromiseSettledResult<unknown>[]
+): ImportWarning[] {
+  return settled.flatMap((r, i) =>
+    r.status === 'rejected'
+      ? [
+          {
+            request: basename(files[i]),
+            message: `This file could not be imported: ${
+              r.reason instanceof Error ? r.reason.message : String(r.reason)
+            }`
+          }
+        ]
+      : []
+  )
+}
+
+function withWarnings(result: ImportResult, extra: ImportWarning[]): ImportResult {
+  if (extra.length === 0) return result
+  return { ...result, warnings: [...(result.warnings ?? []), ...extra] }
 }
 
 async function importBrunoFolder(): Promise<ImportResult | null> {
@@ -80,54 +119,88 @@ async function importBrunoFolder(): Promise<ImportResult | null> {
     properties: ['openDirectory']
   })
   if (result.canceled || !result.filePaths[0]) return null
-  const root = result.filePaths[0]
+  return readBrunoFolder(result.filePaths[0])
+}
 
-  // Bruno mixes three kinds of `.bru` files in one tree:
-  //   * request files        — anywhere, at any nesting depth
-  //   * collection.bru / folder.bru — metadata for the containing folder
-  //   * environments/<n>.bru — variable sets, by convention at root only
-  // The walker picks up everything; classification happens per-file below so
-  // that nested `environments/` (rare but valid) also resolves correctly.
-  const requestFiles: { full: string; folder: string[] }[] = []
-  const envFiles: string[] = []
+/**
+ * Read every `.bru` file (and `bruno.json`) under a Bruno collection folder
+ * and hand them to the pure collection importer, which classifies requests,
+ * `collection.bru` / `folder.bru` settings and `environments/*.bru`.
+ */
+export async function readBrunoFolder(root: string): Promise<ImportResult> {
+  const files: BrunoFile[] = []
   const collect = async (dir: string): Promise<void> => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
-      if (entry.isDirectory() && !entry.name.startsWith('.')) {
-        await collect(full)
+      if (entry.isDirectory()) {
+        if (!entry.name.startsWith('.') && entry.name !== 'node_modules') await collect(full)
         continue
       }
-      if (!entry.isFile() || !entry.name.endsWith('.bru')) continue
-      const segments = relative(root, full).split(sep)
-      const folder = segments.slice(0, -1)
-      if (folder.includes('environments')) envFiles.push(full)
-      else if (entry.name !== 'collection.bru' && entry.name !== 'folder.bru') {
-        requestFiles.push({ full, folder })
-      }
+      if (!entry.isFile()) continue
+      const isRootConfig = dir === root && entry.name === 'bruno.json'
+      if (!entry.name.endsWith('.bru') && !isRootConfig) continue
+      files.push({ segments: relative(root, full).split(sep), text: await readFile(full, 'utf8') })
     }
   }
   await collect(root)
+  return importBrunoCollection(files, basename(root))
+}
 
-  // Parse per-file so a single malformed `.bru` does not abort the whole
-  // import. With the line-based Bruno tokenizer real-world failures are rare,
-  // but we still isolate them defensively.
-  const reqSettled = await Promise.allSettled(
-    requestFiles.map(async ({ full, folder }) =>
-      importBrunoRequest(await readFile(full, 'utf8'), folder)
-    )
-  )
-  const requests = reqSettled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
+async function isBrunoFolder(dir: string): Promise<boolean> {
+  const has = async (name: string) => !!(await stat(join(dir, name)).catch(() => null))
+  if ((await has('bruno.json')) || (await has('collection.bru'))) return true
+  const entries = await readdir(dir).catch(() => [] as string[])
+  return entries.some((n) => n.endsWith('.bru'))
+}
 
-  const envSettled = await Promise.allSettled(
-    envFiles.map(async (file) =>
-      importBrunoEnvironment(await readFile(file, 'utf8'), basename(file, '.bru'))
-    )
-  )
-  const environments: TigerEnvironment[] = envSettled.flatMap((r) =>
-    r.status === 'fulfilled' ? [r.value] : []
-  )
+const DETECTABLE = ['json', 'yaml', 'yml', 'wsdl', 'xml']
 
-  return { name: basename(root), source: 'bruno', requests, environments }
+async function importDetected(file: string): Promise<ImportResult> {
+  if (file.endsWith('.bru')) {
+    const imported = importBrunoRequest(await readFile(file, 'utf8'))
+    return { name: imported.request.name || basename(file, '.bru'), source: 'bruno', requests: [imported] }
+  }
+  const text = await readFile(file, 'utf8')
+  const isXml = /\.(wsdl|xml)$/i.test(file)
+  const parsed = isXml ? undefined : /\.ya?ml$/i.test(file) ? parseYaml(text) : JSON.parse(text)
+  const format: DetectedFormat | null = detectFormat(basename(file), parsed, text)
+  if (format === 'postman') return importPostman(parsed)
+  if (format === 'insomnia') return importInsomnia(parsed)
+  if (format === 'openapi') return importOpenApi(parsed)
+  if (format === 'wsdl') return importWsdl(text)
+  throw new Error('not a Postman, Insomnia, Bruno, OpenAPI or WSDL export')
+}
+
+/**
+ * Import whatever was dropped on the window: export files of any supported
+ * tool, a Bruno collection folder, or a folder of exports. The format is
+ * detected per file, so a Postman collection dropped with its environment
+ * files lands as one collection with those environments.
+ */
+export async function importPaths(paths: string[]): Promise<ImportResult | null> {
+  const results: { name: string; result: ImportResult }[] = []
+  const warnings: ImportWarning[] = []
+  for (const p of paths) {
+    const st = await stat(p).catch(() => null)
+    if (!st) continue
+    if (st.isDirectory() && (await isBrunoFolder(p))) {
+      results.push({ name: basename(p), result: await readBrunoFolder(p) })
+      continue
+    }
+    const files = st.isDirectory() ? await expandPaths([p], [...DETECTABLE, 'bru']) : [p]
+    const settled = await Promise.allSettled(files.map((f) => importDetected(f)))
+    settled.forEach((r, i) => {
+      if (r.status === 'fulfilled') results.push({ name: basename(files[i], extname(files[i])), result: r.value })
+    })
+    warnings.push(...failureWarnings(files, settled))
+  }
+  if (results.length === 0) {
+    if (warnings.length === 0) return null
+    throw new Error(`${warnings[0].request}: ${warnings[0].message}`)
+  }
+  const sources = new Set(results.map((r) => r.result.source))
+  const source = sources.size === 1 ? results[0].result.source : 'postman'
+  return withWarnings(combine(results, source, paths), warnings)
 }
 
 export async function importFromDisk(kind: ImportKind): Promise<ImportResult | null> {
