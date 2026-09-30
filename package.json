@@ -1,6 +1,6 @@
 {
   "name": "tiger-api-client",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "An offline, git-friendly API client with a frosted-glass UI. Collections are plain-text .tiger files.",
   "author": {
     "name": "Taoufik Jabbari",
@@ -138,7 +138,7 @@
     },
     "appx": {
       "artifactName": "Tiger-${version}-windows-${arch}.${ext}",
-      "displayName": "Tiger",
+      "displayName": "Tiger API Client",
       "backgroundColor": "#ff6a1a",
       "languages": ["en-US"],
       "showNameOnTiles": true

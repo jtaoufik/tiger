@@ -3,8 +3,10 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
-## Unreleased
+## 0.7.0
 
+- Windows: one recommended installer (Tiger-Setup) plus a Portable version; the zip is gone. The installer adds Start menu and desktop shortcuts and uses the real Tiger icon. Tiger is also coming to the Microsoft Store as "Tiger API Client", which installs with no "unknown publisher" warning.
+- Accessibility: readable contrast in light and dark, a visible focus ring everywhere, full keyboard use of the sidebar tree, tabs, menus and dialogs, screen-reader announcements for results, and support for reduced motion, reduced transparency and Windows High Contrast.
 - Clearer menus and names. Every action has one name everywhere: the native menu, the command palette, context menus, tooltips and the shortcuts overlay all read the same list. Request tabs are renamed and reordered by use: Params, Body, Headers, Auth, Save values (was Capture), Scripts & tests, Notes (was Docs), Code snippet (was Code), Load test (was Perf). Settings > MCP is now AI assistants (MCP).
 - The sidebar leads with labelled buttons: New (request, folder, collection, environment), Open and Import. Every row has a "More actions" button with the same menu as right click, including Rename. You can now create folders from the app.
 - The command palette (Cmd/Ctrl+K) finds commands as well as requests; type ">" for commands only.
