@@ -3,6 +3,8 @@ import {
   createTranslator,
   isLanguageChoice,
   isRtl,
+  isolateLtrRuns,
+  timeAgo,
   LOCALE_NATIVE_NAMES,
   matchLocale,
   matchOne,
@@ -176,6 +178,43 @@ describe('translator', () => {
     expect(es.date(date, { month: 'long', timeZone: 'UTC' })).toBe('septiembre')
     expect(es.list(['a', 'b', 'c'])).toBe('a, b y c')
     expect(createTranslator('fr', {}, fakeEn).relativeTime(-1, 'day')).toBe('hier')
+  })
+
+  it('isolates Latin runs inside right-to-left text so punctuation and units keep their order', () => {
+    const L = '\u2066'
+    const P = '\u2069'
+    expect(isolateLtrRuns('مجلد من ملفات .tiger.')).toBe(`مجلد من ملفات ${L}.tiger${P}.`)
+    expect(isolateLtrRuns('إرسال (Cmd+Enter). تظهر')).toBe(`إرسال ${L}(Cmd+Enter)${P}. تظهر`)
+    expect(isolateLtrRuns('46 B')).toBe(`${L}46 B${P}`)
+    expect(isolateLtrRuns('8 ms')).toBe(`${L}8 ms${P}`)
+    expect(isolateLtrRuns('استخدم {{baseUrl}} هنا')).toBe(`استخدم ${L}{{baseUrl}}${P} هنا`)
+    expect(isolateLtrRuns('OpenAPI وWSDL وcurl.')).toBe(`${L}OpenAPI${P} و${L}WSDL${P} و${L}curl${P}.`)
+    // Plain numbers and pure Arabic are left alone.
+    expect(isolateLtrRuns('اسم الترويسة 1')).toBe('اسم الترويسة 1')
+    expect(isolateLtrRuns('(الحقل 3)')).toBe('(الحقل 3)')
+    expect(isolateLtrRuns('ملفات .bru (المجلدات مقبولة)')).toBe(`ملفات ${L}.bru${P} (المجلدات مقبولة)`)
+  })
+
+  it('applies the isolation in Arabic only', () => {
+    const cat = { hello: 'افتح {name} (Cmd+K)' } as unknown as LocaleCatalog
+    const ar = createTranslator('ar', cat, fakeEn)
+    expect(ar(k('hello'), { name: 'List posts' })).toBe(`افتح ${'\u2066'}List posts (Cmd+K)${'\u2069'}`)
+    expect(ar.ltr('46 B')).toBe('\u206646 B\u2069')
+    const fr = createTranslator('fr', { hello: 'Ouvrir {name} (Cmd+K)' } as unknown as LocaleCatalog, fakeEn)
+    expect(fr(k('hello'), { name: 'List posts' })).toBe('Ouvrir List posts (Cmd+K)')
+    expect(fr.ltr('46 B')).toBe('46 B')
+  })
+
+  it('says how long ago in the language, picking the unit', () => {
+    const now = Date.UTC(2026, 8, 30, 12)
+    const en = createTranslator('en', undefined, fakeEn)
+    expect(timeAgo(now - 5_000, en, now)).toBe('5 seconds ago')
+    expect(timeAgo(now - 3 * 3600_000, en, now)).toBe('3 hours ago')
+    expect(timeAgo(now - 86400_000, en, now)).toBe('yesterday')
+    const ar = createTranslator('ar', {}, fakeEn)
+    expect(timeAgo(now - 66_000, ar, now)).toBe('قبل دقيقة واحدة')
+    const fr = createTranslator('fr', {}, fakeEn)
+    expect(timeAgo(now - 2 * 86400_000, fr, now)).toBe('avant-hier')
   })
 
   it('lists the placeholders of a message across plural forms', () => {

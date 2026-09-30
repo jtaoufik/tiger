@@ -606,19 +606,22 @@ export interface GitCommit {
   hash: string
   subject: string
   author: string
+  /** git's own relative date ("2 hours ago", English); prefer `time`. */
   at: string
+  /** Commit time in ms since the epoch, for a relative date in the UI language. */
+  time: number
 }
 
 export async function gitLog(root: string, limit = 20): Promise<GitCommit[]> {
-  const fmt = '%h%x1f%s%x1f%an%x1f%ar'
+  const fmt = '%h%x1f%s%x1f%an%x1f%ar%x1f%at'
   const result = await run(['log', `-${limit}`, `--pretty=format:${fmt}`], root)
   if (!result.ok) return []
   return result.stdout
     .split('\n')
     .filter(Boolean)
     .map((line) => {
-      const [hash, subject, author, at] = line.split('\x1f')
-      return { hash, subject, author, at }
+      const [hash, subject, author, at, unix] = line.split('\x1f')
+      return { hash, subject, author, at, time: Number(unix) * 1000 }
     })
 }
 

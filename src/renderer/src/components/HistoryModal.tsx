@@ -5,7 +5,7 @@ import './a11y.css'
 import './HistoryModal.css'
 import { Modal } from './Modal'
 import { useT } from '../i18n'
-import type { Translator } from '@core/i18n'
+import { timeAgo, type Translator } from '@core/i18n'
 
 interface Props {
   entries: HistoryEntry[]
@@ -20,13 +20,7 @@ interface Props {
 }
 
 function ago(at: number, t: Translator): string {
-  const secs = Math.max(0, Math.round((Date.now() - at) / 1000))
-  if (secs < 60) return t.relativeTime(-secs, 'second')
-  const mins = Math.round(secs / 60)
-  if (mins < 60) return t.relativeTime(-mins, 'minute')
-  const hours = Math.round(mins / 60)
-  if (hours < 24) return t.relativeTime(-hours, 'hour')
-  return t.relativeTime(-Math.round(hours / 24), 'day')
+  return timeAgo(Math.min(at, Date.now()), t)
 }
 
 export function HistoryModal({

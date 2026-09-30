@@ -89,7 +89,8 @@ test('switching to Arabic in Settings flips the layout live and persists', async
   await page.getByRole('button', { name: ar('app.top.settings'), exact: true }).click()
   const url = page.getByRole('textbox', { name: ar('request.url.label') })
   await expect(url).toBeVisible()
-  expect(await url.evaluate((el) => getComputedStyle(el).direction)).toBe('ltr')
+  // The field takes the direction of its content (a URL reads left to right).
+  expect(await url.evaluate((el) => getComputedStyle(el).unicodeBidi)).toBe('plaintext')
   expect(await page.evaluate(() => getComputedStyle(document.body).direction)).toBe('rtl')
 
   // Back to English, still without a restart.

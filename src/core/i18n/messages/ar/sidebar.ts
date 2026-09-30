@@ -13,7 +13,7 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.search.noMatch': 'لا توجد طلبات تطابق {query}.',
   'sidebar.search.clear': 'مسح البحث',
   'sidebar.empty.title': 'لا توجد مجموعات مفتوحة.',
-  'sidebar.empty.body': 'المجموعة هي مجلد من ملفات الطلبات بصيغة ⁦.tiger⁩‎. افتح مجموعة أو أنشئ واحدة جديدة. قادم من Postman أو Insomnia أو Bruno؟ استخدم «استيراد» أعلاه.',
+  'sidebar.empty.body': 'المجموعة هي مجلد من ملفات الطلبات بصيغة .tiger. افتح مجموعة أو أنشئ واحدة جديدة. قادم من Postman أو Insomnia أو Bruno؟ استخدم «استيراد» أعلاه.',
   'sidebar.empty.open': 'فتح مجموعة',
   'sidebar.empty.new': 'مجموعة جديدة',
   'sidebar.row.moreActions': 'المزيد من الإجراءات لـ {name}',

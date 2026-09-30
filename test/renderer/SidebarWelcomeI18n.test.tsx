@@ -71,8 +71,12 @@ describe('RequestTabs in Arabic', () => {
       <RequestTabs tabs={tabs} activeKey="a" onSelect={noop} onClose={noop} onTabMenu={noop} onReorder={noop} />
     )
     expect(screen.getByRole('tablist', { name: 'علامات التبويب المفتوحة' })).toBeInTheDocument()
-    expect(tabAccessibleName(tabs[0])).toBe('المجلد Orders')
-    expect(screen.getByRole('tab', { name: 'GET Health، تغييرات غير محفوظة' })).toBeInTheDocument()
+    // Latin runs are wrapped in invisible left-to-right isolates in Arabic.
+    const plain = (s: string) => s.replace(/[\u2066-\u2069]/g, '')
+    expect(tabAccessibleName(tabs[0])).toBe('المجلد \u2066Orders\u2069')
+    expect(
+      screen.getByRole('tab', { name: (name) => plain(name) === 'GET Health، تغييرات غير محفوظة' })
+    ).toBeInTheDocument()
   })
 })
 

@@ -49,6 +49,12 @@ export interface Translator {
   readonly dir: 'ltr' | 'rtl'
   /** True when the active locale has its own text for this key (not the fallback). */
   has(key: MessageKey): boolean
+  /**
+   * Text shown next to translated words but not produced by t() (a size such
+   * as "46 B", a file name): in a right-to-left locale its Latin runs are
+   * isolated so they keep their order; unchanged elsewhere.
+   */
+  ltr(text: string): string
   /** The English (source) text of a key, e.g. to search by English command names. */
   source(key: MessageKey, vars?: Vars): string
   /** Locale digits and grouping: 1,234.5 / 1 234,5 / 1.234,5. */
@@ -79,6 +85,55 @@ export function placeholders(m: Message): string[] {
   const names = new Set<string>()
   for (const text of texts) for (const match of text.matchAll(/\{([a-zA-Z0-9_]+)\}/g)) names.add(match[1])
   return [...names].sort()
+}
+
+const LRI = '\u2066'
+const PDI = '\u2069'
+/**
+ * A run of Latin letters and digits plus the ASCII punctuation that travels
+ * with them (.tiger, (Cmd+Enter), {{baseUrl}}, 46 B). No Arabic, no controls.
+ */
+const LTR_RUN = /[\p{Script=Latin}\d.(\[{<"'`@#$%&*+\-/\\=_~|^][\p{Script=Latin}\d \x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e·]*/gu
+const TRAILING = /[\s.,:;!?]+$/
+const HAS_LATIN = /\p{Script=Latin}/u
+
+/**
+ * Right-to-left text with Latin inside (".tiger", "(Cmd+Enter)", "46 B",
+ * "{{baseUrl}}", a request name) reorders its punctuation and units around
+ * the Arabic: ".tiger" shows as "tiger.", "8 ms" as "ms 8". Each Latin
+ * run is wrapped in a left-to-right isolate (LRI ... PDI), which keeps it
+ * intact as one unit inside the Arabic sentence. Screen readers ignore the
+ * two invisible controls. Runs without a Latin letter (plain numbers) are
+ * left alone: digits already read correctly in Arabic.
+ */
+export function isolateLtrRuns(text: string): string {
+  return text.replace(LTR_RUN, (run) => {
+    let core = run.replace(TRAILING, '')
+    // Keep brackets balanced: a lone closing one, or an opening one at the end,
+    // belongs to the Arabic sentence around the run.
+    for (;;) {
+      if (/[)\]}]$/.test(core) && !/[(\[{]/.test(core)) core = core.slice(0, -1).replace(TRAILING, '')
+      else if (/[(\[{<]$/.test(core)) core = core.slice(0, -1).replace(TRAILING, '')
+      else break
+    }
+    if (!core || !HAS_LATIN.test(core)) return run
+    return LRI + core + PDI + run.slice(core.length)
+  })
+}
+
+/**
+ * "5 seconds ago", "3 hours ago", "2 days ago" (or later: "in 2 days") in the
+ * translator's language, picking the unit by distance. `at` and `now` are ms.
+ */
+export function timeAgo(at: number, t: Translator, now: number = Date.now()): string {
+  const diff = Math.round((at - now) / 1000)
+  const abs = Math.abs(diff)
+  if (abs < 60) return t.relativeTime(diff, 'second')
+  if (abs < 3600) return t.relativeTime(Math.round(diff / 60), 'minute')
+  if (abs < 86400) return t.relativeTime(Math.round(diff / 3600), 'hour')
+  if (abs < 86400 * 30) return t.relativeTime(Math.round(diff / 86400), 'day')
+  if (abs < 86400 * 365) return t.relativeTime(Math.round(diff / (86400 * 30)), 'month')
+  return t.relativeTime(Math.round(diff / (86400 * 365)), 'year')
 }
 
 export function createTranslator(
@@ -114,17 +169,20 @@ export function createTranslator(
     })
   }
 
+  const rtl = textDirection(locale) === 'rtl'
   const t = ((key: MessageKey, vars?: Vars): string => {
     const m = (own[key] as Message | undefined) ?? (fallback[key] as Message | undefined)
     if (m === undefined) return key
     const count = typeof vars?.count === 'number' ? vars.count : undefined
-    return format(pick(m, count), vars)
+    const text = format(pick(m, count), vars)
+    return rtl ? isolateLtrRuns(text) : text
   }) as Translator
 
   Object.assign(t, {
     locale,
     dir: textDirection(locale),
     has: (key: MessageKey) => own[key] !== undefined,
+    ltr: (text: string) => (rtl ? isolateLtrRuns(text) : text),
     source: (key: MessageKey, vars?: Vars) => {
       const m = fallback[key] as Message | undefined
       if (m === undefined) return key

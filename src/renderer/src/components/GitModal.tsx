@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { splitDiff } from '@core/diffView'
+import { timeAgo } from '@core/i18n'
 import type { GitBranches, GitCommit } from '../../../main/git'
 import { setConflict, setupStep, summarizeSync, type ChangeItem } from '../gitUx'
 import { actionLabel } from '../actions'
@@ -327,7 +328,7 @@ export function GitModal({
                   <li key={c.hash}>
                     <span className="row-label">{c.subject}</span>
                     <span className="cv-dim">
-                      {c.author} · {c.at}
+                      {c.author} · {c.time ? timeAgo(c.time, t) : c.at}
                     </span>
                     {advanced && <span className="git-hash">{c.hash}</span>}
                   </li>

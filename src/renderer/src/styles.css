@@ -39,7 +39,7 @@
   --radius-sm: 9px;
   --radius-xs: 6px;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Kohinoor Devanagari", "Nirmala UI", "Noto Sans Devanagari", "Mangal", "Geeza Pro", "SF Arabic", "Noto Sans Arabic", "Noto Naskh Arabic", Tahoma, sans-serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Kohinoor Devanagari", "Nirmala UI", "Noto Sans Devanagari", "Mangal", "Noto Sans Arabic", sans-serif;
   --blur: blur(22px) saturate(165%);
 
   /* HTTP method + status hues, as TEXT on glass (>= 4.5:1). */
@@ -98,6 +98,29 @@
 }
 :root[dir='rtl'] {
   --dir-sign: -1;
+}
+
+/*
+ * Per-script UI fonts. The shared stack puts Latin system fonts first, so an
+ * Arabic run fell through to Geeza Pro on macOS: small, thin, older design.
+ * Each script gets its own OS UI face first (SF Arabic / Segoe UI / Noto on
+ * macOS / Windows / Linux; Kohinoor or Nirmala UI for Devanagari; PingFang,
+ * Microsoft YaHei or Noto CJK for Chinese). Arabic and Devanagari also run
+ * about 10 percent larger (rem-based UI text only; code keeps --code-size) so
+ * their letters read as large as Latin at the same nominal size.
+ */
+:root:lang(ar) {
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Noto Sans Arabic", sans-serif;
+  font-size: 110%;
+}
+:root:lang(hi) {
+  --sans: -apple-system, BlinkMacSystemFont, "Kohinoor Devanagari", "Nirmala UI", "Segoe UI",
+    "Noto Sans Devanagari", Mangal, sans-serif;
+  font-size: 106%;
+}
+:root:lang(zh-CN) {
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Noto Sans SC", "Segoe UI", sans-serif;
 }
 
 html,
@@ -2013,39 +2036,74 @@ button {
   transform: rotate(90deg);
 }
 
-/* Code, URLs, paths, JSON and shortcuts stay left-to-right inside RTL. */
-[dir='rtl'] .url-input,
-[dir='rtl'] input[type='url'],
-[dir='rtl'] textarea,
+/*
+ * Code, URLs, paths, JSON and shortcuts stay left-to-right inside RTL.
+ * Multi-line code is strictly LTR (an Arabic string inside JSON must not flip
+ * its line). Single-line data fields take the direction of what is typed in
+ * them (plaintext) and align to its start, so a URL sits on the left and an
+ * Arabic environment name on the right. Translated prose (hints, warnings,
+ * team sync small print) is not listed: it flows right to left, and t()
+ * isolates the Latin tokens inside it.
+ */
 [dir='rtl'] .code-area,
-[dir='rtl'] .docs-area,
 [dir='rtl'] .response-body,
 [dir='rtl'] .code-block,
 [dir='rtl'] .code-pane pre,
+[dir='rtl'] .ts-side pre,
+[dir='rtl'] .git-diff,
+[dir='rtl'] .script-logs,
+[dir='rtl'] .mcp-code-block {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+[dir='rtl'] .url-input,
+[dir='rtl'] input[type='url'],
+[dir='rtl'] .docs-area,
 [dir='rtl'] .kv input[type='text'],
 [dir='rtl'] .hist-row .url,
 [dir='rtl'] .cv-path,
 [dir='rtl'] .cv-remote-row input,
 [dir='rtl'] .ts-field input,
-[dir='rtl'] .ts-side pre,
-[dir='rtl'] .ts-term,
+[dir='rtl'] .ts-field textarea,
 [dir='rtl'] .git-file,
-[dir='rtl'] .git-diff,
 [dir='rtl'] .git-newbranch,
 [dir='rtl'] .git-hash,
-[dir='rtl'] .script-logs,
-[dir='rtl'] .mcp-code-block,
 [dir='rtl'] .curl-hint,
 [dir='rtl'] .perf-url,
 [dir='rtl'] .resp-search input,
-[dir='rtl'] .resp-error-text,
-[dir='rtl'] .warn-row,
 [dir='rtl'] .json-bad,
 [dir='rtl'] .num-input,
 [dir='rtl'] .field input {
-  direction: ltr;
   unicode-bidi: plaintext;
-  text-align: left;
+  text-align: start;
+}
+/* Names in the tree, tabs and lists: an English name keeps its own order
+   ("List posts (mine)", not "(mine) List posts") and truncates at its end,
+   but still lines up on the right like everything else in the row. */
+[dir='rtl'] .row-label,
+[dir='rtl'] .request-tab-name {
+  unicode-bidi: plaintext;
+  text-align: right;
+}
+/* Git terms in small print read as one left-to-right unit. */
+[dir='rtl'] .ts-term {
+  unicode-bidi: isolate;
+}
+/* Arabic, Hindi and Chinese prose never renders in the monospace face. */
+:lang(ar) :is(.ts-term, .warn-row),
+:lang(hi) :is(.ts-term, .warn-row),
+:lang(zh) :is(.ts-term, .warn-row) {
+  font-family: var(--sans);
+}
+:lang(ar) ::placeholder,
+:lang(hi) ::placeholder,
+:lang(zh) ::placeholder {
+  font-family: var(--sans);
+}
+[dir='rtl'] .palette-keys,
+[dir='rtl'] .shortcut-kbds {
+  direction: ltr;
 }
 [dir='rtl'] kbd,
 [dir='rtl'] code,

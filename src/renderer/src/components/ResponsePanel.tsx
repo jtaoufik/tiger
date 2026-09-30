@@ -293,7 +293,7 @@ export function ResponsePanel({ state }: Props) {
           )}
         </span>
         <span className="meta-chip">
-          {t('response.meta.size')} <b>{res.sizeLabel}</b>
+          {t('response.meta.size')} <b>{t.ltr(res.sizeLabel)}</b>
         </span>
         {/* One polite announcement per response, so screen readers hear the result. */}
         <span className="tg-sr-only" role="status" aria-live="polite">
