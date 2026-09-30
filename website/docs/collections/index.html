@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Collections &amp; folders · Tiger docs</title>
-  <meta name="description" content="A Tiger collection is a plain-text folder of .tiger files. Learn how to create, organise, and navigate collections, folders, tabs, and the sidebar." />
+  <title>API Collections as Plain Text Files and Folders</title>
+  <meta name="description" content="How Tiger collections work: a folder of .tiger files, nested folders, ordering, collection auth and notes. No database, no cloud, easy to review in Git." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/collections/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/collections/" />
+  <meta property="og:title" content="API Collections as Plain Text Files and Folders" />
+  <meta property="og:description" content="How Tiger collections work: a folder of .tiger files, nested folders, ordering, collection auth and notes. No database, no cloud, easy to review in Git." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="API Collections as Plain Text Files and Folders" />
+  <meta name="twitter:description" content="How Tiger collections work: a folder of .tiger files, nested folders, ordering, collection auth and notes. No database, no cloud, easy to review in Git." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Collections &amp; folders" />
-  <meta property="og:description" content="A Tiger collection is a plain-text folder of .tiger files. Learn how to create, organise, and navigate collections, folders, tabs, and the sidebar." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Concepts",
+      "item": "https://jtaoufik.github.io/tiger/docs/tiger-format/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Collections & folders"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Concepts › Collections &amp; folders</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/tiger-format/">Concepts</a> › Collections &amp; folders</div>
     <h1>Collections &amp; folders</h1>
     <p class="lead">
       A collection is an ordinary folder on your disk. Every request inside it is a
@@ -158,7 +195,7 @@ docs {
             <td>Click the collection name row (opens it as a tab)</td>
           </tr>
           <tr>
-            <td>Git panel</td>
+            <td>Team sync</td>
             <td>Git branch icon on the collection row, or the inline git-status chips</td>
           </tr>
           <tr>
@@ -285,7 +322,7 @@ docs {
       <li>A check mark - the working tree is clean and in sync with the remote.</li>
     </ul>
     <p>
-      Clicking any chip opens the Git panel for that collection. The full Git workflow
+      Clicking any chip opens Team sync for that collection. The full Git workflow
       (status, diff, commit, pull, push, branch, log, and more) is documented on the
       <a href="/tiger/docs/git/">Git integration</a> page.
     </p>

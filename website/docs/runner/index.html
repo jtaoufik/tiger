@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Collection runner · Tiger docs</title>
-  <meta name="description" content="Run a whole collection or folder sequentially, see live pass/fail verdicts, chain variables between requests, and stop mid-run at any time." />
+  <title>Collection Runner and API Load Test in Tiger</title>
+  <meta name="description" content="Run a whole collection or folder with live pass/fail results from your tests, and use the Load test tab to measure p50 and p95 latency at set concurrency." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/runner/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/runner/" />
+  <meta property="og:title" content="Collection Runner and API Load Test in Tiger" />
+  <meta property="og:description" content="Run a whole collection or folder with live pass/fail results from your tests, and use the Load test tab to measure p50 and p95 latency at set concurrency." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Collection Runner and API Load Test in Tiger" />
+  <meta name="twitter:description" content="Run a whole collection or folder with live pass/fail results from your tests, and use the Load test tab to measure p50 and p95 latency at set concurrency." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Collection runner" />
-  <meta property="og:description" content="Run a whole collection or folder sequentially, see live pass/fail verdicts, chain variables between requests, and stop mid-run at any time." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Features",
+      "item": "https://jtaoufik.github.io/tiger/docs/requests-auth/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Collection runner"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Collection runner</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/requests-auth/">Features</a> › Collection runner</div>
     <h1>Collection runner</h1>
     <p class="lead">
       The collection runner executes every request in a folder (or an entire collection) one after
@@ -23,7 +60,13 @@
       pass/fail verdicts - all shown live as the run progresses.
     </p>
 
-    <h2>Opening the runner</h2>
+        <figure class="shot">
+      <img src="/tiger/screenshots/runner.png" width="1440" height="900" loading="lazy"
+        alt="Tiger collection runner dialog listing the requests List posts, Get post and Create post with method, status, time, tests and result columns and a Run 3 requests button" />
+      <figcaption>The collection runner before a run.</figcaption>
+    </figure>
+
+<h2>Opening the runner</h2>
     <p>
       Click any folder or collection in the sidebar to open its page as a tab. The page has a
       <strong>Run</strong> button in the toolbar. Clicking it opens the runner panel for that
@@ -52,7 +95,7 @@
         <code>{{variable}}</code> interpolation.
       </li>
       <li>
-        <strong>Captures</strong> extract values from the response (status code, a header, or a
+        <strong>Save values</strong> (captures) extract values from the response (status code, a header, or a
         JSON body path) and write them into named variables. Those variables are available to all
         subsequent requests in the same run.
       </li>

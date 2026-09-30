@@ -3,108 +3,204 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FAQ · Tiger docs</title>
-  <meta name="description" content="Answers to common questions about Tiger: data residency, pricing, open source license, platform support, proxy setup, SOAP/WSDL, and migrating from Postman or Insomnia." />
+  <title>Tiger FAQ: Pricing, Privacy, Offline and Platforms</title>
+  <meta name="description" content="Answers about Tiger, the free open source API client: cost, license, offline use, privacy, platforms, proxies, SOAP/WSDL and moving from Postman." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/faq/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/faq/" />
+  <meta property="og:title" content="Tiger FAQ: Pricing, Privacy, Offline and Platforms" />
+  <meta property="og:description" content="Answers about Tiger, the free open source API client: cost, license, offline use, privacy, platforms, proxies, SOAP/WSDL and moving from Postman." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tiger FAQ: Pricing, Privacy, Offline and Platforms" />
+  <meta name="twitter:description" content="Answers about Tiger, the free open source API client: cost, license, offline use, privacy, platforms, proxies, SOAP/WSDL and moving from Postman." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="FAQ" />
-  <meta property="og:description" content="Answers to common questions about Tiger: data residency, pricing, open source license, platform support, proxy setup, SOAP/WSDL, and migrating from Postman or Insomnia." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Where does our API data live?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "On your machines and in your Git repositories, nowhere else. Tiger has no cloud backend, no sync service and no accounts, so request definitions, tokens and response data never leave your infrastructure."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is Tiger open source?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Tiger is released under the MIT license. The full source is on GitHub at https://github.com/jtaoufik/tiger."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can we use it commercially, and what does it cost per seat?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tiger is free to download and use, including for commercial work. Advanced team features may become paid in a future release; pricing will be announced before anything changes for existing users."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Which platforms does Tiger run on?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tiger runs natively on macOS (Apple Silicon and Intel), Windows (installer and portable EXE, also available via winget), and Linux (AppImage and .deb for Debian/Ubuntu). All three platforms receive the same feature set."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does Tiger phone home? Does it collect my request data?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tiger never records or transmits URLs, hostnames, header values, request bodies or response data. It sends only lightweight usage events (app opened, request sent with method and HTTP status bucket, collection imported with source and count) to help prioritize development. The only identifier is a random app-local ID. You can turn analytics off at any time in Settings under Privacy."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do we migrate off Postman or Insomnia?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Export each Postman collection as v2.0 or v2.1 JSON, or your Insomnia data as a v4 export, and import it from the sidebar. Folders, headers, query parameters and bodies carry over, with variable references preserved. Environment values and auth settings are entered once in Tiger. OpenAPI and Bruno import too, and collections export back to Postman or OpenAPI 3.0."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does Tiger support SOAP and WSDL?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes, starting with version 0.4.0. Pick a .wsdl file in the import dialog and each binding operation becomes a POST request with a ready-to-fill SOAP envelope body, the correct Content-Type header, and (for SOAP 1.1) a SOAPAction header. Both SOAP 1.1 and SOAP 1.2 are supported."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does it work behind our corporate proxy?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. HTTP, HTTPS and SOCKS proxies are supported. SSL verification can be switched off when developing against self-signed or internal certificates. Custom CA bundles and client certificate authentication via PEM pair or PFX/PKCS12 file are also available. Redirects and timeouts are configurable per request."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How does the team collaborate without a sync server?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "With the Git workflow you already run. Collections are plain text files, so sharing is a repo, review is a pull request, and history is git log. New engineers get everything with git clone."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do updates work?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tiger checks for new releases on GitHub automatically and shows a changelog notification when one is available. On macOS and Linux (AppImage) the update can be installed in-app via electron-updater. On Windows you can also install updates via winget. You can always download the latest build directly from the GitHub Releases page."
-        }
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is Tiger a free Postman alternative?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Tiger is a free, open source (MIT) API client for macOS, Windows and Linux that covers the everyday Postman workflow: collections, environments, auth, scripts and tests, a collection runner and imports from Postman. It needs no account and stores everything as plain files on your computer."
       }
-    ]
-  }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Tiger work offline, and do I need an account?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tiger works fully offline and needs no account or sign-in. Requests go straight from your computer to the API you are calling, and collections are plain files in a folder you choose."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How is Tiger different from Bruno and Insomnia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Like Bruno, Tiger is open source and stores collections as plain files you can commit to Git. Tiger also includes a built-in MCP server for AI assistants, WSDL/SOAP import, client certificates (mTLS), a Load test tab and Team sync. Insomnia offers optional cloud sync and account sign-in, while Tiger has neither. The comparison pages have the full tables."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the Tiger MCP server?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tiger includes an MCP (Model Context Protocol) server. Register it in Claude Desktop, Cursor or another MCP client and the assistant can list your requests and environments, read a request, and run it, using your real URLs, auth and variables. It runs locally and your collection stays on disk."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Tiger have load testing?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The Load test tab of a request sends it a set number of times with bounded concurrency and reports min, max, average, p50 and p95 timings."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is Tiger open source?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Tiger is released under the MIT license. The full source code is available at github.com/jtaoufik/tiger. You can read it, fork it, modify it, and distribute it under the terms of that license."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do updates work?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tiger checks for new releases on GitHub automatically at startup and shows a changelog notification when one is available. On macOS and Linux (AppImage) the update can be applied in-app via electron-updater without leaving the application. On Windows the in-app updater tells you when a new version is out. You can also always download the latest build directly from the releases page."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do we migrate off Insomnia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "In Insomnia, use Application > Export Data > All and save as a v4 JSON export. Import that file in Tiger. Folders, requests, headers, query params, bodies and auth all transfer. Environment groups become Tiger environment files."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do we migrate from Bruno?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Point Tiger's importer at the Bruno collection folder (the directory containing .bru files). Tiger reads the folder structure directly - no export step needed in Bruno."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can we import from an OpenAPI or Swagger spec?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Tiger imports OpenAPI 3 (JSON or YAML) and Swagger 2 (JSON or YAML) specs. Each path + method combination becomes a request, with parameters mapped to query params and headers as appropriate and example request bodies pre-filled where the spec provides them. Collections can also be exported to OpenAPI 3.0 from the collection context menu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I import a curl command?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Paste a curl command into the import dialog and Tiger converts it into a request, preserving the method, URL, headers (-H), request body (-d / --data), and basic auth (-u)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it work behind a corporate proxy?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Tiger supports HTTP, HTTPS and SOCKS proxies. Configure the proxy address in Settings > Network. Proxy settings apply to all requests."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do we deploy Tiger company-wide?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Use the standard installers. On macOS, distribute the DMG via your MDM (Jamf, Mosyle, Kandji). On Windows, use the Setup installer with your existing software deployment tooling, or push the portable EXE. On Linux, the AppImage is self-contained; the .deb integrates with apt. There are no license keys or accounts to provision."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can two people edit the same request at the same time?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tiger does not provide real-time collaborative editing. Because each request is a separate file, two people modifying different requests in the same collection will not conflict. Two people modifying the same .tiger file simultaneously will produce a normal Git merge conflict, which they resolve with standard tools."
+      }
+    }
+  ]
+}
+  </script>
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Reference",
+      "item": "https://jtaoufik.github.io/tiger/docs/faq/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "FAQ"
+    }
+  ]
+}
   </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Reference › FAQ</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/faq/">Reference</a> › FAQ</div>
     <h1>FAQ</h1>
     <p class="lead">Answers to the most common questions about Tiger: where your data lives, licensing, platforms, migrating from other tools, SOAP support, proxy setup, and how updates work.</p>
+
+    <h2>The basics</h2>
+
+    <h3>Is Tiger a free Postman alternative?</h3>
+    <p>
+      Yes. Tiger is a free, open source (MIT) API client for macOS, Windows and Linux that covers the everyday Postman workflow: collections, environments, auth, scripts and tests, a collection runner and imports from Postman. It needs no account and stores everything as plain files on your computer.
+    </p>
+
+    <h3>Does Tiger work offline, and do I need an account?</h3>
+    <p>
+      Tiger works fully offline and needs no account or sign-in. Requests go straight from your computer to the API you are calling, and collections are plain files in a folder you choose.
+    </p>
+
+    <h3>How is Tiger different from Bruno and Insomnia?</h3>
+    <p>
+      Like Bruno, Tiger is open source and stores collections as plain files you can commit to Git. Tiger also includes a built-in MCP server for AI assistants, WSDL/SOAP import, client certificates (mTLS), a Load test tab and Team sync. Insomnia offers optional cloud sync and account sign-in, while Tiger has neither. The comparison pages have the full tables.
+    </p>
+
+    <h3>What is the Tiger MCP server?</h3>
+    <p>
+      Tiger includes an MCP (Model Context Protocol) server. Register it in Claude Desktop, Cursor or another MCP client and the assistant can list your requests and environments, read a request, and run it, using your real URLs, auth and variables. It runs locally and your collection stays on disk.
+    </p>
+
+    <h3>Does Tiger have load testing?</h3>
+    <p>
+      Yes. The Load test tab of a request sends it a set number of times with bounded concurrency and reports min, max, average, p50 and p95 timings.
+    </p>
 
     <h2>Privacy and data</h2>
 
@@ -179,13 +275,13 @@
         <tbody>
           <tr>
             <td>macOS</td>
-            <td>Universal DMG (Apple Silicon + Intel)</td>
-            <td>Right-click the app and choose Open on first launch (builds are not yet notarized)</td>
+            <td>DMG for Apple Silicon (arm64) and Intel (x64)</td>
+            <td>Open the DMG and drag Tiger to Applications. Builds are signed and notarized, so there is no Gatekeeper workaround</td>
           </tr>
           <tr>
             <td>Windows</td>
-            <td>NSIS installer, portable EXE, <code>winget</code></td>
-            <td><code>winget install jtaoufik.Tiger</code></td>
+            <td>Setup installer, portable EXE</td>
+            <td>Download from GitHub Releases (winget and Microsoft Store are coming soon)</td>
           </tr>
           <tr>
             <td>Linux</td>
@@ -203,8 +299,8 @@
     <p>
       Tiger checks for new releases on GitHub automatically at startup and shows a changelog
       notification when one is available. On macOS and Linux (AppImage) the update can be
-      applied in-app via electron-updater without leaving the application. On Windows you can
-      let the in-app updater handle it, or run <code>winget upgrade jtaoufik.Tiger</code>.
+      applied in-app via electron-updater without leaving the application. On Windows the
+      in-app updater tells you when a new version is out.
       You can also always download the latest build directly from the releases page.
     </p>
 
@@ -317,8 +413,8 @@
     <h3>How do we deploy Tiger company-wide?</h3>
     <p>
       Use the standard installers. On macOS, distribute the DMG via your MDM (Jamf, Mosyle,
-      Kandji). On Windows, use the NSIS installer with your existing software deployment
-      tooling, or deploy through <code>winget</code>. On Linux, the AppImage is self-contained;
+      Kandji). On Windows, use the Setup installer with your existing software deployment
+      tooling, or push the portable EXE. On Linux, the AppImage is self-contained;
       the <code>.deb</code> integrates with <code>apt</code>. There are no license keys or
       accounts to provision.
     </p>
@@ -335,7 +431,7 @@
 
     <div class="callout tip">
       <span class="ic">✓</span>
-      <p>Tiger has a built-in Git panel (status, diff, commit, push, pull, branch, clone)
+      <p>Tiger has built-in Team sync (status, changes, save a version, sync, branches, history, clone)
       so you can manage the collection repo without leaving the app.</p>
     </div>
 
@@ -365,7 +461,7 @@
       </a>
       <a class="card" href="/tiger/docs/git/">
         <div class="t">Git integration</div>
-        <div class="d">Commit, push, branch and collaborate using the built-in Git panel.</div>
+        <div class="d">Save versions, sync, branch and collaborate using Team sync.</div>
       </a>
       <a class="card" href="/tiger/docs/mcp/">
         <div class="t">MCP server</div>

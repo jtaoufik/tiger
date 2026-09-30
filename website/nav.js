@@ -30,7 +30,7 @@
       items: [
         { t: 'Requests & auth', h: '/docs/requests-auth/' },
         { t: 'Environments & secrets', h: '/docs/environments/' },
-        { t: 'Scripts & captures', h: '/docs/scripts/' },
+        { t: 'Scripts & tests', h: '/docs/scripts/' },
         { t: 'Collection runner', h: '/docs/runner/' },
         { t: 'Response tools', h: '/docs/response/' },
         { t: 'Importing (incl. WSDL/SOAP)', h: '/docs/importing/' },

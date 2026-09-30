@@ -3,19 +3,56 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Scripts &amp; captures · Tiger docs</title>
-  <meta name="description" content="Pre-request and post-response JavaScript in Tiger: set variables, assert on responses, and capture values for chaining requests with the tiger API." />
+  <title>API Scripts, Tests and Save Values in Tiger</title>
+  <meta name="description" content="Write pre-request and post-response JavaScript, add tests with pass/fail results, and use Save values to chain a response into the next API request." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/scripts/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/scripts/" />
+  <meta property="og:title" content="API Scripts, Tests and Save Values in Tiger" />
+  <meta property="og:description" content="Write pre-request and post-response JavaScript, add tests with pass/fail results, and use Save values to chain a response into the next API request." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="API Scripts, Tests and Save Values in Tiger" />
+  <meta name="twitter:description" content="Write pre-request and post-response JavaScript, add tests with pass/fail results, and use Save values to chain a response into the next API request." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Scripts &amp; captures" />
-  <meta property="og:description" content="Pre-request and post-response JavaScript in Tiger: set variables, assert on responses, and capture values for chaining requests with the tiger API." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Features",
+      "item": "https://jtaoufik.github.io/tiger/docs/requests-auth/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Scripts & tests"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Scripts &amp; captures</div>
-    <h1>Scripts &amp; captures</h1>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/requests-auth/">Features</a> › Scripts &amp; tests</div>
+    <h1>Scripts, tests and Save values</h1>
     <p class="lead">
       Tiger lets you attach small JavaScript snippets to any request: a pre-request script
       that runs before the HTTP call is made, and a post-response script that runs after
@@ -24,7 +61,13 @@
       and writes them into environment variables automatically, with no code required.
     </p>
 
-    <h2>Overview</h2>
+        <figure class="shot">
+      <img src="/tiger/screenshots/save-values.png" width="1440" height="900" loading="lazy"
+        alt="Tiger request editor with the Save values tab open, showing a Variable column and a Read from response column with the example body.data.id" />
+      <figcaption>The Save values tab: name a variable and say where in the response to read it.</figcaption>
+    </figure>
+
+<h2>Overview</h2>
     <p>
       Scripts and captures address two complementary needs. Captures handle the common
       case of chaining requests - log in, grab the token, use it in the next call - using

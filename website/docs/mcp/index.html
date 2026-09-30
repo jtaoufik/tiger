@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MCP server · Tiger docs</title>
-  <meta name="description" content="Tiger bundles an MCP server (tiger-mcp) that exposes your saved requests as callable tools for Claude Desktop, Claude Code, and other MCP clients." />
+  <title>MCP API Client: Connect Claude and Cursor to Tiger</title>
+  <meta name="description" content="Tiger includes an MCP server so Claude, Cursor and other AI assistants can list and run the requests in your collection. Setup guide and available tools." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/mcp/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/mcp/" />
+  <meta property="og:title" content="MCP API Client: Connect Claude and Cursor to Tiger" />
+  <meta property="og:description" content="Tiger includes an MCP server so Claude, Cursor and other AI assistants can list and run the requests in your collection. Setup guide and available tools." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MCP API Client: Connect Claude and Cursor to Tiger" />
+  <meta name="twitter:description" content="Tiger includes an MCP server so Claude, Cursor and other AI assistants can list and run the requests in your collection. Setup guide and available tools." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="MCP server" />
-  <meta property="og:description" content="Tiger bundles an MCP server (tiger-mcp) that exposes your saved requests as callable tools for Claude Desktop, Claude Code, and other MCP clients." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Features",
+      "item": "https://jtaoufik.github.io/tiger/docs/requests-auth/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "MCP server"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › MCP server</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/requests-auth/">Features</a> › MCP server</div>
     <h1>MCP server</h1>
     <p class="lead">
       Tiger ships a standalone binary called <code>tiger-mcp</code> that implements the
