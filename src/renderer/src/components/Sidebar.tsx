@@ -1370,7 +1370,7 @@ export function Sidebar({
           }}
         >
           <PlusIcon size={14} />
-          {t('sidebar.actions.new')}
+          <span className="sidebar-action-label">{t('sidebar.actions.new')}</span>
           <ChevronDownIcon size={12} />
         </button>
         <button
@@ -1380,7 +1380,7 @@ export function Sidebar({
           onClick={onOpenCollection}
         >
           <FolderOpenIcon size={14} />
-          {t('sidebar.actions.open')}
+          <span className="sidebar-action-label">{t('sidebar.actions.open')}</span>
         </button>
         <button
           type="button"
@@ -1389,7 +1389,7 @@ export function Sidebar({
           onClick={onImportExport}
         >
           <UploadIcon size={14} />
-          {t('sidebar.actions.import')}
+          <span className="sidebar-action-label">{t('sidebar.actions.import')}</span>
         </button>
       </div>
 

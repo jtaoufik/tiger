@@ -61,9 +61,20 @@ describe('RequestEditor translations', () => {
     await act(() => setLocale('ar'))
     render(<Harness />)
     fireEvent.click(screen.getByRole('tab', { name: /^الترويسات/ }))
-    expect(screen.getByRole('textbox', { name: 'اسم ترويسة 1' })).toHaveValue('Accept')
+    expect(screen.getByRole('textbox', { name: 'اسم الترويسة 1' })).toHaveValue('Accept')
     expect(screen.getByRole('button', { name: 'إضافة ترويسة' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'إرسال' })).toBeInTheDocument()
+  })
+
+  it('uses whole sentences per row kind, never a spliced noun (French gender)', async () => {
+    await act(() => setLocale('fr'))
+    render(<Harness />)
+    expect(screen.getByRole('button', { name: 'Ajouter un paramètre' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Nom du nouveau paramètre' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: /^En-têtes/ }))
+    expect(screen.getByRole('button', { name: 'Ajouter un en-tête' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Nom de l’en-tête 1' })).toHaveValue('Accept')
+    expect(screen.getByRole('checkbox', { name: 'Activer le nouvel en-tête' })).toBeInTheDocument()
   })
 
   it('renders the auth editor in French', async () => {

@@ -2098,3 +2098,11 @@ button {
   flex: none;
   white-space: nowrap;
 }
+:lang(es) .panel.editor .tabs,
+:lang(fr) .panel.editor .tabs {
+  gap: 2px;
+}
+:lang(es) .panel.editor .tabs .tab,
+:lang(fr) .panel.editor .tabs .tab {
+  padding-inline: 7px;
+}

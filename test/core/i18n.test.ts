@@ -196,6 +196,16 @@ describe('catalogs', () => {
     expect(total).toBe(enKeys.length)
   })
 
+  it('never splices a translated word into a sentence ({noun}, {row}: one full message per case)', () => {
+    const fragments = ['noun', 'nouns', 'row', 'thing', 'what', 'article', 'adjective', 'verb', 'plural', 'gender']
+    for (const locale of SUPPORTED_LOCALES) {
+      for (const [key, m] of Object.entries(CATALOGS[locale])) {
+        const bad = placeholders(m as Message).filter((p) => fragments.includes(p))
+        expect(bad, `${locale} ${key}`).toEqual([])
+      }
+    }
+  })
+
   it('has English copy without em dashes', () => {
     for (const key of enKeys) {
       const m = en[key] as Message

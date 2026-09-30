@@ -264,6 +264,7 @@ export function RequestEditor({
           <KeyValueEditor
             items={request.query}
             placeholder={[t('request.param.name'), t('common.value')]}
+            kind="param"
             onChange={(query) => set({ query })}
           />
         )}
@@ -271,6 +272,7 @@ export function RequestEditor({
           <KeyValueEditor
             items={request.headers}
             placeholder={[t('request.header.name'), t('common.value')]}
+            kind="header"
             onChange={(headers) => set({ headers })}
           />
         )}
@@ -349,6 +351,7 @@ export function RequestEditor({
               <KeyValueEditor
                 items={formRows}
                 placeholder={[t('request.field.name'), t('common.value')]}
+                kind="field"
                 onChange={(kv) => {
                   setFormRows(kv)
                   set({ body: { ...request.body, content: kvToForm(kv) } })
@@ -420,7 +423,7 @@ export function RequestEditor({
               items={request.captures ?? []}
               placeholder={[t('request.variable.name'), 'body.data.id']}
               columns={[t('request.variable.name'), t('request.capture.readFrom')]}
-              noun={t('request.capture.noun')}
+              kind="capture"
               onChange={(captures) => set({ captures })}
             />
             <p className="cv-dim script-help">

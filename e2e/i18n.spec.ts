@@ -136,8 +136,35 @@ async function shootLocale(locale: Locale, theme: 'light' | 'dark'): Promise<voi
       .getByRole('treeitem', { name: 'jsonplaceholder', exact: true })
       .getByRole('treeitem', { name: 'GET List posts', exact: true })
       .click()
+    // Send only once the request is loaded in the editor.
+    await expect(page.getByRole('textbox', { name: t('request.url.label') })).toHaveValue(/\/posts$/)
     await page.keyboard.press(`${MOD}+Enter`)
     await expect(page.locator('.resp-status')).toContainText('200')
+    // New / Open / Import fit on one row at the default sidebar width.
+    const actions = await page.locator('.sidebar-actions').evaluate((row) => {
+      const tops = [...row.children].map((b) => Math.round(b.getBoundingClientRect().top))
+      const spans = [...row.querySelectorAll('.sidebar-action-label')]
+      const labels = spans.map((l) => l.getBoundingClientRect().width)
+      // Full text width (a Range ignores the overflow clip) against the box, with subpixel slack.
+      const textWidth = (el: Element) => {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        return range.getBoundingClientRect().width
+      }
+      const truncated = spans
+        .filter((l) => textWidth(l) - l.getBoundingClientRect().width > 0.5)
+        .map((l) => l.textContent)
+      return { rows: new Set(tops).size, overflow: row.scrollWidth - row.clientWidth, labels, truncated }
+    })
+    expect(actions.rows, 'sidebar actions on one row').toBe(1)
+    expect(actions.overflow, 'sidebar actions overflow').toBeLessThanOrEqual(0)
+    expect(Math.min(...actions.labels), 'labels visible at the default width').toBeGreaterThan(1)
+    expect(actions.truncated, 'labels not truncated').toEqual([])
+    // The request section tabs fit without scrolling at 1280 px.
+    const tabsOverflow = await page
+      .locator('.panel.editor .tabs')
+      .evaluate((row) => row.scrollWidth - row.clientWidth)
+    expect(tabsOverflow, 'request section tabs overflow').toBeLessThanOrEqual(0)
     await shot('workspace')
 
     if (theme === 'light') {

@@ -16,7 +16,10 @@
  *       - a key missing in a locale, or a key English does not have;
  *       - different {placeholders} than English;
  *       - a plural message missing a form the locale needs (Arabic: all six);
- *       - an em dash in English copy (house style).
+ *       - an em dash in English copy (house style);
+ *       - a grammatical fragment slot: {noun}, {row}, {thing}... A translated
+ *         word spliced into a translated sentence breaks gender, articles and
+ *         case (fr "Ajouter : paramètre"). Write one full message per case.
  *
  * Usage: node scripts/i18n-check.mjs [--quiet] [--only=<path part>] [--ns=<namespace>]
  *   --only  report hardcoded text only in files whose path contains this
@@ -203,6 +206,12 @@ function placeholders(m) {
   return [...names].sort().join(',')
 }
 
+/**
+ * Placeholder names that mean "a translated word goes here". Placeholders
+ * are for data (names, numbers, paths, codes), never for pieces of grammar.
+ */
+const FRAGMENT_SLOTS = new Set(['noun', 'nouns', 'row', 'thing', 'what', 'article', 'adjective', 'verb', 'plural', 'gender'])
+
 function checkCatalogs(catalogs) {
   const problems = []
   const en = catalogs.en
@@ -213,6 +222,11 @@ function checkCatalogs(catalogs) {
     if (texts.some((t) => /\u2014/.test(t))) problems.push(`en  ${key}  em dash in English copy`)
   }
   for (const [locale, catalog] of Object.entries(catalogs)) {
+    for (const [key, m] of Object.entries(catalog)) {
+      if (ns && !key.startsWith(`${ns}.`)) continue
+      const slots = placeholders(m).split(',').filter((p) => FRAGMENT_SLOTS.has(p))
+      if (slots.length) problems.push(`${locale}  ${key}  splices a translated fragment {${slots.join('}, {')}}: write a full message per case`)
+    }
     if (locale === 'en') continue
     const needed = new Intl.PluralRules(locale).resolvedOptions().pluralCategories
     for (const key of keys) {

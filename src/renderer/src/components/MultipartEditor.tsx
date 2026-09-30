@@ -51,9 +51,7 @@ export function MultipartEditor({ items, onChange }: Props) {
       {rows.map((row, i) => {
         const isFile = row.value.startsWith(FILE_PREFIX)
         const isBlank = i === rows.length - 1
-        const rowName = isBlank
-          ? t('request.multipart.newField')
-          : t('request.multipart.field', { n: i + 1 })
+        const n = i + 1
         return (
           <div
             className={`kv ${row.enabled === false ? 'disabled' : ''} ${isBlank ? 'kv-blank' : ''}`}
@@ -76,7 +74,7 @@ export function MultipartEditor({ items, onChange }: Props) {
               value={row.name}
               placeholder={t('request.multipart.fieldPlaceholder')}
               spellCheck={false}
-              aria-label={t('request.kv.cellName', { row: rowName })}
+              aria-label={isBlank ? t('request.kv.field.newName') : t('request.kv.field.name', { n })}
               title={row.name.length > 32 ? row.name : undefined}
               onChange={(e) => update(i, { name: e.target.value })}
             />
@@ -89,8 +87,12 @@ export function MultipartEditor({ items, onChange }: Props) {
                 spellCheck={false}
                 aria-label={
                   isFile
-                    ? t('request.multipart.filePath', { row: rowName })
-                    : t('request.kv.cellValue', { row: rowName })
+                    ? isBlank
+                      ? t('request.multipart.filePathNew')
+                      : t('request.multipart.filePath', { n })
+                    : isBlank
+                      ? t('request.kv.field.newValue')
+                      : t('request.kv.field.value', { n })
                 }
                 title={row.value.length > 32 ? row.value : undefined}
                 onChange={(e) => update(i, { value: e.target.value })}
@@ -100,7 +102,7 @@ export function MultipartEditor({ items, onChange }: Props) {
               type="button"
               className="icon-btn mp-pick"
               title={t('request.multipart.pickTip')}
-              aria-label={t('request.multipart.pick', { row: rowName.toLowerCase() })}
+              aria-label={isBlank ? t('request.multipart.pickNew') : t('request.multipart.pick', { n })}
               onClick={() => pickFile(i)}
               disabled={!window.tiger}
             >

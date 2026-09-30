@@ -34,7 +34,7 @@ export function EnvironmentModal({ env, onChange, onClose }: Props) {
           <KeyValueEditor
             items={env.variables}
             placeholder={[t('modals.environment.variable'), t('common.value')]}
-            noun={t('modals.environment.variable')}
+            kind="variable"
             onChange={onChange}
           />
         </>
