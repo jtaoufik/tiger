@@ -74,7 +74,7 @@ function parentWindow(): BrowserWindow | undefined {
  */
 let hasUnsavedChanges = false
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const settings = loadSettings()
   const dark =
     settings.theme === 'dark' || (settings.theme === 'system' && nativeTheme.shouldUseDarkColors)
@@ -212,6 +212,7 @@ function createWindow(): void {
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  return win
 }
 
 function registerIpc(): void {
@@ -451,20 +452,23 @@ app.whenReady().then(() => {
   registerIpc()
   applyNetworkSettings()
   buildAppMenu()
-  createWindow()
+  const win = createWindow()
 
-  // Nothing below is needed for the first frame: run it after the window is
-  // up instead of in front of it.
-  setImmediate(() => {
+  // Nothing below is needed for the first frame: run it once the window has
+  // painted instead of in front of it.
+  win.once('ready-to-show', () => {
     // Packaged builds get the icon from the bundle; in dev, set the Dock icon
-    // explicitly so the mascot shows instead of the stock Electron logo
-    // (decoding the 1024 px PNG took ~60 ms in front of createWindow).
+    // explicitly so the mascot shows instead of the stock Electron logo.
+    // Decoding the 1024 px PNG blocks the main process for ~60 ms, which used
+    // to sit in front of createWindow and then in front of the page load.
     if (process.platform === 'darwin' && !app.isPackaged) {
-      try {
-        app.dock.setIcon(join(__dirname, '../../build/icon.png'))
-      } catch {
-        /* missing icon asset must not block startup */
-      }
+      setImmediate(() => {
+        try {
+          app.dock.setIcon(join(__dirname, '../../build/icon.png'))
+        } catch {
+          /* missing icon asset must not block startup */
+        }
+      })
     }
   })
   // The background update check (and loading electron-updater) waits until
