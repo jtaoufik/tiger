@@ -84,6 +84,7 @@ import {
 import { cancelRequest, runRequest } from './runRequest'
 import { announce, ensureLiveRegions, looksLikeError } from './a11y'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
+import { rendererPerfMark } from './perf'
 import { sampleEnvironment, sampleRequests } from './sample'
 
 interface ResponseState {
@@ -356,6 +357,8 @@ export default function App() {
   // Live regions must exist before their first message.
   useEffect(() => {
     ensureLiveRegions()
+    // Dev-only startup trace: the frame after the first App commit.
+    requestAnimationFrame(() => rendererPerfMark('app-rendered'))
   }, [])
 
   useEffect(() => {

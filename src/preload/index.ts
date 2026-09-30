@@ -111,6 +111,10 @@ const api = {
   onFullscreen: (cb: (state: boolean) => void): void => {
     ipcRenderer.on('tiger:fullscreen', (_e, state) => cb(state))
   },
+  /** Dev-only startup timing (see src/main/perf.ts); ignored when disabled. */
+  perfMark: (name: string, at: number): void => {
+    ipcRenderer.send('tiger:perf', name, at)
+  },
   setDirty: (dirty: boolean): void => {
     ipcRenderer.send('tiger:dirtyState', dirty)
   },

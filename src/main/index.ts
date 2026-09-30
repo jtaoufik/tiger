@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
+import { perfExit, perfMark, perfRendererMark } from './perf'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
@@ -45,6 +46,8 @@ import type { BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
+
+perfMark('main:entry')
 
 /** Was this saved position still visible on a connected display? */
 function isOnScreen(state: { x?: number; y?: number; width: number; height: number }): boolean {
@@ -113,7 +116,13 @@ function createWindow(): void {
 
   if (saved?.maximized) win.maximize()
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    perfMark('main:ready-to-show')
+    // Startup benchmarks (TIGER_PERF_EXIT) never show the window: nothing
+    // flashes on screen or steals focus while a script loops cold starts.
+    if (!perfExit) win.show()
+  })
+  perfMark('main:window-created')
 
   // Remember the window geometry. getNormalBounds() reports the restored size even
   // while maximized, so unmaximizing later returns to a sensible window. Debounced
@@ -388,6 +397,8 @@ function registerIpc(): void {
     shell.showItemInFolder(process.platform === 'win32' ? path.replace(/\//g, '\\') : path)
   )
 
+  ipcMain.on('tiger:perf', (_e, name: string, at: number) => perfRendererMark(name, at))
+
   ipcMain.on('tiger:dirtyState', (_e, dirty: boolean) => {
     hasUnsavedChanges = dirty
   })
@@ -417,6 +428,7 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
+  perfMark('main:ready')
   // Packaged builds get the icon from the bundle; in dev, set the Dock icon
   // explicitly so the mascot shows instead of the stock Electron logo.
   if (process.platform === 'darwin' && !app.isPackaged) {

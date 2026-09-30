@@ -39,6 +39,8 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "package": "npm run build && npm run build:mcp && electron-builder",
+    "analyze": "electron-vite build",
+    "perf:startup": "node scripts/perf-startup.mjs",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "devDependencies": {
@@ -55,6 +57,7 @@
     "electron-vite": "^2.3.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.4.2",
+    "rollup-plugin-visualizer": "^5.14.0",
     "typescript": "^5.7.3",
     "vite": "^5.4.11",
     "vitest": "^3.0.2"
