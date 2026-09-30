@@ -94,7 +94,9 @@ writeFileSync(join(userData, 'settings.json'), JSON.stringify({ analyticsEnabled
 
 const electron = spawn(
   join(APP, 'node_modules/.bin/electron'),
-  [APP, `--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${userData}`],
+  // --lang pins the UI to English: the checks click buttons by their English
+  // text, and the app otherwise follows the language of the machine.
+  [APP, `--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${userData}`, '--lang=en-US'],
   {
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true

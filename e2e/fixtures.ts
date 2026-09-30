@@ -116,13 +116,26 @@ export interface Tiger {
   errors: string[]
 }
 
-export async function launchTiger(userDataDir: string, extraEnv: Record<string, string> = {}): Promise<Tiger> {
+export interface LaunchOptions {
+  /**
+   * Chromium's --lang switch: the "system language" the app sees. Defaults to
+   * en-US so the suite never depends on the language of the machine it runs
+   * on (the app follows the OS language when Settings > Language is System).
+   */
+  lang?: string
+}
+
+export async function launchTiger(
+  userDataDir: string,
+  extraEnv: Record<string, string> = {},
+  opts: LaunchOptions = {}
+): Promise<Tiger> {
   const env: Record<string, string> = {}
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
   // A dev server URL would make the app load a Vite server instead of out/.
   delete env.ELECTRON_RENDERER_URL
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${userDataDir}`],
+    args: [REPO_ROOT, `--user-data-dir=${userDataDir}`, `--lang=${opts.lang ?? 'en-US'}`],
     cwd: REPO_ROOT,
     env: { ...env, TIGER_E2E: '1', ...extraEnv }
   })
@@ -134,8 +147,9 @@ export async function launchTiger(userDataDir: string, extraEnv: Record<string, 
     })
     page.on('pageerror', (e) => errors.push(String(e)))
     await page.waitForLoadState('domcontentloaded')
-    // The UI is up once the sidebar tree has rendered.
-    await expect(page.getByRole('tree', { name: 'Collections' })).toBeVisible()
+    // The UI is up once the sidebar tree has rendered (by role only: its
+    // name is translated).
+    await expect(page.getByRole('tree').first()).toBeVisible()
     return { app, page, errors }
   } catch (e) {
     // Never leave an orphan Electron behind a failed launch.
