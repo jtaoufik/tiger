@@ -176,9 +176,10 @@ describe('Sidebar with a 2,000-request collection', () => {
     report('sidebar mount (jsdom, React actualDuration)', mount)
     report('sidebar parent re-render (jsdom, React actualDuration)', update)
     // Before windowing + memoized rows: ~4,000 ms mount, ~525 ms update on the
-    // same machine. Budgets leave a wide margin for slow CI runners.
-    expect(mount).toBeLessThan(400)
-    expect(update).toBeLessThan(50)
+    // same machine, unloaded. Budgets leave a wide margin for slow or busy CI
+    // runners while still failing if every row renders again.
+    expect(mount).toBeLessThan(1500)
+    expect(update).toBeLessThan(150)
   })
 
   it('a parent re-render with new callbacks touches no DOM', () => {

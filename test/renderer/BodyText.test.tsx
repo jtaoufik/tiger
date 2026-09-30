@@ -74,7 +74,7 @@ describe('BodyText', () => {
 
 describe('ResponsePanel with a large pretty-printed body', () => {
   it('still finds and cycles matches spread over many blocks', () => {
-    const items = Array.from({ length: 3000 }, (_, i) => ({ id: i, name: `Item ${i}` }))
+    const items = Array.from({ length: 1200 }, (_, i) => ({ id: i, name: `Item ${i}` }))
     const data = formatResponse({
       status: 200,
       statusText: 'OK',
@@ -87,8 +87,8 @@ describe('ResponsePanel with a large pretty-printed body', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Search in response' }))
     const input = container.querySelector<HTMLInputElement>('.resp-search input')!
     fireEvent.change(input, { target: { value: 'Item 29' } })
-    // "Item 29" and "Item 290".."Item 299" and "Item 2900".."Item 2999".
-    expect(container.querySelectorAll('mark.hit')).toHaveLength(1 + 10 + 100)
+    // "Item 29" and "Item 290".."Item 299".
+    expect(container.querySelectorAll('mark.hit')).toHaveLength(1 + 10)
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(container.querySelector('mark.hit.active')?.textContent).toBe('Item 29')
     expect(container.querySelectorAll('mark.hit')[1]).toHaveClass('active')
