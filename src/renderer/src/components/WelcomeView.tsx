@@ -13,7 +13,7 @@ import {
   UploadIcon,
   UsersIcon
 } from './Icons'
-import { MOD } from './ShortcutsModal'
+import { MOD } from '../platform'
 import { getAction } from '@core/actions'
 import { actionLabel, actionTitle } from '../actions'
 import { HelpLink } from './HelpLink'

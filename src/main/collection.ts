@@ -33,31 +33,65 @@ async function readMeta(path: string): Promise<{ name: string; method: HttpMetho
   }
 }
 
-async function walk(root: string, dir: string, acc: RequestEntry[]): Promise<void> {
+/** Every request file under `dir`, with its folder path relative to `root`. */
+async function listRequestFiles(
+  root: string,
+  dir: string
+): Promise<Array<{ full: string; folder: string[] }>> {
   const entries = await readdir(dir, { withFileTypes: true })
+  const files: Array<{ full: string; folder: string[] }> = []
+  const subdirs: string[] = []
+  const rel = relative(root, dir)
+  const folder = rel ? rel.split(sep) : []
   for (const entry of entries) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) {
       if (entry.name === ENVIRONMENTS_DIR || entry.name.startsWith('.')) continue
-      await walk(root, full, acc)
+      subdirs.push(full)
     } else if (
       entry.isFile() &&
       entry.name.endsWith('.tiger') &&
       entry.name !== 'collection.tiger' &&
       entry.name !== 'folder.tiger'
     ) {
-      const meta = await readMeta(full)
-      const folder = relative(root, dir)
-      acc.push({ ...meta, path: norm(full), folder: folder ? folder.split(sep) : [] })
+      files.push({ full, folder })
     }
   }
+  // Sibling folders are listed concurrently rather than one after another.
+  const nested = await Promise.all(subdirs.map((d) => listRequestFiles(root, d)))
+  return files.concat(...nested)
+}
+
+/** Parallel file reads in flight at once: fast on SSDs, far below fd limits. */
+const READ_CONCURRENCY = 32
+
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length)
+  let next = 0
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const i = next++
+      out[i] = await fn(items[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return out
 }
 
 export async function readCollection(root: string): Promise<RequestEntry[]> {
-  const acc: RequestEntry[] = []
-  await walk(root, root, acc)
+  // Reads used to be awaited one file at a time; a 2,000-request collection
+  // spent most of its open time waiting on the disk serially.
+  const files = await listRequestFiles(root, root)
+  const acc = await mapLimit(files, READ_CONCURRENCY, async ({ full, folder }) => ({
+    ...(await readMeta(full)),
+    path: norm(full),
+    folder
+  }))
   return acc.sort(
-    (a, b) => a.folder.join('/').localeCompare(b.folder.join('/')) || a.name.localeCompare(b.name)
+    (a, b) =>
+      a.folder.join('/').localeCompare(b.folder.join('/')) ||
+      a.name.localeCompare(b.name) ||
+      a.path.localeCompare(b.path)
   )
 }
 

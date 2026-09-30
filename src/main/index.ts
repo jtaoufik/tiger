@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
+import { perfExit, perfMark, perfRendererMark } from './perf'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
@@ -57,6 +58,8 @@ import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
+perfMark('main:entry')
+
 /** Was this saved position still visible on a connected display? */
 function isOnScreen(state: { x?: number; y?: number; width: number; height: number }): boolean {
   if (state.x === undefined || state.y === undefined) return false
@@ -82,7 +85,7 @@ function parentWindow(): BrowserWindow | undefined {
  */
 let hasUnsavedChanges = false
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const settings = loadSettings()
   const dark =
     settings.theme === 'dark' || (settings.theme === 'system' && nativeTheme.shouldUseDarkColors)
@@ -124,7 +127,13 @@ function createWindow(): void {
 
   if (saved?.maximized) win.maximize()
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    perfMark('main:ready-to-show')
+    // Startup benchmarks (TIGER_PERF_EXIT) never show the window: nothing
+    // flashes on screen or steals focus while a script loops cold starts.
+    if (!perfExit) win.show()
+  })
+  perfMark('main:window-created')
 
   // Remember the window geometry. getNormalBounds() reports the restored size even
   // while maximized, so unmaximizing later returns to a sensible window. Debounced
@@ -220,6 +229,7 @@ function createWindow(): void {
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  return win
 }
 
 function registerIpc(): void {
@@ -417,6 +427,8 @@ function registerIpc(): void {
     shell.showItemInFolder(process.platform === 'win32' ? path.replace(/\//g, '\\') : path)
   )
 
+  ipcMain.on('tiger:perf', (_e, name: string, at: number) => perfRendererMark(name, at))
+
   ipcMain.on('tiger:dirtyState', (_e, dirty: boolean) => {
     hasUnsavedChanges = dirty
   })
@@ -446,15 +458,7 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
-  // Packaged builds get the icon from the bundle; in dev, set the Dock icon
-  // explicitly so the mascot shows instead of the stock Electron logo.
-  if (process.platform === 'darwin' && !app.isPackaged) {
-    try {
-      app.dock.setIcon(join(__dirname, '../../build/icon.png'))
-    } catch {
-      /* missing icon asset must not block startup */
-    }
-  }
+  perfMark('main:ready')
   // Proxy authentication: answer 407 challenges with the configured credentials
   // instead of letting Electron fail the request silently.
   app.on('login', (event, _webContents, _request, authInfo, callback) => {
@@ -478,8 +482,28 @@ app.whenReady().then(() => {
   registerIpc()
   applyNetworkSettings()
   buildAppMenu()
-  createWindow()
-  initAutoUpdate()
+  const win = createWindow()
+
+  // Nothing below is needed for the first frame: run it once the window has
+  // painted instead of in front of it.
+  win.once('ready-to-show', () => {
+    // Packaged builds get the icon from the bundle; in dev, set the Dock icon
+    // explicitly so the mascot shows instead of the stock Electron logo.
+    // Decoding the 1024 px PNG blocks the main process for ~60 ms, which used
+    // to sit in front of createWindow and then in front of the page load.
+    if (process.platform === 'darwin' && !app.isPackaged) {
+      setImmediate(() => {
+        try {
+          app.dock.setIcon(join(__dirname, '../../build/icon.png'))
+        } catch {
+          /* missing icon asset must not block startup */
+        }
+      })
+    }
+  })
+  // The background update check (and loading electron-updater) waits until
+  // the first window has painted and settled.
+  setTimeout(() => void initAutoUpdate(), 5000)
 
   app.on('activate', () => {
     if (appWindows().length === 0) createWindow()

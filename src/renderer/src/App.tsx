@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseRequest, serializeRequest } from '@core/tigerFormat'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
 import { buildRequest } from '@core/request'
@@ -12,13 +12,9 @@ import {
 import type { SearchItem } from '@core/search'
 import { exportOpenApi, exportPostman, exportPostmanEnvironment } from '@core/export'
 import { toCurl } from '@core/codegen'
-import {
-  importCurl,
-  layerCollectionVariables,
-  summarizeImport,
-  type ImportResult,
-  type ImportSummary
-} from '@core/import'
+import { importCurl } from '@core/import/curl'
+import { layerCollectionVariables, summarizeImport, type ImportSummary } from '@core/import/report'
+import type { ImportResult } from '@core/import/types'
 import { extractCaptures } from '@core/capture'
 import { movedRequestPath, renamedFolderPath, uniqueCopyName } from '@core/treeMove'
 import type { RunnerItem } from '@core/runner'
@@ -34,7 +30,6 @@ import type { HistoryEntry } from '../../main/history'
 import type { ImportKind } from '../../main/importers'
 import { Logo } from './Logo'
 import { Sidebar, type SidebarEntry, type SyncState } from './components/Sidebar'
-import { GitModal } from './components/GitModal'
 import { JoinTeamModal } from './components/TeamSync'
 import { onGitChanged } from './gitUx'
 import { CollectionView } from './components/CollectionView'
@@ -43,16 +38,11 @@ import { WelcomeView } from './components/WelcomeView'
 import { RequestEditor } from './components/RequestEditor'
 import { RequestTabs, tabAccessibleName, type RequestTab } from './components/RequestTabs'
 import { ResponsePanel } from './components/ResponsePanel'
-import { SettingsView } from './components/SettingsView'
-import { ImportExportModal, type ExportFormat } from './components/ImportExportModal'
+import type { ExportFormat } from './components/ImportExportModal'
 import { ImportReportModal, importReportSentence } from './components/ImportReportModal'
 import { ImportDropZone } from './components/ImportDropZone'
-import { HistoryModal } from './components/HistoryModal'
-import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { ConfirmModal } from './components/ConfirmModal'
 import { PromptModal } from './components/PromptModal'
-import { RunnerModal } from './components/RunnerModal'
-import { ShortcutsModal } from './components/ShortcutsModal'
 import { REVEAL_LABEL } from './platform'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
@@ -96,6 +86,17 @@ import {
 import { cancelRequest, runRequest } from './runRequest'
 import { announce, ensureLiveRegions, looksLikeError } from './a11y'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
+import { rendererPerfMark } from './perf'
+import {
+  EnvironmentsModal,
+  GitModal,
+  HistoryModal,
+  ImportExportModal,
+  RunnerModal,
+  SettingsView,
+  ShortcutsModal
+} from './surfaces'
+import { preloadSurfacesWhenIdle } from './lazy'
 import { sampleEnvironment, sampleRequests } from './sample'
 
 interface ResponseState {
@@ -380,6 +381,11 @@ export default function App() {
   // Live regions must exist before their first message.
   useEffect(() => {
     ensureLiveRegions()
+    // Dev-only startup trace: the frame after the first App commit.
+    requestAnimationFrame(() => rendererPerfMark('app-rendered'))
+    // Rarely used surfaces are split out of the startup chunk; fetch them
+    // once the first screen is up so opening one later is still instant.
+    preloadSurfacesWhenIdle()
   }, [])
 
   useEffect(() => {
@@ -2152,13 +2158,22 @@ export default function App() {
       ? findMissingVars(sentSurface(activeEffective), envToVars(activeEnv))
       : []
 
-  const paletteItems: SearchItem[] = collections.flatMap((c) =>
-    c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
+  // Derived from collections only: rebuilt when a collection changes, not on
+  // every keystroke in the editor (thousands of entries in big collections).
+  const paletteItems: SearchItem[] = useMemo(
+    () =>
+      collections.flatMap((c) =>
+        c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
+      ),
+    [collections]
   )
 
   // Tab labels come from collections state at render time, so renames in the
   // sidebar/editor stay in sync automatically.
-  const entryById = new Map(collections.flatMap((c) => c.entries).map((e) => [e.id, e]))
+  const entryById = useMemo(
+    () => new Map(collections.flatMap((c) => c.entries).map((e) => [e.id, e])),
+    [collections]
+  )
   const tabItems: RequestTab[] = openTabs.flatMap((t): RequestTab[] => {
     const key = tabKey(t)
     if (t.kind === 'request') {

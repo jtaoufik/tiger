@@ -1,0 +1,6 @@
+/* Response body blocks: off-screen ones skip layout and paint entirely.
+   They stay in the DOM and the accessibility tree, and remain selectable
+   and searchable. */
+.resp-chunk {
+  content-visibility: auto;
+}

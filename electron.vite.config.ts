@@ -1,6 +1,12 @@
 import { resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
+
+// `npm run analyze` (or ANALYZE=1 electron-vite build) writes
+// out/renderer-stats.{html,json}, a treemap plus raw per-module sizes, so
+// bundle changes can be measured instead of guessed.
+const analyze = process.env.ANALYZE === '1' || process.env.npm_lifecycle_event === 'analyze'
 
 export default defineConfig({
   main: {
@@ -23,8 +29,19 @@ export default defineConfig({
     resolve: {
       alias: { '@core': resolve('src/core') }
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      ...(analyze
+        ? [
+            visualizer({ filename: 'out/renderer-stats.html', gzipSize: true, template: 'treemap' }),
+            visualizer({ filename: 'out/renderer-stats.json', gzipSize: true, template: 'raw-data' })
+          ]
+        : [])
+    ],
     build: {
+      // electron-vite leaves the renderer unminified by default; the startup
+      // chunk is parsed and compiled on every launch, so ship it minified.
+      minify: 'esbuild',
       rollupOptions: {
         input: {
           index: resolve('src/renderer/index.html'),

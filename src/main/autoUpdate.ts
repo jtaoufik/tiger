@@ -13,6 +13,11 @@
  * every change on `tiger:update:state`, so a window that loads late still
  * gets the current state through `tiger:update:getState`.
  *
+ * electron-updater (and its dependency tree) is imported on demand: loading it
+ * at module scope put it on the startup path before the window was created.
+ * The background check starts a few seconds after launch (main/index.ts);
+ * Help > Check for Updates calls checkNow, which awaits the same lazy load.
+ *
  * Never throws into startup: failures become an `error` state that only the
  * Check for Updates dialog shows.
  */
@@ -20,7 +25,6 @@
 import { app, BrowserWindow } from 'electron'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import electronUpdater from 'electron-updater'
 import { resolveUpdateMode, type UpdateModeInfo } from '../core/updateMode'
 import {
   friendlyUpdateError,
@@ -31,12 +35,15 @@ import {
 } from '../core/updateState'
 import { loadSettings, type Settings } from './settings'
 
-const { autoUpdater } = electronUpdater
+type AutoUpdater = (typeof import('electron-updater'))['autoUpdater']
 
 const SIX_HOURS = 6 * 60 * 60 * 1000
 
 let modeInfo: UpdateModeInfo | null = null
 let state: UpdateState = INITIAL_UPDATE_STATE
+let updater: Promise<AutoUpdater> | null = null
+let loaded: AutoUpdater | null = null
+let started = false
 
 function detectMode(): UpdateModeInfo {
   const nsisInstalled =
@@ -74,23 +81,39 @@ function dispatch(event: UpdateEvent): void {
   }
 }
 
-export function initAutoUpdate(): void {
-  if (!isAuto()) return
+/** Import electron-updater once and wire its events; every caller awaits this. */
+function loadUpdater(): Promise<AutoUpdater> {
+  if (updater) return updater
+  const pending = import('electron-updater').then((m) => {
+    const autoUpdater = (m.default ?? m).autoUpdater
+    autoUpdater.autoDownload = loadSettings().autoInstallUpdates !== false
+    // "Later" means: install silently the next time Tiger quits.
+    autoUpdater.autoInstallOnAppQuit = true
 
-  autoUpdater.autoDownload = loadSettings().autoInstallUpdates !== false
-  // "Later" means: install silently the next time Tiger quits.
-  autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.on('checking-for-update', () => dispatch({ type: 'checking' }))
+    autoUpdater.on('update-available', (info) =>
+      dispatch({ type: 'available', version: info.version, autoDownload: autoUpdater.autoDownload })
+    )
+    autoUpdater.on('update-not-available', () => dispatch({ type: 'not-available' }))
+    autoUpdater.on('download-progress', (p) => dispatch({ type: 'progress', percent: p.percent }))
+    autoUpdater.on('update-downloaded', (info) => dispatch({ type: 'downloaded', version: info.version }))
+    autoUpdater.on('error', (err) => dispatch({ type: 'error', message: friendlyUpdateError(err) }))
+    loaded = autoUpdater
+    return autoUpdater
+  })
+  // A failed import may be retried by the next check.
+  pending.catch(() => {
+    if (updater === pending) updater = null
+  })
+  updater = pending
+  return pending
+}
 
-  autoUpdater.on('checking-for-update', () => dispatch({ type: 'checking' }))
-  autoUpdater.on('update-available', (info) =>
-    dispatch({ type: 'available', version: info.version, autoDownload: autoUpdater.autoDownload })
-  )
-  autoUpdater.on('update-not-available', () => dispatch({ type: 'not-available' }))
-  autoUpdater.on('download-progress', (p) => dispatch({ type: 'progress', percent: p.percent }))
-  autoUpdater.on('update-downloaded', (info) => dispatch({ type: 'downloaded', version: info.version }))
-  autoUpdater.on('error', (err) => dispatch({ type: 'error', message: friendlyUpdateError(err) }))
-
-  void checkNow()
+/** Background check + 6-hour re-check. Called a few seconds after launch. */
+export async function initAutoUpdate(): Promise<void> {
+  if (!isAuto() || started) return
+  started = true
+  await checkNow()
   // Re-check every 6 hours while the app stays open.
   setInterval(() => void checkNow(), SIX_HOURS)
 }
@@ -98,13 +121,15 @@ export function initAutoUpdate(): void {
 /** Settings changed: follow the "Install updates automatically" toggle. */
 export function applyUpdateSettings(settings: Pick<Settings, 'autoInstallUpdates'>): void {
   if (!isAuto()) return
-  autoUpdater.autoDownload = settings.autoInstallUpdates !== false
+  // Not loaded yet: loadUpdater reads the saved setting when it loads.
+  if (loaded) loaded.autoDownload = settings.autoInstallUpdates !== false
 }
 
 /** Check now (Help > Check for Updates). Resolves with the state afterwards. */
 export async function checkNow(): Promise<UpdateState> {
   if (!isAuto()) return state
   try {
+    const autoUpdater = await loadUpdater()
     await autoUpdater.checkForUpdates()
   } catch (err) {
     dispatch({ type: 'error', message: friendlyUpdateError(err) })
@@ -116,12 +141,14 @@ export async function checkNow(): Promise<UpdateState> {
 export function downloadNow(): void {
   if (!isAuto() || state.status !== 'available') return
   dispatch({ type: 'download-started' })
-  autoUpdater.downloadUpdate().catch((err) => {
-    dispatch({ type: 'error', message: friendlyUpdateError(err) })
-  })
+  loadUpdater()
+    .then((autoUpdater) => autoUpdater.downloadUpdate())
+    .catch((err) => {
+      dispatch({ type: 'error', message: friendlyUpdateError(err) })
+    })
 }
 
 /** Quit and install a downloaded update (Restart now). */
-export function quitAndInstall(): void {
-  if (isAuto() && state.status === 'downloaded') autoUpdater.quitAndInstall()
+export async function quitAndInstall(): Promise<void> {
+  if (isAuto() && state.status === 'downloaded') (await loadUpdater()).quitAndInstall()
 }

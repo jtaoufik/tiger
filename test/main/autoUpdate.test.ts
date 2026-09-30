@@ -7,7 +7,9 @@ const h = vi.hoisted(() => ({
   app: { isPackaged: true, getName: () => 'Tiger' },
   sent: [] as unknown[],
   settings: { autoInstallUpdates: true } as { autoInstallUpdates?: boolean },
-  updater: null as unknown as EventEmitter & Record<string, unknown>
+  updater: null as unknown as EventEmitter & Record<string, unknown>,
+  /** Reads of electron-updater's autoUpdater: 0 means the lazy import never ran. */
+  loads: 0
 }))
 
 vi.mock('electron', () => ({
@@ -18,21 +20,22 @@ vi.mock('electron', () => ({
     ]
   }
 }))
-vi.mock('electron-updater', async () => {
-  const { EventEmitter } = await import('node:events')
-  const u = Object.assign(new EventEmitter(), {
-    autoDownload: true,
-    autoInstallOnAppQuit: false,
-    checkForUpdates: vi.fn().mockResolvedValue(null),
-    downloadUpdate: vi.fn().mockResolvedValue([]),
-    quitAndInstall: vi.fn()
-  })
-  h.updater = u as never
-  return { default: { autoUpdater: u } }
-})
+vi.mock('electron-updater', () => ({
+  default: {
+    get autoUpdater() {
+      h.loads++
+      return h.updater
+    }
+  }
+}))
 vi.mock('../../src/main/settings', () => ({ loadSettings: () => h.settings }))
 
 const realPlatform = process.platform
+
+/** checkForUpdates calls so far; 0 when electron-updater was never imported. */
+const checks = () => (h.updater.checkForUpdates as ReturnType<typeof vi.fn>).mock.calls.length
+/** Let the lazy import and the promise chains behind it settle. */
+const settle = () => vi.advanceTimersByTimeAsync(0)
 
 async function load(platform: NodeJS.Platform) {
   Object.defineProperty(process, 'platform', { value: platform })
@@ -47,7 +50,14 @@ describe('autoUpdate (main)', () => {
     h.app.isPackaged = true
     h.settings = { autoInstallUpdates: true }
     vi.clearAllMocks()
-    h.updater?.removeAllListeners()
+    h.loads = 0
+    h.updater = Object.assign(new EventEmitter(), {
+      autoDownload: true,
+      autoInstallOnAppQuit: false,
+      checkForUpdates: vi.fn().mockResolvedValue(null),
+      downloadUpdate: vi.fn().mockResolvedValue([]),
+      quitAndInstall: vi.fn()
+    }) as never
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -58,23 +68,26 @@ describe('autoUpdate (main)', () => {
   it('does nothing in dev: no check, manual mode', async () => {
     h.app.isPackaged = false
     const m = await load('darwin')
-    m.initAutoUpdate()
+    await m.initAutoUpdate()
+    await m.checkNow()
     expect(m.getUpdateMode()).toEqual({ mode: 'manual', reason: 'dev' })
-    expect(h.updater.checkForUpdates).not.toHaveBeenCalled()
+    expect(checks()).toBe(0)
+    expect(h.loads).toBe(0) // never even loaded
   })
 
   it('does nothing for a Microsoft Store build', async () => {
     ;(process as { windowsStore?: boolean }).windowsStore = true
     const m = await load('win32')
-    m.initAutoUpdate()
+    await m.initAutoUpdate()
     expect(m.getUpdateMode()).toEqual({ mode: 'manual', reason: 'store' })
-    expect(h.updater.checkForUpdates).not.toHaveBeenCalled()
+    expect(checks()).toBe(0)
   })
 
   it('mac: checks at startup, follows the setting and broadcasts each state', async () => {
     h.settings = { autoInstallUpdates: false }
     const m = await load('darwin')
-    m.initAutoUpdate()
+    expect(h.loads).toBe(0) // loaded on demand, not at import time
+    await m.initAutoUpdate()
     expect(h.updater.checkForUpdates).toHaveBeenCalledTimes(1)
     expect(h.updater.autoDownload).toBe(false)
     expect(h.updater.autoInstallOnAppQuit).toBe(true)
@@ -84,15 +97,16 @@ describe('autoUpdate (main)', () => {
     expect(m.getUpdateState()).toEqual({ status: 'available', version: '0.7.1' })
 
     m.downloadNow()
+    await settle()
     expect(h.updater.downloadUpdate).toHaveBeenCalled()
     h.updater.emit('download-progress', { percent: 42.5 })
     expect(m.getUpdateState()).toEqual({ status: 'downloading', version: '0.7.1', percent: 42 })
 
-    m.quitAndInstall()
+    await m.quitAndInstall()
     expect(h.updater.quitAndInstall).not.toHaveBeenCalled()
 
     h.updater.emit('update-downloaded', { version: '0.7.1' })
-    m.quitAndInstall()
+    await m.quitAndInstall()
     expect(h.updater.quitAndInstall).toHaveBeenCalledTimes(1)
 
     expect(h.sent.map((s) => (s as { status: string }).status)).toEqual([
@@ -105,8 +119,22 @@ describe('autoUpdate (main)', () => {
 
     m.applyUpdateSettings({ autoInstallUpdates: true })
     expect(h.updater.autoDownload).toBe(true)
-    vi.advanceTimersByTime(6 * 60 * 60 * 1000)
+    await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000)
     expect(h.updater.checkForUpdates).toHaveBeenCalledTimes(2)
+  })
+
+  it('Help > Check for Updates works before the delayed startup check, wiring events once', async () => {
+    const m = await load('darwin')
+    const state = await m.checkNow()
+    expect(h.updater.checkForUpdates).toHaveBeenCalledTimes(1)
+    expect(state.status).toBe('idle') // the stub emits no events
+    h.updater.emit('checking-for-update')
+    expect(m.getUpdateState().status).toBe('checking')
+
+    await m.initAutoUpdate() // the 5 s delayed start, arriving later
+    await m.initAutoUpdate() // and never twice
+    expect(h.updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    expect(h.updater.listenerCount('update-available')).toBe(1)
   })
 
   it('a failed check becomes a short error state, never a throw', async () => {
@@ -122,9 +150,9 @@ describe('autoUpdate (main)', () => {
     const saved = process.env.APPIMAGE
     delete process.env.APPIMAGE
     const m = await load('linux')
-    m.initAutoUpdate()
+    await m.initAutoUpdate()
     expect(m.getUpdateMode()).toEqual({ mode: 'manual', reason: 'linux-package' })
-    expect(h.updater.checkForUpdates).not.toHaveBeenCalled()
+    expect(checks()).toBe(0)
     if (saved !== undefined) process.env.APPIMAGE = saved
   })
 })
