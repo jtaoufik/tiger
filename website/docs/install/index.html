@@ -82,6 +82,12 @@
       <li>Drag the Tiger icon to the <strong>Applications</strong> folder shortcut in the DMG window.</li>
       <li>Eject the DMG and open Tiger from Launchpad or <code>/Applications</code>.</li>
     </ol>
+    <p>
+      Prefer no disk image? Each release also has a zip
+      (<code>Tiger-0.7.1-mac-arm64.zip</code> / <code>Tiger-0.7.1-mac-x64.zip</code>): unzip it
+      and move <code>Tiger.app</code> to <code>/Applications</code>. Both the DMG and the zip
+      install update themselves in the app.
+    </p>
 
     <div class="callout tip">
       <span class="ic">✓</span>
@@ -154,13 +160,21 @@
       <code>%APPDATA%\Tiger</code> regardless of where the EXE lives.
     </p>
 
+    <h3>Option 4: Portable zip</h3>
+    <p>
+      Portable (zip): download <code>Tiger-Portable-0.7.1-windows-x64.zip</code>, unzip it
+      anywhere and run <code>Tiger.exe</code>. Nothing is installed; delete the folder to remove
+      it. Like the portable EXE, it does not update itself: Help &gt; Check for Updates links
+      you to the new zip.
+    </p>
+
     <h3>System requirements</h3>
     <p>Windows 10 or later, x64 architecture.</p>
 
     <h2 id="linux">Linux</h2>
     <p>
-      Tiger ships two Linux packages: an <strong>AppImage</strong> and a
-      <strong>Debian/Ubuntu <code>.deb</code></strong>. Both are x64 only in this release.
+      Tiger ships three Linux downloads: an <strong>AppImage</strong>, a
+      <strong>Debian/Ubuntu <code>.deb</code></strong> and a plain <strong>tar.gz</strong>. Both are x64 only in this release.
     </p>
 
     <h3>Option 1: AppImage</h3>
@@ -219,6 +233,16 @@
       </p>
     </div>
 
+    <h3>Option 3: tar.gz</h3>
+    <p>
+      tar.gz: download <code>Tiger-0.7.1-linux-x64.tar.gz</code>, extract it and run
+      <code>./tiger-api-client</code> from the extracted folder:
+    </p>
+    <pre><code>tar -xzf Tiger-0.7.1-linux-x64.tar.gz
+cd Tiger-0.7.1-linux-x64
+./tiger-api-client</code></pre>
+    <p>The tar.gz does not update itself; download the new archive to upgrade.</p>
+
     <h3>System requirements</h3>
     <p>
       x64 architecture. The AppImage is distribution-agnostic (glibc 2.17+).
@@ -227,11 +251,18 @@
 
     <h2 id="auto-update">Background auto-updates</h2>
     <p>
-      Tiger checks for new releases at startup and periodically while running. When an update
-      is available, a notification appears in the bottom of the window. Clicking it downloads
-      the update in the background. On macOS and Windows the update installs the next time
-      you quit and reopen the app. On Linux, auto-updates work for the AppImage only; the
-      <code>.deb</code> package requires a manual download and reinstall.
+      Tiger checks for new releases at startup and every six hours while running, downloads
+      the update in the background (a small "Downloading update" indicator shows progress) and
+      then shows <strong>Tiger X is ready. Restart to update</strong>. Choose
+      <strong>Restart now</strong>, or <strong>Later</strong> to install it the next time you
+      quit. Help &gt; Check for Updates checks on demand. To be asked before anything is
+      downloaded, turn off <strong>Install updates automatically</strong> in Settings &gt; About.
+    </p>
+    <p>
+      In-app updates work for the Windows Setup install, the macOS <code>.dmg</code> and
+      <code>.zip</code>, and the Linux AppImage. The Windows portable EXE and portable zip, the
+      <code>.deb</code> and the tar.gz do not update themselves: Check for Updates links you
+      to the new download instead. Microsoft Store installs are updated by the Store.
     </p>
     <p>
       Auto-update downloads come from

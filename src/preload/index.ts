@@ -8,6 +8,8 @@ import type { ImportKind } from '../main/importers'
 import type { ImportResult } from '../core/import'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { UpdateInfo } from '../core/version'
+import type { UpdateModeInfo } from '../core/updateMode'
+import type { UpdateState } from '../core/updateState'
 import type {
   GitActionResult,
   GitAvailability,
@@ -102,8 +104,17 @@ const api = {
   },
   checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
   installUpdate: (): Promise<void> => ipcRenderer.invoke('tiger:installUpdate'),
-  onUpdateDownloaded: (cb: (info: { version: string }) => void): void => {
-    ipcRenderer.on('tiger:update:downloaded', (_e, info) => cb(info))
+  /** 'auto' when electron-updater installs updates in place for this install. */
+  updateMode: (): Promise<UpdateModeInfo> => ipcRenderer.invoke('tiger:update:mode'),
+  updateState: (): Promise<UpdateState> => ipcRenderer.invoke('tiger:update:getState'),
+  checkForUpdatesNow: (): Promise<UpdateState> => ipcRenderer.invoke('tiger:update:check'),
+  downloadUpdate: (): Promise<void> => ipcRenderer.invoke('tiger:update:download'),
+  onUpdateState: (cb: (state: UpdateState) => void): (() => void) => {
+    const listener = (_e: unknown, next: UpdateState) => cb(next)
+    ipcRenderer.on('tiger:update:state', listener)
+    return () => {
+      ipcRenderer.removeListener('tiger:update:state', listener)
+    }
   },
   onShortcut: (cb: (name: string) => void): void => {
     ipcRenderer.on('tiger:shortcut', (_e, name) => cb(name))

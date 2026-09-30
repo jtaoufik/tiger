@@ -49,18 +49,35 @@ const body = `${changes ? `## What's new\n\n${changes}\n\n` : ''}## Which file d
 |---|---|---|
 | Windows | **Tiger-Setup-${version}-windows-x64.exe** | Recommended. Graphical installer, Start menu + desktop shortcut. |
 | Windows (no install) | Tiger-Portable-${version}-windows-x64.exe | Single exe, no install, run from anywhere. |
+| Windows (portable zip) | Tiger-Portable-${version}-windows-x64.zip | Portable (zip): unzip and run Tiger.exe. |
 | macOS (Apple Silicon) | Tiger-${version}-mac-arm64.dmg | M1 and later. |
 | macOS (Intel) | Tiger-${version}-mac-x64.dmg | Intel Macs. |
-| Linux | Tiger-${version}-linux-x64.AppImage | Portable, auto-updates in-app. |
+| macOS (zip) | Tiger-${version}-mac-arm64.zip / Tiger-${version}-mac-x64.zip | Unzip and drag Tiger.app to Applications. |
+| Linux | Tiger-${version}-linux-x64.AppImage | Portable, updates itself in the app. |
 | Linux (Debian/Ubuntu) | Tiger-${version}-linux-amd64.deb | \`sudo apt install ./Tiger-${version}-linux-amd64.deb\` |
+| Linux (tar.gz) | Tiger-${version}-linux-x64.tar.gz | tar.gz: extract and run ./tiger-api-client |
 
 Stable links that always point at the latest release (no version number to update):
 [Tiger-Setup-windows-x64.exe](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe) ·
 [Tiger-Portable-windows-x64.exe](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Portable-windows-x64.exe) ·
+[Tiger-Portable-windows-x64.zip](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Portable-windows-x64.zip) ·
 [Tiger-mac-arm64.dmg](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg) ·
 [Tiger-mac-x64.dmg](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.dmg) ·
+[Tiger-mac-arm64.zip](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.zip) ·
+[Tiger-mac-x64.zip](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.zip) ·
 [Tiger-linux-x64.AppImage](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage) ·
-[Tiger-linux-amd64.deb](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-amd64.deb)
+[Tiger-linux-amd64.deb](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-amd64.deb) ·
+[Tiger-linux-x64.tar.gz](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.tar.gz)
+
+## Updates
+
+Tiger installed with the Windows Setup exe, the macOS dmg or zip, or the Linux AppImage
+downloads new versions in the background and offers **Restart now** when one is ready
+(or installs it the next time you quit). Turn this off in Settings > About.
+
+The Windows portable exe and portable zip, the Linux .deb and the Linux tar.gz do not
+update themselves: Help > Check for Updates links you to the new download instead.
+Microsoft Store installs are updated by the Store.
 
 ## Windows says "unknown publisher" / "Windows protected your PC"
 

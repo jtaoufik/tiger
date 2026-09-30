@@ -1,7 +1,9 @@
 name: Release
 
 # Build installers for macOS, Windows and Linux when a version tag is pushed
-# (e.g. v0.4.0) and attach ONLY the installers + source code to the release.
+# (e.g. v0.4.0) and attach the installers, the portable archives and the
+# electron-updater metadata (latest*.yml, *.blockmap, mac zips) to the release,
+# so installed copies update themselves in the app (src/main/autoUpdate.ts).
 # macOS is signed + notarized for free with an Apple Developer ID when the
 # MAC_CSC_LINK / APPLE_* secrets are set; otherwise it builds unsigned.
 #
@@ -112,11 +114,11 @@ jobs:
           # Secrets cannot appear in `if:` expressions, so expose a plain flag instead.
           if [ -n "$SIGNPATH_API_TOKEN" ]; then echo "HAS_SIGNPATH=1" >> "$GITHUB_ENV"; fi
 
-      # Build the installers locally (no electron-updater metadata upload), so the
-      # GitHub release stays clean: just the installers below + the source code that
-      # GitHub attaches automatically. This intentionally omits latest*.yml / .blockmap
-      # files, which means in-app auto-update is not served from these releases.
-      # azureSignOptions is only passed here (never in package.json) so an unsigned
+      # Build the installers locally with --publish never: electron-builder still
+      # WRITES the electron-updater metadata (release/latest.yml, latest-mac.yml,
+      # latest-linux.yml + *.blockmap), and the attach step at the end uploads it.
+      # Letting electron-builder publish itself would have the three matrix jobs
+      # race to create the same release. azureSignOptions is only passed here (never in package.json) so an unsigned
       # build is never forced into signing. A bash array keeps values with spaces
       # (e.g. a publisher name) as single arguments.
       - name: Package
@@ -182,6 +184,9 @@ jobs:
         run: |
           cp "signpath-signed/${{ steps.find-installer.outputs.name }}" "${{ steps.find-installer.outputs.path }}"
           echo "WIN_SIGN_METHOD=signpath" >> "$GITHUB_ENV"
+          # The signed installer has new bytes: re-hash it in latest.yml (and rebuild its
+          # blockmap), or every in-app update fails with a sha512 checksum mismatch.
+          node scripts/refresh-update-metadata.mjs release/latest.yml "${{ steps.find-installer.outputs.path }}"
 
       # Prints Authenticode status for every Windows exe so the run log always shows
       # signed vs unsigned, whichever of the methods above ran (or none).
@@ -222,20 +227,6 @@ jobs:
           path: release/*.appx
           retention-days: 30
 
-      # Attach a version-less copy of every installer alongside the versioned one, so
-      # the website and README can link to a stable /releases/latest/download/<name>
-      # URL that never needs to change between releases.
-      - name: Add version-less installer aliases
-        shell: bash
-        run: |
-          cd release
-          for f in Tiger-*.dmg Tiger-Setup-*.exe Tiger-Portable-*.exe Tiger-*.AppImage Tiger-*.deb; do
-            [ -e "$f" ] || continue
-            alias=$(echo "$f" | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+//')
-            cp "$f" "$alias"
-          done
-          ls -la
-
       # Notarize + staple the signed DMGs with Apple using an App Store Connect API
       # key (no app-specific password needed). Skips cleanly when the key is absent.
       - name: Notarize and staple macOS DMGs
@@ -257,7 +248,41 @@ jobs:
               --key "$KEYFILE" --key-id "$MAC_NOTARY_KEY_ID" --issuer "$MAC_NOTARY_ISSUER" --wait
             xcrun stapler staple "$dmg"
           done
+          # The update/portable zips hold the same signed Tiger.app as the DMGs. Submit
+          # them too so Apple has a ticket for that exact app; a zip cannot be stapled
+          # (and must not change: latest-mac.yml pins its sha512), so Gatekeeper fetches
+          # the ticket online on first launch of a browser-downloaded zip. Squirrel.Mac
+          # in-app updates are not quarantined and check the code signature instead.
+          for zip in release/Tiger-*-mac-*.zip; do
+            [ -e "$zip" ] || continue
+            echo "Notarizing $zip"
+            xcrun notarytool submit "$zip" \
+              --key "$KEYFILE" --key-id "$MAC_NOTARY_KEY_ID" --issuer "$MAC_NOTARY_ISSUER" --wait
+          done
           rm -f "$KEYFILE"
+          # Stapling rewrote the DMGs: re-hash them in latest-mac.yml (and their
+          # blockmaps) so the metadata matches what is uploaded.
+          node scripts/refresh-update-metadata.mjs release/latest-mac.yml release/Tiger-*-mac-*.dmg
+
+      # Attach a version-less copy of every installer alongside the versioned one, so
+      # the website and README can link to a stable /releases/latest/download/<name>
+      # URL that never needs to change between releases. Runs after signing and
+      # notarization so every alias is a copy of the final file. Only installers and
+      # archives are aliased: latest*.yml and *.blockmap keep their versioned names
+      # (the yml files reference the versioned installer/zip, never an alias), and
+      # the globs below cannot match a .blockmap (Tiger-*.zip != *.zip.blockmap).
+      - name: Add version-less installer aliases
+        shell: bash
+        run: |
+          cd release
+          for f in Tiger-*.dmg Tiger-*.zip Tiger-Setup-*.exe Tiger-Portable-*.exe Tiger-*.AppImage Tiger-*.deb Tiger-*.tar.gz; do
+            [ -e "$f" ] || continue
+            alias=$(echo "$f" | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+//')
+            [ "$alias" = "$f" ] && continue
+            cp "$f" "$alias"
+          done
+          ls -la
+
 
       - name: Generate release notes
         if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
@@ -271,7 +296,11 @@ jobs:
           path: release-notes.md
           retention-days: 1
 
-      - name: Attach installers to the release
+      # latest*.yml / *.blockmap / the mac zips are what electron-updater reads from
+      # /releases/latest: without them the in-app updater has nothing to install.
+      # Each OS writes a differently named yml (latest.yml, latest-mac.yml,
+      # latest-linux.yml), so the three jobs never overwrite each other's metadata.
+      - name: Attach installers and update metadata to the release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -282,6 +311,10 @@ jobs:
             release/*.exe
             release/*.AppImage
             release/*.deb
+            release/*.zip
+            release/*.tar.gz
+            release/latest*.yml
+            release/*.blockmap
 
   # Publish the generated release-notes.md as the release body once every OS has
   # attached its installers. Runs after `build` so the notes land on a fully

@@ -144,6 +144,36 @@ Store policy requires the Store to own updates for MSIX installs, so `checkForUp
 both no-op when `process.windowsStore` is true - a Store install never sees Tiger's own
 "update available" prompt.
 
+## In-app updates (electron-updater)
+
+Every tagged release carries what electron-updater needs, uploaded by the attach step of
+`.github/workflows/release.yml`: `latest.yml` (Windows NSIS), `latest-mac.yml` (both mac
+zips, arm64 + x64 in one file), `latest-linux.yml` (AppImage), the `*.blockmap` files
+(differential downloads) and the mac `Tiger-<version>-mac-<arch>.zip` files (Squirrel.Mac
+installs from the zip, never the dmg). The app reads them from the repo's
+`/releases/latest` (GitHub provider, prereleases ignored), so the cleanup job deleting
+older releases is fine. Packaging stays `--publish never` so the three matrix jobs do not
+race to create the release.
+
+- Which installs update in place is decided in `src/core/updateMode.ts`: mac (dmg or zip),
+  Windows NSIS Setup, Linux AppImage. Dev, Microsoft Store, `.deb`, tar.gz and the Windows
+  portable exe/zip keep the website-link flow (`checkForUpdate()` + `website/version.json`).
+- Any step that changes a file after electron-builder hashed it must re-hash it:
+  `node scripts/refresh-update-metadata.mjs <latest*.yml> <file>...` (already wired after the
+  SignPath swap and after DMG stapling). A stale sha512 makes every update fail.
+- Windows: electron-updater only verifies the update's Authenticode signature when
+  `publisherName` is set in `app-update.yml` (`NsisUpdater.verifySignature` returns early
+  otherwise), so unsigned builds update fine today. Once Azure signing runs with
+  `AZURE_SIGN_PUBLISHER`, CI passes `-c.win.publisherName`, and from then on only updates
+  signed by that publisher install: never ship an unsigned build after a signed one.
+- macOS: the zips are notarized (submitted, not stapled: a zip cannot hold a ticket and
+  its bytes are pinned by `latest-mac.yml`). A browser-downloaded zip gets its ticket from
+  Apple online on first launch; in-app updates are not quarantined and Squirrel.Mac checks
+  the code signature matches the running app. Keep the same Developer ID across releases.
+- A real 0.7.x to 0.7.y update can only be proven with two tagged releases that both
+  carry this metadata: the first release with it is the first one that can be updated FROM
+  only after the next one ships.
+
 ## winget and Scoop
 
 `packaging/winget/manifests/j/jtaoufik/Tiger/<version>/` holds a ready-to-submit winget

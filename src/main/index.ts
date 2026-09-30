@@ -15,7 +15,15 @@ import {
 import { importFromDisk, saveExport, type ImportKind } from './importers'
 import { appendHistory, clearHistory, readHistory } from './history'
 import { clearCookies } from './cookieJar'
-import { initAutoUpdate, quitAndInstall } from './autoUpdate'
+import {
+  applyUpdateSettings,
+  checkNow,
+  downloadNow,
+  getUpdateMode,
+  getUpdateState,
+  initAutoUpdate,
+  quitAndInstall
+} from './autoUpdate'
 import { blockExternalNetwork, isE2E } from './e2eGuard'
 import {
   gitAvailable,
@@ -315,6 +323,7 @@ function registerIpc(): void {
   ipcMain.handle('tiger:setSettings', (_e, patch: Partial<Settings>) => {
     const next = saveSettings(patch)
     applyNetworkSettings()
+    applyUpdateSettings(next)
     return next
   })
 
@@ -323,6 +332,10 @@ function registerIpc(): void {
   ipcMain.handle('tiger:version', () => app.getVersion())
   ipcMain.handle('tiger:checkUpdate', () => checkForUpdate(app.getVersion()))
   ipcMain.handle('tiger:installUpdate', () => quitAndInstall())
+  ipcMain.handle('tiger:update:mode', () => getUpdateMode())
+  ipcMain.handle('tiger:update:getState', () => getUpdateState())
+  ipcMain.handle('tiger:update:check', () => checkNow())
+  ipcMain.handle('tiger:update:download', () => downloadNow())
 
   ipcMain.handle('tiger:git:check', () => gitAvailable())
   ipcMain.handle('tiger:git:status', (_e, root: string) => gitStatus(root))

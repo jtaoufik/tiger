@@ -1577,24 +1577,7 @@ button {
   margin-bottom: 10px;
 }
 
-.update-ready {
-  position: fixed;
-  bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 95;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px 10px 16px;
-  border-radius: 12px;
-  background: var(--glass-modal);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow);
-  font-size: 0.8438rem;
-  font-weight: 550;
-}
-.update-ready svg:first-child { color: var(--accent); }
+/* .update-ready (update banner) lives in components/UpdateBanner.css */
 
 /* ---------- Scripts + tests ---------- */
 .scripts-tab {
