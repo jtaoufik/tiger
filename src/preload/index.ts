@@ -20,6 +20,8 @@ import type {
 } from '../main/git'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
+import type { ScriptJob } from '../core/scriptProtocol'
+import type { ScriptRunResult } from '../core/script'
 
 export type OpenedCollection = OpenedCollectionPayload
 
@@ -39,6 +41,8 @@ const api = {
     ipcRenderer.invoke('tiger:listEnvironments', root),
   send: (built: BuiltRequest, timeoutMs: number, cancelKey?: string): Promise<RawResponse> =>
     ipcRenderer.invoke('tiger:send', built, timeoutMs, cancelKey),
+  /** Run a collection script in the isolated script host (never in this window). */
+  runScript: (job: ScriptJob): Promise<ScriptRunResult> => ipcRenderer.invoke('tiger:script:run', job),
   cancelSend: (key: string): Promise<boolean> => ipcRenderer.invoke('tiger:cancelSend', key),
   oauthToken: (auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap): Promise<string> =>
     ipcRenderer.invoke('tiger:oauthToken', auth, vars),

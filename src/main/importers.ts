@@ -14,6 +14,7 @@ import {
 } from '../core/import'
 import type { TigerEnvironment } from '../core/types'
 import { expandPaths, mergeImports, rootNameFor } from './importHelpers'
+import { targetAppWindow } from './windows'
 
 export type ImportKind = 'postman' | 'bruno' | 'openapi' | 'insomnia' | 'wsdl'
 
@@ -27,7 +28,7 @@ const FILE_PICKER_PROPS: ('openFile' | 'openDirectory' | 'multiSelections')[] =
 
 /** Dialogs are parented to the app window so they can't pop up behind it (Windows). */
 function parentWindow(): BrowserWindow | undefined {
-  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  return targetAppWindow()
 }
 
 async function pickPaths(title: string, extensions: string[]): Promise<string[] | null> {

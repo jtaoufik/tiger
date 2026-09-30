@@ -8,6 +8,7 @@ import {
   type MenuItemConstructorOptions
 } from 'electron'
 import { join } from 'node:path'
+import { targetAppWindow } from './windows'
 import {
   accelerator,
   docsUrl,
@@ -192,7 +193,7 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
 
 /** The window a menu action should target: whichever has focus, else the first. */
 function targetWindow(): BrowserWindow | null {
-  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null
+  return targetAppWindow() ?? null
 }
 
 /** Install Tiger's application menu. Replaces Electron's stock default menu. */

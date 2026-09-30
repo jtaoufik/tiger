@@ -3,6 +3,10 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.7.1
+
+- Scripts and tests now run in the desktop app. They were blocked by a security setting since 0.2.0; they now run in an isolated sandbox with no access to your files.
+
 ## 0.7.0
 
 - Windows: one recommended installer (Tiger-Setup) plus a Portable version; the zip is gone. The installer adds Start menu and desktop shortcuts and uses the real Tiger icon. Tiger is also coming to the Microsoft Store as "Tiger API Client", which installs with no "unknown publisher" warning.

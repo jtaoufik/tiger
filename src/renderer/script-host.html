@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      Isolated script host. Collection scripts run here, never in the app window.
+      This page alone may eval ('unsafe-eval'); it can load nothing but its own
+      bundle and can open no connection (connect-src 'none'). It is loaded in a
+      hidden, sandboxed renderer with no preload, so it has no Node and no
+      window.tiger. See src/main/scriptHost.ts.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'; img-src 'none'; media-src 'none'; font-src 'none'; style-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'"
+    />
+    <meta http-equiv="x-dns-prefetch-control" content="off" />
+    <title>Tiger script host</title>
+  </head>
+  <body>
+    <script type="module" src="/scriptHost/main.ts"></script>
+  </body>
+</html>

@@ -41,6 +41,8 @@ import {
   repoNameFromUrl
 } from './git'
 import { sanitizeCollectionName } from '../core/newCollection'
+import { disposeScriptHost, runIsolatedScript } from './scriptHost'
+import { appWindows, targetAppWindow } from './windows'
 import type { BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
@@ -62,7 +64,7 @@ function isOnScreen(state: { x?: number; y?: number; width: number; height: numb
 
 /** Dialogs are parented to the app window so they can't pop up behind it (Windows). */
 function parentWindow(): BrowserWindow | undefined {
-  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  return targetAppWindow()
 }
 
 /**
@@ -193,6 +195,12 @@ function createWindow(): void {
   // ⌘W / Ctrl+W closes the active tab, not the window: the "Close Tab" menu item
   // owns that accelerator (see menu.ts) and forwards the intent to the renderer.
 
+  // The hidden script host must not outlive the app window, or it would keep
+  // the app alive on Windows/Linux (window-all-closed never fires).
+  win.on('closed', () => {
+    if (appWindows().every((w) => w === win)) disposeScriptHost()
+  })
+
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
     return { action: 'deny' }
@@ -278,6 +286,9 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('tiger:listEnvironments', async (_e, root: string) => readEnvironments(root))
+
+  // Collection scripts run in the isolated script host, never in this window.
+  ipcMain.handle('tiger:script:run', (_e, job: unknown) => runIsolatedScript(job))
 
   ipcMain.handle('tiger:cancelSend', (_e, key: string) => cancelSend(key))
 
@@ -452,7 +463,7 @@ app.whenReady().then(() => {
   initAutoUpdate()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (appWindows().length === 0) createWindow()
   })
 })
 
