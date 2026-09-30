@@ -21,7 +21,9 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+// resolve() drops the trailing separator: on Windows a quoted "C:\repo\" arg
+// escapes its closing quote and swallows the next argument.
+const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const EXAMPLE = join(REPO_ROOT, 'examples', 'jsonplaceholder')
 
 /** The platform's command modifier, as the app's shortcut handler reads it. */
