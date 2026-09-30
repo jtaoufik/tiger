@@ -1,15 +1,13 @@
 /**
  * Renderer side of the action registry (src/core/actions.ts): icons, and the
  * helpers that turn a registry entry into a context-menu item or a tooltip.
- * Labels always come from the registry, never from a string literal here.
+ * Labels always come from the registry, never from a string literal here,
+ * translated with the active language (components call useT(), so they
+ * re-render and call these again on a language switch).
  */
 import type { ReactNode } from 'react'
-import {
-  getAction,
-  menuLabel,
-  tooltip,
-  type ActionId
-} from '@core/actions'
+import { actionLabel as registryLabel, menuLabel, tooltip, type ActionId } from '@core/actions'
+import { currentTranslator } from './i18n'
 import type { MenuItem } from './components/ContextMenu'
 import { MOD } from './platform'
 import {
@@ -93,7 +91,7 @@ export function actionItem(
   opts: { label?: string; danger?: boolean } = {}
 ): MenuItem {
   return {
-    label: opts.label ?? menuLabel(id),
+    label: opts.label ?? menuLabel(id, currentTranslator()),
     icon: actionIcon(id),
     danger: opts.danger,
     onClick
@@ -102,9 +100,9 @@ export function actionItem(
 
 /** Tooltip text with the platform shortcut, e.g. "Send (Cmd+Enter)". */
 export function actionTitle(id: ActionId): string {
-  return tooltip(id, MOD)
+  return tooltip(id, MOD, currentTranslator())
 }
 
 export function actionLabel(id: ActionId): string {
-  return getAction(id).label
+  return registryLabel(id, currentTranslator())
 }

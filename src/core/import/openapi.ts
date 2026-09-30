@@ -11,7 +11,7 @@
  */
 
 import { emptyBody, isHttpMethod, type KeyValue, type TigerAuth, type TigerBody } from '../types'
-import { asArray, checkRequest, scalar, str, type Json } from './common'
+import { asArray, checkRequest, scalar, str, warning, type Json } from './common'
 import type { ImportResult, ImportedRequest, ImportWarning } from './types'
 
 /** Resolve a local `#/a/b` reference (one level at a time, cycle-safe). */
@@ -217,7 +217,7 @@ function securityAuth(doc: Json, requirement: unknown, warnings: ImportWarning[]
   }
   warnings.push({
     request: label ?? 'Collection auth',
-    message: 'The API uses a security scheme Tiger cannot map (cookie API key or similar). Set auth up by hand.'
+    ...warning('imports.securityUnmapped')
   })
   return undefined
 }
@@ -274,10 +274,12 @@ export function importOpenApi(raw: unknown): ImportResult {
         warnings.push({
           request: name,
           path: folder ? [folder] : [],
-          message: `Cookie parameters (${params
-            .filter((p) => p.in === 'cookie')
-            .map((p) => str(p.name))
-            .join(', ')}) were not added. Add a Cookie header if needed.`
+          ...warning('imports.cookieParams', {
+            names: params
+              .filter((p) => p.in === 'cookie')
+              .map((p) => str(p.name))
+              .join(', ')
+          })
         })
       }
       checkRequest(request, folder ? [folder] : [], warnings)
@@ -288,8 +290,7 @@ export function importOpenApi(raw: unknown): ImportResult {
   if (needsToken) {
     warnings.push({
       request: 'Collection auth',
-      message:
-        'Auth was set up from the API security scheme with placeholder variables such as {{token}}. Set them in an environment.'
+      ...warning('imports.securityPlaceholders', { token: '{{token}}' })
     })
   }
   const docs = str(info.description)

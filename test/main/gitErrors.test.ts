@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { translateGitError } from '../../src/main/git'
+import { afterEach, describe, expect, it } from 'vitest'
+import { translateGitError, gitSync } from '../../src/main/git'
+import { setMainLocale } from '../../src/main/i18n'
 
 describe('translateGitError', () => {
   it('explains the GIT_TERMINAL_PROMPT=0 credential failure for private HTTPS clones', () => {
@@ -30,5 +31,26 @@ describe('translateGitError', () => {
 
   it('falls back to the caller-supplied message when nothing matches', () => {
     expect(translateGitError('fatal: something weird', 'Clone failed')).toBe('Clone failed')
+  })
+})
+
+describe('main-process git messages follow the app language', () => {
+  afterEach(() => {
+    setMainLocale('en')
+  })
+
+  it('translates a classified error to French and back', () => {
+    const stderr = 'remote: Repository not found.\nfatal: repository not found'
+    setMainLocale('fr')
+    expect(translateGitError(stderr, 'Clone failed')).toMatch(/Dépôt introuvable/)
+    setMainLocale('en')
+    expect(translateGitError(stderr, 'Clone failed')).toMatch(/Repository not found/)
+  })
+
+  it('says a folder is not set up in French', async () => {
+    setMainLocale('fr')
+    const result = await gitSync('/nonexistent-folder-for-tiger-test', '')
+    expect(result.ok).toBe(false)
+    expect(result.message).toBe("Ce dossier n'est pas encore configuré pour la synchronisation")
   })
 })

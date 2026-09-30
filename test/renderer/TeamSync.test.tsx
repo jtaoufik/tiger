@@ -4,6 +4,7 @@ import { GitModal } from '../../src/renderer/src/components/GitModal'
 import { JoinTeamModal } from '../../src/renderer/src/components/TeamSync'
 import { setConflict } from '../../src/renderer/src/gitUx'
 import type { GitActionResult, GitStatus } from '../../src/main/git'
+import { setLocale } from '../../src/renderer/src/i18n'
 
 const ROOT = '/work/payments-api'
 
@@ -353,5 +354,37 @@ describe('Join a team collection', () => {
       expect(onJoined).toHaveBeenCalledWith(expect.objectContaining({ name: 'api' }))
     )
     expect(git.clone).toHaveBeenCalledWith('https://github.com/team/api.git')
+  })
+})
+
+describe('French and Arabic', () => {
+  afterEach(async () => {
+    await act(() => setLocale('en'))
+  })
+
+  it('renders the setup guide in French, git terms verbatim', async () => {
+    bridge({ ...clean, isRepo: false, hasRemote: false, hasUpstream: false })
+    await act(() => setLocale('fr'))
+    open()
+    expect(await screen.findByText('Non suivi')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Activer le suivi des versions' })).toBeInTheDocument()
+    expect(screen.getByText('Partager cette collection avec votre équipe')).toBeInTheDocument()
+    expect(screen.getByText('git init')).toBeInTheDocument()
+  })
+
+  it('renders the join dialog in French', async () => {
+    bridge(clean)
+    await act(() => setLocale('fr'))
+    render(<JoinTeamModal onCancel={vi.fn()} onJoined={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Choisir un dossier et rejoindre' })).toBeInTheDocument()
+    expect(screen.getByLabelText('1. Adresse du dépôt')).toBeInTheDocument()
+  })
+
+  it('uses the Arabic plural forms for the local changes badge', async () => {
+    bridge({ ...dirty, dirtyCount: 2 })
+    await act(() => setLocale('ar'))
+    open()
+    expect(await screen.findByText('تغييران محليان')).toBeInTheDocument()
+    expect(screen.getByText('تغييراتك')).toBeInTheDocument()
   })
 })

@@ -13,6 +13,8 @@ import { BoxIcon, CloseIcon, FolderIcon } from './Icons'
 import './RequestTabs.css'
 import { MOD } from '../platform'
 import { isContextMenuKey, menuAnchor, rovingIndex } from '../a11y'
+import { t as tr, useT } from '../i18n'
+import type { MessageKey, Vars } from '@core/i18n'
 
 export interface RequestTab {
   key: string
@@ -35,10 +37,19 @@ interface RequestTabsProps {
 }
 
 /** Accessible name: "GET Create user, unsaved changes" / "Folder Orders". */
-export function tabAccessibleName(tab: RequestTab): string {
-  const kind =
-    tab.kind === 'request' ? (tab.method?.toUpperCase() ?? '') : tab.kind === 'folder' ? 'Folder' : 'Collection'
-  return `${kind} ${tab.label}${tab.dirty ? ', unsaved changes' : ''}`.trim()
+export function tabAccessibleName(
+  tab: RequestTab,
+  translate: (key: MessageKey, vars?: Vars) => string = tr
+): string {
+  const name = translate(
+    tab.kind === 'request'
+      ? 'sidebar.tabs.requestName'
+      : tab.kind === 'folder'
+        ? 'sidebar.tabs.folderName'
+        : 'sidebar.tabs.collectionName',
+    { method: tab.method?.toUpperCase() ?? '', label: tab.label }
+  ).trim()
+  return tab.dirty ? translate('sidebar.tabs.nameUnsaved', { name }) : name
 }
 
 export function RequestTabs({
@@ -50,6 +61,7 @@ export function RequestTabs({
   onReorder,
   panelId
 }: RequestTabsProps) {
+  const t = useT()
   const stripRef = useRef<HTMLDivElement>(null)
   const [drop, setDrop] = useState<{ key: string; side: 'before' | 'after' } | null>(null)
   const idBase = useId()
@@ -60,8 +72,8 @@ export function RequestTabs({
   const pendingFocus = useRef<string | null>(null)
 
   const stopKey =
-    (focusKey && tabs.some((t) => t.key === focusKey) && focusKey) ||
-    (activeKey && tabs.some((t) => t.key === activeKey) && activeKey) ||
+    (focusKey && tabs.some((x) => x.key === focusKey) && focusKey) ||
+    (activeKey && tabs.some((x) => x.key === activeKey) && activeKey) ||
     tabs[0]?.key ||
     null
 
@@ -117,13 +129,13 @@ export function RequestTabs({
     <div
       className="request-tabs"
       role="tablist"
-      aria-label="Open tabs"
+      aria-label={t('sidebar.tabs.label')}
       aria-orientation="horizontal"
       ref={stripRef}
     >
       {tabs.map((tab, index) => {
         const active = tab.key === activeKey
-        const name = tabAccessibleName(tab)
+        const name = tabAccessibleName(tab, t)
         return (
           <div
             key={tab.key}
@@ -137,7 +149,7 @@ export function RequestTabs({
             className={`request-tab${active ? ' active' : ''}${
               drop?.key === tab.key ? ` drop-${drop.side}` : ''
             }`}
-            title={tab.dirty ? `${tab.label} (unsaved changes)` : tab.label}
+            title={tab.dirty ? t('sidebar.tabs.titleUnsaved', { label: tab.label }) : tab.label}
             draggable
             onFocus={(e) => {
               if (e.target === e.currentTarget) setFocusKey(tab.key)
@@ -209,8 +221,8 @@ export function RequestTabs({
             <button
               type="button"
               className="request-tab-close"
-              title={`Close tab (${MOD}+W)`}
-              aria-label={`Close ${tab.label}`}
+              title={t('sidebar.tabs.closeTitle', { mod: MOD })}
+              aria-label={t('sidebar.tabs.closeLabel', { label: tab.label })}
               tabIndex={-1}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {

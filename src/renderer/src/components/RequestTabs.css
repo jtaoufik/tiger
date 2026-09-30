@@ -20,7 +20,8 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: 220px;
-  padding: 6px 6px 6px 9px;
+  padding-block: 6px;
+  padding-inline: 9px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--glass);
@@ -67,7 +68,8 @@
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  margin: -5px -2px -5px 0;
+  margin-block: -5px;
+  margin-inline: 0 -2px;
   border: none;
   background: transparent;
   color: var(--text-dim);

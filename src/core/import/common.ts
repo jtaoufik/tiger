@@ -5,10 +5,30 @@
 
 import { findUnknownDynamicVars } from '../interpolate'
 import { findUnsupportedScriptApis } from '../scriptCompat'
+import { createTranslator, type LocaleCatalog, type MessageKey, type Vars } from '../i18n/translator'
+import { imports as importMessages } from '../i18n/messages/en/imports'
 import type { TigerRequest } from '../types'
-import type { ImportWarning } from './types'
+import type { ImportWarning, MessageI18n } from './types'
 
 export type Json = Record<string, unknown>
+
+/**
+ * A warning's text: the English `message` (unchanged, tests and tools read
+ * it) plus the catalog key and values, so the report can translate it.
+ */
+export type WarningText = { message: string; i18n: MessageI18n }
+
+/**
+ * English text of the import warnings only: importers also run in the
+ * renderer (curl, dropped files), and the full English catalog must stay out
+ * of its startup chunk.
+ */
+let englishImports: ReturnType<typeof createTranslator> | undefined
+
+export function warning(key: MessageKey, vars?: Vars): WarningText {
+  englishImports ??= createTranslator('en', undefined, importMessages as LocaleCatalog)
+  return { message: englishImports(key, vars), i18n: vars ? { key, vars } : { key } }
+}
 
 export function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
@@ -51,11 +71,12 @@ export function applyPathVariables(
 }
 
 /** Report line for path variables that had no value. */
-export function pathVariableWarning(missing: string[]): string {
-  const many = missing.length > 1
-  return `Path variable${many ? 's' : ''} ${missing.map((m) => `:${m}`).join(', ')} had no value and became ${missing
-    .map((m) => `{{${m}}}`)
-    .join(', ')}. Set ${many ? 'them' : 'it'} in an environment.`
+export function pathVariableWarning(missing: string[]): WarningText {
+  return warning('imports.pathVariables', {
+    count: missing.length,
+    names: missing.map((m) => `:${m}`).join(', '),
+    values: missing.map((m) => `{{${m}}}`).join(', ')
+  })
 }
 
 /** Join script sources (outermost first), skipping empty ones. */
@@ -83,9 +104,7 @@ export function checkRequest(req: TigerRequest, path: string[], warnings: Import
     warnings.push({
       request: req.name,
       path,
-      message: `Uses dynamic variables Tiger does not generate: ${unknownVars
-        .map((v) => `{{${v}}}`)
-        .join(', ')}. Set them in an environment or replace them.`
+      ...warning('imports.dynamicVars', { names: unknownVars.map((v) => `{{${v}}}`).join(', ') })
     })
   }
   const pre = findUnsupportedScriptApis(req.preScript)
@@ -93,7 +112,7 @@ export function checkRequest(req: TigerRequest, path: string[], warnings: Import
     warnings.push({
       request: req.name,
       path,
-      message: `Pre-request script uses calls Tiger cannot run: ${pre.join('; ')}. The script is kept; review it.`
+      ...warning('imports.preScriptCalls', { calls: pre.join('; ') })
     })
   }
   const post = findUnsupportedScriptApis(req.postScript)
@@ -101,7 +120,7 @@ export function checkRequest(req: TigerRequest, path: string[], warnings: Import
     warnings.push({
       request: req.name,
       path,
-      message: `Test script uses calls Tiger cannot run: ${post.join('; ')}. The script is kept; review it.`
+      ...warning('imports.testScriptCalls', { calls: post.join('; ') })
     })
   }
 }

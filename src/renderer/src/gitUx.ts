@@ -12,6 +12,8 @@
 
 import { useSyncExternalStore } from 'react'
 import type { GitErrorCode, GitStatus, SyncPhase } from '../../main/git'
+import type { MessageKey } from '@core/i18n'
+import { t } from './i18n'
 
 // ---------------------------------------------------------------------------
 // Status at a glance
@@ -49,8 +51,6 @@ export interface SyncSummary {
 export type SyncInput = Pick<GitStatus, 'isRepo' | 'dirtyCount' | 'ahead' | 'behind'> &
   Partial<Pick<GitStatus, 'hasRemote' | 'hasUpstream'>>
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-
 /**
  * One state per collection, in priority order: a pending conflict beats
  * everything, then team updates (get them before sharing), then local work.
@@ -62,27 +62,26 @@ export function summarizeSync(
   if (!status)
     return {
       kind: 'unknown',
-      label: 'Checking…',
-      short: 'Checking',
-      detail: 'Checking version tracking.',
+      label: t('team.ux.checking.label'),
+      short: t('team.ux.checking.short'),
+      detail: t('team.ux.checking.detail'),
       tone: 'neutral'
     }
   if (!status.isRepo) {
     return {
       kind: 'untracked',
-      label: 'Not tracked',
-      short: 'Not tracked',
-      detail:
-        'Turn on version tracking to keep a history of changes and share this collection with your team.',
+      label: t('team.ux.untracked.label'),
+      short: t('team.ux.untracked.label'),
+      detail: t('team.ux.untracked.detail'),
       tone: 'neutral'
     }
   }
   if (opts.conflict) {
     return {
       kind: 'conflict',
-      label: 'Conflict: needs a decision',
-      short: 'Conflict',
-      detail: 'You and a teammate changed the same request. Choose which version to keep.',
+      label: t('team.ux.conflict.label'),
+      short: t('team.ux.conflict.short'),
+      detail: t('team.ux.conflict.detail'),
       tone: 'danger'
     }
   }
@@ -91,59 +90,56 @@ export function summarizeSync(
   if (status.behind > 0) {
     return {
       kind: 'updates',
-      label: `${plural(status.behind, 'update')} from team`,
+      label: t('team.ux.updates.label', { count: status.behind }),
       short: `${status.behind}`,
       detail:
-        yours > 0
-          ? 'Your team made changes and so did you. Sync combines both.'
-          : 'Your team made changes you do not have yet. Sync to get them.',
+        yours > 0 ? t('team.ux.updates.detailBoth') : t('team.ux.updates.detailTeam'),
       tone: 'attention'
     }
   }
   if (status.dirtyCount > 0) {
     return {
       kind: 'local-changes',
-      label: plural(status.dirtyCount, 'local change'),
+      label: t('team.ux.localChanges.label', { count: status.dirtyCount }),
       short: `${status.dirtyCount}`,
       detail: shared
-        ? 'Saved on this computer, not yet shared. Sync to share them with your team.'
-        : 'Saved on this computer. Save a version to keep them in the history.',
+        ? t('team.ux.localChanges.detailShared')
+        : t('team.ux.localChanges.detailLocal'),
       tone: 'attention'
     }
   }
   if (status.ahead > 0) {
     return {
       kind: 'to-share',
-      label: `${plural(status.ahead, 'version')} to share`,
+      label: t('team.ux.toShare.label', { count: status.ahead }),
       short: `${status.ahead}`,
-      detail: 'Saved as versions, not yet shared. Sync to share them with your team.',
+      detail: t('team.ux.toShare.detail'),
       tone: 'attention'
     }
   }
   if (!shared) {
     return {
       kind: 'local-only',
-      label: 'Only on this computer',
+      label: t('team.ux.localOnly.label'),
       short: '',
-      detail:
-        'Versions are kept on this computer. Connect a shared repository to work with your team.',
+      detail: t('team.ux.localOnly.detail'),
       tone: 'neutral'
     }
   }
   if (status.hasUpstream === false) {
     return {
       kind: 'unpublished',
-      label: 'Not shared yet',
+      label: t('team.ux.unpublished.label'),
       short: '',
-      detail: 'Connected to a shared repository. Sync once to publish this collection to it.',
+      detail: t('team.ux.unpublished.detail'),
       tone: 'attention'
     }
   }
   return {
     kind: 'up-to-date',
-    label: 'Up to date',
+    label: t('team.ux.upToDate.label'),
     short: '',
-    detail: 'Everything is in sync with your team.',
+    detail: t('team.ux.upToDate.detail'),
     tone: 'ok'
   }
 }
@@ -184,10 +180,12 @@ export function changeGroup(status: string): keyof GroupedChanges {
 export function changeName(path: string, names: Record<string, string> = {}): string {
   const parts = path.split('/')
   const file = parts[parts.length - 1]
-  if (file === 'collection.tiger') return 'Collection settings'
-  if (file === 'folder.tiger') return `${parts[parts.length - 2] ?? 'Folder'} folder settings`
+  if (file === 'collection.tiger') return t('team.ux.name.collection')
+  if (file === 'folder.tiger') return t('team.ux.name.folder', {
+      folder: parts[parts.length - 2] ?? t('team.ux.name.folderFallback')
+    })
   const base = names[path] ?? file.replace(/\.tiger$/, '')
-  if (parts[0] === 'environments' && file.endsWith('.tiger')) return `${base} environment`
+  if (parts[0] === 'environments' && file.endsWith('.tiger')) return t('team.ux.name.environment', { name: base })
   return base
 }
 
@@ -212,21 +210,28 @@ export function groupChanges(
  * Falls back to counts when names would not fit a one-line summary.
  */
 export function suggestCommitMessage(groups: GroupedChanges, maxLength = 72): string {
-  const order: Array<[keyof GroupedChanges, string]> = [
-    ['changed', 'update'],
-    ['added', 'add'],
-    ['removed', 'remove']
+  const order: Array<[keyof GroupedChanges, MessageKey]> = [
+    ['changed', 'team.ux.note.update'],
+    ['added', 'team.ux.note.add'],
+    ['removed', 'team.ux.note.remove']
   ]
   const named = (items: ChangeItem[]): string =>
-    items.length <= 2
-      ? items.map((i) => i.name).join(' and ')
-      : `${items[0].name}, ${items[1].name} and ${items.length - 2} more`
-  const counted = (items: ChangeItem[]): string => plural(items.length, 'request')
+    items.length === 1
+      ? items[0].name
+      : items.length === 2
+        ? t('team.ux.note.pair', { a: items[0].name, b: items[1].name })
+        : t('team.ux.note.more', {
+            a: items[0].name,
+            b: items[1].name,
+            count: items.length - 2
+          })
+  const counted = (items: ChangeItem[]): string =>
+    t('team.ux.note.requests', { count: items.length })
   const build = (describe: (items: ChangeItem[]) => string): string =>
     order
       .filter(([key]) => groups[key].length > 0)
-      .map(([key, verb]) => `${verb} ${describe(groups[key])}`)
-      .join(', ')
+      .map(([key, phrase]) => t(phrase, { items: describe(groups[key]) }))
+      .join(t('team.ux.note.separator'))
   let text = build(named)
   if (text.length > maxLength) text = build(counted)
   return text ? text[0].toUpperCase() + text.slice(1) : ''
@@ -249,7 +254,7 @@ const HOSTS = /^(?:www\.)?(github\.com|gitlab\.com|bitbucket\.org)$/i
 export function validateRepoUrl(raw: string): UrlCheck {
   const url = raw.trim()
   if (!url) return { ok: false }
-  if (/\s/.test(url)) return { ok: false, message: 'A repository address has no spaces.' }
+  if (/\s/.test(url)) return { ok: false, message: t('team.ux.url.noSpaces') }
   if (/^git@[^:\s]+:.+/.test(url) || /^ssh:\/\/\S+/.test(url) || /^file:\/\/\S+/.test(url))
     return { ok: true }
 
@@ -258,12 +263,11 @@ export function validateRepoUrl(raw: string): UrlCheck {
     const hostFirst = url.split('/')[0]
     if (HOSTS.test(hostFirst) || /^[\w-]+(\.[\w-]+)+$/.test(hostFirst)) {
       const fix = normaliseWebUrl(`https://${url}`)
-      return { ok: false, message: 'Add https:// at the start.', fix }
+      return { ok: false, message: t('team.ux.url.addHttps'), fix }
     }
     return {
       ok: false,
-      message:
-        'Paste the address from the Code button on GitHub or the Clone button on GitLab. It starts with https:// or git@.'
+      message: t('team.ux.url.paste')
     }
   }
   let parsed: URL
@@ -272,7 +276,7 @@ export function validateRepoUrl(raw: string): UrlCheck {
   } catch {
     return {
       ok: false,
-      message: 'That address is not complete. Copy it again from your repository page.'
+      message: t('team.ux.url.incomplete')
     }
   }
   const segments = parsed.pathname.split('/').filter(Boolean)
@@ -280,7 +284,7 @@ export function validateRepoUrl(raw: string): UrlCheck {
     if (segments.length < 2) {
       return {
         ok: false,
-        message: 'That is an account page. Open the repository and copy its address.'
+        message: t('team.ux.url.accountPage')
       }
     }
     const fix = normaliseWebUrl(withScheme)
@@ -289,14 +293,14 @@ export function validateRepoUrl(raw: string): UrlCheck {
     if (isPage) {
       return {
         ok: false,
-        message: 'That is a page inside the repository. Use the repository address instead.',
+        message: t('team.ux.url.repoPage'),
         fix
       }
     }
     return { ok: true }
   }
   if (segments.length === 0) {
-    return { ok: false, message: 'Add the repository path after the server name.' }
+    return { ok: false, message: t('team.ux.url.addPath') }
   }
   return { ok: true }
 }
@@ -335,25 +339,30 @@ export interface ErrorHelp {
   links: HelpLink[]
 }
 
-export const HELP_LINKS = {
+const LINKS = {
   gcm: {
-    label: 'Install Git Credential Manager',
+    labelKey: 'team.ux.link.gcm',
     url: 'https://github.com/git-ecosystem/git-credential-manager/blob/main/docs/install.md'
   },
   githubToken: {
-    label: 'GitHub: create a personal access token',
+    labelKey: 'team.ux.link.githubToken',
     url: 'https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens'
   },
   gitlabToken: {
-    label: 'GitLab: create a personal access token',
+    labelKey: 'team.ux.link.gitlabToken',
     url: 'https://docs.gitlab.com/user/profile/personal_access_tokens/'
   },
   githubSsh: {
-    label: 'GitHub: connect with an SSH key',
+    labelKey: 'team.ux.link.githubSsh',
     url: 'https://docs.github.com/en/authentication/connecting-to-github-with-ssh'
   },
-  gitForWindows: { label: 'Download Git for Windows', url: 'https://gitforwindows.org/' }
-} satisfies Record<string, HelpLink>
+  gitForWindows: { labelKey: 'team.ux.link.gitForWindows', url: 'https://gitforwindows.org/' }
+} satisfies Record<string, { labelKey: MessageKey; url: string }>
+
+type LinkName = keyof typeof LINKS
+
+const links = (...names: LinkName[]): HelpLink[] =>
+  names.map((n) => ({ label: t(LINKS[n].labelKey), url: LINKS[n].url }))
 
 export function errorHelp(
   code: GitErrorCode | undefined,
@@ -362,78 +371,73 @@ export function errorHelp(
   switch (code) {
     case 'auth-required':
       return {
-        title: 'Sign-in needed to reach this repository',
+        title: t('team.ux.help.authRequired.title'),
         steps:
           platform === 'windows'
             ? [
-                'Git for Windows includes Git Credential Manager. Try again: a sign-in window should open.',
-                'No window? Reinstall Git for Windows and keep "Git Credential Manager" ticked.',
-                'Or use the SSH address (git@…) if you already have an SSH key.'
+                t('team.ux.help.authRequired.winStep1'),
+                t('team.ux.help.authRequired.winStep2'),
+                t('team.ux.help.authRequired.sshStep')
               ]
             : [
-                'Install Git Credential Manager, then try again and sign in in the browser window it opens.',
-                'Or sign in once from a terminal: run git clone with this address and paste a personal access token as the password.',
-                'Or use the SSH address (git@…) if you already have an SSH key.'
+                t('team.ux.help.authRequired.step1'),
+                t('team.ux.help.authRequired.step2'),
+                t('team.ux.help.authRequired.sshStep')
               ],
         links:
           platform === 'windows'
-            ? [HELP_LINKS.gitForWindows, HELP_LINKS.githubToken, HELP_LINKS.githubSsh]
-            : [HELP_LINKS.gcm, HELP_LINKS.githubToken, HELP_LINKS.gitlabToken, HELP_LINKS.githubSsh]
+            ? links('gitForWindows', 'githubToken', 'githubSsh')
+            : links('gcm', 'githubToken', 'gitlabToken', 'githubSsh')
       }
     case 'auth-failed':
       return {
-        title: 'Your sign-in was refused',
+        title: t('team.ux.help.authFailed.title'),
         steps: [
-          'GitHub and GitLab do not accept account passwords here: use a personal access token as the password.',
+          t('team.ux.help.authFailed.step1'),
           platform === 'windows'
-            ? 'A wrong password may be saved: remove it in Windows Credential Manager, then try again.'
+            ? t('team.ux.help.authFailed.win')
             : platform === 'mac'
-              ? 'A wrong password may be saved: remove it in Keychain Access (search for the server name), then try again.'
-              : 'A wrong password may be saved by your credential helper: remove it, then try again.'
+              ? t('team.ux.help.authFailed.mac')
+              : t('team.ux.help.authFailed.other')
         ],
-        links: [HELP_LINKS.githubToken, HELP_LINKS.gitlabToken]
+        links: links('githubToken', 'gitlabToken')
       }
     case 'ssh-key':
       return {
-        title: 'Your SSH key was not accepted',
+        title: t('team.ux.help.sshKey.title'),
         steps: [
-          'Check that your public key is added to your GitHub or GitLab account.',
-          platform === 'windows'
-            ? 'Start the "OpenSSH Authentication Agent" service, then run ssh-add in a terminal.'
-            : 'Load your key in a terminal: ssh-add ~/.ssh/id_ed25519',
-          'Or use the https:// address instead.'
+          t('team.ux.help.sshKey.step1'),
+          platform === 'windows' ? t('team.ux.help.sshKey.win') : t('team.ux.help.sshKey.other'),
+          t('team.ux.help.sshKey.step3')
         ],
-        links: [HELP_LINKS.githubSsh]
+        links: links('githubSsh')
       }
     case 'not-found':
       return {
-        title: 'Repository not found',
+        title: t('team.ux.help.notFound.title'),
         steps: [
-          'Check the address: copy it from the Code button on GitHub or the Clone button on GitLab.',
-          'Private repository? Ask its owner to give your account access.',
-          'Signed in with another account? The repository may be hidden from that account.'
+          t('team.ux.help.notFound.step1'),
+          t('team.ux.help.notFound.step2'),
+          t('team.ux.help.notFound.step3')
         ],
         links: []
       }
     case 'network':
       return {
-        title: 'Could not reach the server',
-        steps: [
-          'Check your internet connection, VPN or proxy, then try again.',
-          'Check the server name in the address.'
-        ],
+        title: t('team.ux.help.network.title'),
+        steps: [t('team.ux.help.network.step1'), t('team.ux.help.network.step2')],
         links: []
       }
     case 'rejected':
       return {
-        title: 'Your team shared changes first',
-        steps: ['Sync to get their changes; yours are shared right after.'],
+        title: t('team.ux.help.rejected.title'),
+        steps: [t('team.ux.help.rejected.step1')],
         links: []
       }
     case 'no-commits':
       return {
-        title: 'Nothing saved yet',
-        steps: ['Save a version first, then try again.'],
+        title: t('team.ux.help.noCommits.title'),
+        steps: [t('team.ux.help.noCommits.step1')],
         links: []
       }
     default:
@@ -453,13 +457,13 @@ export function currentPlatform(): HelpPlatform {
 export function progressText(phase: SyncPhase | null | undefined): string {
   switch (phase) {
     case 'saving':
-      return 'Saving your changes as a version…'
+      return t('team.ux.progress.saving')
     case 'receiving':
-      return "Getting team's changes…"
+      return t('team.ux.progress.receiving')
     case 'sending':
-      return 'Sharing your changes…'
+      return t('team.ux.progress.sending')
     default:
-      return 'Syncing…'
+      return t('team.ux.progress.default')
   }
 }
 
@@ -474,11 +478,13 @@ export function syncResultText(result: {
     return result.message
   const received = result.received ?? 0
   const sent = result.sent ?? 0
-  if (received === 0 && sent === 0) return 'Synced: already up to date with your team.'
-  const parts: string[] = []
-  if (received > 0) parts.push(`${plural(received, 'update')} received`)
-  if (sent > 0) parts.push(received > 0 ? `${sent} sent` : `${plural(sent, 'update')} sent`)
-  return `Synced: ${parts.join(', ')}.`
+  if (received === 0 && sent === 0) return t('team.ux.synced.upToDate')
+  if (sent === 0) return t('team.ux.synced.received', { count: received })
+  if (received === 0) return t('team.ux.synced.sent', { count: sent })
+  return t('team.ux.synced.both', {
+    received: t('team.ux.synced.updates', { count: received }),
+    sent
+  })
 }
 
 // ---------------------------------------------------------------------------

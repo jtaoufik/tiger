@@ -23,7 +23,7 @@
   color: var(--text);
   font: inherit;
   font-size: 13px;
-  text-align: left;
+  text-align: start;
   white-space: nowrap;
   cursor: pointer;
   border-radius: 6px;
@@ -86,8 +86,8 @@
     grid-template-columns: 1fr;
   }
   .envs-modal .env-side {
-    border-right: none;
-    padding-right: 0;
+    border-inline-end: none;
+    padding-inline-end: 0;
     border-bottom: 1px solid var(--border);
     padding-bottom: 10px;
   }

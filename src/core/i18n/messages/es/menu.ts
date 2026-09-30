@@ -1,0 +1,38 @@
+import type { NamespaceCatalog } from '../../translator'
+import type { menu as en } from '../en/menu'
+
+export const menu: NamespaceCatalog<typeof en> = {
+  'menu.app': 'Tiger',
+  'menu.file': 'Archivo',
+  'menu.edit': 'Edición',
+  'menu.request': 'Solicitud',
+  'menu.view': 'Ver',
+  'menu.theme': 'Tema',
+  'menu.window': 'Ventana',
+  'menu.help': 'Ayuda',
+  'menu.about': 'Acerca de Tiger',
+  'menu.services': 'Servicios',
+  'menu.hide': 'Ocultar Tiger',
+  'menu.hideOthers': 'Ocultar otros',
+  'menu.unhide': 'Mostrar todo',
+  'menu.quit': 'Salir de Tiger',
+  'menu.closeWindow': 'Cerrar ventana',
+  'menu.exit': 'Salir',
+  'menu.undo': 'Deshacer',
+  'menu.redo': 'Rehacer',
+  'menu.cut': 'Cortar',
+  'menu.copy': 'Copiar',
+  'menu.paste': 'Pegar',
+  'menu.pasteAndMatchStyle': 'Pegar con el mismo estilo',
+  'menu.delete': 'Eliminar',
+  'menu.selectAll': 'Seleccionar todo',
+  'menu.toggleFullScreen': 'Pantalla completa',
+  'menu.reload': 'Recargar',
+  'menu.forceReload': 'Forzar recarga',
+  'menu.toggleDevTools': 'Herramientas para desarrolladores',
+  'menu.minimize': 'Minimizar',
+  'menu.zoomWindow': 'Zoom',
+  'menu.front': 'Traer todo al frente',
+  'menu.close': 'Cerrar',
+  'menu.aboutDetail': 'Versión {version}'
+}

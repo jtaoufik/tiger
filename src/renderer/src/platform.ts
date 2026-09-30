@@ -1,3 +1,5 @@
+import type { MessageKey } from '@core/i18n'
+
 /** Renderer-side platform detection and platform-idiomatic labels. */
 
 export const IS_MAC = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
@@ -7,9 +9,9 @@ export const IS_WIN =
 /** Platform modifier label: Cmd on macOS, Ctrl elsewhere. */
 export const MOD = IS_MAC ? 'Cmd' : 'Ctrl'
 
-/** What each OS calls "show this file in the file manager". */
-export const REVEAL_LABEL = IS_MAC
-  ? 'Reveal in Finder'
+/** What each OS calls "show this file in the file manager" (catalog key). */
+export const REVEAL_LABEL_KEY: MessageKey = IS_MAC
+  ? 'common.revealFinder'
   : IS_WIN
-    ? 'Show in Explorer'
-    : 'Show in file manager'
+    ? 'common.revealExplorer'
+    : 'common.revealFileManager'

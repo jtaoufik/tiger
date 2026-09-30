@@ -170,7 +170,7 @@
   gap: 4px;
 }
 .ts-status-actions .ts-term {
-  text-align: right;
+  text-align: end;
   max-width: 210px;
 }
 .ts-sync {
@@ -240,7 +240,7 @@
 }
 .ts-error-steps {
   margin: 8px 0 0;
-  padding-left: 18px;
+  padding-inline-start: 18px;
   line-height: 1.55;
 }
 .ts-links {
@@ -264,7 +264,8 @@
   justify-content: space-between;
   gap: 10px;
   margin-top: 10px;
-  padding: 8px 8px 8px 14px;
+  padding-block: 8px;
+  padding-inline: 14px 8px;
   border-radius: 10px;
   background: var(--glass-strong);
   border: 1px solid var(--border);
@@ -439,7 +440,7 @@
   color: var(--text);
   font: inherit;
   font-size: 0.8125rem;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .ts-change-name:hover {
@@ -467,7 +468,8 @@
   height: 28px;
 }
 .ts-diff {
-  margin: 4px 0 8px 22px;
+  margin-block: 4px 8px;
+  margin-inline: 22px 0;
   max-height: 220px;
 }
 
@@ -483,7 +485,7 @@
 
 .ts-discard-list {
   margin: 0;
-  padding-left: 18px;
+  padding-inline-start: 18px;
   font-size: 0.8125rem;
   line-height: 1.7;
 }
@@ -525,7 +527,7 @@
   margin: 0 0 8px;
 }
 .ts-adv-block .btn .ts-term {
-  margin-left: 6px;
+  margin-inline-start: 6px;
 }
 
 /* ---- conflicts ---- */
@@ -594,9 +596,9 @@
   display: inline-block;
   width: 100%;
   background: var(--accent-weak);
-  box-shadow: inset 3px 0 0 var(--accent-text);
-  padding-left: 4px;
-  margin-left: -4px;
+  box-shadow: inset calc(3px * var(--dir-sign)) 0 0 var(--accent-text);
+  padding-inline-start: 4px;
+  margin-inline-start: -4px;
 }
 .ts-side-empty {
   padding: 8px 10px;

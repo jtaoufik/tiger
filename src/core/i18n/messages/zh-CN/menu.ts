@@ -1,0 +1,38 @@
+import type { NamespaceCatalog } from '../../translator'
+import type { menu as en } from '../en/menu'
+
+export const menu: NamespaceCatalog<typeof en> = {
+  'menu.app': 'Tiger',
+  'menu.file': '文件',
+  'menu.edit': '编辑',
+  'menu.request': '请求',
+  'menu.view': '视图',
+  'menu.theme': '主题',
+  'menu.window': '窗口',
+  'menu.help': '帮助',
+  'menu.about': '关于 Tiger',
+  'menu.services': '服务',
+  'menu.hide': '隐藏 Tiger',
+  'menu.hideOthers': '隐藏其他',
+  'menu.unhide': '全部显示',
+  'menu.quit': '退出 Tiger',
+  'menu.closeWindow': '关闭窗口',
+  'menu.exit': '退出',
+  'menu.undo': '撤销',
+  'menu.redo': '重做',
+  'menu.cut': '剪切',
+  'menu.copy': '复制',
+  'menu.paste': '粘贴',
+  'menu.pasteAndMatchStyle': '粘贴并匹配样式',
+  'menu.delete': '删除',
+  'menu.selectAll': '全选',
+  'menu.toggleFullScreen': '切换全屏',
+  'menu.reload': '重新加载',
+  'menu.forceReload': '强制重新加载',
+  'menu.toggleDevTools': '开发者工具',
+  'menu.minimize': '最小化',
+  'menu.zoomWindow': '缩放',
+  'menu.front': '前置全部窗口',
+  'menu.close': '关闭',
+  'menu.aboutDetail': '版本 {version}'
+}

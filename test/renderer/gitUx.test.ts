@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setLocale } from '../../src/renderer/src/i18n'
 import {
   changeName,
   errorHelp,
@@ -257,5 +258,20 @@ describe('conflict helpers', () => {
     expect(hasConflict('/tmp/b')).toBe(false)
     setConflict('/tmp/a', false)
     expect(hasConflict('/tmp/a')).toBe(false)
+  })
+})
+
+describe('gitUx in another language', () => {
+  afterEach(async () => {
+    await setLocale('en')
+  })
+
+  it('speaks Spanish and keeps the counts', async () => {
+    await setLocale('es')
+    const s = summarizeSync({ ...clean, behind: 2 })
+    expect(s.label).toBe('2 actualizaciones del equipo')
+    expect(syncResultText({ ok: true, message: 'x', received: 1, sent: 0 })).toBe(
+      'Sincronizado: 1 actualización recibida.'
+    )
   })
 })

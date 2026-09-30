@@ -2,6 +2,7 @@ import { buildRequest } from '@core/request'
 import { assembleMultipart, generateBoundary } from '@core/multipart'
 import { envToVars } from '@core/interpolate'
 import { formatResponse, type FormattedResponse, type RawResponse } from '@core/response'
+import { t } from './i18n'
 import type { TigerEnvironment, TigerRequest } from '@core/types'
 
 /** Browser-preview fallback controllers, keyed like the main-process ones. */
@@ -49,7 +50,7 @@ export async function runRequest(
         let sendHeaders = built.headers
         if (built.multipart?.length) {
           if (built.multipart.some((p) => p.isFile)) {
-            throw new Error('File uploads need the desktop app')
+            throw new Error(t('response.error.desktopUpload'))
           }
           const assembled = assembleMultipart(
             built.multipart.map((p) => ({ name: p.name, value: p.value })),
@@ -91,7 +92,7 @@ export async function runRequest(
   } catch (e) {
     const message = (e as Error).message ?? ''
     if ((e as Error).name === 'AbortError' || /abort/i.test(message)) {
-      throw new Error('Request cancelled (or timed out)')
+      throw new Error(t('response.error.cancelled'))
     }
     throw e
   }

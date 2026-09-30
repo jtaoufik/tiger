@@ -39,6 +39,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "npm run build && npm run build:mcp && playwright test",
+    "i18n:check": "node scripts/i18n-check.mjs",
     "package": "npm run build && npm run build:mcp && electron-builder",
     "analyze": "electron-vite build",
     "perf:startup": "node scripts/perf-startup.mjs",

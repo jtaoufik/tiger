@@ -1,4 +1,5 @@
 import { useCallback, useRef, type KeyboardEvent } from 'react'
+import { isRtlDocument, logicalArrow } from '../a11y'
 
 interface Props {
   direction: 'col' | 'row'
@@ -47,9 +48,12 @@ export function Resizer({
       start.current = direction === 'col' ? e.clientX : e.clientY
       const el = e.currentTarget
       el.setPointerCapture(e.pointerId)
+      // In RTL the pane before a column separator sits on the right, so it
+      // grows when the pointer moves left.
+      const sign = direction === 'col' && isRtlDocument() ? -1 : 1
 
       const move = (ev: PointerEvent) => {
-        onDrag((direction === 'col' ? ev.clientX : ev.clientY) - start.current)
+        onDrag(sign * ((direction === 'col' ? ev.clientX : ev.clientY) - start.current))
       }
       const up = () => {
         el.removeEventListener('pointermove', move)
@@ -70,9 +74,11 @@ export function Resizer({
     const step = e.shiftKey ? RESIZE_STEP_LARGE : RESIZE_STEP
     const shrink = direction === 'col' ? 'ArrowLeft' : 'ArrowUp'
     const grow = direction === 'col' ? 'ArrowRight' : 'ArrowDown'
+    // Arrows follow the reading direction: in RTL, ArrowLeft grows a column pane.
+    const key = direction === 'col' ? logicalArrow(e.key) : e.key
     let next: number | null = null
-    if (e.key === shrink) next = current - step
-    else if (e.key === grow) next = current + step
+    if (key === shrink) next = current - step
+    else if (key === grow) next = current + step
     else if (e.key === 'Home') next = lo
     else if (e.key === 'End' && Number.isFinite(hi)) next = hi
     if (next === null) return

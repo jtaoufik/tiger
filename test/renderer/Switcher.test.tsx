@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import {
   ImportReportModal,
@@ -7,6 +7,7 @@ import {
 import { ImportDropZone } from '../../src/renderer/src/components/ImportDropZone'
 import { WelcomeView } from '../../src/renderer/src/components/WelcomeView'
 import type { ImportSummary } from '../../src/core/import'
+import { setLocale } from '../../src/renderer/src/i18n'
 
 const summary: ImportSummary = {
   name: 'Shop API',
@@ -20,6 +21,32 @@ const summary: ImportSummary = {
 }
 
 describe('ImportReportModal', () => {
+  afterEach(async () => {
+    await act(() => setLocale('en'))
+  })
+
+  it('renders in French, translating warnings that carry a key', async () => {
+    await act(() => setLocale('fr'))
+    const fr = {
+      ...summary,
+      items: [
+        {
+          request: 'Legacy SOAP ping',
+          path: [],
+          messages: ['Digest auth is not supported. Auth was set to none; set it up again.'],
+          i18n: [{ key: 'imports.authUnsupported' as const, vars: { auth: 'Digest' } }]
+        }
+      ]
+    }
+    render(<ImportReportModal summary={fr} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog', { name: 'Shop API importé' })
+    expect(within(dialog).getByRole('heading', { name: 'À vérifier' })).toBeInTheDocument()
+    expect(dialog).toHaveTextContent('L’authentification Digest n’est pas prise en charge.')
+    expect(importReportSentence(fr)).toBe(
+      'Importé : 12 requêtes, 4 dossiers, 1 environnement depuis Shop API. 1 élément à vérifier.'
+    )
+  })
+
   it('is a labelled dialog with the three counts and the items to check', () => {
     render(<ImportReportModal summary={summary} onClose={() => {}} />)
     const dialog = screen.getByRole('dialog', { name: 'Imported Shop API' })

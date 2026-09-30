@@ -6,43 +6,43 @@ import { lazySurface } from './lazy'
 
 export const SettingsView = lazySurface(
   () => import('./components/SettingsView').then((m) => m.SettingsView),
-  'settings'
+  'sidebar.lazy.settings'
 )
 export const RunnerModal = lazySurface(
   () => import('./components/RunnerModal').then((m) => m.RunnerModal),
-  'the collection runner',
+  'sidebar.lazy.runner',
   true
 )
 export const GitModal = lazySurface(
   () => import('./components/GitModal').then((m) => m.GitModal),
-  'team sync',
+  'sidebar.lazy.teamSync',
   true
 )
 export const ImportExportModal = lazySurface(
   () => import('./components/ImportExportModal').then((m) => m.ImportExportModal),
-  'import and export',
+  'sidebar.lazy.importExport',
   true
 )
 export const HistoryModal = lazySurface(
   () => import('./components/HistoryModal').then((m) => m.HistoryModal),
-  'history',
+  'sidebar.lazy.history',
   true
 )
 export const ShortcutsModal = lazySurface(
   () => import('./components/ShortcutsModal').then((m) => m.ShortcutsModal),
-  'keyboard shortcuts',
+  'sidebar.lazy.shortcuts',
   true
 )
 export const EnvironmentsModal = lazySurface(
   () => import('./components/EnvironmentsModal').then((m) => m.EnvironmentsModal),
-  'environments',
+  'sidebar.lazy.environments',
   true
 )
 export const PerfPane = lazySurface(
   () => import('./components/PerfPane').then((m) => m.PerfPane),
-  'the load test'
+  'sidebar.lazy.loadTest'
 )
 export const CodePane = lazySurface(
   () => import('./components/CodePane').then((m) => m.CodePane),
-  'the code snippet'
+  'sidebar.lazy.codeSnippet'
 )

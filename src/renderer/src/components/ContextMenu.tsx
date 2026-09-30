@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useT } from '../i18n'
+import { isRtlDocument } from '../a11y'
 
 export type MenuItem =
   | { label: string; icon?: ReactNode; danger?: boolean; onClick: () => void }
@@ -21,7 +23,8 @@ interface Props {
  * Enter/Space activate, Esc or Tab close. When closed from the keyboard or by
  * choosing an item, focus returns to whatever opened the menu.
  */
-export function ContextMenu({ x, y, items, onClose, label = 'Actions' }: Props) {
+export function ContextMenu({ x, y, items, onClose, label }: Props) {
+  const t = useT()
   const ref = useRef<HTMLDivElement>(null)
   // Render offscreen first, then clamp using the menu's real size — estimates
   // drift with separators and long labels, and a bad clamp clips the menu.
@@ -36,8 +39,10 @@ export function ContextMenu({ x, y, items, onClose, label = 'Actions' }: Props) 
     const rect = ref.current?.getBoundingClientRect()
     const w = rect?.width ?? 230
     const h = rect?.height ?? items.length * 34
+    // Menus open toward the reading direction: to the left of the pointer in RTL.
+    const wanted = isRtlDocument() ? x - w : x
     setPos({
-      left: Math.max(4, Math.min(x, window.innerWidth - w - 4)),
+      left: Math.max(4, Math.min(wanted, window.innerWidth - w - 4)),
       top: Math.max(4, Math.min(y, window.innerHeight - h - 4))
     })
   }, [x, y, items.length])
@@ -113,7 +118,7 @@ export function ContextMenu({ x, y, items, onClose, label = 'Actions' }: Props) 
       style={pos}
       ref={ref}
       role="menu"
-      aria-label={label}
+      aria-label={label ?? t('sidebar.menu.actions')}
       aria-orientation="vertical"
     >
       {items.map((item, i) =>

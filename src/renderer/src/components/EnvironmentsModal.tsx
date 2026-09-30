@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
 import type { KeyValue, TigerEnvironment } from '@core/types'
 import { Modal } from './Modal'
+import { useT } from '../i18n'
 import './KeyValueEditor.css'
 import './EnvironmentsModal.css'
 import { CheckIcon, CloseIcon, CopyIcon, EyeIcon, LockIcon, LockOpenIcon, PlusIcon, TrashIcon } from './Icons'
@@ -31,7 +32,8 @@ interface Props {
    * send, which keeps interpolating the old variable values.
    */
   onActiveEnvMaybeChanged?: (colId: string, name: string, data: TigerEnvironment) => void
-  onToast: (text: string) => void
+  /** `error` styles the toast as a failure (and announces it assertively). */
+  onToast: (text: string, opts?: { error?: boolean }) => void
   onClose: () => void
   /** Create a new environment as soon as the modal opens (menu "New environment"). */
   startNew?: boolean
@@ -51,6 +53,7 @@ export function EnvironmentsModal({
   onClose,
   startNew = false
 }: Props) {
+  const t = useT()
   const [colId, setColId] = useState(initialColId ?? collections[0]?.id ?? '')
   const col = collections.find((c) => c.id === colId)
   const [selected, setSelected] = useState<string | null>(initialEnvName ?? col?.environments[0]?.name ?? null)
@@ -122,9 +125,9 @@ export function EnvironmentsModal({
         onCollectionsChanged(col.id, [...col.environments, { name, data }])
       }
       setSelected(name)
-      onToast(from ? 'Environment duplicated' : 'Environment created')
+      onToast(t(from ? 'modals.environments.toastDuplicated' : 'modals.environments.toastCreated'))
     },
-    [col, onCollectionsChanged, onToast]
+    [col, onCollectionsChanged, onToast, t]
   )
 
   // "New environment" from a menu opens the modal with one already created.
@@ -139,7 +142,7 @@ export function EnvironmentsModal({
   const renameEnv = useCallback(
     async (oldName: string, newName: string) => {
       if (!col || !newName.trim() || oldName === newName) return
-      if (col.environments.some((e) => e.name === newName)) return onToast('That name is taken')
+      if (col.environments.some((e) => e.name === newName)) return onToast(t('modals.environments.toastNameTaken'), { error: true })
       const ref = col.environments.find((e) => e.name === oldName)
       if (!ref) return
       const current = env && env.name === oldName ? env : null
@@ -166,7 +169,7 @@ export function EnvironmentsModal({
       }
       setSelected(newName)
     },
-    [col, env, activeEnvKey, envKeySep, onActivate, onCollectionsChanged, onToast]
+    [col, env, activeEnvKey, envKeySep, onActivate, onCollectionsChanged, onToast, t]
   )
 
   const deleteEnv = useCallback(
@@ -183,9 +186,9 @@ export function EnvironmentsModal({
       onCollectionsChanged(col.id, col.environments.filter((e) => e.name !== name))
       if (selected === name) setSelected(null)
       if (activeEnvKey === `${col.id}${envKeySep}${name}`) onActivate('')
-      onToast('Environment deleted')
+      onToast(t('modals.environments.toastDeleted'))
     },
-    [col, selected, activeEnvKey, envKeySep, onActivate, onCollectionsChanged, onToast]
+    [col, selected, activeEnvKey, envKeySep, onActivate, onCollectionsChanged, onToast, t]
   )
 
   const setVars = useCallback(
@@ -220,22 +223,22 @@ export function EnvironmentsModal({
 
   return (
     <Modal
-      title="Environments"
+      title={t('modals.environments.title')}
       onClose={onClose}
       width={700}
-      description="Named sets of {{variables}}, like dev, staging or prod. Click the check next to one to make it the active environment for every request."
-      help={{ page: 'environments', topic: 'Environments' }}
+      description={t('modals.environments.description', { vars: '{{variables}}' })}
+      help={{ page: 'environments', topic: t('modals.environments.title') }}
     >
       <div className="env-layout envs-modal">
         <div className="env-side">
           <label className="tg-sr-only" htmlFor={`${idBase}-col`}>
-            Collection
+            {t('modals.environments.collection')}
           </label>
           <select
             id={`${idBase}-col`}
             className="env-select"
             style={{ width: '100%' }}
-            title="Collection"
+            title={t('modals.environments.collection')}
             value={colId}
             onChange={(e) => {
               setColId(e.target.value)
@@ -250,7 +253,9 @@ export function EnvironmentsModal({
             ))}
           </select>
 
-          <ul className="env-list" aria-label={`Environments in ${col?.name ?? 'collection'}`}>
+          <ul className="env-list" aria-label={t('modals.environments.listLabel', {
+              name: col?.name ?? t('modals.environments.listFallback')
+            })}>
             {envs.map((e) => {
               const key = `${col!.id}${envKeySep}${e.name}`
               const isActive = activeEnvKey === key
@@ -261,8 +266,16 @@ export function EnvironmentsModal({
                   <button
                     type="button"
                     className={`icon-btn env-activate ${isActive ? 'on' : ''}`}
-                    title={isActive ? `${e.name} is the active environment` : `Use ${e.name} for requests`}
-                    aria-label={isActive ? `${e.name} is active` : `Set ${e.name} as active`}
+                    title={
+                      isActive
+                        ? t('modals.environments.activeTitle', { name: e.name })
+                        : t('modals.environments.useTitle', { name: e.name })
+                    }
+                    aria-label={
+                      isActive
+                        ? t('modals.environments.activeLabel', { name: e.name })
+                        : t('modals.environments.setActiveLabel', { name: e.name })
+                    }
                     aria-pressed={isActive}
                     onClick={() => {
                       if (!isActive) onActivate(key)
@@ -278,7 +291,7 @@ export function EnvironmentsModal({
                     onClick={() => setSelected(e.name)}
                   >
                     {e.name}
-                    {isActive && <span className="env-active-tag">active</span>}
+                    {isActive && <span className="env-active-tag">{t('modals.environments.activeTag')}</span>}
                   </button>
                   <span className="row-actions">
                     {confirming ? (
@@ -291,7 +304,7 @@ export function EnvironmentsModal({
                             deleteEnv(e.name)
                           }}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                         <button
                           type="button"
@@ -299,7 +312,7 @@ export function EnvironmentsModal({
                           data-autofocus
                           onClick={() => setPendingDelete(null)}
                         >
-                          Keep
+                          {t('modals.environments.keep')}
                         </button>
                       </>
                     ) : (
@@ -307,8 +320,8 @@ export function EnvironmentsModal({
                         <button
                           type="button"
                           className="icon-btn"
-                          title="Duplicate environment"
-                          aria-label={`Duplicate ${e.name}`}
+                          title={t('modals.environments.duplicateTitle')}
+                          aria-label={t('modals.environments.duplicateLabel', { name: e.name })}
                           onClick={() => duplicate(e.name)}
                         >
                           <CopyIcon size={13} />
@@ -316,8 +329,8 @@ export function EnvironmentsModal({
                         <button
                           type="button"
                           className="icon-btn danger"
-                          title="Delete environment"
-                          aria-label={`Delete ${e.name}`}
+                          title={t('modals.environments.deleteTitle')}
+                          aria-label={t('modals.environments.deleteLabel', { name: e.name })}
                           onClick={() => setPendingDelete(e.name)}
                         >
                           <TrashIcon size={13} />
@@ -330,29 +343,29 @@ export function EnvironmentsModal({
             })}
           </ul>
           <button type="button" className="btn ghost env-new" onClick={() => createEnv()}>
-            <PlusIcon size={13} /> New environment
+            <PlusIcon size={13} /> {t('modals.environments.new')}
           </button>
         </div>
 
         <div className="env-main">
           {!env ? (
             <div className="modal-empty">
-              <h3>{envs.length ? 'Pick an environment' : 'No environments yet'}</h3>
+              <h3>{envs.length ? t('modals.environments.pick') : t('modals.environments.none')}</h3>
               <p>
                 {envs.length
-                  ? 'Select one on the left to edit its variables.'
-                  : 'Create one to define values like {{baseUrl}} or {{token}} once and reuse them in every request.'}
+                  ? t('modals.environments.pickHint')
+                  : t('modals.environments.noneHint', { base: '{{baseUrl}}', token: '{{token}}' })}
               </p>
               {!envs.length && (
                 <button type="button" className="btn accent" onClick={() => createEnv()}>
-                  <PlusIcon size={14} /> New environment
+                  <PlusIcon size={14} /> {t('modals.environments.new')}
                 </button>
               )}
             </div>
           ) : (
             <>
               <div className="field">
-                <label htmlFor={`${idBase}-name`}>Name</label>
+                <label htmlFor={`${idBase}-name`}>{t('common.name')}</label>
                 <input
                   id={`${idBase}-name`}
                   defaultValue={env.name}
@@ -365,17 +378,16 @@ export function EnvironmentsModal({
                   onBlur={(e) => renameEnv(env.name, e.target.value.trim())}
                 />
                 <div id={`${idBase}-name-hint`} className="env-hint">
-                  Press Enter or leave the field to rename.
+                  {t('modals.environments.renameHint')}
                 </div>
               </div>
               <h3 className="section-label" style={{ marginTop: 4 }}>
-                Variables
+                {t('modals.environments.variables')}
               </h3>
-              <div className="kv-editor" role="group" aria-label={`Variables of ${env.name}`}>
+              <div className="kv-editor" role="group" aria-label={t('modals.environments.variablesOf', { name: env.name })}>
                 {rows.map((row, i) => {
                   const isBlank = i === rows.length - 1
                   const hidden = !!row.secret && !revealed.has(i)
-                  const rowName = isBlank ? 'New variable' : `Variable ${i + 1}`
                   return (
                     <div
                       className={`kv env-kv ${row.enabled === false ? 'disabled' : ''} ${isBlank ? 'kv-blank' : ''}`}
@@ -385,16 +397,29 @@ export function EnvironmentsModal({
                         type="checkbox"
                         checked={row.enabled !== false}
                         disabled={isBlank}
-                        title={row.enabled === false ? 'Disabled: click to enable' : 'Enabled: click to disable'}
-                        aria-label={isBlank ? 'Enable new variable' : `Enable variable ${i + 1}`}
+                        title={
+                          row.enabled === false
+                            ? t('modals.environments.disabledTitle')
+                            : t('modals.environments.enabledTitle')
+                        }
+                        aria-label={
+                          isBlank
+                            ? t('modals.environments.enableNew')
+                            : t('modals.environments.enableN', { n: i + 1 })
+                        }
                         onChange={(e) => updateRow(i, { enabled: e.target.checked })}
                       />
                       <input
                         type="text"
                         value={row.name}
+                        // i18n-ignore: example variable name
                         placeholder="baseUrl"
                         spellCheck={false}
-                        aria-label={`${rowName} name`}
+                        aria-label={
+                          isBlank
+                            ? t('modals.environments.nameNew')
+                            : t('modals.environments.nameN', { n: i + 1 })
+                        }
                         title={row.name.length > 32 ? row.name : undefined}
                         onChange={(e) => updateRow(i, { name: e.target.value })}
                       />
@@ -403,7 +428,13 @@ export function EnvironmentsModal({
                         value={row.value}
                         placeholder="https://api.example.com"
                         spellCheck={false}
-                        aria-label={`${rowName} value${row.secret ? ' (secret)' : ''}`}
+                        aria-label={
+                          isBlank
+                            ? t('modals.environments.valueNew')
+                            : row.secret
+                              ? t('modals.environments.valueSecretN', { n: i + 1 })
+                              : t('modals.environments.valueN', { n: i + 1 })
+                        }
                         title={!hidden && row.value.length > 32 ? row.value : undefined}
                         onChange={(e) => updateRow(i, { value: e.target.value })}
                       />
@@ -414,10 +445,10 @@ export function EnvironmentsModal({
                             className={`icon-btn ${row.secret ? 'on' : ''}`}
                             title={
                               row.secret
-                                ? 'Secret: the value is masked on screen. Click to make it plain'
-                                : 'Mark as secret: mask the value on screen'
+                                ? t('modals.environments.secretOnTitle')
+                                : t('modals.environments.secretOffTitle')
                             }
-                            aria-label={`Secret variable ${i + 1}`}
+                            aria-label={t('modals.environments.secretLabel', { n: i + 1 })}
                             aria-pressed={!!row.secret}
                             onClick={() => updateRow(i, { secret: !row.secret })}
                           >
@@ -427,8 +458,11 @@ export function EnvironmentsModal({
                             <button
                               type="button"
                               className="icon-btn"
-                              title={hidden ? 'Reveal value' : 'Hide value'}
-                              aria-label={`${hidden ? 'Reveal' : 'Hide'} variable ${i + 1} value`}
+                              title={hidden ? t('modals.environments.revealTitle') : t('modals.environments.hideTitle')}
+                              aria-label={t(
+                                hidden ? 'modals.environments.revealLabel' : 'modals.environments.hideLabel',
+                                { n: i + 1 }
+                              )}
                               onClick={() =>
                                 setRevealed((prev) => {
                                   const next = new Set(prev)
@@ -444,8 +478,12 @@ export function EnvironmentsModal({
                           <button
                             type="button"
                             className="icon-btn danger"
-                            title="Remove variable"
-                            aria-label={`Remove variable ${i + 1}${row.name ? ` (${row.name})` : ''}`}
+                            title={t('modals.environments.removeTitle')}
+                            aria-label={
+                              row.name
+                                ? t('modals.environments.removeLabelNamed', { n: i + 1, name: row.name })
+                                : t('modals.environments.removeLabel', { n: i + 1 })
+                            }
                             onClick={() => setVars(env.variables.filter((_, idx) => idx !== i))}
                           >
                             <CloseIcon size={14} />

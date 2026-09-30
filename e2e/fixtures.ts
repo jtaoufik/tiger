@@ -116,13 +116,26 @@ export interface Tiger {
   errors: string[]
 }
 
-export async function launchTiger(userDataDir: string, extraEnv: Record<string, string> = {}): Promise<Tiger> {
+export interface LaunchOptions {
+  /**
+   * Chromium's --lang switch: the "system language" the app sees. Defaults to
+   * en-US so the suite never depends on the language of the machine it runs
+   * on (the app follows the OS language when Settings > Language is System).
+   */
+  lang?: string
+}
+
+export async function launchTiger(
+  userDataDir: string,
+  extraEnv: Record<string, string> = {},
+  opts: LaunchOptions = {}
+): Promise<Tiger> {
   const env: Record<string, string> = {}
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
   // A dev server URL would make the app load a Vite server instead of out/.
   delete env.ELECTRON_RENDERER_URL
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${userDataDir}`],
+    args: [REPO_ROOT, `--user-data-dir=${userDataDir}`, `--lang=${opts.lang ?? 'en-US'}`],
     cwd: REPO_ROOT,
     env: { ...env, TIGER_E2E: '1', ...extraEnv }
   })
@@ -134,8 +147,9 @@ export async function launchTiger(userDataDir: string, extraEnv: Record<string, 
     })
     page.on('pageerror', (e) => errors.push(String(e)))
     await page.waitForLoadState('domcontentloaded')
-    // The UI is up once the sidebar tree has rendered.
-    await expect(page.getByRole('tree', { name: 'Collections' })).toBeVisible()
+    // The UI is up once the sidebar tree has rendered (by role only: its
+    // name is translated).
+    await expect(page.getByRole('tree').first()).toBeVisible()
     return { app, page, errors }
   } catch (e) {
     // Never leave an orphan Electron behind a failed launch.
@@ -144,15 +158,20 @@ export async function launchTiger(userDataDir: string, extraEnv: Record<string, 
   }
 }
 
-/** Resolves once the main window has been shown (it is created hidden). */
-export function windowShown(app: ElectronApplication): Promise<boolean> {
+/**
+ * The main window once its page has loaded. Under TIGER_E2E the app keeps its
+ * windows hidden and unfocused (src/main/headless.ts): runs on a developer's
+ * machine must never pop a window or steal focus.
+ */
+export function windowState(app: ElectronApplication): Promise<{ loaded: boolean; visible: boolean; focused: boolean }> {
   return app.evaluate(
     ({ BrowserWindow }) =>
-      new Promise<boolean>((done) => {
+      new Promise<{ loaded: boolean; visible: boolean; focused: boolean }>((done) => {
         const win = BrowserWindow.getAllWindows()[0]
-        if (!win) return done(false)
-        if (win.isVisible()) return done(true)
-        win.once('show', () => done(true))
+        if (!win) return done({ loaded: false, visible: false, focused: false })
+        const report = () => done({ loaded: true, visible: win.isVisible(), focused: win.isFocused() })
+        if (!win.webContents.isLoading()) return report()
+        win.webContents.once('did-finish-load', report)
       })
   )
 }

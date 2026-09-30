@@ -39,7 +39,7 @@
   --radius-sm: 9px;
   --radius-xs: 6px;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Kohinoor Devanagari", "Nirmala UI", "Noto Sans Devanagari", "Mangal", "Noto Sans Arabic", sans-serif;
   --blur: blur(22px) saturate(165%);
 
   /* HTTP method + status hues, as TEXT on glass (>= 4.5:1). */
@@ -90,6 +90,37 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* +1 in LTR, -1 in RTL: flips directional inset box-shadows (active-row accent bar). */
+:root {
+  --dir-sign: 1;
+}
+:root[dir='rtl'] {
+  --dir-sign: -1;
+}
+
+/*
+ * Per-script UI fonts. The shared stack puts Latin system fonts first, so an
+ * Arabic run fell through to Geeza Pro on macOS: small, thin, older design.
+ * Each script gets its own OS UI face first (SF Arabic / Segoe UI / Noto on
+ * macOS / Windows / Linux; Kohinoor or Nirmala UI for Devanagari; PingFang,
+ * Microsoft YaHei or Noto CJK for Chinese). Arabic and Devanagari also run
+ * about 10 percent larger (rem-based UI text only; code keeps --code-size) so
+ * their letters read as large as Latin at the same nominal size.
+ */
+:root:lang(ar) {
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Noto Sans Arabic", sans-serif;
+  font-size: 110%;
+}
+:root:lang(hi) {
+  --sans: -apple-system, BlinkMacSystemFont, "Kohinoor Devanagari", "Nirmala UI", "Segoe UI",
+    "Noto Sans Devanagari", Mangal, sans-serif;
+  font-size: 106%;
+}
+:root:lang(zh-CN) {
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Noto Sans SC", "Segoe UI", sans-serif;
 }
 
 html,
@@ -143,7 +174,7 @@ button {
    Windows/Linux the native frame is on the right, so no left padding is needed.
    Fullscreen hides the traffic lights, so the inset goes away with them. */
 [data-platform='mac'] .titlebar {
-  padding-left: 90px;
+  padding-left: 90px; /* physical: traffic lights stay on the left in RTL */
 }
 [data-platform='mac'][data-fullscreen='true'] .titlebar {
   padding-left: 14px;
@@ -319,7 +350,7 @@ button {
 .col-head.active,
 .folder-row.active {
   background: var(--glass-strong);
-  box-shadow: inset 3px 0 0 var(--accent-fill), var(--shadow-sm);
+  box-shadow: inset calc(3px * var(--dir-sign)) 0 0 var(--accent-fill), var(--shadow-sm);
 }
 .tree-row.active .row-label,
 .folder-row.active .row-label {
@@ -499,7 +530,7 @@ button {
   border-radius: 50%;
   background: var(--accent-fill);
   vertical-align: 2px;
-  margin-left: 2px;
+  margin-inline-start: 2px;
 }
 .tab-body {
   flex: 1;
@@ -689,7 +720,7 @@ button {
 .switch .knob {
   position: absolute;
   top: 2px;
-  left: 2px;
+  inset-inline-start: 2px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -699,6 +730,9 @@ button {
 }
 .switch.on .knob {
   transform: translateX(18px);
+}
+[dir='rtl'] .switch.on .knob {
+  transform: translateX(-18px);
 }
 .num-input {
   width: 92px;
@@ -733,7 +767,8 @@ button {
   border: none;
   border-radius: 0;
   background: transparent;
-  padding: 0 8px 0 11px;
+  padding-block: 0;
+  padding-inline: 11px 8px;
   height: 100%;
 }
 .env-combo .env-select:focus { outline: none; } /* the combo carries the ring */
@@ -749,7 +784,7 @@ button {
   width: 30px;
   padding: 0;
   border: none;
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
   background: transparent;
   color: var(--text-dim);
 }
@@ -812,7 +847,7 @@ button {
   flex: 1;
 }
 .modal-head .icon-btn {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .modal-body {
   padding: 18px;
@@ -889,7 +924,7 @@ button {
   border-radius: 12px;
   border: 1px solid var(--border-strong);
   background: var(--glass-strong);
-  text-align: left;
+  text-align: start;
 }
 .choice:hover:not(:disabled) {
   background: var(--glass-hover);
@@ -1103,7 +1138,7 @@ button {
 .dirty-dot {
   position: absolute;
   top: 3px;
-  right: 3px;
+  inset-inline-end: 3px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -1125,7 +1160,7 @@ button {
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
-  text-align: left;
+  text-align: start;
   padding: 18px;
   border-radius: 13px;
   border: 1px solid var(--border-strong);
@@ -1165,7 +1200,8 @@ button {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin: 0 0 11px 2px;
+  margin-block: 0 11px;
+  margin-inline: 2px 0;
 }
 .welcome-primary {
   list-style: none;
@@ -1398,7 +1434,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: 4px;
+  margin-inline-start: 4px;
   flex-shrink: 0;
 }
 .sync-chips .git-chip { padding: 1px 6px; font-size: 0.625rem; }
@@ -1450,7 +1486,7 @@ button {
 
 /* ---------- environments modal ---------- */
 .env-layout { display: grid; grid-template-columns: 220px 1fr; gap: 14px; min-height: 340px; }
-.env-side { display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--border); padding-right: 14px; }
+.env-side { display: flex; flex-direction: column; gap: 8px; border-inline-end: 1px solid var(--border); padding-inline-end: 14px; }
 .env-list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
 .env-row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 0.8125rem; }
 .env-row:hover { background: var(--accent-weak); }
@@ -1514,7 +1550,7 @@ button {
   align-items: center;
   gap: 9px;
   width: 100%;
-  text-align: left;
+  text-align: start;
   border: none;
   background: transparent;
   font-family: var(--sans);
@@ -1542,7 +1578,7 @@ button {
 }
 .changelog {
   margin: 0;
-  padding-left: 20px;
+  padding-inline-start: 20px;
   color: var(--text-dim);
   font-size: 0.875rem;
   line-height: 1.8;
@@ -1752,7 +1788,8 @@ button {
   width: 24px;
   height: 24px;
   padding: 0;
-  margin: -4px -4px -4px -6px;
+  margin-block: -4px;
+  margin-inline: -6px -4px;
 }
 .row-actions .icon-btn {
   margin-block: -3px;
@@ -1877,7 +1914,7 @@ button {
   }
   .tree-row.active,
   .request-tab.active {
-    box-shadow: inset 3px 0 0 var(--text);
+    box-shadow: inset calc(3px * var(--dir-sign)) 0 0 var(--text);
   }
 }
 
@@ -1976,4 +2013,154 @@ button {
   .resizer::after {
     background: CanvasText;
   }
+}
+
+/* ---------- RTL (Arabic) and non-Latin scripts ---------- */
+
+/* Directional icons mirror in RTL. Logos, media controls and symmetric icons
+   (chevron-down, arrow-up/down, arrow-right-left, refresh) are left alone. */
+[dir='rtl'] .lucide-chevron-right,
+[dir='rtl'] .lucide-chevron-left,
+[dir='rtl'] .lucide-arrow-right,
+[dir='rtl'] .lucide-arrow-left,
+[dir='rtl'] .lucide-arrow-right-to-line,
+[dir='rtl'] .lucide-arrow-left-to-line,
+[dir='rtl'] .lucide-undo-2,
+[dir='rtl'] .lucide-redo-2 {
+  transform: scaleX(-1);
+}
+/* Expanded tree chevron: rotate(90deg) points down in both directions, so the
+   mirror is dropped once open (avoids a chevron pointing up/left). */
+[dir='rtl'] .chev.open,
+[dir='rtl'] .ts-change-name .chev.open {
+  transform: rotate(90deg);
+}
+
+/*
+ * Code, URLs, paths, JSON and shortcuts stay left-to-right inside RTL.
+ * Multi-line code is strictly LTR (an Arabic string inside JSON must not flip
+ * its line). Single-line data fields take the direction of what is typed in
+ * them (plaintext) and align to its start, so a URL sits on the left and an
+ * Arabic environment name on the right. Translated prose (hints, warnings,
+ * team sync small print) is not listed: it flows right to left, and t()
+ * isolates the Latin tokens inside it.
+ */
+[dir='rtl'] .code-area,
+[dir='rtl'] .response-body,
+[dir='rtl'] .code-block,
+[dir='rtl'] .code-pane pre,
+[dir='rtl'] .ts-side pre,
+[dir='rtl'] .git-diff,
+[dir='rtl'] .script-logs,
+[dir='rtl'] .mcp-code-block {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+[dir='rtl'] .url-input,
+[dir='rtl'] input[type='url'],
+[dir='rtl'] .docs-area,
+[dir='rtl'] .kv input[type='text'],
+[dir='rtl'] .hist-row .url,
+[dir='rtl'] .cv-path,
+[dir='rtl'] .cv-remote-row input,
+[dir='rtl'] .ts-field input,
+[dir='rtl'] .ts-field textarea,
+[dir='rtl'] .git-file,
+[dir='rtl'] .git-newbranch,
+[dir='rtl'] .git-hash,
+[dir='rtl'] .curl-hint,
+[dir='rtl'] .perf-url,
+[dir='rtl'] .resp-search input,
+[dir='rtl'] .json-bad,
+[dir='rtl'] .num-input,
+[dir='rtl'] .field input {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+/* Names in the tree, tabs and lists: an English name keeps its own order
+   ("List posts (mine)", not "(mine) List posts") and truncates at its end,
+   but still lines up on the right like everything else in the row. */
+[dir='rtl'] .row-label,
+[dir='rtl'] .request-tab-name {
+  unicode-bidi: plaintext;
+  text-align: right;
+}
+/* Git terms in small print read as one left-to-right unit. */
+[dir='rtl'] .ts-term {
+  unicode-bidi: isolate;
+}
+/* Arabic, Hindi and Chinese prose never renders in the monospace face. */
+:lang(ar) :is(.ts-term, .warn-row),
+:lang(hi) :is(.ts-term, .warn-row),
+:lang(zh) :is(.ts-term, .warn-row) {
+  font-family: var(--sans);
+}
+:lang(ar) ::placeholder,
+:lang(hi) ::placeholder,
+:lang(zh) ::placeholder {
+  font-family: var(--sans);
+}
+[dir='rtl'] .palette-keys,
+[dir='rtl'] .shortcut-kbds {
+  direction: ltr;
+}
+[dir='rtl'] kbd,
+[dir='rtl'] code,
+[dir='rtl'] .method-pill,
+[dir='rtl'] .status-pill,
+[dir='rtl'] .git-branch,
+[dir='rtl'] .git-chip {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Non-Latin scripts: no tracking or forced uppercase on labels. */
+:lang(ar) *,
+:lang(hi) *,
+:lang(zh) * {
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+/* Devanagari and Arabic carry tall marks: more leading, and controls grow
+   (min-height + padding) instead of clipping. */
+:lang(hi) body,
+:lang(ar) body {
+  line-height: 1.6;
+}
+:lang(hi) :is(button, input, select, textarea, .tab, .request-tab),
+:lang(ar) :is(button, input, select, textarea, .tab, .request-tab) {
+  line-height: 1.5;
+}
+:lang(hi) :is(input, select),
+:lang(ar) :is(input, select) {
+  min-height: 1.9em;
+}
+:lang(hi) .env-combo,
+:lang(ar) .env-combo {
+  height: 34px;
+}
+:lang(zh-CN) body {
+  line-height: normal;
+}
+
+/* Longer labels (Spanish, French, Hindi): section tabs stay on one line and
+   scroll sideways instead of wrapping into two-line tabs. */
+.panel.editor .tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.panel.editor .tabs .tab {
+  flex: none;
+  white-space: nowrap;
+}
+:lang(es) .panel.editor .tabs,
+:lang(fr) .panel.editor .tabs {
+  gap: 2px;
+}
+:lang(es) .panel.editor .tabs .tab,
+:lang(fr) .panel.editor .tabs .tab {
+  padding-inline: 7px;
 }

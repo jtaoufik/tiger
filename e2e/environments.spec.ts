@@ -71,7 +71,7 @@ test('Save values captures a response field and chains it into the next request'
   await openRequest(page, 'POST', 'Create post')
   await page.getByRole('tab', { name: /^Save values/ }).click()
   await page.getByRole('textbox', { name: 'New saved value name' }).fill('postId')
-  await page.getByRole('textbox', { name: 'Saved value 1 value' }).fill('body.id')
+  await page.getByRole('textbox', { name: 'Saved value 1 source' }).fill('body.id')
   await page.keyboard.press(`${MOD}+s`)
 
   await page.getByRole('button', { name: 'Send', exact: true }).click()

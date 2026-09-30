@@ -1,0 +1,38 @@
+import type { NamespaceCatalog } from '../../translator'
+import type { menu as en } from '../en/menu'
+
+export const menu: NamespaceCatalog<typeof en> = {
+  'menu.app': 'Tiger',
+  'menu.file': 'ملف',
+  'menu.edit': 'تحرير',
+  'menu.request': 'طلب',
+  'menu.view': 'عرض',
+  'menu.theme': 'السمة',
+  'menu.window': 'نافذة',
+  'menu.help': 'مساعدة',
+  'menu.about': 'حول Tiger',
+  'menu.services': 'الخدمات',
+  'menu.hide': 'إخفاء Tiger',
+  'menu.hideOthers': 'إخفاء الآخرين',
+  'menu.unhide': 'إظهار الكل',
+  'menu.quit': 'إنهاء Tiger',
+  'menu.closeWindow': 'إغلاق النافذة',
+  'menu.exit': 'خروج',
+  'menu.undo': 'تراجع',
+  'menu.redo': 'إعادة',
+  'menu.cut': 'قص',
+  'menu.copy': 'نسخ',
+  'menu.paste': 'لصق',
+  'menu.pasteAndMatchStyle': 'لصق ومطابقة النمط',
+  'menu.delete': 'حذف',
+  'menu.selectAll': 'تحديد الكل',
+  'menu.toggleFullScreen': 'تبديل ملء الشاشة',
+  'menu.reload': 'إعادة التحميل',
+  'menu.forceReload': 'فرض إعادة التحميل',
+  'menu.toggleDevTools': 'أدوات المطور',
+  'menu.minimize': 'تصغير',
+  'menu.zoomWindow': 'تكبير/تصغير',
+  'menu.front': 'إحضار الكل إلى الأمام',
+  'menu.close': 'إغلاق',
+  'menu.aboutDetail': 'الإصدار {version}'
+}

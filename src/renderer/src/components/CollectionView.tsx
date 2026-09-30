@@ -2,7 +2,10 @@ import { useId, useState } from 'react'
 import type { TigerAuth } from '@core/types'
 import type { HistoryEntry } from '../../../main/history'
 import { AuthEditor } from './AuthEditor'
-import { REVEAL_LABEL } from '../platform'
+import { REVEAL_LABEL_KEY } from '../platform'
+import { useT } from '../i18n'
+import { emphasize } from '../emphasize'
+import type { MessageKey } from '@core/i18n'
 import { rovingIndex } from '../a11y'
 import { setupStep, summarizeSync } from '../gitUx'
 import { ErrorPanel, ProgressLine, SyncBadge, useTeamSync } from './TeamSync'
@@ -48,11 +51,11 @@ interface Props {
 }
 
 type PageTab = 'overview' | 'docs' | 'auth' | 'activity'
-const PAGE_TABS: { id: PageTab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'docs', label: 'Notes' },
-  { id: 'auth', label: 'Auth' },
-  { id: 'activity', label: 'Activity' }
+const PAGE_TABS: { id: PageTab; labelKey: MessageKey }[] = [
+  { id: 'overview', labelKey: 'views.tab.overview' },
+  { id: 'docs', labelKey: 'views.tab.notes' },
+  { id: 'auth', labelKey: 'views.tab.auth' },
+  { id: 'activity', labelKey: 'views.tab.activity' }
 ]
 
 /**
@@ -72,6 +75,7 @@ export function CollectionView({
   onOpenGitDetails,
   onWorkingTreeChanged
 }: Props) {
+  const t = useT()
   const [pageTab, setPageTab] = useState<PageTab>('overview')
   const uid = useId()
   const sync = useTeamSync(collection.root, { onToast, onWorkingTreeChanged })
@@ -100,7 +104,7 @@ export function CollectionView({
             <button
               type="button"
               className="ts-pill"
-              aria-label={`Team sync: ${summary.label}. Open team sync`}
+              aria-label={t('views.collection.syncPill', { label: summary.label })}
               title={summary.detail}
               onClick={onOpenGitDetails}
             >
@@ -110,7 +114,7 @@ export function CollectionView({
         </div>
         <div className="cv-actions">
           <button type="button" className="btn accent" onClick={onNewRequest}>
-            <PlusIcon size={14} /> New request
+            <PlusIcon size={14} /> {t('views.newRequest')}
           </button>
           <button type="button" className="btn" onClick={onRun} title={actionTitle('run-collection')}>
             <PlayIcon size={14} /> {actionLabel('run-collection')}
@@ -119,7 +123,7 @@ export function CollectionView({
             type="button"
             className="btn"
             onClick={onImportExport}
-            title="Export this collection as Postman or OpenAPI"
+            title={t('views.collection.exportTitle')}
           >
             <DownloadIcon size={14} /> {actionLabel('export')}
           </button>
@@ -127,8 +131,8 @@ export function CollectionView({
             <button
               type="button"
               className="icon-btn"
-              title={REVEAL_LABEL}
-              aria-label={REVEAL_LABEL}
+              title={t(REVEAL_LABEL_KEY)}
+              aria-label={t(REVEAL_LABEL_KEY)}
               onClick={() => window.tiger?.reveal?.(collection.root!)}
             >
               <FolderOpenIcon />
@@ -137,26 +141,31 @@ export function CollectionView({
           <button
             type="button"
             className="icon-btn danger"
-            title="Close collection (the files stay on disk)"
-            aria-label="Close collection"
+            title={t('views.collection.closeTitle')}
+            aria-label={t('views.collection.closeLabel')}
             onClick={onClose}
           >
             <CloseIcon />
           </button>
-          <HelpLink page="collections" topic="Collections" />
+          <HelpLink page="collections" topic={t('views.collection.helpTopic')} />
         </div>
       </div>
 
       <div className="cv-stats">
         <span>
-          <b>{collection.requestCount}</b> request{collection.requestCount === 1 ? '' : 's'}
+          {emphasize(
+            t('common.requests', { count: collection.requestCount }),
+            t.number(collection.requestCount)
+          )}
         </span>
         <span>
-          <b>{collection.folderCount}</b> folder{collection.folderCount === 1 ? '' : 's'}
+          {emphasize(t('common.folders', { count: collection.folderCount }), t.number(collection.folderCount))}
         </span>
         <span>
-          <b>{collection.environments.length}</b> environment
-          {collection.environments.length === 1 ? '' : 's'}
+          {emphasize(
+            t('common.environments', { count: collection.environments.length }),
+            t.number(collection.environments.length)
+          )}
           {collection.environments.length > 0 && (
             <span className="cv-dim"> · {collection.environments.join(', ')}</span>
           )}
@@ -164,23 +173,23 @@ export function CollectionView({
       </div>
 
       <div className="cv-tabcard">
-      <div className="tabs cv-tabs" role="tablist" aria-label="Collection sections">
-        {PAGE_TABS.map((t, i) => {
-          const on = pageTab === t.id
+      <div className="tabs cv-tabs" role="tablist" aria-label={t('views.collection.tabsLabel')}>
+        {PAGE_TABS.map((tab, i) => {
+          const on = pageTab === tab.id
           const marker =
-            t.id === 'docs' && collection.docs?.trim() ? (
+            tab.id === 'docs' && collection.docs?.trim() ? (
               <>
                 {' '}
                 <span className="dot" aria-hidden />
-                <span className="sr-only">(written)</span>
+                <span className="sr-only">{t('views.tab.written')}</span>
               </>
-            ) : t.id === 'auth' && collection.auth && collection.auth.type !== 'none' ? (
+            ) : tab.id === 'auth' && collection.auth && collection.auth.type !== 'none' ? (
               <>
                 {' '}
                 <span className="dot" aria-hidden />
-                <span className="sr-only">(set)</span>
+                <span className="sr-only">{t('views.tab.set')}</span>
               </>
-            ) : t.id === 'activity' && history.length > 0 ? (
+            ) : tab.id === 'activity' && history.length > 0 ? (
               <>
                 {' '}
                 <span className="count">{Math.min(history.length, 8)}</span>
@@ -189,14 +198,14 @@ export function CollectionView({
           return (
             <button
               type="button"
-              key={t.id}
+              key={tab.id}
               role="tab"
-              id={`${uid}-tab-${t.id}`}
+              id={`${uid}-tab-${tab.id}`}
               aria-selected={on}
               aria-controls={`${uid}-panel`}
               tabIndex={on ? 0 : -1}
               className={`tab ${on ? 'active' : ''}`}
-              onClick={() => setPageTab(t.id)}
+              onClick={() => setPageTab(tab.id)}
               onKeyDown={(e) => {
                 const next = rovingIndex(e.key, i, PAGE_TABS.length)
                 if (next === null) return
@@ -205,7 +214,7 @@ export function CollectionView({
                 ;(e.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus()
               }}
             >
-              {t.label}
+              {t(tab.labelKey)}
               {marker}
             </button>
           )
@@ -219,32 +228,32 @@ export function CollectionView({
       >
       {pageTab === 'overview' && (
         <>
-      <h3 className="section-label">Team sync</h3>
+      <h3 className="section-label">{t('views.collection.teamSync')}</h3>
       <div className="cv-card" aria-busy={sync.busy !== null || sync.availability === 'loading' || undefined}>
-        {sync.availability === 'loading' && <div className="cv-dim">Checking…</div>}
+        {sync.availability === 'loading' && <div className="cv-dim">{t('views.collection.checking')}</div>}
 
         {sync.availability === 'browser' && (
           <div className="cv-dim">
             {collection.root
-              ? 'Sync is available in the desktop app.'
-              : 'This collection lives in memory. Open a folder from disk to sync it with your team.'}
+              ? t('views.collection.desktopOnly')
+              : t('views.collection.inMemory')}
           </div>
         )}
 
         {sync.availability === 'no-git' && (
           <div className="cv-sync-row">
             <div>
-              <b>Install Git to enable team sync.</b>
-              <div className="cv-dim">One install, no restart needed afterwards.</div>
+              <b>{t('views.collection.installGit')}</b>
+              <div className="cv-dim">{t('views.collection.installGitHint')}</div>
             </div>
             <button
               type="button"
               className="btn accent"
               onClick={() => window.tiger?.openExternal?.('https://git-scm.com/downloads')}
             >
-              Download Git
+              {t('views.collection.downloadGit')}
             </button>
-            <button type="button" className="icon-btn" title="Check again" aria-label="Check again for Git" onClick={sync.refresh}>
+            <button type="button" className="icon-btn" title={t('views.collection.checkAgain')} aria-label={t('views.collection.checkAgainGit')} onClick={sync.refresh}>
               <RefreshIcon size={14} />
             </button>
           </div>
@@ -259,11 +268,13 @@ export function CollectionView({
               </div>
               {sync.conflict ? (
                 <button type="button" className="btn accent" onClick={onOpenGitDetails}>
-                  Choose versions…
+                  {t('views.collection.chooseVersions')}
                 </button>
               ) : step !== null ? (
                 <button type="button" className="btn accent" onClick={onOpenGitDetails}>
-                  <UsersIcon size={14} /> {step === 1 ? `${actionLabel('share-collection')}…` : 'Continue setup…'}
+                  <UsersIcon size={14} /> {step === 1
+                    ? t('views.collection.withEllipsis', { label: actionLabel('share-collection') })
+                    : t('views.collection.continueSetup')}
                 </button>
               ) : (
                 <button type="button" className="btn accent" disabled={sync.busy !== null} onClick={doSync}>
@@ -272,7 +283,7 @@ export function CollectionView({
               )}
               {!sync.conflict && (
                 <button type="button" className="btn ghost" onClick={onOpenGitDetails}>
-                  {sync.status.dirtyCount > 0 ? 'See changes' : 'Details'}
+                  {sync.status.dirtyCount > 0 ? t('views.collection.seeChanges') : t('views.collection.details')}
                 </button>
               )}
             </div>
@@ -299,8 +310,8 @@ export function CollectionView({
         <div className="cv-card">
           <textarea
             className="docs-area"
-            aria-label="Collection docs (Markdown)"
-            placeholder="Document this collection in Markdown: what it covers, how to authenticate, gotchas…"
+            aria-label={t('views.collection.docsLabel')}
+            placeholder={t('views.collection.docsPlaceholder')}
             defaultValue={collection.docs ?? ''}
             key={collection.id}
             spellCheck={false}
@@ -313,7 +324,7 @@ export function CollectionView({
 
       {pageTab === 'auth' && (
         <>
-          <h3 className="section-label">Default auth (inherited by requests)</h3>
+          <h3 className="section-label">{t('views.collection.authHeading')}</h3>
           <div className="cv-card">
             <AuthEditor noInherit auth={collection.auth} onChange={onSaveAuth} />
           </div>
@@ -323,11 +334,11 @@ export function CollectionView({
       {pageTab === 'activity' && (
         <>
       <h3 className="section-label">
-        <ClockIcon size={12} /> Recent activity in this collection
+        <ClockIcon size={12} /> {t('views.collection.activityHeading')}
       </h3>
       <div className="cv-card">
         {history.length === 0 ? (
-          <div className="cv-dim">No requests sent yet from this collection.</div>
+          <div className="cv-dim">{t('views.collection.noActivity')}</div>
         ) : (
           history.slice(0, 8).map((e) => (
             <div className="hist-row" key={e.id}>
@@ -338,17 +349,17 @@ export function CollectionView({
               <span className={e.ok ? 'status-ok' : 'status-bad'} style={{ fontWeight: 700 }}>
                 {e.status}
               </span>
-              <span className="meta-chip">{e.timeMs} ms</span>
+              <span className="meta-chip">{t('common.ms', { value: e.timeMs })}</span>
             </div>
           ))
         )}
         {history.length === 0 && (
           <div className="cv-empty-actions">
             <span className="cv-dim">
-              <CheckIcon size={11} /> Activity appears here as the team works.
+              <CheckIcon size={11} /> {t('views.collection.activityHint')}
             </span>
             <button type="button" className="btn" onClick={onNewRequest}>
-              <PlusIcon size={14} /> New request
+              <PlusIcon size={14} /> {t('views.newRequest')}
             </button>
           </div>
         )}

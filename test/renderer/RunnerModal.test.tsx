@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
+import { act, render, screen, within } from '@testing-library/react'
+import { setLocale } from '../../src/renderer/src/i18n'
 import { RunnerModal } from '../../src/renderer/src/components/RunnerModal'
 import type { RunnerItem } from '../../src/core/runner'
 
@@ -38,5 +39,29 @@ describe('RunnerModal', () => {
     )
     expect(await screen.findByText('Nothing to run yet')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Close' }).length).toBeGreaterThan(0)
+  })
+
+  afterEach(async () => {
+    await act(() => setLocale('en'))
+  })
+
+  it('renders in French and Arabic', async () => {
+    const props = {
+      title: 'Demo',
+      loadItems: async () => [item('1', 'List users'), item('2', 'Get user')],
+      environment: null,
+      timeoutMs: 1000,
+      onClose: () => {}
+    }
+    await act(() => setLocale('fr'))
+    const { unmount } = render(<RunnerModal {...props} />)
+    expect(await screen.findByRole('button', { name: 'Exécuter 2 requêtes' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Méthode' })).toBeInTheDocument()
+    expect(screen.getAllByText('En attente')).toHaveLength(2)
+    unmount()
+    await act(() => setLocale('ar'))
+    render(<RunnerModal {...props} />)
+    expect(await screen.findByRole('button', { name: 'تشغيل 2 طلبين' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'الحالة' })).toBeInTheDocument()
   })
 })

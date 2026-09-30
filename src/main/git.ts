@@ -12,6 +12,8 @@ import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
+import type { MessageKey } from '../core/i18n'
+import { mainT } from './i18n'
 
 export interface GitAvailability {
   ok: boolean
@@ -123,28 +125,34 @@ export function classifyGitError(stderr: string): GitErrorCode | undefined {
   return undefined
 }
 
-const ERROR_TEXT: Record<GitErrorCode, string> = {
-  'auth-required':
-    'Authentication required. Set up a Git credential helper, or use an SSH URL with a key in your agent.',
-  'ssh-key': 'SSH key not accepted. Add the right key to your SSH agent (e.g. ssh-add ~/.ssh/id_ed25519).',
-  'auth-failed': 'Authentication failed. Check your username and personal access token.',
-  'not-found': 'Repository not found. Check the URL, or verify your account has access.',
-  network: 'Could not reach the host. Check your network or the repository URL.',
-  identity: 'Git needs your name and email before it can save a version.',
-  rejected: 'The team repository has changes you do not have yet. Sync to combine them first.',
-  'no-commits': 'There is no saved version yet. Save a version first.'
+const ERROR_KEYS: Record<GitErrorCode, MessageKey> = {
+  'auth-required': 'team.git.err.authRequired',
+  'ssh-key': 'team.git.err.sshKey',
+  'auth-failed': 'team.git.err.authFailed',
+  'not-found': 'team.git.err.notFound',
+  network: 'team.git.err.network',
+  identity: 'team.git.err.identity',
+  rejected: 'team.git.err.rejected',
+  'no-commits': 'team.git.err.noCommits'
 }
 
 /** Plain-language message for git's stderr, or `fallback` when unrecognised. */
 export function translateGitError(stderr: string, fallback: string): string {
   const code = classifyGitError(stderr)
-  return code ? ERROR_TEXT[code] : fallback
+  return code ? mainT(ERROR_KEYS[code]) : fallback
 }
 
-function failure(stderr: string, fallback: string, prefix = ''): GitActionResult {
+/**
+ * A failed action. `prefixKey` wraps the detail in a sentence such as
+ * "Could not share your changes: {detail}" (one message, so word order can differ).
+ */
+function failure(stderr: string, fallback: string, prefixKey?: MessageKey): GitActionResult {
   const code = classifyGitError(stderr)
-  return { ok: false, code, message: `${prefix}${code ? ERROR_TEXT[code] : fallback}` }
+  const detail = code ? mainT(ERROR_KEYS[code]) : fallback
+  return { ok: false, code, message: prefixKey ? mainT(prefixKey, { detail }) : detail }
 }
+
+const wrap = (key: MessageKey, detail: string): string => mainT(key, { detail })
 
 export async function gitAvailable(): Promise<GitAvailability> {
   const result = await run(['--version'])
@@ -225,12 +233,12 @@ async function firstRemote(root: string): Promise<string | null> {
 export async function gitFetch(root: string): Promise<GitActionResult> {
   const remotes = await run(['remote'], root)
   if (!remotes.ok || remotes.stdout.trim().length === 0) {
-    return { ok: true, message: 'No remote configured' }
+    return { ok: true, message: mainT('team.git.noRemote') }
   }
   const result = await run(['fetch', '--quiet'], root, 30000)
   return result.ok
-    ? { ok: true, message: 'Refreshed from remote' }
-    : failure(result.stderr, lastLine(result.stderr) || 'Fetch failed')
+    ? { ok: true, message: mainT('team.git.refreshed') }
+    : failure(result.stderr, lastLine(result.stderr) || mainT('team.git.fetchFailed'))
 }
 
 export async function gitDiff(root: string): Promise<string> {
@@ -291,37 +299,37 @@ export async function gitRequestNames(root: string, paths: string[]): Promise<Re
 
 export async function gitCommitAll(root: string, message: string): Promise<GitActionResult> {
   const add = await run(['add', '-A'], root)
-  if (!add.ok) return { ok: false, message: add.stderr.trim() || 'git add failed' }
+  if (!add.ok) return { ok: false, message: add.stderr.trim() || mainT('team.git.addFailed') }
   const commit = await run(['commit', '-m', message || 'Update collection'], root)
   return commit.ok
-    ? { ok: true, message: commit.stdout.split('\n')[0]?.trim() || 'Committed' }
-    : failure(commit.stderr, commit.stderr.trim() || commit.stdout.trim() || 'Nothing to commit')
+    ? { ok: true, message: commit.stdout.split('\n')[0]?.trim() || mainT('team.git.committed') }
+    : failure(commit.stderr, commit.stderr.trim() || commit.stdout.trim() || mainT('team.git.nothingToCommit'))
 }
 
 /** Set the name and email git records on versions saved in this collection only. */
 export async function gitSetIdentity(root: string, name: string, email: string): Promise<GitActionResult> {
   if (!name.trim() || !/^[^\s@]+@[^\s@]+$/.test(email.trim())) {
-    return { ok: false, message: 'Enter your name and a valid email address' }
+    return { ok: false, message: mainT('team.git.identityInvalid') }
   }
   const setName = await run(['config', 'user.name', name.trim()], root)
   const setEmail = await run(['config', 'user.email', email.trim()], root)
   return setName.ok && setEmail.ok
-    ? { ok: true, message: `Versions will be saved as ${name.trim()}` }
-    : { ok: false, message: lastLine(setName.stderr || setEmail.stderr) || 'Could not save your name' }
+    ? { ok: true, message: mainT('team.git.identitySaved', { name: name.trim() }) }
+    : { ok: false, message: lastLine(setName.stderr || setEmail.stderr) || mainT('team.git.saveNameFailed') }
 }
 
 export async function gitPull(root: string): Promise<GitActionResult> {
   const result = await run(['pull', '--ff-only'], root, 30000)
   return result.ok
-    ? { ok: true, message: lastLine(result.stdout) || 'Up to date' }
-    : failure(result.stderr, lastLine(result.stderr) || 'Pull failed')
+    ? { ok: true, message: lastLine(result.stdout) || mainT('team.git.upToDate') }
+    : failure(result.stderr, lastLine(result.stderr) || mainT('team.git.pullFailed'))
 }
 
 export async function gitPush(root: string): Promise<GitActionResult> {
   const result = await run(['push'], root, 30000)
   return result.ok
-    ? { ok: true, message: lastLine(result.stderr) || lastLine(result.stdout) || 'Pushed' }
-    : failure(result.stderr, lastLine(result.stderr) || 'Push failed')
+    ? { ok: true, message: lastLine(result.stderr) || lastLine(result.stdout) || mainT('team.git.pushed') }
+    : failure(result.stderr, lastLine(result.stderr) || mainT('team.git.pushFailed'))
 }
 
 export async function gitInit(root: string): Promise<GitActionResult> {
@@ -330,8 +338,8 @@ export async function gitInit(root: string): Promise<GitActionResult> {
   let result = await run(['init', '--initial-branch=main'], root)
   if (!result.ok) result = await run(['init'], root)
   return result.ok
-    ? { ok: true, message: 'Version tracking is on' }
-    : { ok: false, message: result.stderr.trim() || 'git init failed' }
+    ? { ok: true, message: mainT('team.git.trackingOn') }
+    : { ok: false, message: result.stderr.trim() || mainT('team.git.initFailed') }
 }
 
 /**
@@ -350,21 +358,21 @@ export async function gitSync(
   onProgress?: (phase: SyncPhase) => void
 ): Promise<GitActionResult> {
   const status = await gitStatus(root)
-  if (!status.isRepo) return { ok: false, message: 'This folder is not set up for syncing yet' }
+  if (!status.isRepo) return { ok: false, message: mainT('team.git.notSetUp') }
   if (status.dirtyCount > 0) {
     onProgress?.('saving')
     const commit = await gitCommitAll(root, message || 'Update collection')
-    if (!commit.ok) return { ...commit, message: `Could not save your changes: ${commit.message}` }
+    if (!commit.ok) return { ...commit, message: wrap('team.git.prefix.save', commit.message) }
   }
   const remote = await firstRemote(root)
   if (!remote) {
-    return { ok: true, message: 'Saved on this computer (no shared repository connected yet)' }
+    return { ok: true, message: mainT('team.git.savedLocalOnly') }
   }
 
   // Explicit sync is the right place to touch the network.
   onProgress?.('receiving')
   const fetched = await gitFetch(root)
-  if (!fetched.ok) return { ...fetched, message: `Could not get the team's changes: ${fetched.message}` }
+  if (!fetched.ok) return { ...fetched, message: wrap('team.git.prefix.get', fetched.message) }
 
   let firstLink = false
   if (!status.hasUpstream) {
@@ -374,10 +382,10 @@ export async function gitSync(
       onProgress?.('sending')
       const publish = await run(['push', '-u', remote, 'HEAD'], root, 30000)
       if (!publish.ok) {
-        return failure(publish.stderr, lastLine(publish.stderr) || 'publishing failed', 'Could not share your changes: ')
+        return failure(publish.stderr, lastLine(publish.stderr) || mainT('team.git.publishFailed'), 'team.git.prefix.share')
       }
       const count = Number((await run(['rev-list', '--count', 'HEAD'], root)).stdout.trim()) || 0
-      return { ok: true, message: 'Shared: your collection is now on the team repository', received: 0, sent: count }
+      return { ok: true, message: mainT('team.git.sharedNow'), received: 0, sent: count }
     }
     await run(['branch', `--set-upstream-to=${remote}/${branch}`], root)
     firstLink = true
@@ -396,15 +404,15 @@ export async function gitSync(
     const code = classifyGitError(pull.stderr)
     const conflicting = !code && /conflict|merge|diverg/i.test(`${pull.stdout} ${pull.stderr}`)
     return conflicting
-      ? { ok: false, conflict: true, message: 'You and a teammate changed the same thing.' }
-      : failure(pull.stderr, detail || 'pull failed', "Could not get the team's changes: ")
+      ? { ok: false, conflict: true, message: mainT('team.git.conflictSame') }
+      : failure(pull.stderr, detail || mainT('team.git.pullFailedLower'), 'team.git.prefix.get')
   }
   if (before.ahead > 0) onProgress?.('sending')
   const push = await gitPush(root)
-  if (!push.ok) return { ...push, message: `Could not share your changes: ${push.message}` }
+  if (!push.ok) return { ...push, message: wrap('team.git.prefix.share', push.message) }
   return {
     ok: true,
-    message: 'Everything is in sync with your team',
+    message: mainT('team.git.inSync'),
     received: before.behind,
     sent: before.ahead
   }
@@ -468,10 +476,10 @@ export async function gitSyncResolve(
   choices?: Record<string, 'mine' | 'theirs'>
 ): Promise<GitActionResult> {
   const status = await gitStatus(root)
-  if (!status.isRepo) return { ok: false, message: 'This folder is not set up for syncing yet' }
+  if (!status.isRepo) return { ok: false, message: mainT('team.git.notSetUp') }
   if (status.dirtyCount > 0) {
     const commit = await gitCommitAll(root, message || 'Update collection')
-    if (!commit.ok) return { ...commit, message: `Could not save your changes: ${commit.message}` }
+    if (!commit.ok) return { ...commit, message: wrap('team.git.prefix.save', commit.message) }
   }
   await gitFetch(root)
   const perFile = choices && Object.keys(choices).length > 0
@@ -498,19 +506,19 @@ export async function gitSyncResolve(
     const commit = merging.ok ? await run(['commit', '--no-edit'], root) : { ok: redo.ok, stdout: '', stderr: redo.stderr }
     if (!add.ok || !commit.ok) {
       await run(['merge', '--abort'], root)
-      const detail = lastLine(pull.stderr || redo.stderr) || 'merge failed'
-      return failure(pull.stderr || redo.stderr, detail, 'Could not combine the changes: ')
+      const detail = lastLine(pull.stderr || redo.stderr) || mainT('team.git.mergeFailed')
+      return failure(pull.stderr || redo.stderr, detail, 'team.git.prefix.combine')
     }
   }
   const push = await gitPush(root)
-  if (!push.ok) return { ...push, message: `Could not share your changes: ${push.message}` }
+  if (!push.ok) return { ...push, message: wrap('team.git.prefix.share', push.message) }
   return {
     ok: true,
     message: perFile
-      ? 'Done: your choices were applied and shared with the team.'
+      ? mainT('team.git.doneChoices')
       : prefer === 'mine'
-        ? 'Done: where they overlapped, your version won.'
-        : "Done: where they overlapped, the team's version won."
+        ? mainT('team.git.doneMine')
+        : mainT('team.git.doneTheirs')
   }
 }
 
@@ -546,7 +554,7 @@ async function mergeFileFavoring(root: string, path: string, side: 'ours' | 'the
  */
 export async function gitSetRemote(root: string, url: string): Promise<GitActionResult> {
   if (!/^(https?:\/\/|git@|ssh:\/\/|file:\/\/)/.test(url.trim())) {
-    return { ok: false, message: 'That does not look like a repository URL' }
+    return { ok: false, message: mainT('team.git.notRepoUrl') }
   }
   const existing = await run(['remote'], root)
   const hadOrigin = existing.stdout.split('\n').includes('origin')
@@ -554,15 +562,15 @@ export async function gitSetRemote(root: string, url: string): Promise<GitAction
     ? ['remote', 'set-url', 'origin', url.trim()]
     : ['remote', 'add', 'origin', url.trim()]
   const setRemote = await run(command, root)
-  if (!setRemote.ok) return { ok: false, message: setRemote.stderr.trim() || 'Could not add remote' }
+  if (!setRemote.ok) return { ok: false, message: setRemote.stderr.trim() || mainT('team.git.addRemoteFailed') }
 
   const reach = await run(['ls-remote', '--heads', 'origin'], root, 30000)
   if (!reach.ok) {
     if (!hadOrigin) await run(['remote', 'remove', 'origin'], root)
-    return failure(reach.stderr, lastLine(reach.stderr) || 'Could not reach the repository')
+    return failure(reach.stderr, lastLine(reach.stderr) || mainT('team.git.cannotReach'))
   }
   const remoteHasContent = reach.stdout.trim().length > 0
-  return { ok: true, message: 'Connected to the shared repository', remoteHasContent }
+  return { ok: true, message: mainT('team.git.connected'), remoteHasContent }
 }
 
 export interface GitBranches {
@@ -586,31 +594,34 @@ export async function gitCheckout(
 ): Promise<GitActionResult> {
   const result = await run(create ? ['checkout', '-b', branch] : ['checkout', branch], root)
   if (result.ok) {
-    return { ok: true, message: create ? `Created and switched to ${branch}` : `Switched to ${branch}` }
+    return { ok: true, message: create ? mainT('team.git.createdBranch', { branch }) : mainT('team.git.switchedBranch', { branch }) }
   }
   if (/would be overwritten/i.test(result.stderr)) {
-    return { ok: false, message: 'Save or discard your changes before switching.' }
+    return { ok: false, message: mainT('team.git.saveOrDiscard') }
   }
-  return { ok: false, message: lastLine(result.stderr) || 'Checkout failed' }
+  return { ok: false, message: lastLine(result.stderr) || mainT('team.git.checkoutFailed') }
 }
 
 export interface GitCommit {
   hash: string
   subject: string
   author: string
+  /** git's own relative date ("2 hours ago", English); prefer `time`. */
   at: string
+  /** Commit time in ms since the epoch, for a relative date in the UI language. */
+  time: number
 }
 
 export async function gitLog(root: string, limit = 20): Promise<GitCommit[]> {
-  const fmt = '%h%x1f%s%x1f%an%x1f%ar'
+  const fmt = '%h%x1f%s%x1f%an%x1f%ar%x1f%at'
   const result = await run(['log', `-${limit}`, `--pretty=format:${fmt}`], root)
   if (!result.ok) return []
   return result.stdout
     .split('\n')
     .filter(Boolean)
     .map((line) => {
-      const [hash, subject, author, at] = line.split('\x1f')
-      return { hash, subject, author, at }
+      const [hash, subject, author, at, unix] = line.split('\x1f')
+      return { hash, subject, author, at, time: Number(unix) * 1000 }
     })
 }
 
@@ -626,7 +637,7 @@ export async function gitDiscard(root: string, paths?: string[]): Promise<GitAct
     return {
       ok: false,
       code: 'no-commits',
-      message: 'There is no saved version to go back to yet. Save a version first.'
+      message: mainT('team.git.noVersionBack')
     }
   }
   const args = [
@@ -642,25 +653,25 @@ export async function gitDiscard(root: string, paths?: string[]): Promise<GitAct
   ]
   if (paths?.length) args.push('--', ...paths)
   const stash = await run(args, root)
-  if (!stash.ok) return { ok: false, message: lastLine(stash.stderr) || 'Could not discard changes' }
+  if (!stash.ok) return { ok: false, message: lastLine(stash.stderr) || mainT('team.git.discardFailed') }
   if (/no local changes to save/i.test(stash.stdout + stash.stderr)) {
-    return { ok: true, message: 'Nothing to discard' }
+    return { ok: true, message: mainT('team.git.nothingToDiscard') }
   }
   const token = (await run(['rev-parse', '--verify', '--quiet', 'refs/stash'], root)).stdout.trim()
-  return { ok: true, message: 'Discarded unsaved changes', undoToken: token || undefined }
+  return { ok: true, message: mainT('team.git.discarded'), undoToken: token || undefined }
 }
 
 /** Bring back changes thrown away by gitDiscard. */
 export async function gitUndoDiscard(root: string, token: string): Promise<GitActionResult> {
-  if (!/^[0-9a-f]{7,64}$/.test(token)) return { ok: false, message: 'Nothing to undo' }
+  if (!/^[0-9a-f]{7,64}$/.test(token)) return { ok: false, message: mainT('team.git.nothingToUndo') }
   const apply = await run(['stash', 'apply', token], root)
   if (!apply.ok) {
-    return { ok: false, message: `Could not bring the changes back: ${lastLine(apply.stderr) || 'apply failed'}` }
+    return { ok: false, message: wrap('team.git.prefix.restore', lastLine(apply.stderr) || mainT('team.git.applyFailed')) }
   }
   const list = await run(['stash', 'list', '--format=%H'], root)
   const index = list.stdout.split('\n').indexOf(token)
   if (index >= 0) await run(['stash', 'drop', `stash@{${index}}`], root)
-  return { ok: true, message: 'Changes restored' }
+  return { ok: true, message: mainT('team.git.restored') }
 }
 
 /** Discard every unsaved change, new files included (undoable, see gitDiscard). */
@@ -671,12 +682,12 @@ export function gitDiscardAll(root: string): Promise<GitActionResult> {
 /** Clone a remote repository into `targetDir` (which must not yet exist). */
 export async function gitClone(url: string, targetDir: string): Promise<GitActionResult> {
   if (!/^(https?:\/\/|git@|ssh:\/\/|file:\/\/)/.test(url.trim())) {
-    return { ok: false, message: 'That does not look like a repository URL' }
+    return { ok: false, message: mainT('team.git.notRepoUrl') }
   }
   const result = await run(['clone', url.trim(), targetDir], undefined, 60000)
   return result.ok
-    ? { ok: true, message: `Cloned into ${targetDir}` }
-    : failure(result.stderr, lastLine(result.stderr) || 'Clone failed')
+    ? { ok: true, message: mainT('team.git.cloned', { dir: targetDir }) }
+    : failure(result.stderr, lastLine(result.stderr) || mainT('team.git.cloneFailed'))
 }
 
 export function repoNameFromUrl(url: string): string {

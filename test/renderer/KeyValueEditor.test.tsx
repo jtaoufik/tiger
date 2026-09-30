@@ -10,6 +10,7 @@ function Harness({ initial }: { initial: KeyValue[] }) {
     <KeyValueEditor
       items={items}
       placeholder={['Header', 'Value']}
+      kind="header"
       onChange={setItems}
     />
   )

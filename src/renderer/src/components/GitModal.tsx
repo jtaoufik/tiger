@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { splitDiff } from '@core/diffView'
+import { timeAgo } from '@core/i18n'
 import type { GitBranches, GitCommit } from '../../../main/git'
 import { setConflict, setupStep, summarizeSync, type ChangeItem } from '../gitUx'
 import { actionLabel } from '../actions'
+import { useT } from '../i18n'
 import { Modal } from './Modal'
 import {
   ChangeList,
+  rich,
   ConflictPanel,
   DiscardConfirm,
   ErrorPanel,
@@ -51,6 +54,7 @@ export function GitModal({
   autoSync = false,
   onClose
 }: Props) {
+  const t = useT()
   const uid = useId()
   const state = useTeamSync(root, { onToast, onWorkingTreeChanged })
   const { status, availability, busy } = state
@@ -95,7 +99,7 @@ export function GitModal({
   }, [autoSync, availability, status])
 
   const saveVersion = async (): Promise<void> => {
-    const result = await state.run('Saving a version…', () =>
+    const result = await state.run(t('team.modal.savingVersion'), () =>
       window.tiger!.git.commit(root, note.note.trim())
     )
     if (result?.ok) note.reset()
@@ -105,15 +109,15 @@ export function GitModal({
     setDiscarding(null)
     const everything = items.length === allItems.length
     const result = await state.run(
-      'Discarding…',
+      t('team.modal.discarding'),
       () => window.tiger!.git.discard(root, everything ? undefined : items.map((i) => i.path)),
       { mutates: true, quiet: true }
     )
     if (result?.ok) {
       const text =
         items.length === 1
-          ? `Discarded changes to ${items[0].name}.`
-          : `Discarded ${items.length} changes.`
+          ? t('team.modal.discardedOne', { name: items[0].name })
+          : t('team.modal.discardedMany', { count: items.length })
       onToast(text)
       setUndo(result.undoToken ? { token: result.undoToken, text } : null)
     }
@@ -124,7 +128,7 @@ export function GitModal({
     const token = undo.token
     setUndo(null)
     await state.run(
-      'Bringing your changes back…',
+      t('team.modal.restoring'),
       () => window.tiger!.git.undoDiscard(root, token),
       {
         mutates: true
@@ -137,7 +141,7 @@ export function GitModal({
     choices?: Record<string, 'mine' | 'theirs'>
   ): Promise<void> => {
     const result = await state.run(
-      'Combining the changes and sharing…',
+      t('team.modal.combining'),
       () => window.tiger!.git.syncResolve(root, prefer, note.note.trim(), choices),
       { mutates: true }
     )
@@ -156,26 +160,23 @@ export function GitModal({
     >
       {availability === 'loading' && (
         <div className="cv-dim" role="status">
-          Checking version tracking…
+          {t('team.modal.checking')}
         </div>
       )}
 
       {availability === 'browser' && (
         <div className="git-empty">
-          <h3>Team sync lives in the desktop app</h3>
-          <p>Open this collection in the Tiger desktop app to share it and get team updates.</p>
+          <h3>{t('team.modal.browserTitle')}</h3>
+          <p>{t('team.modal.browserText')}</p>
         </div>
       )}
 
       {availability === 'no-git' && (
         <div className="git-empty">
-          <h3>Git is not installed</h3>
-          <p>
-            Tiger uses the Git you already have to sync collections, so your SSH keys and
-            credentials keep working. Install it once and come back, no restart needed.
-          </p>
-          <p className="git-hint">
-            On macOS you can also run <code>xcode-select --install</code> in Terminal.
+          <h3>{t('team.modal.noGitTitle')}</h3>
+          <p>{t('team.modal.noGitText')}</p>
+          <p className="git-hint">  {/* i18n-ignore: command in code tag */}
+            {rich(t('team.modal.noGitMac'), { command: <code>xcode-select --install</code> })}
           </p>
           <div className="ts-row">
             <button
@@ -183,10 +184,10 @@ export function GitModal({
               className="btn accent"
               onClick={() => window.tiger?.openExternal?.('https://git-scm.com/downloads')}
             >
-              <DownloadIcon size={14} /> Download Git
+              <DownloadIcon size={14} /> {t('team.modal.downloadGit')}
             </button>
             <button type="button" className="btn" onClick={state.refresh}>
-              <RefreshIcon size={14} /> Check again
+              <RefreshIcon size={14} /> {t('team.modal.checkAgain')}
             </button>
           </div>
         </div>
@@ -209,20 +210,18 @@ export function GitModal({
                 >
                   <RefreshIcon size={14} /> {actionLabel('sync')}
                 </button>
-                <span className="ts-term">
-                  get team's changes, then share yours · git pull + push
-                </span>
+                <span className="ts-term">{t('team.modal.syncTerm')}</span>
               </div>
             )}
             {status.isRepo && status.hasRemote && (
               <button
                 type="button"
                 className="icon-btn ts-check"
-                title="Check for team updates"
-                aria-label="Check for team updates"
+                title={t('team.modal.checkUpdates')}
+                aria-label={t('team.modal.checkUpdates')}
                 disabled={isBusy}
                 onClick={() =>
-                  state.run('Checking for team updates…', () => window.tiger!.git.fetch(root), {
+                  state.run(t('team.modal.checkingUpdates'), () => window.tiger!.git.fetch(root), {
                     quiet: true
                   })
                 }
@@ -249,7 +248,7 @@ export function GitModal({
             <div className="ts-undo" role="status">
               <span>{undo.text}</span>
               <button type="button" className="btn" onClick={undoDiscard}>
-                <UndoIcon size={14} /> Undo
+                <UndoIcon size={14} /> {t('team.modal.undo')}
               </button>
             </div>
           )}
@@ -269,7 +268,7 @@ export function GitModal({
             <section className="ts-changes" aria-labelledby={`${uid}-changes`}>
               <div className="ts-section-head">
                 <h3 className="ts-h" id={`${uid}-changes`}>
-                  Your changes
+                  {t('team.modal.yourChanges')}
                 </h3>
                 <button
                   type="button"
@@ -277,14 +276,14 @@ export function GitModal({
                   disabled={isBusy}
                   onClick={() => setDiscarding(allItems)}
                 >
-                  Discard all…
+                  {t('team.modal.discardAll')}
                 </button>
               </div>
               <ChangeList root={root} groups={groups} busy={isBusy} onDiscard={setDiscarding} />
               {status.isRepo && (
                 <div className="ts-note">
                   <label htmlFor={`${uid}-note`}>
-                    Describe this version <GitTerm>commit message</GitTerm>
+                    {t('team.modal.describe')} <GitTerm>commit message</GitTerm> {/* i18n-ignore: git term */}
                   </label>
                   <input
                     id={`${uid}-note`}
@@ -299,8 +298,8 @@ export function GitModal({
                   />
                   <div className="ts-hint" id={`${uid}-note-hint`}>
                     {note.suggested
-                      ? 'Suggested from your changes. Edit it if you like.'
-                      : 'Shown in the history next to your name.'}
+                      ? t('team.modal.suggested')
+                      : t('team.modal.shownInHistory')}
                   </div>
                   <div className="ts-row">
                     <button
@@ -308,11 +307,11 @@ export function GitModal({
                       className="btn"
                       disabled={isBusy || !note.note.trim()}
                       onClick={saveVersion}
-                      title="Keep a version on this computer without sharing it"
+                      title={t('team.modal.saveTitle')}
                     >
                       <SaveIcon size={14} /> {actionLabel('save-version')}
                     </button>
-                    <span className="ts-term">keeps it here, shares nothing · git commit</span>
+                    <span className="ts-term">{t('team.modal.saveTerm')}</span>
                   </div>
                 </div>
               )}
@@ -322,14 +321,14 @@ export function GitModal({
           {status.isRepo && log.length > 0 && (
             <section className="ts-history" aria-labelledby={`${uid}-hist`}>
               <h3 className="ts-h" id={`${uid}-hist`}>
-                <HistoryIcon size={14} /> Recent versions
+                <HistoryIcon size={14} /> {t('team.modal.recent')}
               </h3>
               <ul>
                 {log.slice(0, advanced ? log.length : 5).map((c) => (
                   <li key={c.hash}>
                     <span className="row-label">{c.subject}</span>
                     <span className="cv-dim">
-                      {c.author} · {c.at}
+                      {c.author} · {c.time ? timeAgo(c.time, t) : c.at}
                     </span>
                     {advanced && <span className="git-hash">{c.hash}</span>}
                   </li>
@@ -347,29 +346,27 @@ export function GitModal({
                 aria-controls={`${uid}-adv`}
                 onClick={() => setAdvanced((a) => !a)}
               >
-                <ChevronIcon size={13} className={`chev ${advanced ? 'open' : ''}`} /> Advanced{' '}
-                <span className="ts-term">for git users</span>
+                <ChevronIcon size={13} className={`chev ${advanced ? 'open' : ''}`} />{' '}
+                {t('team.modal.advanced')}{' '}
+                <span className="ts-term">{t('team.modal.forGitUsers')}</span>
               </button>
               {advanced && (
                 <div className="git-advanced" id={`${uid}-adv`}>
                   <div className="ts-adv-block">
                     <h4>
-                      Version line <GitTerm>branch</GitTerm>
+                      {t('team.modal.versionLine')} <GitTerm>branch</GitTerm> {/* i18n-ignore: git term */}
                     </h4>
-                    <p className="ts-hint">
-                      A separate line of versions, for trying changes without affecting the team's
-                      main one. Teammates see it after you share.
-                    </p>
+                    <p className="ts-hint">{t('team.modal.versionLineHelp')}</p>
                     <div className="git-toolbar">
                       <label className="git-branch-pick">
-                        <span className="cv-dim">Current</span>
+                        <span className="cv-dim">{t('team.modal.current')}</span>
                         <select
                           value={branches?.current ?? ''}
                           disabled={isBusy}
                           onChange={(e) => {
                             const target = e.target.value
                             void state.run(
-                              `Switching to ${target}…`,
+                              t('team.modal.switching', { branch: target }),
                               () => window.tiger!.git.checkout(root, target, false),
                               {
                                 mutates: true
@@ -385,12 +382,12 @@ export function GitModal({
                         </select>
                       </label>
                       <label className="tg-sr-only" htmlFor={`${uid}-branch`}>
-                        New version line name
+                        {t('team.modal.newLineLabel')}
                       </label>
                       <input
                         id={`${uid}-branch`}
                         className="git-newbranch"
-                        placeholder="new line, e.g. feature/refunds"
+                        placeholder={t('team.modal.newLinePlaceholder')}
                         value={newBranch}
                         spellCheck={false}
                         onChange={(e) => setNewBranch(e.target.value)}
@@ -402,31 +399,31 @@ export function GitModal({
                         onClick={() => {
                           const name = newBranch.trim()
                           setNewBranch('')
-                          void state.run(`Creating ${name}…`, () =>
+                          void state.run(t('team.modal.creating', { branch: name }), () =>
                             window.tiger!.git.checkout(root, name, true)
                           )
                         }}
                       >
-                        Create and switch
+                        {t('team.modal.createSwitch')}
                       </button>
                     </div>
                   </div>
 
                   <div className="ts-adv-block">
-                    <h4>One step at a time</h4>
+                    <h4>{t('team.modal.oneStep')}</h4>
                     <div className="ts-row">
                       <button
                         type="button"
                         className="btn"
                         disabled={isBusy || !status.hasUpstream}
-                        title={status.hasUpstream ? 'Fast-forward only' : 'Share once first'}
+                        title={status.hasUpstream ? t('team.modal.fastForward') : t('team.modal.shareOnceFirst')}
                         onClick={() =>
-                          state.run("Getting team's changes…", () => window.tiger!.git.pull(root), {
+                          state.run(t('team.modal.gettingTeam'), () => window.tiger!.git.pull(root), {
                             mutates: true
                           })
                         }
                       >
-                        Get team's changes only <GitTerm>pull --ff-only</GitTerm>
+                        {t('team.modal.getOnly')} <GitTerm>pull --ff-only</GitTerm> {/* i18n-ignore: git term */}
                       </button>
                       <button
                         type="button"
@@ -435,10 +432,10 @@ export function GitModal({
                           isBusy || !status.hasRemote || (status.ahead === 0 && status.hasUpstream)
                         }
                         onClick={() =>
-                          state.run('Sharing your versions…', () => window.tiger!.git.push(root))
+                          state.run(t('team.modal.sharingVersions'), () => window.tiger!.git.push(root))
                         }
                       >
-                        Share versions only <GitTerm>push</GitTerm>
+                        {t('team.modal.shareOnly')} <GitTerm>push</GitTerm> {/* i18n-ignore: git term */}
                       </button>
                     </div>
                   </div>
@@ -446,12 +443,12 @@ export function GitModal({
                   {fullDiff.trim() && (
                     <div className="ts-adv-block">
                       <h4>
-                        All unsaved changes <GitTerm>diff HEAD</GitTerm>
+                        {t('team.modal.allUnsaved')} <GitTerm>diff HEAD</GitTerm> {/* i18n-ignore: git term */}
                       </h4>
                       <div
                         className="git-diff"
                         role="region"
-                        aria-label="All unsaved changes as a diff"
+                        aria-label={t('team.modal.allUnsavedDiff')}
                         tabIndex={0}
                       >
                         {splitDiff(fullDiff).map((line, i) => (

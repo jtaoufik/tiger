@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { Settings, ThemeChoice } from '../../../main/settings'
 import { Logo } from '../Logo'
 import { CheckIcon, CloseIcon, CopyIcon } from './Icons'
@@ -6,6 +6,15 @@ import './SettingsExtras.css'
 import { announce, rovingIndex } from '../a11y'
 import type { DocsPage } from '@core/actions'
 import { HelpLink } from './HelpLink'
+import {
+  LOCALE_NATIVE_NAMES,
+  SUPPORTED_LOCALES,
+  isLanguageChoice,
+  textDirection,
+  type LanguageChoice,
+  type MessageKey
+} from '@core/i18n'
+import { useT } from '../i18n'
 
 interface Props {
   settings: Settings
@@ -13,33 +22,42 @@ interface Props {
 }
 
 const THEMES: ThemeChoice[] = ['light', 'dark', 'system']
+const THEME_KEYS: Record<ThemeChoice, MessageKey> = {
+  light: 'settings.theme.light',
+  dark: 'settings.theme.dark',
+  system: 'settings.theme.system'
+}
 
 type SettingsTab = 'general' | 'network' | 'advanced' | 'mcp' | 'privacy' | 'about'
 
 /** Each section says in one line what it is for, so nobody opens six tabs to find a setting. */
-export const TABS: { id: SettingsTab; label: string; intro: string; docs?: DocsPage }[] = [
-  { id: 'general', label: 'General', intro: 'How Tiger looks and how long it waits for a server.' },
-  {
-    id: 'network',
-    label: 'Network',
-    intro: 'Redirects, SSL checks, proxy and cookies: how requests leave your machine.'
-  },
-  {
-    id: 'advanced',
-    label: 'Advanced',
-    intro:
-      'Certificates for company networks and mutual TLS. Most people never need these.'
-  },
+export const TABS: { id: SettingsTab; labelKey: MessageKey; introKey: MessageKey; docs?: DocsPage }[] = [
+  { id: 'general', labelKey: 'settings.tabs.general.label', introKey: 'settings.tabs.general.intro' },
+  { id: 'network', labelKey: 'settings.tabs.network.label', introKey: 'settings.tabs.network.intro' },
+  { id: 'advanced', labelKey: 'settings.tabs.advanced.label', introKey: 'settings.tabs.advanced.intro' },
   {
     id: 'mcp',
-    label: 'AI assistants (MCP)',
-    intro:
-      'Let Claude, Cursor and other AI assistants list and run the requests of a collection.',
+    labelKey: 'settings.tabs.mcp.label',
+    introKey: 'settings.tabs.mcp.intro',
     docs: 'mcp'
   },
-  { id: 'privacy', label: 'Privacy', intro: 'What Tiger sends about its own usage. Never your requests.' },
-  { id: 'about', label: 'About', intro: 'Version, updates and project information.' }
+  { id: 'privacy', labelKey: 'settings.tabs.privacy.label', introKey: 'settings.tabs.privacy.intro' },
+  { id: 'about', labelKey: 'settings.tabs.about.label', introKey: 'settings.tabs.about.intro' }
 ]
+
+/** Splits a translated sentence at a sentinel so a node (code, link) can sit inside it. */
+const SLOT = ''
+function withNode(text: string, node: ReactNode): ReactNode {
+  const [before, ...rest] = text.split(SLOT)
+  if (rest.length === 0) return text
+  return (
+    <>
+      {before}
+      {node}
+      {rest.join(SLOT)}
+    </>
+  )
+}
 
 function basename(p: string): string {
   return p.replace(/\\/g, '/').split('/').pop() ?? p
@@ -54,6 +72,7 @@ interface FileRowProps {
 }
 
 function FileRow({ label, desc, value, filters, onChange }: FileRowProps) {
+  const t = useT()
   async function pick() {
     const path = await window.tiger?.pickFile(filters)
     if (path != null) onChange(path)
@@ -72,23 +91,23 @@ function FileRow({ label, desc, value, filters, onChange }: FileRowProps) {
           className={`cert-row-label${value ? '' : ' placeholder'}`}
           title={value || undefined}
         >
-          {value ? basename(value) : 'Not set'}
+          {value ? basename(value) : t('settings.files.notSet')}
         </span>
         <button
           type="button"
           className="cert-pick-btn"
           onClick={pick}
-          aria-label={`Choose file: ${label}`}
+          aria-label={t('settings.files.chooseAria', { label })}
         >
-          Choose file
+          {t('settings.files.choose')}
         </button>
         {value && (
           <button
             type="button"
             className="cert-clear-btn"
             onClick={clear}
-            title="Clear"
-            aria-label={`Clear ${label}`}
+            title={t('settings.files.clear')}
+            aria-label={t('settings.files.clearAria', { label })}
           >
             <CloseIcon size={14} />
           </button>
@@ -98,10 +117,60 @@ function FileRow({ label, desc, value, filters, onChange }: FileRowProps) {
   )
 }
 
+/**
+ * Settings > General > Language. Each language is written in its own name
+ * (and tagged with its lang, so screen readers pronounce it right); "System
+ * default" follows the OS and says which language that currently gives.
+ * Switching is live: no restart.
+ */
+export function LanguageRow({
+  value,
+  onChange
+}: {
+  value: LanguageChoice
+  onChange: (language: LanguageChoice) => void
+}) {
+  const t = useT()
+  const id = useId()
+  return (
+    <div className="setting-row">
+      <div>
+        <label className="label" htmlFor={`${id}-lang`}>
+          {t('settings.language.label')}
+        </label>
+        <div className="desc" id={`${id}-lang-desc`}>
+          {t('settings.language.desc')}
+        </div>
+      </div>
+      <select
+        id={`${id}-lang`}
+        className="lang-select"
+        aria-describedby={`${id}-lang-desc`}
+        value={value}
+        onChange={(e) => {
+          if (isLanguageChoice(e.target.value)) onChange(e.target.value)
+        }}
+      >
+        <option value="system">
+          {value === 'system'
+            ? t('settings.language.systemCurrent', { language: LOCALE_NATIVE_NAMES[t.locale] })
+            : t('settings.language.system')}
+        </option>
+        {SUPPORTED_LOCALES.map((locale) => (
+          <option key={locale} value={locale} lang={locale} dir={textDirection(locale)}>
+            {LOCALE_NATIVE_NAMES[locale]}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 export function SettingsView({ settings, onChange }: Props) {
+  const t = useT()
   const [tab, setTab] = useState<SettingsTab>('general')
   const [version, setVersion] = useState('')
-  const [clearLabel, setClearLabel] = useState('Clear cookies')
+  const [clearLabel, setClearLabel] = useState<'clear' | 'cleared'>('clear')
   const [mcpServerPath, setMcpServerPath] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const uid = useId()
@@ -133,9 +202,9 @@ export function SettingsView({ settings, onChange }: Props) {
 
   function handleClearCookies() {
     window.tiger?.clearCookies?.().then(() => {
-      setClearLabel('Cleared')
-      announce('Cookies cleared')
-      setTimeout(() => setClearLabel('Clear cookies'), 1200)
+      setClearLabel('cleared')
+      announce(t('settings.cookies.announceCleared'))
+      setTimeout(() => setClearLabel('clear'), 1200)
     })
   }
 
@@ -145,7 +214,7 @@ export function SettingsView({ settings, onChange }: Props) {
           mcpServers: {
             tiger: {
               command: 'node',
-              args: [mcpServerPath, '<path to your collection folder>']
+              args: [mcpServerPath, t('settings.mcp.pathPlaceholder')]
             }
           }
         },
@@ -158,7 +227,7 @@ export function SettingsView({ settings, onChange }: Props) {
     if (!mcpSnippet) return
     navigator.clipboard.writeText(mcpSnippet).then(() => {
       setCopied(true)
-      announce('Snippet copied')
+      announce(t('settings.mcp.snippetCopied'))
       setTimeout(() => setCopied(false), 1500)
     })
   }
@@ -166,21 +235,21 @@ export function SettingsView({ settings, onChange }: Props) {
   return (
     <section className="panel settings" aria-labelledby={`${uid}-title`}>
       <div className="settings-inner">
-      <h2 id={`${uid}-title`}>Settings</h2>
-      <div className="sub">Preferences are stored locally on this machine.</div>
+      <h2 id={`${uid}-title`}>{t('settings.title')}</h2>
+      <div className="sub">{t('settings.subtitle')}</div>
 
-      <div className="seg settings-tabs" role="tablist" aria-label="Settings sections">
-        {TABS.map((t, i) => (
+      <div className="seg settings-tabs" role="tablist" aria-label={t('settings.sectionsLabel')}>
+        {TABS.map((tabDef, i) => (
           <button
             type="button"
-            key={t.id}
+            key={tabDef.id}
             role="tab"
-            id={`${uid}-tab-${t.id}`}
-            aria-selected={tab === t.id}
+            id={`${uid}-tab-${tabDef.id}`}
+            aria-selected={tab === tabDef.id}
             aria-controls={`${uid}-panel`}
-            tabIndex={tab === t.id ? 0 : -1}
-            className={tab === t.id ? 'on' : ''}
-            onClick={() => setTab(t.id)}
+            tabIndex={tab === tabDef.id ? 0 : -1}
+            className={tab === tabDef.id ? 'on' : ''}
+            onClick={() => setTab(tabDef.id)}
             onKeyDown={(e) => {
               const next = rovingIndex(e.key, i, TABS.length)
               if (next === null) return
@@ -189,18 +258,18 @@ export function SettingsView({ settings, onChange }: Props) {
               ;(e.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus()
             }}
           >
-            {t.label}
+            {t(tabDef.labelKey)}
           </button>
         ))}
       </div>
 
       <div role="tabpanel" id={`${uid}-panel`} aria-labelledby={`${uid}-tab-${tab}`}>
       {(() => {
-        const current = TABS.find((t) => t.id === tab)!
+        const current = TABS.find((def) => def.id === tab)!
         return (
           <p className="settings-intro">
-            <span>{current.intro}</span>
-            {current.docs && <HelpLink page={current.docs} topic={current.label} />}
+            <span>{t(current.introKey)}</span>
+            {current.docs && <HelpLink page={current.docs} topic={t(current.labelKey)} />}
           </p>
         )
       })()}
@@ -209,35 +278,37 @@ export function SettingsView({ settings, onChange }: Props) {
         <>
           <div className="setting-row">
             <div>
-              <div className="label">Appearance</div>
-              <div className="desc">Light glass, dark glass, or follow the system.</div>
+              <div className="label">{t('settings.appearance.label')}</div>
+              <div className="desc">{t('settings.appearance.desc')}</div>
             </div>
-            <div className="seg" role="group" aria-label="Appearance">
-              {THEMES.map((t) => (
+            <div className="seg" role="group" aria-label={t('settings.appearance.label')}>
+              {THEMES.map((theme) => (
                 <button
                   type="button"
-                  key={t}
-                  className={settings.theme === t ? 'on' : ''}
-                  aria-pressed={settings.theme === t}
-                  onClick={() => onChange({ theme: t })}
+                  key={theme}
+                  className={settings.theme === theme ? 'on' : ''}
+                  aria-pressed={settings.theme === theme}
+                  onClick={() => onChange({ theme })}
                 >
-                  {t[0].toUpperCase() + t.slice(1)}
+                  {t(THEME_KEYS[theme])}
                 </button>
               ))}
             </div>
           </div>
 
+          <LanguageRow value={settings.language} onChange={(language) => onChange({ language })} />
+
           <div className="setting-row">
             <div>
-              <div className="label">Request timeout</div>
-              <div className="desc">How long to wait before giving up, in milliseconds.</div>
+              <div className="label">{t('settings.timeout.label')}</div>
+              <div className="desc">{t('settings.timeout.desc')}</div>
             </div>
             <input
               className="num-input"
               type="number"
               min={1000}
               step={1000}
-              aria-label="Request timeout (ms)"
+              aria-label={t('settings.timeout.aria')}
               value={settings.timeoutMs}
               onChange={(e) => onChange({ timeoutMs: Number(e.target.value) || 30000 })}
             />
@@ -245,15 +316,15 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <div className="setting-row">
             <div>
-              <div className="label">Editor font size</div>
-              <div className="desc">Size of the monospace text in editors and the response.</div>
+              <div className="label">{t('settings.fontSize.label')}</div>
+              <div className="desc">{t('settings.fontSize.desc')}</div>
             </div>
             <input
               className="num-input"
               type="number"
               min={10}
               max={22}
-              aria-label="Editor font size"
+              aria-label={t('settings.fontSize.label')}
               value={settings.fontSize}
               onChange={(e) => onChange({ fontSize: Number(e.target.value) || 13 })}
             />
@@ -265,15 +336,15 @@ export function SettingsView({ settings, onChange }: Props) {
         <>
           <div className="setting-row">
             <div>
-              <div className="label">Follow redirects</div>
-              <div className="desc">Automatically follow 3xx responses to their target.</div>
+              <div className="label">{t('settings.redirects.label')}</div>
+              <div className="desc">{t('settings.redirects.desc')}</div>
             </div>
             <button
               type="button"
               className={`switch ${settings.followRedirects ? 'on' : ''}`}
               role="switch"
               aria-checked={settings.followRedirects}
-              aria-label="Follow redirects"
+              aria-label={t('settings.redirects.label')}
               onClick={() => onChange({ followRedirects: !settings.followRedirects })}
             >
               <span className="knob" />
@@ -282,15 +353,15 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <div className="setting-row">
             <div>
-              <div className="label">Verify SSL certificates</div>
-              <div className="desc">Turn off to allow self-signed certificates (development only).</div>
+              <div className="label">{t('settings.ssl.label')}</div>
+              <div className="desc">{t('settings.ssl.desc')}</div>
             </div>
             <button
               type="button"
               className={`switch ${settings.sslVerify ? 'on' : ''}`}
               role="switch"
               aria-checked={settings.sslVerify}
-              aria-label="Verify SSL certificates"
+              aria-label={t('settings.ssl.label')}
               onClick={() => onChange({ sslVerify: !settings.sslVerify })}
             >
               <span className="knob" />
@@ -299,15 +370,15 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <div className="setting-row">
             <div>
-              <div className="label">Use a proxy</div>
-              <div className="desc">Route all requests through an HTTP/HTTPS or SOCKS proxy.</div>
+              <div className="label">{t('settings.proxy.label')}</div>
+              <div className="desc">{t('settings.proxy.desc')}</div>
             </div>
             <button
               type="button"
               className={`switch ${settings.proxyEnabled ? 'on' : ''}`}
               role="switch"
               aria-checked={settings.proxyEnabled}
-              aria-label="Use a proxy"
+              aria-label={t('settings.proxy.label')}
               onClick={() => onChange({ proxyEnabled: !settings.proxyEnabled })}
             >
               <span className="knob" />
@@ -318,13 +389,13 @@ export function SettingsView({ settings, onChange }: Props) {
             <>
               <div className="setting-row">
                 <div>
-                  <div className="label">Proxy URL</div>
-                  <div className="desc">e.g. http://127.0.0.1:8080 or socks5://127.0.0.1:1080</div>
+                  <div className="label">{t('settings.proxy.url.label')}</div>
+                  <div className="desc">{t('settings.proxy.url.desc')}</div>
                 </div>
                 <input
                   className="num-input"
                   style={{ width: 240 }}
-                  aria-label="Proxy URL"
+                  aria-label={t('settings.proxy.url.label')}
                   value={settings.proxyUrl}
                   placeholder="http://host:port"
                   onChange={(e) => onChange({ proxyUrl: e.target.value })}
@@ -333,17 +404,17 @@ export function SettingsView({ settings, onChange }: Props) {
 
               <div className="setting-row">
                 <div>
-                  <div className="label">Proxy username</div>
+                  <div className="label">{t('settings.proxy.username.label')}</div>
                   <div className="desc">
-                    Sent when the proxy asks for authentication. Leave blank for none.
+                    {t('settings.proxy.username.desc')}
                   </div>
                 </div>
                 <input
                   className="num-input"
                   style={{ width: 240 }}
-                  aria-label="Proxy username"
+                  aria-label={t('settings.proxy.username.label')}
                   value={settings.proxyUsername}
-                  placeholder="username"
+                  placeholder={t('settings.proxy.username.placeholder')}
                   spellCheck={false}
                   onChange={(e) => onChange({ proxyUsername: e.target.value })}
                 />
@@ -351,17 +422,17 @@ export function SettingsView({ settings, onChange }: Props) {
 
               <div className="setting-row">
                 <div>
-                  <div className="label">Proxy password</div>
-                  <div className="desc">Stored locally on this machine, never synced.</div>
+                  <div className="label">{t('settings.proxy.password.label')}</div>
+                  <div className="desc">{t('settings.proxy.password.desc')}</div>
                 </div>
                 <input
                   ref={proxyPasswordRef}
                   className="num-input"
                   style={{ width: 240 }}
                   type="password"
-                  aria-label="Proxy password"
+                  aria-label={t('settings.proxy.password.label')}
                   value={localProxyPassword}
-                  placeholder="password"
+                  placeholder={t('settings.proxy.password.placeholder')}
                   onChange={(e) => setLocalProxyPassword(e.target.value)}
                   onBlur={() => onChange({ proxyPassword: localProxyPassword })}
                   onKeyDown={(e) => {
@@ -377,10 +448,9 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <div className="setting-row">
             <div>
-              <div className="label">Persistent cookie jar</div>
+              <div className="label">{t('settings.cookies.label')}</div>
               <div className="desc">
-                Store cookies between sends and sessions. Cookies are saved locally and
-                replayed on subsequent requests to matching domains.
+                {t('settings.cookies.desc')}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -389,13 +459,13 @@ export function SettingsView({ settings, onChange }: Props) {
                 className={`switch ${settings.cookieJarEnabled ? 'on' : ''}`}
                 role="switch"
                 aria-checked={settings.cookieJarEnabled}
-                aria-label="Persistent cookie jar"
+                aria-label={t('settings.cookies.label')}
                 onClick={() => onChange({ cookieJarEnabled: !settings.cookieJarEnabled })}
               >
                 <span className="knob" />
               </button>
               <button type="button" className="cookie-clear-btn" onClick={handleClearCookies}>
-                {clearLabel}
+                {t(clearLabel === 'clear' ? 'settings.cookies.clear' : 'settings.cookies.cleared')}
               </button>
             </div>
           </div>
@@ -406,18 +476,17 @@ export function SettingsView({ settings, onChange }: Props) {
         <>
           <div className="setting-row">
             <div>
-              <div className="label">Certificate exceptions</div>
+              <div className="label">{t('settings.certExceptions.label')}</div>
               <div className="desc">
-                Hostnames (comma-separated) where invalid or internal certificates are accepted,
-                for example intranet.acme.local. Safer than turning verification off globally.
+                {t('settings.certExceptions.desc')}
               </div>
             </div>
             <input
               className="num-input"
               style={{ width: 240 }}
-              aria-label="Certificate exceptions"
+              aria-label={t('settings.certExceptions.label')}
               value={settings.certExceptions}
-              placeholder="host1, host2"
+              placeholder={t('settings.certExceptions.placeholder')}
               spellCheck={false}
               onChange={(e) => onChange({ certExceptions: e.target.value })}
             />
@@ -425,15 +494,15 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <div className="setting-row">
             <div>
-              <div className="label">Maximum redirects</div>
-              <div className="desc">Upper bound when following 3xx responses.</div>
+              <div className="label">{t('settings.maxRedirects.label')}</div>
+              <div className="desc">{t('settings.maxRedirects.desc')}</div>
             </div>
             <input
               className="num-input"
               type="number"
               min={0}
               max={20}
-              aria-label="Maximum redirects"
+              aria-label={t('settings.maxRedirects.label')}
               value={settings.maxRedirects}
               onChange={(e) => onChange({ maxRedirects: Number(e.target.value) || 5 })}
             />
@@ -441,70 +510,69 @@ export function SettingsView({ settings, onChange }: Props) {
 
           <div className="setting-row">
             <div>
-              <div className="label">Client certificate subject filter</div>
+              <div className="label">{t('settings.certSubject.label')}</div>
               <div className="desc">
-                When a server requests a client certificate, pick the one whose subject contains
-                this text
+                {t('settings.certSubject.desc')}
               </div>
             </div>
             <input
               className="num-input"
               style={{ width: 240 }}
-              aria-label="Client certificate subject filter"
+              aria-label={t('settings.certSubject.label')}
               value={settings.clientCertSubject}
-              placeholder="e.g. CN=alice"
+              placeholder={t('settings.certSubject.placeholder')}
               spellCheck={false}
               onChange={(e) => onChange({ clientCertSubject: e.target.value })}
             />
           </div>
 
-          <h3 className="settings-group-label" data-testid="certificates-group">Certificates</h3>
+          <h3 className="settings-group-label" data-testid="certificates-group">{t('settings.certificates.group')}</h3>
 
           <FileRow
-            label="CA bundle (PEM)"
-            desc="Extra certificate authorities to trust, e.g. your company's internal CA."
+            label={t('settings.files.ca.label')}
+            desc={t('settings.files.ca.desc')}
             value={settings.caFile}
-            filters={[{ name: 'PEM Certificate', extensions: ['pem', 'crt', 'cer'] }]}
+            filters={[{ name: t('settings.files.ca.filter'), extensions: ['pem', 'crt', 'cer'] }]}
             onChange={(v) => onChange({ caFile: v })}
           />
 
           <FileRow
-            label="Client certificate (PEM)"
-            desc="Your certificate, for servers that ask who you are (mutual TLS)."
+            label={t('settings.files.clientCert.label')}
+            desc={t('settings.files.clientCert.desc')}
             value={settings.clientCertFile}
-            filters={[{ name: 'PEM Certificate', extensions: ['pem', 'crt', 'cer'] }]}
+            filters={[{ name: t('settings.files.ca.filter'), extensions: ['pem', 'crt', 'cer'] }]}
             onChange={(v) => onChange({ clientCertFile: v })}
           />
 
           <FileRow
-            label="Client key (PEM)"
-            desc="The private key that goes with the client certificate."
+            label={t('settings.files.clientKey.label')}
+            desc={t('settings.files.clientKey.desc')}
             value={settings.clientKeyFile}
-            filters={[{ name: 'PEM Key', extensions: ['pem', 'key'] }]}
+            filters={[{ name: t('settings.files.clientKey.filter'), extensions: ['pem', 'key'] }]}
             onChange={(v) => onChange({ clientKeyFile: v })}
           />
 
           <FileRow
-            label="PFX / P12 bundle"
-            desc="Certificate and key in one file, instead of the two PEM files."
+            label={t('settings.files.pfx.label')}
+            desc={t('settings.files.pfx.desc')}
             value={settings.clientPfxFile}
-            filters={[{ name: 'PFX / P12 Bundle', extensions: ['pfx', 'p12'] }]}
+            filters={[{ name: t('settings.files.pfx.filter'), extensions: ['pfx', 'p12'] }]}
             onChange={(v) => onChange({ clientPfxFile: v })}
           />
 
           <div className="setting-row">
             <div style={{ flex: '0 0 200px', minWidth: 0 }}>
-              <div className="label">Certificate passphrase</div>
-              <div className="desc">Unlocks the key or bundle above, if it has a password.</div>
+              <div className="label">{t('settings.passphrase.label')}</div>
+              <div className="desc">{t('settings.passphrase.desc')}</div>
             </div>
             <input
               ref={passphraseRef}
               className="num-input"
               style={{ width: 240 }}
               type="password"
-              aria-label="Certificate passphrase"
+              aria-label={t('settings.passphrase.label')}
               value={localPassphrase}
-              placeholder="passphrase"
+              placeholder={t('settings.passphrase.placeholder')}
               onChange={(e) => setLocalPassphrase(e.target.value)}
               onBlur={() => onChange({ certPassphrase: localPassphrase })}
               onKeyDown={(e) => {
@@ -517,7 +585,7 @@ export function SettingsView({ settings, onChange }: Props) {
           </div>
 
           <p className="cert-hint">
-            Requests using imported certificates bypass the proxy.
+            {t('settings.certHint')}
           </p>
         </>
       )}
@@ -525,10 +593,11 @@ export function SettingsView({ settings, onChange }: Props) {
       {tab === 'mcp' && (
         <>
           <p className="mcp-intro">
-            Tiger ships a built-in MCP server (Model Context Protocol) that exposes your
-            collections to Claude Desktop and other MCP-compatible clients. Add the snippet below
-            to your{' '}
-            <code>claude_desktop_config.json</code> to connect.
+            {withNode(
+              t('settings.mcp.intro', { file: SLOT }),
+              // i18n-ignore: file name
+              <code>claude_desktop_config.json</code>
+            )}
           </p>
 
           {mcpSnippet ? (
@@ -538,22 +607,24 @@ export function SettingsView({ settings, onChange }: Props) {
                 type="button"
                 className="mcp-copy-btn"
                 onClick={handleCopyMcp}
-                title="Copy snippet"
-                aria-label={copied ? 'Snippet copied' : 'Copy snippet'}
+                title={t('settings.mcp.copySnippet')}
+                aria-label={copied ? t('settings.mcp.snippetCopied') : t('settings.mcp.copySnippet')}
               >
                 {copied ? <CheckIcon size={13} /> : <CopyIcon size={13} />}
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? t('common.copied') : t('common.copy')}
               </button>
             </div>
           ) : (
             <div className="mcp-code-block-wrap">
-              <code className="mcp-code-block">Loading…</code>
+              <code className="mcp-code-block">{t('common.loading')}</code>
             </div>
           )}
 
           <p className="mcp-note">
-            Replace <code>&lt;path to your collection folder&gt;</code> with the absolute path to
-            the folder you opened in Tiger. You can have one entry per collection.
+            {withNode(
+              t('settings.mcp.note', { placeholder: SLOT }),
+              <code>{t('settings.mcp.pathPlaceholder')}</code>
+            )}
           </p>
         </>
       )}
@@ -561,10 +632,9 @@ export function SettingsView({ settings, onChange }: Props) {
       {tab === 'privacy' && (
         <div className="setting-row">
           <div>
-            <div className="label">Anonymous usage analytics</div>
+            <div className="label">{t('settings.analytics.label')}</div>
             <div className="desc" id={`${uid}-analytics-desc`}>
-              On by default. Sends anonymous, aggregate events only (never URLs, headers or bodies).
-              Turn off anytime.
+              {t('settings.analytics.desc')}
             </div>
           </div>
           <button
@@ -572,7 +642,7 @@ export function SettingsView({ settings, onChange }: Props) {
             className={`switch ${settings.analyticsEnabled ? 'on' : ''}`}
             role="switch"
             aria-checked={settings.analyticsEnabled}
-            aria-label="Analytics"
+            aria-label={t('settings.analytics.aria')}
             aria-describedby={`${uid}-analytics-desc`}
             onClick={() => onChange({ analyticsEnabled: !settings.analyticsEnabled })}
           >
@@ -584,11 +654,9 @@ export function SettingsView({ settings, onChange }: Props) {
       {tab === 'about' && (
         <div className="setting-row">
           <div>
-            <div className="label">Install updates automatically</div>
+            <div className="label">{t('settings.autoUpdate.label')}</div>
             <div className="desc" id={`${uid}-updates-desc`}>
-              Downloads new versions in the background and installs them when you restart or quit
-              Tiger. When off, Tiger asks before downloading. Microsoft Store and Linux .deb installs
-              update through their own store or package manager.
+              {t('settings.autoUpdate.desc')}
             </div>
           </div>
           <button
@@ -596,7 +664,7 @@ export function SettingsView({ settings, onChange }: Props) {
             className={`switch ${settings.autoInstallUpdates !== false ? 'on' : ''}`}
             role="switch"
             aria-checked={settings.autoInstallUpdates !== false}
-            aria-label="Install updates automatically"
+            aria-label={t('settings.autoUpdate.label')}
             aria-describedby={`${uid}-updates-desc`}
             onClick={() => onChange({ autoInstallUpdates: settings.autoInstallUpdates === false })}
           >
@@ -620,8 +688,10 @@ export function SettingsView({ settings, onChange }: Props) {
           </span>
           <div>
             <div style={{ fontWeight: 600, color: 'var(--text)' }}>Tiger</div>
-            <div style={{ fontSize: 12 }}>A local-first API client for teams.</div>
-            {version && <div style={{ fontSize: 12 }}>Version {version}</div>}
+            <div style={{ fontSize: 12 }}>{t('settings.about.tagline')}</div>
+            {version && (
+              <div style={{ fontSize: 12 }}>{t('settings.about.version', { version })}</div>
+            )}
           </div>
         </div>
       )}

@@ -9,7 +9,8 @@
   align-items: center;
   gap: 12px;
   max-width: calc(100vw - 32px);
-  padding: 10px 12px 10px 16px;
+  padding-block: 10px;
+  padding-inline: 16px 12px;
   border-radius: 12px;
   background: var(--glass-modal);
   border: 1px solid var(--border-strong);
@@ -50,7 +51,8 @@
   right: 18px;
   transform: none;
   gap: 8px;
-  padding: 6px 6px 6px 12px;
+  padding-block: 6px;
+  padding-inline: 12px 6px;
   border-radius: 99px;
   font-size: 0.75rem;
   font-weight: 500;

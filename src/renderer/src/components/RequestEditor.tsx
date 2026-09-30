@@ -8,9 +8,11 @@ import {
   type TigerRequest
 } from '@core/types'
 import type { BuiltRequest } from '@core/request'
+import type { MessageKey } from '@core/i18n'
 import { formatJsonText, isValidJson, minifyJsonText } from '@core/jsonHighlight'
 import { KeyValueEditor } from './KeyValueEditor'
-import { REQUEST_SECTIONS, type RequestSectionId } from '@core/actions'
+import { REQUEST_SECTIONS, sectionDescription, sectionLabel, type RequestSectionId } from '@core/actions'
+import { useT } from '../i18n'
 import { actionTitle } from '../actions'
 import { HelpLink } from './HelpLink'
 import { CodePane, PerfPane } from '../surfaces'
@@ -41,7 +43,18 @@ interface Props {
 
 type Tab = RequestSectionId
 
+/** The scripting API: code, not translated. */
+const SCRIPT_API =
+  'tiger.getVar(name), tiger.setVar(name, value), tiger.response (status, headers, body, json), tiger.test(name, fn), tiger.expect(cond, message), tiger.log(...)'
+
 const BODY_TYPES: BodyType[] = ['none', 'json', 'xml', 'text', 'form', 'graphql', 'multipart']
+
+/** Format ids (json, xml, form...) are names; only "none" and "text" are words. */
+function bodyTypeKey(bt: BodyType): MessageKey | undefined {
+  if (bt === 'none') return 'request.body.typeNone'
+  if (bt === 'text') return 'request.body.typeText'
+  return undefined
+}
 
 export function RequestEditor({
   request,
@@ -57,6 +70,11 @@ export function RequestEditor({
   perf,
   showSection
 }: Props) {
+  const t = useT()
+  const bodyTypeLabel = (bt: BodyType) => {
+    const key = bodyTypeKey(bt)
+    return key ? t(key) : bt
+  }
   const [tab, setTab] = useState<Tab>(showSection?.id ?? 'params')
   useEffect(() => {
     if (showSection) setTab(showSection.id)
@@ -107,14 +125,19 @@ export function RequestEditor({
   const state: Partial<Record<Tab, { count?: number; flag?: string }>> = {
     params: { count: enabledCount(request.query) },
     headers: { count: enabledCount(request.headers) },
-    auth: { flag: hasAuth ? 'set' : undefined },
-    body: { flag: request.body.type !== 'none' ? request.body.type : undefined },
+    auth: { flag: hasAuth ? t('request.flag.set') : undefined },
+    body: { flag: request.body.type !== 'none' ? bodyTypeLabel(request.body.type) : undefined },
     capture: { count: enabledCount(request.captures ?? []) },
-    scripts: { flag: hasScripts ? 'has scripts' : undefined },
-    docs: { flag: hasDocs ? 'written' : undefined }
+    scripts: { flag: hasScripts ? t('request.flag.hasScripts') : undefined },
+    docs: { flag: hasDocs ? t('request.flag.written') : undefined }
   }
-  const tabDefs = REQUEST_SECTIONS.map((sec) => ({ ...sec, ...state[sec.id] }))
-  const current = REQUEST_SECTIONS.find((sec) => sec.id === tab)!
+  const tabDefs = REQUEST_SECTIONS.map((sec) => ({
+    ...sec,
+    label: sectionLabel(sec.id, t),
+    description: sectionDescription(sec.id, t),
+    ...state[sec.id]
+  }))
+  const current = tabDefs.find((sec) => sec.id === tab)!
   /** One-line explanation plus a guide link, for the less obvious sections. */
   const intro = (
     <p className="panel-intro" id={`${uid}-intro`}>
@@ -124,7 +147,7 @@ export function RequestEditor({
   )
   const tabs = tablist(
     `${uid}-req`,
-    tabDefs.map((t) => t.id),
+    tabDefs.map((sec) => sec.id),
     tab,
     setTab
   )
@@ -138,14 +161,14 @@ export function RequestEditor({
     !request.body.content.includes('{{')
 
   return (
-    <section className="panel editor" aria-label="Request editor">
+    <section className="panel editor" aria-label={t('request.editor.label')}>
       <div className="name-row">
         <input
           className="req-name"
           value={request.name}
           spellCheck={false}
-          placeholder="Request name"
-          aria-label="Request name"
+          placeholder={t('request.name.label')}
+          aria-label={t('request.name.label')}
           title={request.name.length > 40 ? request.name : undefined}
           onChange={(e) => set({ name: e.target.value })}
         />
@@ -153,8 +176,8 @@ export function RequestEditor({
           <button
             type="button"
             className="icon-btn save-btn"
-            title={dirty ? `Unsaved changes. ${actionTitle('save')}` : actionTitle('save')}
-            aria-label={dirty ? 'Save request (unsaved changes)' : 'Save request'}
+            title={dirty ? t('request.save.titleDirty', { action: actionTitle('save') }) : actionTitle('save')}
+            aria-label={dirty ? t('request.save.labelDirty') : t('request.save.label')}
             onClick={onSave}
           >
             <SaveIcon />
@@ -165,7 +188,7 @@ export function RequestEditor({
       <div className="urlbar" style={{ paddingTop: 8 }}>
         <select
           className="method-select"
-          aria-label="HTTP method"
+          aria-label={t('request.method.label')}
           value={request.method}
           onChange={(e) => set({ method: e.target.value as TigerRequest['method'] })}
         >
@@ -180,7 +203,7 @@ export function RequestEditor({
           spellCheck={false}
           value={request.url}
           placeholder="https://api.example.com/users/{{userId}}"
-          aria-label="Request URL"
+          aria-label={t('request.url.label')}
           aria-describedby={missingVars.length > 0 ? `${uid}-missing` : undefined}
           title={request.url.length > 60 ? request.url : undefined}
           onChange={(e) => set({ url: e.target.value })}
@@ -191,43 +214,44 @@ export function RequestEditor({
           }}
         />
         {sending ? (
-          <button type="button" className="btn danger" onClick={onCancel} title="Cancel request">
-            Cancel
+          <button type="button" className="btn danger" onClick={onCancel} title={t('request.cancel.title')}>
+            {t('common.cancel')}
           </button>
         ) : (
           <button type="button" className="btn accent" onClick={onSend} title={actionTitle('send')}>
-            Send
+            {t('request.send')}
           </button>
         )}
       </div>
       {missingVars.length > 0 && (
         <div className="warn-row" role="status" id={`${uid}-missing`}>
-          Unresolved variables: {missingVars.map((v) => `{{${v}}}`).join(' ')}
-          <span className="warn-hint">define them in the active environment</span>
+          {t('request.missing.text', { vars: missingVars.map((v) => `{{${v}}}`).join(' ') })}
+          <span className="warn-hint">{t('request.missing.hint')}</span>
         </div>
       )}
 
-      <div className="tabs" role="tablist" aria-label="Request sections" onKeyDown={tabs.onKeyDown}>
-        {tabDefs.map((t) => {
-          const name = t.count ? `${t.label}, ${t.count}` : t.flag ? `${t.label}, ${t.flag}` : t.label
+      <div className="tabs" role="tablist" aria-label={t('request.sections.label')} onKeyDown={tabs.onKeyDown}>
+        {tabDefs.map((sec) => {
+          const detail = sec.count ? String(sec.count) : sec.flag
+          const name = detail ? t('request.tab.withDetail', { label: sec.label, detail }) : sec.label
           return (
             <button
-              key={t.id}
+              key={sec.id}
               type="button"
-              className={`tab ${tab === t.id ? 'active' : ''}`}
+              className={`tab ${tab === sec.id ? 'active' : ''}`}
               aria-label={name}
-              title={t.description}
-              {...tabs.tab(t.id)}
+              title={sec.description}
+              {...tabs.tab(sec.id)}
             >
-              {t.label}
-              {t.count ? (
+              {sec.label}
+              {sec.count ? (
                 <>
                   {' '}
                   <span className="count" aria-hidden="true">
-                    {t.count}
+                    {sec.count}
                   </span>
                 </>
-              ) : t.flag ? (
+              ) : sec.flag ? (
                 <span className="dot" aria-hidden="true" />
               ) : null}
             </button>
@@ -239,14 +263,16 @@ export function RequestEditor({
         {tab === 'params' && (
           <KeyValueEditor
             items={request.query}
-            placeholder={['Parameter', 'Value']}
+            placeholder={[t('request.param.name'), t('common.value')]}
+            kind="param"
             onChange={(query) => set({ query })}
           />
         )}
         {tab === 'headers' && (
           <KeyValueEditor
             items={request.headers}
-            placeholder={['Header', 'Value']}
+            placeholder={[t('request.header.name'), t('common.value')]}
+            kind="header"
             onChange={(headers) => set({ headers })}
           />
         )}
@@ -257,16 +283,16 @@ export function RequestEditor({
         {tab === 'body' && (
           <div className="body-pane">
             <div className="body-toolbar">
-              <div className="seg" role="group" aria-label="Body type">
-                {BODY_TYPES.map((t) => (
+              <div className="seg" role="group" aria-label={t('request.body.type')}>
+                {BODY_TYPES.map((bt) => (
                   <button
-                    key={t}
+                    key={bt}
                     type="button"
-                    className={request.body.type === t ? 'on' : ''}
-                    aria-pressed={request.body.type === t}
-                    onClick={() => set({ body: { ...request.body, type: t } })}
+                    className={request.body.type === bt ? 'on' : ''}
+                    aria-pressed={request.body.type === bt}
+                    onClick={() => set({ body: { ...request.body, type: bt } })}
                   >
-                    {t}
+                    {bodyTypeLabel(bt)}
                   </button>
                 ))}
               </div>
@@ -274,37 +300,37 @@ export function RequestEditor({
                 <>
                   {jsonInvalid && (
                     <span className="json-bad" id={`${uid}-json-bad`}>
-                      Invalid JSON
+                      {t('request.body.jsonInvalid')}
                     </span>
                   )}
                   <div className="body-toolbar-actions">
                     <button
                       type="button"
                       className="btn ghost body-tool"
-                      title="Pretty-print the JSON body"
+                      title={t('request.body.formatTitle')}
                       onClick={() => {
                         const result = formatJsonText(request.body.content)
                         if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
                       }}
                     >
-                      Format
+                      {t('request.body.format')}
                     </button>
                     <button
                       type="button"
                       className="btn ghost body-tool"
-                      title="Remove whitespace from the JSON body"
+                      title={t('request.body.minifyTitle')}
                       onClick={() => {
                         const result = minifyJsonText(request.body.content)
                         if (result.ok) set({ body: { ...request.body, content: result.formatted! } })
                       }}
                     >
-                      Minify
+                      {t('request.body.minify')}
                     </button>
                     <button
                       type="button"
                       className="icon-btn body-copy"
-                      title="Copy body"
-                      aria-label={copiedBody ? 'Body copied' : 'Copy body'}
+                      title={t('request.body.copy')}
+                      aria-label={copiedBody ? t('request.body.copied') : t('request.body.copy')}
                       onClick={copyBody}
                     >
                       {copiedBody ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
@@ -314,17 +340,18 @@ export function RequestEditor({
               )}
             </div>
             <span className="tg-sr-only" role="status" aria-live="polite">
-              {copiedBody ? 'Body copied to clipboard' : ''}
+              {copiedBody ? t('request.body.copiedStatus') : ''}
             </span>
             {request.body.type === 'none' && (
               <div className="body-empty">
-                This request has no body. Pick a type above (json, form, multipart...) to add one.
+                {t('request.body.empty')}
               </div>
             )}
             {request.body.type === 'form' && (
               <KeyValueEditor
                 items={formRows}
-                placeholder={['Field', 'Value']}
+                placeholder={[t('request.field.name'), t('common.value')]}
+                kind="field"
                 onChange={(kv) => {
                   setFormRows(kv)
                   set({ body: { ...request.body, content: kvToForm(kv) } })
@@ -343,24 +370,26 @@ export function RequestEditor({
             {request.body.type === 'graphql' && (
               <div className="gql-body">
                 <label className="gql-vars-label" htmlFor={`${uid}-gql-query`}>
-                  Query
+                  {t('request.body.query')}
                 </label>
                 <textarea
                   id={`${uid}-gql-query`}
                   className="code-area gql-query"
                   spellCheck={false}
                   value={request.body.content}
+                  // i18n-ignore: code sample
                   placeholder={'query {\n  viewer { id name }\n}'}
                   onChange={(e) => set({ body: { ...request.body, content: e.target.value } })}
                 />
                 <label className="gql-vars-label" htmlFor={`${uid}-gql-vars`}>
-                  Variables (JSON)
+                  {t('request.body.variablesJson')}
                 </label>
                 <textarea
                   id={`${uid}-gql-vars`}
                   className="code-area gql-vars"
                   spellCheck={false}
                   value={request.body.variables ?? ''}
+                  // i18n-ignore: code sample
                   placeholder={'{ "id": 1 }'}
                   onChange={(e) => set({ body: { ...request.body, variables: e.target.value } })}
                 />
@@ -370,16 +399,17 @@ export function RequestEditor({
               <textarea
                 className="code-area"
                 spellCheck={false}
-                aria-label={`Request body (${request.body.type.toUpperCase()})`}
+                aria-label={t('request.body.ariaLabel', { type: request.body.type.toUpperCase() })}
                 aria-invalid={jsonInvalid || undefined}
                 aria-describedby={jsonInvalid ? `${uid}-json-bad` : undefined}
                 value={request.body.content}
+                // i18n-ignore: code sample
                 placeholder={
                   request.body.type === 'json'
                     ? '{\n  "name": "Ada",\n  "email": "ada@example.com"\n}'
                     : request.body.type === 'xml'
                       ? '<user>\n  <name>Ada</name>\n</user>'
-                      : 'Raw body text'
+                      : t('request.body.rawPlaceholder')
                 }
                 onChange={(e) => set({ body: { ...request.body, content: e.target.value } })}
               />
@@ -391,14 +421,13 @@ export function RequestEditor({
             {intro}
             <KeyValueEditor
               items={request.captures ?? []}
-              placeholder={['Variable', 'body.data.id']}
-              columns={['Variable', 'Read from response']}
-              noun="Saved value"
+              placeholder={[t('request.variable.name'), 'body.data.id']}
+              columns={[t('request.variable.name'), t('request.capture.readFrom')]}
+              kind="capture"
               onChange={(captures) => set({ captures })}
             />
             <p className="cv-dim script-help">
-              Left: the variable to write. Right: where to read it, e.g. status,
-              header.x-request-id or body.data[0].id. Use it later as {'{{variable}}'}.
+              {t('request.capture.help', { example: '{{variable}}' })}
             </p>
           </>
         )}
@@ -407,8 +436,8 @@ export function RequestEditor({
             {intro}
             <div className="script-block">
               <label className="script-label" htmlFor={`${uid}-pre`}>
-                Pre-request script
-                <span className="cv-dim"> runs before the request is sent</span>
+                {t('request.scripts.pre')}
+                <span className="cv-dim"> {t('request.scripts.preHint')}</span>
               </label>
               <textarea
                 id={`${uid}-pre`}
@@ -421,8 +450,8 @@ export function RequestEditor({
             </div>
             <div className="script-block">
               <label className="script-label" htmlFor={`${uid}-post`}>
-                Post-response script
-                <span className="cv-dim"> runs after the response, for captures and tests</span>
+                {t('request.scripts.post')}
+                <span className="cv-dim"> {t('request.scripts.postHint')}</span>
               </label>
               <textarea
                 id={`${uid}-post`}
@@ -436,8 +465,7 @@ export function RequestEditor({
               />
             </div>
             <div className="cv-dim script-help">
-              API: tiger.getVar(name), tiger.setVar(name, value), tiger.response (status, headers,
-              body, json), tiger.test(name, fn), tiger.expect(cond, message), tiger.log(...)
+              {t('request.scripts.api', { calls: SCRIPT_API })}
             </div>
           </div>
         )}
@@ -446,9 +474,9 @@ export function RequestEditor({
           <textarea
             className="code-area"
             spellCheck={false}
-            aria-label="Request notes (Markdown)"
+            aria-label={t('request.docs.label')}
             value={request.docs ?? ''}
-            placeholder={'## What this does\nReturns the current user. Needs a bearer token.'}
+            placeholder={t('request.docs.placeholder')}
             onChange={(e) => set({ docs: e.target.value })}
           />
         )}

@@ -1,8 +1,10 @@
 import type { KeyboardEvent } from 'react'
+import { logicalArrow } from '../a11y'
 
 /**
  * WAI-ARIA tabs with automatic activation: Left/Right (and Up/Down) move and
- * select, Home/End jump to the ends, focus follows the selected tab.
+ * select, Home/End jump to the ends, focus follows the selected tab. In a
+ * right-to-left layout Left moves to the next tab (reading order).
  * Ids are derived from a per-instance prefix so tabs and panels can point at
  * each other with aria-controls / aria-labelledby.
  */
@@ -13,7 +15,7 @@ export function tablist<T extends string>(prefix: string, ids: readonly T[], cur
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     const i = ids.indexOf(current)
     let next = -1
-    switch (e.key) {
+    switch (logicalArrow(e.key)) {
       case 'ArrowRight':
       case 'ArrowDown':
         next = (i + 1) % ids.length

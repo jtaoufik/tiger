@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { setLocale } from '../../src/renderer/src/i18n'
 import { PaletteModal } from '../../src/renderer/src/components/PaletteModal'
 
 const items = [
@@ -56,5 +57,24 @@ describe('PaletteModal combobox', () => {
     render(<PaletteModal items={items} onPick={() => {}} onClose={onClose} />)
     fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Escape' })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  afterEach(async () => {
+    await act(() => setLocale('en'))
+  })
+
+  it('renders in French and Arabic', async () => {
+    await act(() => setLocale('fr'))
+    const { unmount } = render(<PaletteModal items={items} onPick={() => {}} onCommand={() => {}} onClose={() => {}} />)
+    expect(screen.getByRole('dialog', { name: 'Palette de commandes' })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Rechercher des requêtes et des commandes…')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('3 requêtes et 6 commandes')
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zzzz' } })
+    expect(screen.getByText('Aucun résultat')).toBeInTheDocument()
+    unmount()
+    await act(() => setLocale('ar'))
+    render(<PaletteModal items={items} onPick={() => {}} onClose={() => {}} />)
+    expect(screen.getByRole('dialog', { name: 'الانتقال إلى طلب' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('3 طلبات')
   })
 })

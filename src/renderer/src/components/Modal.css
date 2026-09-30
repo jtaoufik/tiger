@@ -21,7 +21,8 @@
 /* Header: title left, close right, one line with a tooltip when truncated. */
 .modal-backdrop .modal-head {
   gap: 12px;
-  padding: 14px 14px 14px 20px;
+  padding-block: 14px;
+  padding-inline: 20px 14px;
 }
 .modal-backdrop .modal-title {
   flex: 1;
@@ -38,7 +39,7 @@
   flex-shrink: 0;
   width: 30px;
   height: 30px;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .modal-backdrop .modal-body {
   padding: 18px 20px 20px;
@@ -64,7 +65,7 @@
   background: color-mix(in srgb, var(--glass-strong) 55%, transparent);
 }
 .modal-foot .modal-foot-start {
-  margin-right: auto;
+  margin-inline-end: auto;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -133,7 +134,7 @@
 .req-mark {
   color: var(--text-dim);
   font-weight: 500;
-  margin-left: 4px;
+  margin-inline-start: 4px;
 }
 
 /* Empty states inside dialogs: icon, one line, one action. */
@@ -194,5 +195,5 @@
 
 /* Help "?" sits right of the title; the close button follows it directly. */
 .modal-head .help-link + .modal-close {
-  margin-left: 0;
+  margin-inline-start: 0;
 }

@@ -71,6 +71,7 @@ See [all downloads and checksums](https://github.com/jtaoufik/tiger/releases/lat
 - **Code snippets and cookies.** Turn any request into curl, JavaScript fetch or Python. A persistent cookie jar with cross-origin stripping on redirects.
 - **Keyboard-first.** A shortcuts overlay on Cmd/Ctrl+/, a command palette, tab cycling, inline rename and drag and drop. A native File, Edit, Request, View, Window and Help menu on every platform.
 - **Accessible.** Readable contrast, full keyboard use, screen reader announcements and Windows High Contrast support.
+- **Six languages.** English, Simplified Chinese (中文), Hindi (हिन्दी), Spanish (Español), French (Français) and Arabic (العربية) with a full right-to-left layout. Tiger starts in your system language; Settings > General > Language switches the app, its menus and dialogs live, without a restart.
 
 <p align="center">
   <img src="docs/ux/git-after-04-changes-overview.png" width="430" alt="Tiger Team sync card for a Payments API collection showing three local changes with a Sync with team button" />

@@ -43,7 +43,9 @@ import { ImportReportModal, importReportSentence } from './components/ImportRepo
 import { ImportDropZone } from './components/ImportDropZone'
 import { ConfirmModal } from './components/ConfirmModal'
 import { PromptModal } from './components/PromptModal'
-import { REVEAL_LABEL } from './platform'
+import { REVEAL_LABEL_KEY } from './platform'
+import { setLocale, t, t as tr, useT } from './i18n'
+import { resolveLanguage } from '@core/i18n'
 import { Modal } from './components/Modal'
 import { AuthEditor } from './components/AuthEditor'
 import { ContextMenu, type MenuItem } from './components/ContextMenu'
@@ -137,6 +139,7 @@ interface Toast {
 
 const FALLBACK_SETTINGS: Settings = {
   theme: 'system',
+  language: 'system',
   timeoutMs: 30000,
   fontSize: 13,
   followRedirects: true,
@@ -233,6 +236,9 @@ function downloadText(filename: string, text: string): boolean {
 let toastSeq = 0
 
 export default function App() {
+  // Re-render on a language switch; `t` (module-level) always reads the
+  // active language, so callbacks never hold a stale translator.
+  useT()
   const [settings, setSettings] = useState<Settings>(FALLBACK_SETTINGS)
   const [modal, setModal] = useState<ModalKind>('none')
   const [importReport, setImportReport] = useState<{
@@ -370,9 +376,10 @@ export default function App() {
     for (const id of ids) deletedIds.current.delete(id)
   }, [])
 
-  const toast = useCallback((text: string) => {
+  const toast = useCallback((text: string, opts?: { error?: boolean }) => {
     const id = ++toastSeq
-    const error = looksLikeError(text)
+    // Callers flag failures explicitly: the regex fallback only knows English.
+    const error = opts?.error ?? looksLikeError(text)
     setToasts((prev) => [...prev, { id, text, error }])
     // Errors stay up longer: they are the ones people need to read.
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), error ? 6000 : 2600)
@@ -450,6 +457,12 @@ export default function App() {
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => ({ ...prev, ...patch }))
     if (patch.analyticsEnabled !== undefined) setAnalyticsEnabled(patch.analyticsEnabled)
+    if (patch.language !== undefined && !window.tiger?.setSettings) {
+      // No main process (browser preview, tests): resolve here. With the
+      // desktop bridge, main resolves "System default", rebuilds the native
+      // menu and pushes the language to every window (see followMainLocale).
+      void setLocale(resolveLanguage(patch.language, navigator.languages ?? [navigator.language]))
+    }
     window.tiger?.setSettings(patch).then(setSettings)
   }, [])
 
@@ -795,7 +808,7 @@ export default function App() {
       if (!captured.length) return
       const { key, env } = activeEnvRef.current
       if (!env || !key) {
-        toast('Captured values need an active environment')
+        toast(t('app.toast.capturedNeedsEnv'))
         return
       }
       const merge = (base: TigerEnvironment): TigerEnvironment => {
@@ -825,7 +838,7 @@ export default function App() {
           col.environments.map((e) => (e.name === envName ? { ...e, data: next } : e))
         )
       }
-      toast(`Captured: ${captured.map((c) => c.name).join(', ')}`)
+      toast(t('app.toast.captured', { names: captured.map((c) => c.name).join(', ') }))
     },
     [collections, setCollectionEnvironments, toast]
   )
@@ -860,7 +873,7 @@ export default function App() {
           request: scriptRequest
         })
         headerChanges = pre.headerChanges
-        if (pre.error) toast(`Pre-request script error: ${pre.error}`)
+        if (pre.error) toast(t('app.toast.preScriptError', { message: pre.error }), { error: true })
         const delta = scriptVarDelta(baseVars, pre.vars)
         if (delta.length) {
           envForSend = {
@@ -905,7 +918,7 @@ export default function App() {
               timeMs: data.timeMs
             }
           })
-          if (post.error) toast(`Post-response script error: ${post.error}`)
+          if (post.error) toast(t('app.toast.postScriptError', { message: post.error }), { error: true })
           const delta = scriptVarDelta(envToVars(envForSend), post.vars)
           if (delta.length) applyCaptures(delta)
           tests = post.tests.length ? post.tests : undefined
@@ -915,14 +928,21 @@ export default function App() {
             const failed = post.tests.length - passed
             toast(
               failed
-                ? `Tests: ${passed} passed, ${failed} failed`
-                : `Tests: ${passed} passed`
+                ? t('app.toast.testsMixed', { passed, failed })
+                : t('app.toast.testsPassed', { passed }),
+              { error: failed > 0 }
             )
           }
         }
         setResponses((prev) => ({ ...prev, [id]: { loading: false, data, tests, logs } }))
         announce(
-          `Response ${data.status}${data.statusText ? ` ${data.statusText}` : ''} in ${data.timeMs} ms`,
+          data.statusText
+            ? t('app.announce.responseText', {
+                status: data.status,
+                statusText: data.statusText,
+                time: data.timeMs
+              })
+            : t('app.announce.response', { status: data.status, time: data.timeMs }),
           { assertive: !data.ok }
         )
       }
@@ -930,7 +950,7 @@ export default function App() {
     } catch (e) {
       if (!deletedIds.current.has(id)) {
         setResponses((prev) => ({ ...prev, [id]: { loading: false, error: (e as Error).message } }))
-        announce(`Request failed: ${(e as Error).message}`, { assertive: true })
+        announce(t('app.announce.requestFailed', { message: (e as Error).message }), { assertive: true })
       }
     } finally {
       setSendingIds((prev) => {
@@ -949,7 +969,7 @@ export default function App() {
       await window.tiger.writeFile(path, text)
       savedText.current[activeId] = text
       editedIds.current.delete(activeId)
-      toast('Saved')
+      toast(t('app.toast.saved'))
     }
   }, [activeId, active, pathById, toast])
 
@@ -1054,35 +1074,35 @@ export default function App() {
       if (!tab) return
       const index = openTabs.findIndex((t) => tabKey(t) === key)
       const items: MenuItem[] = [
-        { label: 'Close', icon: <CloseIcon size={14} />, onClick: () => closeTab(key) }
+        { label: t('common.close'), icon: <CloseIcon size={14} />, onClick: () => closeTab(key) }
       ]
       if (openTabs.length > 1) {
         items.push({
-          label: 'Close others',
+          label: t('app.menu.closeOthers'),
           icon: <ListXIcon size={14} />,
           onClick: () => closeOtherTabs(key)
         })
       }
       if (index < openTabs.length - 1) {
         items.push({
-          label: 'Close to the right',
+          label: t('app.menu.closeToRight'),
           icon: <ArrowRightToLineIcon size={14} />,
           onClick: () => closeTabsToRight(key)
         })
       }
       items.push({
-        label: 'Close all',
+        label: t('app.menu.closeAll'),
         icon: <XCircleIcon size={14} />,
         onClick: () => closeAllTabs()
       })
       if (tab.kind === 'request') {
         items.push('sep', {
-          label: 'Reveal in sidebar',
+          label: t('app.menu.revealInSidebar'),
           icon: <LocateIcon size={14} />,
           onClick: () => setSidebarReveal({ id: tab.id, nonce: ++revealSeq.current })
         })
       }
-      setCtxMenu({ x, y, items, label: 'Tab actions' })
+      setCtxMenu({ x, y, items, label: t('app.menu.tabActions') })
     },
     [openTabs, closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs]
   )
@@ -1229,14 +1249,14 @@ export default function App() {
     async (name: string) => {
       setNewCollectionOpen(false)
       if (!window.tiger?.newCollection) {
-        toast('Creating a collection needs the desktop app')
+        toast(t('app.toast.createNeedsDesktop'))
         return
       }
       const opened = await window.tiger.newCollection(name)
       if (!opened) return
       const entries = applyOpenedCollection(opened)
       if (entries[0]) selectRequest(entries[0].id)
-      toast(`Created ${opened.name}`)
+      toast(t('app.toast.created', { name: opened.name }))
     },
     [selectRequest, applyOpenedCollection, toast]
   )
@@ -1245,12 +1265,12 @@ export default function App() {
     async (command: string) => {
       const req = importCurl(command)
       if (!req) {
-        toast('Could not parse that as a curl command')
+        toast(t('app.toast.curlParseFailed'), { error: true })
         return
       }
       const target = collections[0]
       if (!target) {
-        toast('Open or create a collection first, then import')
+        toast(t('app.toast.openCollectionFirstImport'))
         return
       }
       let id: string
@@ -1280,7 +1300,7 @@ export default function App() {
       setActiveId(id)
       setModal('none')
       setView('workspace')
-      toast('Request imported from curl')
+      toast(t('app.toast.curlImported'))
     },
     [collections, openTab, reviveIds, toast]
   )
@@ -1293,7 +1313,7 @@ export default function App() {
       setCloneOpen(false)
       const entries = applyOpenedCollection(opened)
       if (entries[0]) selectRequest(entries[0].id)
-      toast(`Joined ${opened.name}. Use Sync to get your team's latest changes.`)
+      toast(t('app.toast.joined', { name: opened.name }))
     },
     [selectRequest, reviveIds, toast]
   )
@@ -1333,7 +1353,7 @@ export default function App() {
           return
         }
         if (envRefs.length === 0 && summary.items.length === 0) {
-          toast(`No importable requests found in ${result.name}`)
+          toast(t('app.toast.noImportable', { name: result.name }))
           return
         }
       }
@@ -1389,7 +1409,11 @@ export default function App() {
   )
 
   const importFailed = useCallback(
-    (err: unknown) => toast(`Import failed: ${err instanceof Error ? err.message : String(err)}`),
+    (err: unknown) =>
+      toast(
+        t('app.toast.importFailed', { message: err instanceof Error ? err.message : String(err) }),
+        { error: true }
+      ),
     [toast]
   )
 
@@ -1404,11 +1428,11 @@ export default function App() {
   const importDropped = useCallback(
     (paths: string[]) => {
       if (!window.tiger || paths.length === 0) return
-      toast(`Importing ${paths.length === 1 ? 'the dropped item' : `${paths.length} dropped items`}…`)
+      toast(t('app.toast.importing', { count: paths.length }))
       window.tiger
         .importPaths(paths)
         .then((result) => {
-          if (!result) toast('Nothing to import: drop a Postman, Insomnia, Bruno, OpenAPI or WSDL export')
+          if (!result) toast(t('app.toast.nothingToImport'))
           else applyImport(result)
         })
         .catch(importFailed)
@@ -1432,11 +1456,11 @@ export default function App() {
           const filename = `${col.name}.postman_collection.json`
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)
-            if (path) toast(`Exported to ${path}`)
+            if (path) toast(t('app.toast.exportedTo', { path }))
           } else {
             downloadText(filename, json)
-              ? toast(`Downloaded ${filename}`)
-              : toast('Export needs the desktop app')
+              ? toast(t('app.toast.downloaded', { filename }))
+              : toast(t('app.toast.exportNeedsDesktop'))
           }
         } else if (format === 'openapi') {
           const col = activeCollection
@@ -1451,11 +1475,11 @@ export default function App() {
           const filename = `${col.name}.openapi.json`
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)
-            if (path) toast(`Exported to ${path}`)
+            if (path) toast(t('app.toast.exportedTo', { path }))
           } else {
             downloadText(filename, json)
-              ? toast(`Downloaded ${filename}`)
-              : toast('Export needs the desktop app')
+              ? toast(t('app.toast.downloaded', { filename }))
+              : toast(t('app.toast.exportNeedsDesktop'))
           }
         } else if (format === 'environment') {
           if (!activeEnv) return
@@ -1463,30 +1487,30 @@ export default function App() {
           const json = JSON.stringify(exportPostmanEnvironment(activeEnv), null, 2)
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)
-            if (path) toast(`Exported to ${path}`)
+            if (path) toast(t('app.toast.exportedTo', { path }))
           } else {
             downloadText(filename, json)
-              ? toast(`Downloaded ${filename}`)
-              : toast('Export needs the desktop app')
+              ? toast(t('app.toast.downloaded', { filename }))
+              : toast(t('app.toast.exportNeedsDesktop'))
           }
         } else if (format === 'tiger' && active) {
           const filename = `${active.name || 'request'}.tiger`
           const text = serializeRequest(active)
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, text)
-            if (path) toast(`Exported to ${path}`)
+            if (path) toast(t('app.toast.exportedTo', { path }))
           } else {
             downloadText(filename, text)
-              ? toast(`Downloaded ${filename}`)
-              : toast('Export needs the desktop app')
+              ? toast(t('app.toast.downloaded', { filename }))
+              : toast(t('app.toast.exportNeedsDesktop'))
           }
         } else if (format === 'curl' && active) {
           await navigator.clipboard.writeText(toCurl(buildRequest(active, envToVars(activeEnv))))
-          toast('curl command copied')
+          toast(t('app.toast.curlCopied'))
         }
         setModal('none')
       } catch (e) {
-        toast(`Export failed: ${(e as Error).message}`)
+        toast(t('app.toast.exportFailed', { message: (e as Error).message }), { error: true })
       }
     },
     [activeCollection, active, activeEnv, loadRequest, toast]
@@ -1584,7 +1608,7 @@ export default function App() {
       openTab({ kind: 'request', id })
       setActiveId(id)
       setView('workspace')
-      toast('Request duplicated')
+      toast(t('app.toast.requestDuplicated'))
     },
     [requestsById, loadRequest, collections, pathById, openTab, reviveIds, toast]
   )
@@ -1611,7 +1635,7 @@ export default function App() {
         savedText.current[entryId] = text
         editedIds.current.delete(entryId)
       }
-      toast('Renamed')
+      toast(t('app.toast.renamed'))
     },
     [requestsById, loadRequest, pathById, toast]
   )
@@ -1629,7 +1653,7 @@ export default function App() {
         try {
           await window.tiger.moveFile(fromPath, toPath)
         } catch (e) {
-          toast(`Move failed: ${(e as Error).message}`)
+          toast(t('app.toast.moveFailed', { message: (e as Error).message }), { error: true })
           return
         }
         setPathById((prev) => ({ ...prev, [entryId]: toPath }))
@@ -1648,8 +1672,8 @@ export default function App() {
       )
       toast(
         targetFolder.length
-          ? `Moved to ${targetFolder[targetFolder.length - 1]}`
-          : 'Moved to collection root'
+          ? t('app.toast.movedTo', { folder: targetFolder[targetFolder.length - 1] })
+          : t('app.toast.movedToRoot')
       )
     },
     [pathById, toast]
@@ -1662,7 +1686,7 @@ export default function App() {
       const col = collectionsRef.current.find((c) => c.id === colId)
       if (!col || !trimmed || trimmed === path[path.length - 1]) return
       if (/[/\\]/.test(trimmed)) {
-        toast('Folder names cannot contain slashes')
+        toast(t('app.toast.folderNoSlashes'), { error: true })
         return
       }
       const fromDir = col.root ? `${col.root}/${path.join('/')}` : null
@@ -1671,7 +1695,7 @@ export default function App() {
         try {
           await window.tiger.moveFile(fromDir, toDir)
         } catch (e) {
-          toast(`Rename failed: ${(e as Error).message}`)
+          toast(t('app.toast.renameFailed', { message: (e as Error).message }), { error: true })
           return
         }
       }
@@ -1720,7 +1744,7 @@ export default function App() {
         const next = renamedFolderPath(cur.path, path, trimmed)
         return next ? { ...cur, path: next } : cur
       })
-      toast('Folder renamed')
+      toast(t('app.toast.folderRenamed'))
     },
     [toast]
   )
@@ -1778,7 +1802,7 @@ export default function App() {
       setCollections((prev) =>
         prev.map((c) => (c.id === colId ? { ...c, entries: [...c.entries, ...added] } : c))
       )
-      toast(`Folder duplicated as "${copyName}"`)
+      toast(t('app.toast.folderDuplicated', { name: copyName }))
     },
     [requestsById, loadRequest, pathById, reviveIds, toast]
   )
@@ -1790,7 +1814,7 @@ export default function App() {
         try {
           await window.tiger.deleteFile(pathById[entryId])
         } catch (e) {
-          toast(`Delete failed: ${(e as Error).message}`)
+          toast(t('app.toast.deleteFailed', { message: (e as Error).message }), { error: true })
           return
         }
       }
@@ -1810,7 +1834,7 @@ export default function App() {
         if (neighbor) activateTab(neighbor)
         else setActiveId(null)
       }
-      toast('Request deleted')
+      toast(t('app.toast.requestDeleted'))
     },
     [pathById, activeId, openTabs, activateTab, toast]
   )
@@ -1864,7 +1888,7 @@ export default function App() {
           if (envSeq.current === token) {
             setActiveEnvKey(null)
             setActiveEnv(null)
-            toast(`Could not read environment: ${(e as Error).message}`)
+            toast(t('app.toast.envReadFailed', { message: (e as Error).message }), { error: true })
           }
         }
       }
@@ -1932,9 +1956,9 @@ export default function App() {
       if (!req) return
       try {
         await navigator.clipboard.writeText(toCurl(buildRequest(req, envToVars(activeEnv))))
-        toast('curl command copied')
+        toast(t('app.toast.curlCopied'))
       } catch {
-        toast('Copy failed')
+        toast(t('app.toast.copyFailed'), { error: true })
       }
     },
     [requestsById, loadRequest, activeEnv, toast]
@@ -1943,9 +1967,9 @@ export default function App() {
   const openRequestMenu = useCallback(
     (entryId: string, x: number, y: number) => {
       const items: MenuItem[] = [
-        { label: 'Open', icon: <FileIcon size={14} />, onClick: () => selectRequest(entryId) },
+        { label: t('common.open'), icon: <FileIcon size={14} />, onClick: () => selectRequest(entryId) },
         {
-          label: 'Rename',
+          label: t('common.rename'),
           icon: <PencilIcon size={14} />,
           onClick: () => setRenameTarget({ id: entryId, nonce: ++renameSeq.current })
         },
@@ -1954,18 +1978,18 @@ export default function App() {
       ]
       if (pathById[entryId] && window.tiger?.reveal) {
         items.push({
-          label: REVEAL_LABEL,
+          label: t(REVEAL_LABEL_KEY),
           icon: <FolderOpenIcon size={14} />,
           onClick: () => window.tiger!.reveal(pathById[entryId])
         })
       }
       items.push('sep', {
-        label: 'Delete request…',
+        label: t('app.menu.deleteRequest'),
         icon: <TrashIcon size={14} />,
         danger: true,
         onClick: () => setConfirmDeleteId(entryId)
       })
-      setCtxMenu({ x, y, items, label: 'Request actions' })
+      setCtxMenu({ x, y, items, label: t('app.menu.requestActions') })
     },
     [selectRequest, duplicateRequest, copyAsCurl, pathById]
   )
@@ -1987,12 +2011,12 @@ export default function App() {
         actionItem('run-collection', () => setRunnerScope({ colId })),
         'sep',
         {
-          label: 'Collection overview',
+          label: t('app.menu.collectionOverview'),
           icon: <FileIcon size={14} />,
           onClick: () => inspectCollectionRef.current(colId)
         },
         {
-          label: 'Auth for all requests…',
+          label: t('app.menu.authAll'),
           icon: <PencilIcon size={14} />,
           onClick: () => setAuthColId(colId)
         },
@@ -2002,14 +2026,14 @@ export default function App() {
         items.push(
           actionItem('team-sync', () => setGitColId(colId)),
           {
-            label: REVEAL_LABEL,
+            label: t(REVEAL_LABEL_KEY),
             icon: <FolderOpenIcon size={14} />,
             onClick: () => window.tiger?.reveal?.(col.root!)
           }
         )
       }
       items.push('sep', {
-        label: 'Close collection',
+        label: t('app.menu.closeCollection'),
         icon: <CloseIcon size={14} />,
         danger: true,
         // Route through the confirm path (like every other close button) so it
@@ -2017,7 +2041,7 @@ export default function App() {
         // closeCollection on a possibly-stale closure.
         onClick: () => requestCloseCollection(colId)
       })
-      setCtxMenu({ x, y, items, label: 'Collection actions' })
+      setCtxMenu({ x, y, items, label: t('app.menu.collectionActions') })
     },
     [collections, newRequest, requestCloseCollection, openIo]
   )
@@ -2033,7 +2057,7 @@ export default function App() {
           serializeCollectionSettings({ name: col.name, auth, docs: col.docs })
         )
       }
-      toast(auth ? 'Collection auth saved' : 'Collection auth cleared')
+      toast(auth ? t('app.toast.collectionAuthSaved') : t('app.toast.collectionAuthCleared'))
     },
     [collections, toast]
   )
@@ -2049,7 +2073,7 @@ export default function App() {
           serializeCollectionSettings({ name: col.name, auth: col.auth, docs })
         )
       }
-      toast('Collection notes saved')
+      toast(t('app.toast.collectionNotesSaved'))
     },
     [collections, toast]
   )
@@ -2076,12 +2100,17 @@ export default function App() {
 
   const saveFolderAuth = useCallback(
     (colId: string, path: string[], auth: TigerAuth | undefined) =>
-      saveFolderSetting(colId, path, { auth }, auth ? 'Folder auth saved' : 'Folder auth cleared'),
+      saveFolderSetting(
+        colId,
+        path,
+        { auth },
+        auth ? t('app.toast.folderAuthSaved') : t('app.toast.folderAuthCleared')
+      ),
     [saveFolderSetting]
   )
   const saveFolderDocs = useCallback(
     (colId: string, path: string[], docs: string) =>
-      saveFolderSetting(colId, path, { docs }, 'Folder notes saved'),
+      saveFolderSetting(colId, path, { docs }, t('app.toast.folderNotesSaved')),
     [saveFolderSetting]
   )
 
@@ -2107,17 +2136,17 @@ export default function App() {
       const items: MenuItem[] = [
         actionItem('new-request', () => newRequest(colId, path)),
         actionItem('new-folder', () => setNewFolderIn({ colId, path })),
-        actionItem('run-collection', () => setRunnerScope({ colId, path }), { label: 'Run folder…' }),
+        actionItem('run-collection', () => setRunnerScope({ colId, path }), { label: t('app.menu.runFolder') }),
         'sep',
-        { label: 'Folder overview', icon: <FolderIcon size={14} />, onClick: () => inspectFolder(colId, path) },
+        { label: t('app.menu.folderOverview'), icon: <FolderIcon size={14} />, onClick: () => inspectFolder(colId, path) },
         {
-          label: 'Rename',
+          label: t('common.rename'),
           icon: <PencilIcon size={14} />,
           onClick: () => setRenameTarget({ colId, path, nonce: ++renameSeq.current })
         },
-        { label: 'Duplicate folder', icon: <CopyIcon size={14} />, onClick: () => duplicateFolder(colId, path) }
+        { label: t('app.menu.duplicateFolder'), icon: <CopyIcon size={14} />, onClick: () => duplicateFolder(colId, path) }
       ]
-      setCtxMenu({ x, y, items, label: 'Folder actions' })
+      setCtxMenu({ x, y, items, label: t('app.menu.folderActions') })
     },
     [inspectFolder, newRequest, duplicateFolder]
   )
@@ -2187,7 +2216,9 @@ export default function App() {
     if (t.kind === 'collection') {
       return [{ key, kind: 'collection' as const, label: col.name }]
     }
-    return [{ key, kind: 'folder' as const, label: t.path[t.path.length - 1] ?? 'folder' }]
+    return [
+      { key, kind: 'folder' as const, label: t.path[t.path.length - 1] ?? tr('app.tab.folderFallback') }
+    ]
   })
 
   // Persist the session (open roots, tabs, active tab) once restore settled,
@@ -2206,9 +2237,9 @@ export default function App() {
   const activeTabItem = tabItems.find((t) => t.key === activeTabKey)
   const pageTitle =
     view === 'home'
-      ? 'Home'
+      ? t('app.page.home')
       : view === 'settings'
-        ? 'Settings'
+        ? t('app.top.settings')
         : activeTabItem
           ? `${activeTabItem.dirty ? '* ' : ''}${activeTabItem.label}`
           : null
@@ -2233,14 +2264,14 @@ export default function App() {
     if (inspect) return { colId: inspect.colId, path: inspect.type === 'folder' ? inspect.path : [] }
     return collections[0] ? { colId: collections[0].id, path: [] } : null
   }
-  const needCollection = () => toast('Open or create a collection first')
-  const needRequest = () => toast('Open a request first')
+  const needCollection = () => toast(t('app.toast.openCollectionFirst'))
+  const needRequest = () => toast(t('app.toast.openRequestFirst'))
   /** Team sync for the current collection; `sync` also starts a sync once it is ready. */
   const openTeamSync = (sync = false) => {
-    const t = currentTarget()
-    const col = t ? collections.find((c) => c.id === t.colId) : undefined
+    const target = currentTarget()
+    const col = target ? collections.find((c) => c.id === target.colId) : undefined
     if (!col) return needCollection()
-    if (!col.root) return toast('Team sync needs a collection saved in a folder. Open one from disk first.')
+    if (!col.root) return toast(t('app.toast.teamSyncNeedsFolder'))
     setGitAutoSync(sync)
     setGitColId(col.id)
   }
@@ -2321,13 +2352,13 @@ export default function App() {
         void updater.check()
         return
       }
-      if (!window.tiger?.checkUpdate) return toast('Updates are checked in the desktop app')
+      if (!window.tiger?.checkUpdate) return toast(t('app.toast.updatesDesktopOnly'))
       window.tiger.checkUpdate().then((info) => {
         if (info) {
           setUpdate(info)
           setUpdateModalOpen(true)
         } else {
-          toast("You're on the latest version")
+          toast(t('app.toast.latestVersion'))
         }
       })
     },
@@ -2351,7 +2382,7 @@ export default function App() {
   return (
     <div className="app">
       <a className="skip-link" href="#main" onClick={skipToMain}>
-        {active && view === 'workspace' && !inspect ? 'Skip to request URL' : 'Skip to main content'}
+        {active && view === 'workspace' && !inspect ? t('app.top.skipToUrl') : t('app.top.skipToMain')}
       </a>
       <h1 className="sr-only">Tiger</h1>
       <header className="titlebar">
@@ -2359,8 +2390,8 @@ export default function App() {
           type="button"
           className="brand"
           style={{ border: 'none', background: 'transparent', padding: 0, font: 'inherit' }}
-          title={view === 'home' ? 'Back to workspace' : 'Home'}
-          aria-label={view === 'home' ? 'Tiger, back to workspace' : 'Tiger home'}
+          title={view === 'home' ? t('app.top.backToWorkspace') : t('app.page.home')}
+          aria-label={view === 'home' ? t('app.top.brandBackLabel') : t('app.top.brandHomeLabel')}
           aria-current={view === 'home' ? 'page' : undefined}
           onClick={() => setView(view === 'home' ? 'workspace' : 'home')}
         >
@@ -2374,10 +2405,10 @@ export default function App() {
           <button
             type="button"
             className="btn ghost update-chip"
-            title={`Update to v${update.latest}`}
+            title={t('app.top.updateTitle', { version: update.latest })}
             onClick={() => setUpdateModalOpen(true)}
           >
-            Update v{update.latest}
+            {t('app.top.updateChip', { version: update.latest })}
           </button>
         )}
         {sidebarHidden && (
@@ -2387,17 +2418,17 @@ export default function App() {
             title={actionTitle('toggle-sidebar')}
             onClick={toggleSidebar}
           >
-            <SidebarIcon size={15} /> <span className="btn-label">Show sidebar</span>
+            <SidebarIcon size={15} /> <span className="btn-label">{t('app.top.showSidebar')}</span>
           </button>
         )}
-        <div className="env-combo" title="Active environment">
+        <div className="env-combo" title={t('app.top.activeEnv')}>
           <select
             className="env-select"
-            aria-label="Active environment"
+            aria-label={t('app.top.activeEnv')}
             value={activeEnvKey ?? ''}
             onChange={(e) => changeEnv(e.target.value)}
           >
-            <option value="">No environment</option>
+            <option value="">{t('app.top.noEnv')}</option>
             {envCollections.map((col) =>
               envCollections.length > 1 ? (
                 <optgroup key={col.id} label={col.name}>
@@ -2419,24 +2450,24 @@ export default function App() {
           <button
             type="button"
             className="env-edit"
-            title="Manage environments"
-            aria-label="Manage environments"
+            title={t('app.top.manageEnv')}
+            aria-label={t('app.top.manageEnv')}
             onClick={actionHandlers.environments}
           >
             <GearIcon size={14} />
           </button>
         </div>
-        <button type="button" className="btn ghost" title="History" onClick={openHistory}>
-          <ClockIcon size={15} /> <span className="btn-label">History</span>
+        <button type="button" className="btn ghost" title={t('app.top.history')} onClick={openHistory}>
+          <ClockIcon size={15} /> <span className="btn-label">{t('app.top.history')}</span>
         </button>
         <button
           type="button"
           className={`btn ghost${view === 'settings' ? ' current' : ''}`}
-          title="Settings"
+          title={t('app.top.settings')}
           aria-current={view === 'settings' ? 'page' : undefined}
           onClick={() => setView(view === 'settings' ? 'workspace' : 'settings')}
         >
-          <GearIcon size={15} /> <span className="btn-label">Settings</span>
+          <GearIcon size={15} /> <span className="btn-label">{t('app.top.settings')}</span>
         </button>
       </header>
 
@@ -2459,7 +2490,7 @@ export default function App() {
           onNewCollection={newCollection}
           onClone={cloneCollection}
           onImportExport={() => openIo('import')}
-          onNewMenu={(x, y) => setCtxMenu({ x, y, items: newMenuItems(), label: 'New' })}
+          onNewMenu={(x, y) => setCtxMenu({ x, y, items: newMenuItems(), label: t('app.menu.new') })}
           renameTarget={renameTarget}
           onNewRequest={newRequest}
           onCloseCollection={requestCloseCollection}
@@ -2488,7 +2519,7 @@ export default function App() {
         {!sidebarHidden && (
         <Resizer
           direction="col"
-          label="Resize sidebar"
+          label={t('app.top.resizeSidebar')}
           value={sidebarW}
           min={200}
           max={440}
@@ -2514,7 +2545,7 @@ export default function App() {
           id="main"
           className="main-region"
           tabIndex={-1}
-          aria-label={pageTitle ?? 'Workspace'}
+          aria-label={pageTitle ?? t('app.page.workspace')}
           aria-busy={activeSending || undefined}
         >
         {view === 'home' ? (
@@ -2544,7 +2575,7 @@ export default function App() {
             onGit={() => {
               const diskCol = collections.find((c) => c.root)
               if (diskCol) setGitColId(diskCol.id)
-              else toast('Open a collection folder first to sync it with Git')
+              else toast(t('app.toast.gitOpenFolderFirst'))
             }}
           />
         ) : view === 'settings' ? (
@@ -2659,11 +2690,11 @@ export default function App() {
                       <span aria-hidden>
                         <Logo size={54} rounded />
                       </span>
-                      <h2 id="empty-editor-title">No request open</h2>
+                      <h2 id="empty-editor-title">{t('app.empty.title')}</h2>
                       <p>
                         {collections.length
-                          ? 'Pick a request in the sidebar, or add one:'
-                          : 'Open, create or import a collection from the sidebar first.'}
+                          ? t('app.empty.pickRequest')
+                          : t('app.empty.openFirst')}
                       </p>
                       <div className="empty-actions">
                         {collections[0] && (
@@ -2673,11 +2704,11 @@ export default function App() {
                             title={actionTitle('new-request')}
                             onClick={actionHandlers['new-request']}
                           >
-                            <PlusIcon size={14} /> New request
+                            <PlusIcon size={14} /> {t('app.empty.newRequest')}
                           </button>
                         )}
                         <button type="button" className="btn ghost" onClick={() => setView('home')}>
-                          Getting started
+                          {t('app.empty.gettingStarted')}
                         </button>
                       </div>
                     </div>
@@ -2685,7 +2716,7 @@ export default function App() {
                 )}
                 <Resizer
                   direction="row"
-                  label="Resize request editor"
+                  label={t('app.top.resizeEditor')}
                   value={editorH ?? undefined}
                   min={140}
                   max={Math.max(140, (mainRef.current?.getBoundingClientRect().height ?? 800) - 160)}
@@ -2764,7 +2795,7 @@ export default function App() {
           const col = collections.find((c) => c.id === runnerScope.colId)
           const title = runnerScope.path?.length
             ? runnerScope.path[runnerScope.path.length - 1]
-            : (col?.name ?? 'collection')
+            : (col?.name ?? t('app.runner.collectionFallback'))
           return (
             <RunnerModal
               title={title}
@@ -2802,10 +2833,10 @@ export default function App() {
       )}
       {newFolderIn && (
         <PromptModal
-          title="New folder"
-          label="Folder name"
-          placeholder="Payments"
-          confirmLabel="Create folder"
+          title={t('app.newFolder.title')}
+          label={t('app.newFolder.label')}
+          placeholder={t('app.newFolder.placeholder')}
+          confirmLabel={t('app.newFolder.confirm')}
           onSubmit={(name) => {
             const target = newFolderIn
             setNewFolderIn(null)
@@ -2813,7 +2844,7 @@ export default function App() {
             if (!clean) return
             // A folder exists through its files: start it with a first request.
             newRequest(target.colId, [...target.path, clean])
-            toast(`Folder ${clean} created with a first request`)
+            toast(t('app.toast.folderCreated', { name: clean }))
           }}
           onCancel={() => setNewFolderIn(null)}
         />
@@ -2824,12 +2855,12 @@ export default function App() {
           if (!col) return null
           return (
             <Modal
-              title={`Auth for all requests · ${col.name}`}
+              title={t('app.authModal.title', { name: col.name })}
               onClose={() => setAuthColId(null)}
-              help={{ page: 'requests-auth', topic: 'Auth' }}
+              help={{ page: 'requests-auth', topic: t('app.authModal.helpTopic') }}
             >
               <p style={{ margin: '0 0 14px', color: 'var(--text-dim)', fontSize: 13.5 }}>
-                Requests in this collection inherit this auth unless they set their own.
+                {t('app.authModal.intro')}
               </p>
               <AuthEditor
                 noInherit
@@ -2917,7 +2948,7 @@ export default function App() {
             'sep',
             actionItem('environments', actionHandlers.environments)
           ]}
-          label="Workspace actions"
+          label={t('app.menu.workspaceActions')}
           onClose={() => setEmptyMenu(null)}
         />
       )}
@@ -2926,19 +2957,23 @@ export default function App() {
       )}
       {newCollectionOpen && (
         <PromptModal
-          title="New collection"
-          label="Collection name"
-          placeholder="Payments API"
-          confirmLabel="Choose folder…"
+          title={t('app.newCollection.title')}
+          label={t('app.newCollection.label')}
+          placeholder={t('app.newCollection.placeholder')}
+          confirmLabel={t('app.newCollection.confirm')}
           onSubmit={runNewCollection}
           onCancel={() => setNewCollectionOpen(false)}
         />
       )}
       {confirmCloseId && (
         <ConfirmModal
-          title="Close collection"
-          message={`Close "${collections.find((c) => c.id === confirmCloseId)?.name ?? 'this collection'}"? Your files stay on disk; this only removes it from the sidebar.`}
-          confirmLabel="Close"
+          title={t('app.closeCollection.title')}
+          message={t('app.closeCollection.message', {
+            name:
+              collections.find((c) => c.id === confirmCloseId)?.name ??
+              t('app.closeCollection.fallbackName')
+          })}
+          confirmLabel={t('common.close')}
           onConfirm={() => {
             const id = confirmCloseId
             setConfirmCloseId(null)
@@ -2950,12 +2985,13 @@ export default function App() {
       )}
       {confirmDeleteId && (
         <ConfirmModal
-          title="Delete request"
-          message={`Delete "${
-            collections.flatMap((c) => c.entries).find((e) => e.id === confirmDeleteId)?.name ??
-            'this request'
-          }"? This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t('app.deleteRequest.title')}
+          message={t('app.deleteRequest.message', {
+            name:
+              collections.flatMap((c) => c.entries).find((e) => e.id === confirmDeleteId)?.name ??
+              t('app.deleteRequest.fallbackName')
+          })}
+          confirmLabel={t('common.delete')}
           onConfirm={() => deleteRequest(confirmDeleteId)}
           onCancel={() => setConfirmDeleteId(null)}
         />

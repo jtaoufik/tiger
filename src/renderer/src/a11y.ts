@@ -55,22 +55,46 @@ export function announce(message: string, opts: { assertive?: boolean } = {}): v
   region.textContent = repeat && !current.endsWith(' ') ? `${message} ` : message
 }
 
-/** Heuristic used by App's toast(): failures are announced assertively. */
+/**
+ * Heuristic fallback for App's toast() when the caller does not say whether
+ * the text is an error. English only: translated toasts pass `{ error: true }`
+ * explicitly, and failures are announced assertively.
+ */
 export function looksLikeError(text: string): boolean {
   return /\b(fail(ed|s)?|error|could not|cannot|can't|invalid|denied|refused)\b/i.test(text)
 }
 
+/** True when the document reads right to left (<html dir="rtl">, Arabic). */
+export function isRtlDocument(doc: Document | undefined = typeof document === 'undefined' ? undefined : document): boolean {
+  return doc?.documentElement.dir === 'rtl'
+}
+
+/**
+ * The logical meaning of a horizontal arrow key: in a right-to-left layout
+ * ArrowLeft moves forward (toward the end of the line), as WAI-ARIA asks for
+ * tabs, toolbars and tree expand/collapse. Other keys pass through.
+ */
+export function logicalArrow(key: string, rtl: boolean = isRtlDocument()): string {
+  if (!rtl) return key
+  if (key === 'ArrowLeft') return 'ArrowRight'
+  if (key === 'ArrowRight') return 'ArrowLeft'
+  return key
+}
+
 /**
  * Next index for a roving-focus widget, or null when the key is not a
- * navigation key for that orientation. Wraps around at both ends.
+ * navigation key for that orientation. Wraps around at both ends. Horizontal
+ * widgets follow the reading direction: in RTL, ArrowLeft goes to the next item.
  */
 export function rovingIndex(
   key: string,
   current: number,
   count: number,
-  orientation: 'horizontal' | 'vertical' = 'horizontal'
+  orientation: 'horizontal' | 'vertical' = 'horizontal',
+  rtl: boolean = isRtlDocument()
 ): number | null {
   if (count <= 0) return null
+  if (orientation === 'horizontal') key = logicalArrow(key, rtl)
   const prev = orientation === 'horizontal' ? 'ArrowLeft' : 'ArrowUp'
   const next = orientation === 'horizontal' ? 'ArrowRight' : 'ArrowDown'
   if (key === 'Home') return 0

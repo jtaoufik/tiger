@@ -1,0 +1,38 @@
+import type { NamespaceCatalog } from '../../translator'
+import type { menu as en } from '../en/menu'
+
+export const menu: NamespaceCatalog<typeof en> = {
+  'menu.app': 'Tiger',
+  'menu.file': 'Fichier',
+  'menu.edit': 'Édition',
+  'menu.request': 'Requête',
+  'menu.view': 'Présentation',
+  'menu.theme': 'Thème',
+  'menu.window': 'Fenêtre',
+  'menu.help': 'Aide',
+  'menu.about': 'À propos de Tiger',
+  'menu.services': 'Services',
+  'menu.hide': 'Masquer Tiger',
+  'menu.hideOthers': 'Masquer les autres',
+  'menu.unhide': 'Tout afficher',
+  'menu.quit': 'Quitter Tiger',
+  'menu.closeWindow': 'Fermer la fenêtre',
+  'menu.exit': 'Quitter',
+  'menu.undo': 'Annuler',
+  'menu.redo': 'Rétablir',
+  'menu.cut': 'Couper',
+  'menu.copy': 'Copier',
+  'menu.paste': 'Coller',
+  'menu.pasteAndMatchStyle': 'Coller et adapter le style',
+  'menu.delete': 'Supprimer',
+  'menu.selectAll': 'Tout sélectionner',
+  'menu.toggleFullScreen': 'Activer/désactiver le plein écran',
+  'menu.reload': 'Recharger',
+  'menu.forceReload': 'Forcer le rechargement',
+  'menu.toggleDevTools': 'Outils de développement',
+  'menu.minimize': 'Réduire',
+  'menu.zoomWindow': 'Zoom',
+  'menu.front': 'Tout ramener au premier plan',
+  'menu.close': 'Fermer',
+  'menu.aboutDetail': 'Version {version}'
+}

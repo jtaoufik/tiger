@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from 'vitest'
 import type { MenuItemConstructorOptions } from 'electron'
 
 vi.mock('electron', () => ({
-  app: { isPackaged: true, getVersion: () => '0.0.0' },
+  app: {
+    isPackaged: true,
+    getVersion: () => '0.0.0',
+    getLocale: () => 'en-US',
+    getPreferredSystemLanguages: () => ['en-US'],
+    commandLine: { hasSwitch: () => false }
+  },
   BrowserWindow: { getFocusedWindow: () => null, getAllWindows: () => [] },
   dialog: { showMessageBox: vi.fn() },
   Menu: { setApplicationMenu: vi.fn(), buildFromTemplate: vi.fn((t) => t) },
@@ -12,12 +18,15 @@ vi.mock('electron', () => ({
 
 import { buildMenuTemplate } from '../../src/main/menu'
 import { ACTIONS, getAction, menuLabel, type ActionId } from '../../src/core/actions'
+import { SUPPORTED_LOCALES, type Translator } from '../../src/core/i18n'
+import { englishT } from '../../src/core/i18n/english'
+import { translatorFor } from '../../src/core/i18n/all'
 
-function build(isMac: boolean) {
+function build(isMac: boolean, t: Translator = englishT, isDev = false) {
   const emit = vi.fn()
   const openExternal = vi.fn()
   const showAbout = vi.fn()
-  const template = buildMenuTemplate({ isMac, isDev: false, emit, openExternal, showAbout })
+  const template = buildMenuTemplate({ isMac, isDev, emit, openExternal, showAbout, t })
   return { template, emit, openExternal, showAbout }
 }
 
@@ -30,7 +39,7 @@ function flatten(list: MenuItemConstructorOptions[]): MenuItemConstructorOptions
 }
 
 const top = (template: MenuItemConstructorOptions[], label: string) =>
-  template.find((m) => m.label === label || (label === 'Help' && m.role === 'help'))
+  template.find((m) => m.label === label)
 
 const ids = new Set(ACTIONS.map((a) => a.id as string))
 
@@ -43,7 +52,7 @@ describe('application menu', () => {
       'Request',
       'View',
       'Window',
-      'help'
+      'Help'
     ])
     expect(build(false).template.map((m) => m.label ?? m.role)).toEqual([
       'File',
@@ -51,7 +60,7 @@ describe('application menu', () => {
       'Request',
       'View',
       'Window',
-      'help'
+      'Help'
     ])
   })
 
@@ -59,7 +68,7 @@ describe('application menu', () => {
     for (const isMac of [true, false]) {
       for (const item of flatten(build(isMac).template)) {
         if (item.id && ids.has(item.id)) {
-          expect(item.label, item.id).toBe(menuLabel(item.id as ActionId))
+          expect(item.label, item.id).toBe(menuLabel(item.id as ActionId, englishT))
         }
       }
     }
@@ -144,5 +153,40 @@ describe('application menu', () => {
     expect(showAbout).toHaveBeenCalled()
     const macHelp = items(top(build(true).template, 'Help')).map((i) => i.id)
     expect(macHelp).not.toContain('about')
+  })
+
+  describe.each(SUPPORTED_LOCALES)('in %s', (locale) => {
+    const t = translatorFor(locale)
+    const all = (isMac: boolean) => flatten(build(isMac, t, true).template)
+
+    it('labels every item, including Electron roles, in the language', () => {
+      for (const isMac of [true, false]) {
+        for (const item of all(isMac)) {
+          if (item.type === 'separator') continue
+          expect(typeof item.label, `${locale} ${item.role ?? item.id}`).toBe('string')
+          expect(item.label!.length, `${locale} ${item.role ?? item.id}`).toBeGreaterThan(0)
+          // A raw key means the catalog lookup missed.
+          expect(item.label, `${locale} ${item.role ?? item.id}`).not.toMatch(/^(menu|actions)\./)
+        }
+      }
+    })
+
+    it('uses the translated registry labels for actions', () => {
+      for (const item of all(false)) {
+        if (item.id && ids.has(item.id)) expect(item.label).toBe(menuLabel(item.id as ActionId, t))
+      }
+      const topLabels = build(false, t).template.map((m) => m.label)
+      expect(topLabels).toEqual(
+        ['menu.file', 'menu.edit', 'menu.request', 'menu.view', 'menu.window', 'menu.help'].map((k) =>
+          t(k as Parameters<Translator>[0])
+        )
+      )
+    })
+
+    it('keeps ids, roles and accelerators identical to English', () => {
+      const shape = (tr: Translator) =>
+        flatten(build(true, tr, true).template).map((i) => [i.id, i.role, i.accelerator, i.type])
+      expect(shape(t)).toEqual(shape(englishT))
+    })
   })
 })

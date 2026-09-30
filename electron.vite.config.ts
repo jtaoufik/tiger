@@ -15,7 +15,18 @@ export default defineConfig({
       alias: { '@core': resolve('src/core') }
     },
     build: {
-      lib: { entry: resolve('src/main/index.ts') }
+      lib: { entry: resolve('src/main/index.ts') },
+      rollupOptions: {
+        output: {
+          // The UI text catalogs get their own chunk. electron-vite injects its
+          // CommonJS shim after the last thing that looks like an ESM import,
+          // found with a regex over the whole chunk: a message such as
+          // "Drop to import" followed by a quote reads as one, and the shim
+          // then lands inside a string. A chunk without __dirname/require is
+          // never shimmed, so the catalogs are safe there.
+          manualChunks: (id) => (/[\\/]src[\\/]core[\\/]i18n[\\/]messages[\\/]/.test(id) ? 'i18n-messages' : undefined)
+        }
+      }
     }
   },
   preload: {

@@ -1,9 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
-import { perfExit, perfMark, perfRendererMark } from './perf'
+import { perfMark, perfRendererMark } from './perf'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
 import { buildAppMenu } from './menu'
+import { broadcastLocale, mainLocale, mainT, resolveAppLocale, setMainLocale } from './i18n'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import {
   applyNetworkSettings,
@@ -26,6 +27,13 @@ import {
   quitAndInstall
 } from './autoUpdate'
 import { blockExternalNetwork, isE2E } from './e2eGuard'
+import {
+  enterHeadlessMode,
+  headlessWebPreferences,
+  headlessWindowOptions,
+  isHeadless,
+  mayShowWindow
+} from './headless'
 import {
   gitAvailable,
   gitBranches,
@@ -85,6 +93,16 @@ function parentWindow(): BrowserWindow | undefined {
  */
 let hasUnsavedChanges = false
 
+/** e2e and benchmark runs: windows stay hidden and the app never activates. */
+const headless = isHeadless()
+if (headless) {
+  try {
+    enterHeadlessMode(app)
+  } catch {
+    /* not available before ready on this version: whenReady repeats it */
+  }
+}
+
 function createWindow(): BrowserWindow {
   const settings = loadSettings()
   const dark =
@@ -121,17 +139,23 @@ function createWindow(): BrowserWindow {
     // glass layer instead, and `backgroundColor` above covers the window base.
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
-      sandbox: false
-    }
+      sandbox: false,
+      // The renderer loads this language's catalog before its first paint, so
+      // a non-English UI never flashes English first.
+      additionalArguments: [`--tiger-locale=${mainLocale()}`],
+      ...headlessWebPreferences(headless)
+    },
+    ...headlessWindowOptions(headless)
   })
 
-  if (saved?.maximized) win.maximize()
+  // maximize() would show a hidden window on Windows.
+  if (saved?.maximized && mayShowWindow(headless)) win.maximize()
 
   win.once('ready-to-show', () => {
     perfMark('main:ready-to-show')
-    // Startup benchmarks (TIGER_PERF_EXIT) never show the window: nothing
-    // flashes on screen or steals focus while a script loops cold starts.
-    if (!perfExit) win.show()
+    // Automated runs (e2e, startup benchmarks) never show the window: nothing
+    // flashes on screen or steals focus on the machine running them.
+    if (mayShowWindow(headless)) win.show()
   })
   perfMark('main:window-created')
 
@@ -162,9 +186,9 @@ function createWindow(): BrowserWindow {
       dialog
         .showMessageBox(win, {
           type: 'warning',
-          message: 'You have unsaved changes',
-          detail: 'Closing now discards edits that are not saved yet.',
-          buttons: ['Close Anyway', 'Keep Editing'],
+          message: mainT('main.dialog.unsavedTitle'),
+          detail: mainT('main.dialog.unsavedDetail'),
+          buttons: [mainT('main.dialog.closeAnyway'), mainT('main.dialog.keepEditing')],
           defaultId: 1,
           cancelId: 1
         })
@@ -235,7 +259,7 @@ function createWindow(): BrowserWindow {
 function registerIpc(): void {
   ipcMain.handle('tiger:openCollection', async () => {
     const result = await dialog.showOpenDialog(parentWindow()!, {
-      title: 'Open a Tiger collection folder',
+      title: mainT('main.dialog.openCollection'),
       properties: ['openDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return null
@@ -246,8 +270,8 @@ function registerIpc(): void {
     const folder = sanitizeCollectionName(name)
     if (!folder) return null
     const result = await dialog.showOpenDialog(parentWindow()!, {
-      title: `Choose where to create "${folder}"`,
-      buttonLabel: 'Create here',
+      title: mainT('main.dialog.newCollection', { name: folder }),
+      buttonLabel: mainT('main.dialog.createHere'),
       properties: ['openDirectory', 'createDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return null
@@ -349,8 +373,14 @@ function registerIpc(): void {
     const next = saveSettings(patch)
     applyNetworkSettings()
     applyUpdateSettings(next)
+    if (patch.language !== undefined && setMainLocale(resolveAppLocale(next.language))) {
+      // Live switch: the native menu is rebuilt and every window re-renders.
+      buildAppMenu()
+      broadcastLocale(mainLocale())
+    }
     return next
   })
+  ipcMain.handle('tiger:locale', () => mainLocale())
 
   ipcMain.handle('tiger:track', (_e, event: AnalyticsEvent) => track(event))
 
@@ -407,8 +437,8 @@ function registerIpc(): void {
   ipcMain.handle('tiger:git:discard', (_e, root: string, paths?: string[]) => gitDiscard(root, paths))
   ipcMain.handle('tiger:git:clone', async (_e, url: string) => {
     const dest = await dialog.showOpenDialog(parentWindow()!, {
-      title: 'Choose where to save the team collection',
-      buttonLabel: 'Save here',
+      title: mainT('main.dialog.cloneTitle'),
+      buttonLabel: mainT('main.dialog.saveHere'),
       properties: ['openDirectory', 'createDirectory']
     })
     if (dest.canceled || !dest.filePaths[0]) return null
@@ -459,6 +489,7 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   perfMark('main:ready')
+  if (headless) enterHeadlessMode(app)
   // Proxy authentication: answer 407 challenges with the configured credentials
   // instead of letting Electron fail the request silently.
   app.on('login', (event, _webContents, _request, authInfo, callback) => {
@@ -481,6 +512,7 @@ app.whenReady().then(() => {
   if (isE2E()) blockExternalNetwork()
   registerIpc()
   applyNetworkSettings()
+  setMainLocale(resolveAppLocale(loadSettings().language))
   buildAppMenu()
   const win = createWindow()
 
@@ -491,7 +523,7 @@ app.whenReady().then(() => {
     // explicitly so the mascot shows instead of the stock Electron logo.
     // Decoding the 1024 px PNG blocks the main process for ~60 ms, which used
     // to sit in front of createWindow and then in front of the page load.
-    if (process.platform === 'darwin' && !app.isPackaged) {
+    if (process.platform === 'darwin' && !app.isPackaged && !headless) {
       setImmediate(() => {
         try {
           app.dock.setIcon(join(__dirname, '../../build/icon.png'))

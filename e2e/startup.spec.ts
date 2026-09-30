@@ -1,11 +1,12 @@
-import { collectionTree, expect, openCollection, test, windowShown } from './fixtures'
+import { collectionTree, expect, openCollection, test, windowState } from './fixtures'
 
 test('app starts, shows its window title and lists the collection requests', async ({ tiger, collection }) => {
   const { app, page } = tiger
 
-  // One visible window, titled by the app (the active request, then "Tiger").
+  // One window, titled by the app (the active request, then "Tiger"). Automated
+  // runs keep it hidden and unfocused so they never interrupt the person at the machine.
   expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
-  expect(await windowShown(app)).toBe(true)
+  expect(await windowState(app)).toEqual({ loaded: true, visible: false, focused: false })
   await expect(page).toHaveTitle(/ - Tiger$|^Tiger$/)
   const nativeTitle = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle())
   expect(nativeTitle).toMatch(/Tiger$/)

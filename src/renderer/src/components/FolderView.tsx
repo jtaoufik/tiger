@@ -6,6 +6,8 @@ import { FolderIcon, PlayIcon, PlusIcon } from './Icons'
 import './FolderView.css'
 import './PageTabs.css'
 import { rovingIndex } from '../a11y'
+import { useT } from '../i18n'
+import type { MessageKey } from '@core/i18n'
 
 interface Props {
   collectionName: string
@@ -24,10 +26,10 @@ interface Props {
 }
 
 type PageTab = 'requests' | 'docs' | 'auth'
-const PAGE_TABS: { id: PageTab; label: string }[] = [
-  { id: 'requests', label: 'Requests' },
-  { id: 'docs', label: 'Notes' },
-  { id: 'auth', label: 'Auth' }
+const PAGE_TABS: { id: PageTab; labelKey: MessageKey }[] = [
+  { id: 'requests', labelKey: 'views.tab.requests' },
+  { id: 'docs', labelKey: 'views.tab.notes' },
+  { id: 'auth', labelKey: 'views.tab.auth' }
 ]
 
 /** Full-page view for a folder: docs, default auth, its requests. */
@@ -43,6 +45,7 @@ export function FolderView({
   onSaveAuth,
   onSaveDocs
 }: Props) {
+  const t = useT()
   const key = path.join('/')
   const [pageTab, setPageTab] = useState<PageTab>('requests')
   const uid = useId()
@@ -55,7 +58,7 @@ export function FolderView({
           <h2 id={`${uid}-title`} title={name}>
             <FolderIcon size={18} /> <span className="cv-name">{name}</span>
           </h2>
-          <nav aria-label="Folder path" className="cv-path" title={crumbs.join(' / ')}>
+          <nav aria-label={t('views.folder.pathLabel')} className="cv-path" title={crumbs.join(' / ')}>
             <ol className="cv-crumbs">
               {crumbs.map((c, i) => (
                 <li key={i} aria-current={i === crumbs.length - 1 ? 'page' : undefined}>
@@ -67,29 +70,29 @@ export function FolderView({
         </div>
         <div className="cv-actions">
           <button type="button" className="btn accent" onClick={onNewRequest}>
-            <PlusIcon size={14} /> New request
+            <PlusIcon size={14} /> {t('views.newRequest')}
           </button>
-          <button type="button" className="btn" onClick={onRun} title="Send every request of this folder in order and check their tests">
-            <PlayIcon size={14} /> Run folder
+          <button type="button" className="btn" onClick={onRun} title={t('views.folder.runTitle')}>
+            <PlayIcon size={14} /> {t('views.folder.run')}
           </button>
         </div>
       </div>
 
       <div className="cv-tabcard">
-      <div className="tabs cv-tabs" role="tablist" aria-label="Folder sections">
-        {PAGE_TABS.map((t, i) => {
-          const on = pageTab === t.id
+      <div className="tabs cv-tabs" role="tablist" aria-label={t('views.folder.tabsLabel')}>
+        {PAGE_TABS.map((tab, i) => {
+          const on = pageTab === tab.id
           return (
             <button
               type="button"
-              key={t.id}
+              key={tab.id}
               role="tab"
-              id={`${uid}-tab-${t.id}`}
+              id={`${uid}-tab-${tab.id}`}
               aria-selected={on}
               aria-controls={`${uid}-panel`}
               tabIndex={on ? 0 : -1}
               className={`tab ${on ? 'active' : ''}`}
-              onClick={() => setPageTab(t.id)}
+              onClick={() => setPageTab(tab.id)}
               onKeyDown={(e) => {
                 const next = rovingIndex(e.key, i, PAGE_TABS.length)
                 if (next === null) return
@@ -98,25 +101,25 @@ export function FolderView({
                 ;(e.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus()
               }}
             >
-              {t.label}
-              {t.id === 'requests' && (
+              {t(tab.labelKey)}
+              {tab.id === 'requests' && (
                 <>
                   {' '}
                   <span className="count">{entries.length}</span>
                 </>
               )}
-              {t.id === 'docs' && !!docs?.trim() && (
+              {tab.id === 'docs' && !!docs?.trim() && (
                 <>
                   {' '}
                   <span className="dot" aria-hidden />
-                  <span className="sr-only">(written)</span>
+                  <span className="sr-only">{t('views.tab.written')}</span>
                 </>
               )}
-              {t.id === 'auth' && !!auth && auth.type !== 'none' && (
+              {tab.id === 'auth' && !!auth && auth.type !== 'none' && (
                 <>
                   {' '}
                   <span className="dot" aria-hidden />
-                  <span className="sr-only">(set)</span>
+                  <span className="sr-only">{t('views.tab.set')}</span>
                 </>
               )}
             </button>
@@ -133,8 +136,8 @@ export function FolderView({
         <div className="cv-card">
           <textarea
             className="docs-area"
-            aria-label="Folder docs (Markdown)"
-            placeholder="Document this folder in Markdown…"
+            aria-label={t('views.folder.docsLabel')}
+            placeholder={t('views.folder.docsPlaceholder')}
             defaultValue={docs ?? ''}
             key={`docs-${key}`}
             spellCheck={false}
@@ -147,7 +150,7 @@ export function FolderView({
 
       {pageTab === 'auth' && (
         <>
-          <h3 className="section-label">Default auth (inherited by requests in this folder)</h3>
+          <h3 className="section-label">{t('views.folder.authHeading')}</h3>
           <div className="cv-card">
             <AuthEditor noInherit auth={auth} onChange={onSaveAuth} />
           </div>
@@ -157,15 +160,15 @@ export function FolderView({
       {pageTab === 'requests' && (
         <>
       <h3 className="section-label">
-        {entries.length} request{entries.length === 1 ? '' : 's'} in this folder
+        {t('views.folder.heading', { count: entries.length })}
       </h3>
       <div className="cv-card">
         {entries.length === 0 ? (
           <div className="cv-empty">
-            <b>This folder is empty.</b>
-            <div className="cv-dim">Requests you add here inherit this folder's auth and docs.</div>
+            <b>{t('views.folder.emptyTitle')}</b>
+            <div className="cv-dim">{t('views.folder.emptyHint')}</div>
             <button type="button" className="btn accent" onClick={onNewRequest}>
-              <PlusIcon size={14} /> Create the first request
+              <PlusIcon size={14} /> {t('views.folder.createFirst')}
             </button>
           </div>
         ) : (

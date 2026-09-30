@@ -18,7 +18,7 @@
 }
 /* Highlighted option: tint plus an edge bar, so it is not color alone. */
 .palette-backdrop .palette-row.sel {
-  box-shadow: inset 3px 0 0 var(--tg-focus);
+  box-shadow: inset calc(3px * var(--dir-sign)) 0 0 var(--tg-focus);
 }
 .palette-backdrop .palette-col {
   max-width: 40%;
@@ -53,7 +53,7 @@
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  margin-right: 3px;
+  margin-inline-end: 3px;
   padding: 0 4px;
   font-family: var(--mono);
   font-size: 10.5px;

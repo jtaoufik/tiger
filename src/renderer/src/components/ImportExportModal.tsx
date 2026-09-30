@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ImportKind } from '../../../main/importers'
 import { Modal } from './Modal'
+import { useT } from '../i18n'
+import type { MessageKey } from '@core/i18n'
 import { CodeIcon, DownloadIcon, FileIcon, GlobeIcon, UploadIcon } from './Icons'
 import './ImportExportModal.css'
 
@@ -18,12 +20,14 @@ interface Props {
   focus?: 'import' | 'export'
 }
 
-const IMPORTS: Array<{ kind: ImportKind; title: string; desc: string }> = [
-  { kind: 'postman', title: 'Postman', desc: 'A .json file, many files, or a folder' },
-  { kind: 'bruno', title: 'Bruno', desc: 'A folder of .bru files (nested OK)' },
-  { kind: 'openapi', title: 'OpenAPI / Swagger', desc: 'A .json / .yaml spec, many, or a folder' },
-  { kind: 'insomnia', title: 'Insomnia', desc: 'A .json / .yaml export, many, or a folder' },
-  { kind: 'wsdl', title: 'WSDL / SOAP', desc: 'A .wsdl / .xml service, many, or a folder' }
+const IMPORTS: Array<{ kind: ImportKind; title: string; descKey: MessageKey }> = [
+  { kind: 'postman', title: 'Postman', descKey: 'modals.importExport.descPostman' },
+  { kind: 'bruno', title: 'Bruno', descKey: 'modals.importExport.descBruno' },
+  // i18n-ignore: product names
+  { kind: 'openapi', title: 'OpenAPI / Swagger', descKey: 'modals.importExport.descOpenapi' },
+  { kind: 'insomnia', title: 'Insomnia', descKey: 'modals.importExport.descInsomnia' },
+  // i18n-ignore: product names
+  { kind: 'wsdl', title: 'WSDL / SOAP', descKey: 'modals.importExport.descWsdl' }
 ]
 
 export function ImportExportModal({
@@ -36,6 +40,7 @@ export function ImportExportModal({
   onClose,
   focus = 'import'
 }: Props) {
+  const t = useT()
   const [curl, setCurl] = useState('')
   const [showCurl, setShowCurl] = useState(false)
   const uid = useId()
@@ -58,13 +63,13 @@ export function ImportExportModal({
   }, [showCurl])
   return (
     <Modal
-      title="Import and export"
+      title={t('modals.importExport.title')}
       onClose={onClose}
       width={600}
-      help={{ page: 'importing', topic: 'Importing and exporting' }}
+      help={{ page: 'importing', topic: t('modals.importExport.topic') }}
     >
       <h3 className="section-label" style={{ marginTop: 0 }} id={`${uid}-import`}>
-        Import a collection
+        {t('modals.importExport.importHeading')}
       </h3>
       <div className="choice-grid" role="group" aria-labelledby={`${uid}-import`}>
         {IMPORTS.map((item) => (
@@ -73,7 +78,7 @@ export function ImportExportModal({
               <UploadIcon size={15} />
               {item.title}
             </span>
-            <span className="d">{item.desc}</span>
+            <span className="d">{t(item.descKey)}</span>
           </button>
         ))}
       </div>
@@ -81,24 +86,26 @@ export function ImportExportModal({
       {showCurl ? (
         <div className="curl-box">
           <label className="curl-label" htmlFor={`${uid}-curl`}>
-            curl command
+            {t('modals.importExport.curlLabel')}
           </label>
           <textarea
             id={`${uid}-curl`}
             ref={curlRef}
             className="code-area curl-area"
-            placeholder="Paste a curl command…"
+            placeholder={t('modals.importExport.curlPlaceholder')}
             aria-describedby={`${uid}-curl-hint`}
             value={curl}
             spellCheck={false}
             onChange={(e) => setCurl(e.target.value)}
           />
           <div id={`${uid}-curl-hint`} className="curl-hint">
-            {`For example: curl -X POST https://api.example.com/users -H "Content-Type: application/json" -d '{"name":"Ada"}'`}
+            {t('modals.importExport.curlHint', {
+              example: `curl -X POST https://api.example.com/users -H "Content-Type: application/json" -d '{"name":"Ada"}'`
+            })}
           </div>
           <div className="modal-actions" style={{ marginTop: 8 }}>
             <button type="button" className="btn" onClick={() => setShowCurl(false)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -106,7 +113,7 @@ export function ImportExportModal({
               disabled={!curl.trim()}
               onClick={() => onImportCurl(curl)}
             >
-              Import request
+              {t('modals.importExport.importRequest')}
             </button>
           </div>
         </div>
@@ -119,12 +126,12 @@ export function ImportExportModal({
           aria-expanded={false}
           onClick={() => setShowCurl(true)}
         >
-          <CodeIcon size={14} /> Paste a curl command
+          <CodeIcon size={14} /> {t('modals.importExport.pasteCurl')}
         </button>
       )}
 
       <h3 className="section-label" id={`${uid}-export`}>
-        Export
+        {t('modals.importExport.exportHeading')}
       </h3>
       <div
         ref={exportRef}
@@ -137,16 +144,20 @@ export function ImportExportModal({
           className="choice"
           disabled={!collectionName}
           onClick={() => onExport('postman')}
-          title={collectionName ? `Export "${collectionName}"` : 'No collection selected'}
+          title={
+            collectionName
+              ? t('modals.importExport.exportTitle', { name: collectionName })
+              : t('modals.importExport.noCollection')
+          }
         >
           <span className="t">
             <DownloadIcon size={15} />
-            Postman collection
+            {t('modals.importExport.postmanCollection')}
           </span>
           <span className="d">
             {collectionName
-              ? `"${collectionName}" as a v2.1 .json file`
-              : 'Select a request first'}
+              ? t('modals.importExport.postmanDesc', { name: collectionName })
+              : t('modals.importExport.selectRequestFirst')}
           </span>
         </button>
         <button
@@ -154,16 +165,21 @@ export function ImportExportModal({
           className="choice"
           disabled={!collectionName}
           onClick={() => onExport('openapi')}
-          title={collectionName ? `Export "${collectionName}" as OpenAPI` : 'No collection selected'}
+          title={
+            collectionName
+              ? t('modals.importExport.openapiTitle', { name: collectionName })
+              : t('modals.importExport.noCollection')
+          }
         >
           <span className="t">
             <DownloadIcon size={15} />
+            {/* i18n-ignore: product name */}
             OpenAPI / Swagger
           </span>
           <span className="d">
             {collectionName
-              ? `"${collectionName}" as an OpenAPI 3.0 .json file`
-              : 'Select a request first'}
+              ? t('modals.importExport.openapiDesc', { name: collectionName })
+              : t('modals.importExport.selectRequestFirst')}
           </span>
         </button>
         <button
@@ -171,14 +187,20 @@ export function ImportExportModal({
           className="choice"
           disabled={!environmentName}
           onClick={() => onExport('environment')}
-          title={environmentName ? `Export environment "${environmentName}"` : 'No active environment'}
+          title={
+            environmentName
+              ? t('modals.importExport.envTitle', { name: environmentName })
+              : t('modals.importExport.noEnvironment')
+          }
         >
           <span className="t">
             <GlobeIcon size={15} />
-            Active environment
+            {t('modals.importExport.activeEnvironment')}
           </span>
           <span className="d">
-            {environmentName ? `"${environmentName}" as a Postman environment` : 'No active environment'}
+            {environmentName
+              ? t('modals.importExport.envDesc', { name: environmentName })
+              : t('modals.importExport.noEnvironment')}
           </span>
         </button>
         <button
@@ -186,14 +208,20 @@ export function ImportExportModal({
           className="choice"
           disabled={!requestName}
           onClick={() => onExport('tiger')}
-          title={requestName ? `Export "${requestName}"` : 'No request selected'}
+          title={
+            requestName
+              ? t('modals.importExport.exportTitle', { name: requestName })
+              : t('modals.importExport.noRequest')
+          }
         >
           <span className="t">
             <FileIcon size={15} />
-            Request as .tiger
+            {t('modals.importExport.requestTiger')}
           </span>
           <span className="d">
-            {requestName ? `"${requestName}" as a .tiger file` : 'Select a request first'}
+            {requestName
+              ? t('modals.importExport.tigerDesc', { name: requestName })
+              : t('modals.importExport.selectRequestFirst')}
           </span>
         </button>
         <button
@@ -201,14 +229,20 @@ export function ImportExportModal({
           className="choice"
           disabled={!requestName}
           onClick={() => onExport('curl')}
-          title={requestName ? `Copy "${requestName}" as curl` : 'No request selected'}
+          title={
+            requestName
+              ? t('modals.importExport.copyCurlTitle', { name: requestName })
+              : t('modals.importExport.noRequest')
+          }
         >
           <span className="t">
             <CodeIcon size={15} />
-            Copy as curl
+            {t('modals.importExport.copyCurl')}
           </span>
           <span className="d">
-            {requestName ? 'Copy a curl command to the clipboard' : 'Select a request first'}
+            {requestName
+              ? t('modals.importExport.copyCurlDesc')
+              : t('modals.importExport.selectRequestFirst')}
           </span>
         </button>
       </div>

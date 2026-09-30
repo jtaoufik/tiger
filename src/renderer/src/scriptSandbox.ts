@@ -4,6 +4,7 @@
  * plain-JSON result comes back. Nothing here evaluates code: this window's CSP
  * forbids eval on purpose, and it holds window.tiger.
  */
+import { t } from './i18n'
 import type { ScriptRequest, ScriptResponse, ScriptRunResult } from '@core/scriptTypes'
 
 export type ScriptRunner = (
@@ -20,7 +21,7 @@ export const runScriptIsolated: ScriptRunner = async (source, ctx) => {
       vars,
       logs: [],
       tests: [],
-      error: 'Scripts run in the Tiger desktop app only'
+      error: t('request.script.desktopOnly')
     }
   }
   const response = ctx.response

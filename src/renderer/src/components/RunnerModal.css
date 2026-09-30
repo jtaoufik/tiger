@@ -66,7 +66,7 @@
   top: 0;
   z-index: 1;
   padding: 7px 10px;
-  text-align: left;
+  text-align: start;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -80,7 +80,7 @@
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
-  text-align: left;
+  text-align: start;
 }
 .runner-table tbody tr:last-child td,
 .runner-table tbody tr:last-child th {
@@ -88,7 +88,7 @@
 }
 .runner-row.pass { background: rgba(44, 163, 106, 0.06); }
 .runner-row.fail { background: rgba(224, 83, 61, 0.07); }
-.runner-row[aria-current='step'] { box-shadow: inset 3px 0 0 var(--accent); }
+.runner-row[aria-current='step'] { box-shadow: inset calc(3px * var(--dir-sign)) 0 0 var(--accent); }
 .runner-table .runner-name {
   font-weight: 550;
   max-width: 260px;

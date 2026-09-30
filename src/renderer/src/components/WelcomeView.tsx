@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import type { MessageKey } from '@core/i18n'
 import { Logo } from '../Logo'
 import {
   CheckIcon,
@@ -14,7 +15,7 @@ import {
   UsersIcon
 } from './Icons'
 import { MOD } from '../platform'
-import { getAction } from '@core/actions'
+import { useT } from '../i18n'
 import { actionLabel, actionTitle } from '../actions'
 import { HelpLink } from './HelpLink'
 import type { ImportKind } from '../../../main/importers'
@@ -45,23 +46,11 @@ interface Props {
   hasSent?: boolean
 }
 
-/** Per-tool export hints for people switching to Tiger. */
-const SWITCHERS: Array<{ kind: ImportKind; name: string; hint: string }> = [
-  {
-    kind: 'postman',
-    name: 'Postman',
-    hint: 'open the ... menu next to the collection, choose Export and keep Collection v2.1. Export environments the same way from Environments. Pick the collection and environment files together.'
-  },
-  {
-    kind: 'insomnia',
-    name: 'Insomnia',
-    hint: 'open the ... menu of the collection (or Preferences, then Data) and choose Export. Both the JSON and the YAML export work.'
-  },
-  {
-    kind: 'bruno',
-    name: 'Bruno',
-    hint: 'nothing to export. Pick the collection folder on disk, the one that holds bruno.json.'
-  }
+/** Per-tool export hints for people switching to Tiger (tool names are product names). */
+const SWITCHERS: Array<{ kind: ImportKind; name: string; hintKey: MessageKey }> = [
+  { kind: 'postman', name: 'Postman', hintKey: 'views.welcome.switch.postman' },
+  { kind: 'insomnia', name: 'Insomnia', hintKey: 'views.welcome.switch.insomnia' },
+  { kind: 'bruno', name: 'Bruno', hintKey: 'views.welcome.switch.bruno' }
 ]
 
 /** The home screen: every major feature one click away. */
@@ -83,98 +72,113 @@ export function WelcomeView({
   hasRequestOpen = false,
   hasSent = false
 }: Props) {
+  const t = useT()
   const uid = useId()
   // The ways to get a collection in front of you. These lead the screen.
   const primary = [
     {
+      id: 'open',
       icon: <FolderOpenIcon size={22} />,
-      title: 'Open a collection',
-      desc: 'Any folder of .tiger files, straight from disk.',
+      title: t('views.welcome.primary.open.title'),
+      desc: t('views.welcome.primary.open.desc'),
       onClick: onOpenCollection
     },
     {
+      id: 'new',
       icon: <PlusIcon size={22} />,
-      title: getAction('new-collection').label,
-      desc: 'Create an empty collection folder on your machine.',
+      title: actionLabel('new-collection'),
+      desc: t('views.welcome.primary.new.desc'),
       onClick: onNewCollection
     },
     {
+      id: 'join',
       icon: <UsersIcon size={22} />,
       title: actionLabel('join-team'),
-      desc: 'Get a collection your team shares in a git repository.',
+      desc: t('views.welcome.primary.join.desc'),
       onClick: onClone
     },
     {
+      id: 'import',
       icon: <UploadIcon size={22} />,
-      title: 'Import from Postman / Insomnia / Bruno',
-      desc: 'Also OpenAPI, WSDL and curl. Or drop an export on this window.',
+      title: t('views.welcome.primary.import.title'),
+      desc: t('views.welcome.primary.import.desc'),
       onClick: onImportExport
     }
   ]
 
   const tiles = [
     {
+      id: 'request',
       icon: <PlusIcon size={20} />,
-      title: getAction('new-request').label,
+      title: actionLabel('new-request'),
       desc: canCreateRequest
-        ? 'Start from scratch in your first collection.'
-        : 'Open or create a collection first.',
+        ? t('views.welcome.tile.request.desc')
+        : t('views.welcome.tile.request.disabled'),
       onClick: onNewRequest,
       disabled: !canCreateRequest
     },
     {
+      id: 'palette',
       icon: <SearchIcon size={20} />,
-      title: getAction('command-palette').label,
-      desc: `${MOD}+K finds any request or command by name.`,
+      title: actionLabel('command-palette'),
+      desc: t('views.welcome.tile.palette.desc', { mod: MOD }),
       onClick: onPalette
     },
     {
+      id: 'team',
       icon: <GitBranchIcon size={20} />,
-      title: 'Sync with your team',
-      desc: 'One button shares changes and fetches updates via Git.',
+      title: t('views.welcome.tile.team.title'),
+      desc: t('views.welcome.tile.team.desc'),
       onClick: onGit
     },
     {
+      id: 'env',
       icon: <GlobeIcon size={20} />,
-      title: getAction('environments').label,
-      desc: 'Switch dev, staging and prod with {{variables}}.',
+      title: actionLabel('environments'),
+      // i18n-ignore: variable syntax, passed as a value
+      desc: t('views.welcome.tile.env.desc', { vars: '{{variables}}' }),
       onClick: onEnvironments
     },
     {
+      id: 'history',
       icon: <ClockIcon size={20} />,
-      title: getAction('history').label,
-      desc: 'Your last 200 sends with status and timing.',
+      title: actionLabel('history'),
+      desc: t('views.welcome.tile.history.desc'),
       onClick: onHistory
     },
     {
+      id: 'settings',
       icon: <GearIcon size={20} />,
-      title: getAction('settings').label,
-      desc: 'Theme, proxy, SSL, timeouts, AI assistants and privacy.',
+      title: actionLabel('settings'),
+      desc: t('views.welcome.tile.settings.desc'),
       onClick: onSettings
     }
   ]
 
   const steps = [
     {
-      title: 'Open or create a collection',
-      hint: 'A collection is a folder of .tiger files. Use a card below.',
+      id: 'open',
+      title: t('views.welcome.step.open.title'),
+      hint: t('views.welcome.step.open.hint'),
       done: hasCollection
     },
     {
-      title: 'Pick a request',
-      hint: `Click one in the sidebar, or ${actionTitle('new-request')}.`,
+      id: 'pick',
+      title: t('views.welcome.step.pick.title'),
+      hint: t('views.welcome.step.pick.hint', { action: actionTitle('new-request') }),
       done: hasRequestOpen
     },
     {
-      title: 'Send it',
-      hint: `${actionTitle('send')}. The response shows below the request.`,
+      id: 'send',
+      title: t('views.welcome.step.send.title'),
+      hint: t('views.welcome.step.send.hint', { action: actionTitle('send') }),
       done: hasSent
     }
   ]
 
   // Tiles are named by their title and described by their blurb, so screen
   // readers hear "Open a collection, button" then the detail, not one run-on.
-  const descId = (title: string) => `${uid}-${title.replace(/\W+/g, '-')}`
+  const descId = (id: string) => `${uid}-desc-${id}`
 
   return (
     <section className="panel welcome" aria-labelledby={`${uid}-title`}>
@@ -183,28 +187,28 @@ export function WelcomeView({
           <Logo size={56} />
         </span>
         <div>
-          <h2 id={`${uid}-title`}>Welcome to Tiger</h2>
-          <p>The API client that lives in your repos. Start with a collection.</p>
+          <h2 id={`${uid}-title`}>{t('views.welcome.title')}</h2>
+          <p>{t('views.welcome.tagline')}</p>
         </div>
       </div>
 
       <section className="welcome-steps" aria-labelledby={`${uid}-steps`}>
         <div className="welcome-steps-head">
           <h3 className="welcome-section-label" id={`${uid}-steps`}>
-            Getting started
+            {t('views.welcome.stepsTitle')}
           </h3>
-          <HelpLink page="first-request" topic="Your first request" />
+          <HelpLink page="first-request" topic={t('views.welcome.helpTopic')} />
         </div>
         <ol className="welcome-step-list">
           {steps.map((step, i) => (
-            <li key={step.title} className={`welcome-step${step.done ? ' done' : ''}`}>
+            <li key={step.id} className={`welcome-step${step.done ? ' done' : ''}`}>
               <span className="welcome-step-num" aria-hidden="true">
                 {step.done ? <CheckIcon size={13} /> : i + 1}
               </span>
               <span className="welcome-step-text">
                 <span className="t">
                   {step.title}
-                  {step.done && <span className="tg-sr-only"> (done)</span>}
+                  {step.done && <span className="tg-sr-only"> {t('views.welcome.done')}</span>}
                 </span>
                 <span className="d">{step.hint}</span>
               </span>
@@ -213,20 +217,20 @@ export function WelcomeView({
         </ol>
       </section>
 
-      <h3 className="welcome-section-label">Start a collection</h3>
+      <h3 className="welcome-section-label">{t('views.welcome.startTitle')}</h3>
       <ul className="welcome-primary" role="list">
         {primary.map((tile) => (
-          <li key={tile.title}>
+          <li key={tile.id}>
             <button
               type="button"
               className="welcome-tile primary"
               onClick={tile.onClick}
-              aria-describedby={descId(tile.title)}
+              aria-describedby={descId(tile.id)}
             >
               <span className="chip">{tile.icon}</span>
               <span className="meta">
                 <span className="t">{tile.title}</span>
-                <span className="d" id={descId(tile.title)}>
+                <span className="d" id={descId(tile.id)}>
                   {tile.desc}
                 </span>
               </span>
@@ -238,13 +242,9 @@ export function WelcomeView({
       {onImport && (
         <section className="welcome-switch" aria-labelledby={`${uid}-switch`}>
           <h3 className="welcome-section-label" id={`${uid}-switch`}>
-            Coming from another tool?
+            {t('views.welcome.switch.title')}
           </h3>
-          <p className="welcome-switch-lead">
-            Requests, folders, auth, environments and test scripts come with you. After the
-            import, a short report lists anything to double check. You can also drop an export
-            file or a Bruno folder anywhere on this window.
-          </p>
+          <p className="welcome-switch-lead">{t('views.welcome.switch.lead')}</p>
           <ul className="welcome-switch-list" role="list">
             {SWITCHERS.map((tool) => (
               <li key={tool.kind} className="welcome-switch-card">
@@ -256,12 +256,12 @@ export function WelcomeView({
                     onClick={() => onImport(tool.kind)}
                     aria-describedby={`${uid}-${tool.kind}-hint`}
                   >
-                    <UploadIcon size={14} /> Import from {tool.name}
+                    <UploadIcon size={14} /> {t('views.welcome.switch.import', { name: tool.name })}
                   </button>
                 </div>
                 <p className="welcome-switch-hint" id={`${uid}-${tool.kind}-hint`}>
-                  <span className="welcome-switch-where">Where to find it: </span>
-                  {tool.hint}
+                  <span className="welcome-switch-where">{t('views.welcome.switch.where')} </span>
+                  {t(tool.hintKey)}
                 </p>
               </li>
             ))}
@@ -269,20 +269,20 @@ export function WelcomeView({
         </section>
       )}
 
-      <h3 className="welcome-section-label">Tools</h3>
+      <h3 className="welcome-section-label">{t('views.welcome.toolsTitle')}</h3>
       <ul className="welcome-grid" role="list">
         {tiles.map((tile) => (
-          <li key={tile.title}>
+          <li key={tile.id}>
             <button
               type="button"
               className="welcome-tile"
               onClick={tile.disabled ? undefined : tile.onClick}
               aria-disabled={tile.disabled || undefined}
-              aria-describedby={descId(tile.title)}
+              aria-describedby={descId(tile.id)}
             >
               {tile.icon}
               <span className="t">{tile.title}</span>
-              <span className="d" id={descId(tile.title)}>
+              <span className="d" id={descId(tile.id)}>
                 {tile.desc}
               </span>
             </button>
@@ -292,9 +292,9 @@ export function WelcomeView({
 
       <div className="welcome-foot">
         <FileIcon size={13} />
-        <span>Requests are plain .tiger files: branch them, review them, own them.</span>
+        <span>{t('views.welcome.foot')}</span>
         <span style={{ flex: 1 }} />
-        <span>Version {version}</span>
+        <span>{t('views.welcome.version', { version })}</span>
       </div>
     </section>
   )

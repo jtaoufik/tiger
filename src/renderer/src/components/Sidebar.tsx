@@ -13,7 +13,7 @@ import type { HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
 import './Sidebar.css'
 import { actionTitle } from '../actions'
-import { isContextMenuKey, menuAnchor } from '../a11y'
+import { isContextMenuKey, logicalArrow, menuAnchor } from '../a11y'
 import {
   ChevronIcon,
   CloseIcon,
@@ -30,6 +30,9 @@ import {
   UsersIcon
 } from './Icons'
 import { summarizeSync, useConflictRoots } from '../gitUx'
+import { useT } from '../i18n'
+import { emphasize } from '../emphasize'
+import type { Translator } from '@core/i18n'
 import { SyncBadge } from './TeamSync'
 
 export interface SyncState {
@@ -251,13 +254,14 @@ function rowButton(title: string, icon: ReactNode, onClick: () => void, danger =
 }
 
 /** "More actions": the row's context menu, for people who never right-click. */
-function moreButton(what: string, open: (x: number, y: number) => void) {
+function moreButton(t: Translator, what: string, open: (x: number, y: number) => void) {
+  const label = t('sidebar.row.moreActions', { name: what })
   return (
     <button
       type="button"
       className="icon-btn"
-      title={`More actions for ${what}`}
-      aria-label={`More actions for ${what}`}
+      title={label}
+      aria-label={label}
       aria-haspopup="menu"
       tabIndex={-1}
       onMouseDown={(e) => e.preventDefault()}
@@ -273,6 +277,7 @@ function moreButton(what: string, open: (x: number, y: number) => void) {
 }
 
 function chevron(
+  t: Translator,
   open: boolean,
   what: 'folder' | 'collection',
   key: string,
@@ -282,7 +287,15 @@ function chevron(
     <button
       type="button"
       className="icon-btn chev-btn"
-      title={open ? `Collapse ${what}` : `Expand ${what}`}
+      title={t(
+        open
+          ? what === 'folder'
+            ? 'sidebar.row.collapseFolder'
+            : 'sidebar.row.collapseCollection'
+          : what === 'folder'
+            ? 'sidebar.row.expandFolder'
+            : 'sidebar.row.expandCollection'
+      )}
       aria-hidden
       tabIndex={-1}
       onMouseDown={(e) => e.preventDefault()}
@@ -327,6 +340,7 @@ const RequestRow = memo(function RequestRow({
   draft,
   api
 }: RequestRowProps) {
+  const t = useT()
   const key = reqKey(entry.id)
   const method = entry.method.toUpperCase()
   return (
@@ -366,7 +380,7 @@ const RequestRow = memo(function RequestRow({
         {renaming ? (
           <input
             className="rename-input"
-            aria-label={`Rename ${entry.name}`}
+            aria-label={t('sidebar.row.rename', { name: entry.name })}
             autoFocus
             value={draft}
             spellCheck={false}
@@ -382,7 +396,7 @@ const RequestRow = memo(function RequestRow({
         ) : (
           <span
             className="row-label"
-            title={`${entry.name}\nDouble-click to rename (F2)`}
+            title={t('sidebar.row.renameHint', { name: entry.name })}
             onDoubleClick={(e) => {
               e.stopPropagation()
               api.startRenameRequest(entry)
@@ -392,9 +406,9 @@ const RequestRow = memo(function RequestRow({
           </span>
         )}
         <span className="row-actions">
-          {rowButton('Duplicate request', <CopyIcon size={13} />, () => api.duplicateRequest(entry.id))}
-          {rowButton('Delete request', <TrashIcon size={13} />, () => api.deleteRequest(entry.id), true)}
-          {moreButton(entry.name, (x, y) => api.requestMenu(entry.id, x, y))}
+          {rowButton(t('sidebar.row.duplicateRequest'), <CopyIcon size={13} />, () => api.duplicateRequest(entry.id))}
+          {rowButton(t('sidebar.row.deleteRequest'), <TrashIcon size={13} />, () => api.deleteRequest(entry.id), true)}
+          {moreButton(t, entry.name, (x, y) => api.requestMenu(entry.id, x, y))}
         </span>
       </div>
     </div>
@@ -427,6 +441,7 @@ const FolderRow = memo(function FolderRow({
   hasMenu,
   api
 }: FolderRowProps) {
+  const t = useT()
   const path = folder.path
   return (
     <div
@@ -456,12 +471,12 @@ const FolderRow = memo(function FolderRow({
         }
       }}
     >
-      {chevron(open, 'folder', folder.key, api.toggle)}
+      {chevron(t, open, 'folder', folder.key, api.toggle)}
       <FolderIcon size={14} />
       {renaming ? (
         <input
           className="rename-input"
-          aria-label={`Rename folder ${folder.name}`}
+          aria-label={t('sidebar.row.renameFolder', { name: folder.name })}
           autoFocus
           value={draft}
           spellCheck={false}
@@ -477,7 +492,7 @@ const FolderRow = memo(function FolderRow({
       ) : (
         <span
           className="row-label"
-          title={`${folder.name}\nDouble-click to rename (F2)`}
+          title={t('sidebar.row.renameHint', { name: folder.name })}
           onDoubleClick={(e) => {
             e.stopPropagation()
             api.startRenameFolder(folder.key, folder.name)
@@ -487,8 +502,8 @@ const FolderRow = memo(function FolderRow({
         </span>
       )}
       <span className="row-actions">
-        {rowButton('Duplicate folder', <CopyIcon size={13} />, () => api.duplicateFolder(colId, path))}
-        {hasMenu && moreButton(folder.name, (x, y) => api.folderMenu(colId, path, x, y))}
+        {rowButton(t('sidebar.row.duplicateFolder'), <CopyIcon size={13} />, () => api.duplicateFolder(colId, path))}
+        {hasMenu && moreButton(t, folder.name, (x, y) => api.folderMenu(colId, path, x, y))}
       </span>
     </div>
   )
@@ -523,6 +538,7 @@ export function Sidebar({
   onNewMenu,
   renameTarget
 }: Props) {
+  const t = useT()
   const conflictRoots = useConflictRoots()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   /** What the search box shows (updates on every keystroke). */
@@ -980,7 +996,9 @@ export function Sidebar({
     // App shortcuts (Cmd/Ctrl+Enter sends, Cmd/Ctrl+S saves, ...) must reach
     // the window listener: plain Enter here would swallow Cmd/Ctrl+Enter.
     if (e.metaKey || e.ctrlKey) return
-    switch (e.key) {
+    // WAI-ARIA tree: in a right-to-left layout ArrowLeft expands / goes to the
+    // first child and ArrowRight collapses / goes to the parent.
+    switch (logicalArrow(e.key)) {
       case 'ArrowDown':
         handled()
         moveTo(flat[index + 1]?.key)
@@ -1208,12 +1226,12 @@ export function Sidebar({
     const sync = syncStates[colId]
     if (!sync?.isRepo) return null
     const summary = summarizeSync(sync, { conflict: !!root && conflictRoots.has(root) })
-    const label = `Team sync: ${summary.label}`
+    const label = t('sidebar.sync.label', { label: summary.label })
     return (
       <button
         type="button"
         className="sync-chips"
-        title={`${label}. ${summary.detail}`}
+        title={t('sidebar.sync.title', { label: summary.label, detail: summary.detail })}
         aria-label={label}
         tabIndex={-1}
         onMouseDown={(e) => e.preventDefault()}
@@ -1238,17 +1256,14 @@ export function Sidebar({
     tree = (
       <div className="sidebar-empty">
         <FolderOpenIcon size={26} />
-        <h3>No collections open.</h3>
-        <p>
-          A collection is a folder of .tiger request files. Open one or start a new one. Coming
-          from Postman, Insomnia or Bruno? Use Import above.
-        </p>
+        <h3>{t('sidebar.empty.title')}</h3>
+        <p>{t('sidebar.empty.body')}</p>
         <div className="sidebar-empty-actions">
           <button type="button" className="btn accent" onClick={onOpenCollection}>
-            Open collection
+            {t('sidebar.empty.open')}
           </button>
           <button type="button" className="btn" onClick={onNewCollection}>
-            New collection
+            {t('sidebar.empty.new')}
           </button>
         </div>
       </div>
@@ -1257,11 +1272,9 @@ export function Sidebar({
     tree = (
       <div className="sidebar-empty" role="status">
         <SearchIcon size={22} />
-        <p>
-          No requests match <b>{effectiveQuery.trim()}</b>.
-        </p>
+        <p>{emphasize(t('sidebar.search.noMatch', { query: effectiveQuery.trim() }), effectiveQuery.trim())}</p>
         <button type="button" className="btn ghost" onClick={() => setQuery('')}>
-          Clear search
+          {t('sidebar.search.clear')}
         </button>
       </div>
     )
@@ -1318,7 +1331,7 @@ export function Sidebar({
               }
             }}
           >
-            {chevron(open, 'collection', colKey, api.toggle)}
+            {chevron(t, open, 'collection', colKey, api.toggle)}
             <span className="row-label" title={col.root ? `${col.name}\n${col.root}` : col.name}>
               {col.name}
             </span>
@@ -1326,8 +1339,8 @@ export function Sidebar({
             <span className="row-actions">
               {col.root && rowButton(actionTitle('team-sync'), <GitBranchIcon size={13} />, () => onGit(col.id))}
               {rowButton(actionTitle('new-request'), <PlusIcon size={13} />, () => onNewRequest(col.id))}
-              {rowButton('Close collection', <CloseIcon size={13} />, () => onCloseCollection(col.id), true)}
-              {moreButton(col.name, (x, y) => onCollectionMenu(col.id, x, y))}
+              {rowButton(t('sidebar.row.closeCollection'), <CloseIcon size={13} />, () => onCloseCollection(col.id), true)}
+              {moreButton(t, col.name, (x, y) => onCollectionMenu(col.id, x, y))}
             </span>
           </div>
           {open && renderChildren(root, 1, col.id, 2, 1)}
@@ -1340,15 +1353,15 @@ export function Sidebar({
     <nav className="panel sidebar" aria-labelledby="sidebar-title">
       <div className="sidebar-head">
         <h2 className="title" id="sidebar-title">
-          Collections
+          {t('sidebar.title')}
         </h2>
         {headerButton(actionTitle('join-team'), <UsersIcon />, onClone)}
       </div>
-      <div className="sidebar-actions" role="group" aria-label="Collection actions">
+      <div className="sidebar-actions" role="group" aria-label={t('sidebar.actions.group')}>
         <button
           type="button"
           className="btn ghost sidebar-action"
-          title="New request, folder, collection or environment"
+          title={t('sidebar.actions.newTitle')}
           aria-haspopup="menu"
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
@@ -1357,7 +1370,7 @@ export function Sidebar({
           }}
         >
           <PlusIcon size={14} />
-          New
+          <span className="sidebar-action-label">{t('sidebar.actions.new')}</span>
           <ChevronDownIcon size={12} />
         </button>
         <button
@@ -1367,16 +1380,16 @@ export function Sidebar({
           onClick={onOpenCollection}
         >
           <FolderOpenIcon size={14} />
-          Open
+          <span className="sidebar-action-label">{t('sidebar.actions.open')}</span>
         </button>
         <button
           type="button"
           className="btn ghost sidebar-action"
-          title="Import from Postman, Insomnia, Bruno, OpenAPI or curl"
+          title={t('sidebar.actions.importTitle')}
           onClick={onImportExport}
         >
           <UploadIcon size={14} />
-          Import
+          <span className="sidebar-action-label">{t('sidebar.actions.import')}</span>
         </button>
       </div>
 
@@ -1384,8 +1397,8 @@ export function Sidebar({
         <SearchIcon size={13} />
         <input
           type="search"
-          aria-label="Search requests"
-          placeholder="Search requests"
+          aria-label={t('sidebar.search.label')}
+          placeholder={t('sidebar.search.label')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -1427,7 +1440,7 @@ export function Sidebar({
         <span aria-hidden>
           <Logo size={16} />
         </span>
-        <span>Tiger · local-first API client</span>
+        <span>{t('sidebar.foot')}</span>
       </div>
     </nav>
   )

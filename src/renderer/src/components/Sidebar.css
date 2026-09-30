@@ -129,22 +129,55 @@
   padding-bottom: 6px;
   border-bottom: none;
 }
+/* New / Open / Import stay on one row in every language at the default
+   sidebar width (French is the longest). In a sidebar dragged narrower, the
+   labels collapse to icons: the text stays as the accessible name and the
+   title is the tooltip. */
 .sidebar-actions {
   display: flex;
-  gap: 4px;
-  padding: 0 9px 9px;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 0 5px 9px;
   border-bottom: 1px solid var(--border);
+  container-type: inline-size;
 }
 .sidebar-actions .sidebar-action {
   display: inline-flex;
+  /* Safety net for wider system fonts: shrink with an ellipsis, never spill
+     past the sidebar edge. */
+  flex: 0 1 auto;
+  min-width: 0;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-height: 28px;
-  padding: 4px 8px;
+  padding: 4px 5px;
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
 }
 .sidebar-actions .sidebar-action:first-child {
   color: var(--accent-text);
+}
+
+.sidebar-actions .sidebar-action-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-actions .sidebar-action > svg {
+  flex: none;
+}
+
+@container (max-width: 236px) {
+  .sidebar-actions .sidebar-action {
+    padding: 4px 8px;
+  }
+  .sidebar-actions .sidebar-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }

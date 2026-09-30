@@ -3,6 +3,15 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## 0.8.0
+
+- Tiger speaks six languages: English, Simplified Chinese (中文), Hindi (हिन्दी), Spanish (Español), French (Français) and Arabic (العربية). It starts in your system language (Mexican Spanish opens in Spanish, Canadian French in French, Simplified Chinese in Chinese) and falls back to English otherwise.
+- Settings > General > Language lists each language in its own name plus System default. Switching is live: the window, the native menu and file dialogs change language without a restart, and the choice is remembered.
+- Everything is translated: menus, buttons, tooltips, screen reader labels and announcements, toasts, errors, team sync wording (the git term stays in small print), the update banner, the import report and the welcome checklist. Numbers, dates and "3 minutes ago" follow the language, with the right plural forms (Arabic has six).
+- Arabic uses a full right-to-left layout: the sidebar moves to the right, arrows and chevrons are mirrored, and arrow keys follow the reading direction in the sidebar tree, tabs and resizers. URLs, code, JSON and shortcuts stay left to right.
+- Chinese, Hindi and Arabic text uses your system's fonts, with taller lines for Hindi and Arabic so nothing is clipped.
+- The command palette finds commands by their translated name and by their English name.
+
 ## 0.7.1
 
 - Scripts and tests now run in the desktop app. They were blocked by a security setting since 0.2.0; they now run in an isolated sandbox with no access to your files.
