@@ -131,6 +131,9 @@
 }
 .sidebar-actions {
   display: flex;
+  /* Longer translations (Importer, आयात करें) wrap to a second row rather
+     than clipping at the sidebar edge. */
+  flex-wrap: wrap;
   gap: 4px;
   padding: 0 9px 9px;
   border-bottom: 1px solid var(--border);

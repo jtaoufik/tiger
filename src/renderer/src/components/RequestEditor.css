@@ -28,7 +28,7 @@
 }
 
 .body-toolbar-actions {
-  margin-left: auto;
+  margin-inline-start: auto;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -68,7 +68,7 @@
 .panel.editor .tabs .tab .count {
   display: inline-block;
   min-width: 16px;
-  margin-left: 2px;
+  margin-inline-start: 2px;
   padding: 0 5px;
   border-radius: 99px;
   font-size: 10.5px;

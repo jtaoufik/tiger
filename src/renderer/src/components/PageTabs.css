@@ -108,7 +108,7 @@
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  text-align: left;
+  text-align: start;
   font: inherit;
   font-size: 0.8125rem;
   color: var(--text);

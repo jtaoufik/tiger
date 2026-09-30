@@ -65,7 +65,7 @@
 .timing-pop {
   position: absolute;
   top: calc(100% + 7px);
-  left: 0;
+  inset-inline-start: 0;
   z-index: 60;
   display: none;
   flex-direction: column;
@@ -190,7 +190,7 @@
 .panel.response .resp-search-count {
   color: var(--text-dim);
   min-width: 34px;
-  text-align: right;
+  text-align: end;
 }
 /* Active match: white on the accent is 2.5:1 on light, so darken it there. */
 .panel.response .response-body mark.hit.active {
