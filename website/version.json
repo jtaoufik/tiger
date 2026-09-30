@@ -1,11 +1,10 @@
 {
-  "version": "0.6.0",
+  "version": "0.7.0",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Sync conflicts resolve in-app: keep my version or use the team's, one click, no merge tools",
-    "Team sync panel speaks plain language; branches, push, pull and diffs move behind Advanced",
-    "Windows: native right-click paste on inputs, parented dialogs, folder-rename fix, Check for Updates in Help",
-    "macOS: fullscreen titlebar gap fixed; Ctrl text-editing shortcuts no longer hijacked",
-    "Warns before closing the window with unsaved edits; platform-correct shortcut labels everywhere"
+    "Clearer everywhere: one name per action, labelled New / Open / Import, plain tab names (Save values, Load test, Notes)",
+    "Team sync without git jargon: one status, one-click Sync with team, guided sharing, side-by-side conflict choices",
+    "Accessibility: readable contrast, full keyboard use, screen reader announcements, Windows High Contrast support",
+    "Windows: one recommended installer with Start menu and desktop shortcuts, plus a Portable version"
   ]
 }
