@@ -245,6 +245,15 @@ describe('catalogs', () => {
     }
   })
 
+  it('in Arabic, never puts punctuation right after a file extension (".tiger." reads as "..tiger")', () => {
+    for (const [key, m] of Object.entries(CATALOGS.ar)) {
+      const texts = typeof m === 'string' ? [m] : Object.values(m as object)
+      for (const text of texts) {
+        expect(text as string, `ar ${key}`).not.toMatch(/(^|\s)\.[a-z0-9]+[.,،؛:!?؟]/)
+      }
+    }
+  })
+
   it('has English copy without em dashes', () => {
     for (const key of enKeys) {
       const m = en[key] as Message

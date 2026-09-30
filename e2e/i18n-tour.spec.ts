@@ -144,6 +144,35 @@ for (const theme of ['light', 'dark'] as const) {
       await runMenuItem(app, 'getting-started')
       await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible()
       await checkScreen(page)
+      // The two home texts that used to read "ملفات tiger..": ".tiger" renders
+      // as one left-to-right unit (dot left of its letters) with an Arabic word
+      // after it, so no sentence punctuation can sit against the extension.
+      const tigerTexts = await page.evaluate(() => {
+        const out: Array<{ text: string; dotLeftOfT: boolean }> = []
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+        let node: Node | null
+        while ((node = walker.nextNode())) {
+          const s = node.textContent ?? ''
+          const i = s.indexOf('.tiger')
+          if (i < 0 || !(node.parentElement as HTMLElement | null)?.offsetParent) continue
+          const at = (k: number) => {
+            const r = document.createRange()
+            r.setStart(node!, k)
+            r.setEnd(node!, k + 1)
+            return r.getBoundingClientRect().x
+          }
+          out.push({ text: s, dotLeftOfT: at(i) < at(i + 1) })
+        }
+        return out
+      })
+      for (const card of [
+        'المجموعة هي مجلد يضم ملفات ⁦.tiger⁩ على جهازك.',
+        'أي مجلد يضم ملفات ⁦.tiger⁩ تفتحه مباشرةً من القرص.'
+      ]) {
+        const hit = tigerTexts.find((x) => x.text.startsWith(card))
+        expect(hit, card).toBeTruthy()
+        expect(hit!.dotLeftOfT, card).toBe(true)
+      }
       await shot('home')
 
       // Workspace with a response.

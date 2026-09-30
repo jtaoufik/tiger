@@ -107,3 +107,39 @@ describe('WelcomeView in French', () => {
     expect(screen.getByText('Version 0.8.0')).toBeInTheDocument()
   })
 })
+
+describe('WelcomeView in Arabic', () => {
+  it('keeps ".tiger" as one left-to-right unit followed by Arabic, never by punctuation', async () => {
+    await act(() => setLocale('ar'))
+    const { container } = render(
+      <WelcomeView
+        version="0.8.0"
+        onOpenCollection={noop}
+        onNewCollection={noop}
+        onClone={noop}
+        onImportExport={noop}
+        onImport={noop}
+        onNewRequest={noop}
+        onPalette={noop}
+        onHistory={noop}
+        onEnvironments={noop}
+        onSettings={noop}
+        onGit={noop}
+      />
+    )
+    const LRI = String.fromCharCode(0x2066)
+    const PDI = String.fromCharCode(0x2069)
+    const texts = [...container.querySelectorAll('*')]
+      .flatMap((el) => [...el.childNodes])
+      .filter((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.includes('.tiger'))
+      .map((n) => n.textContent!)
+    // "Open or create a collection" (checklist) and "Open collection" (card).
+    expect(texts).toEqual(
+      expect.arrayContaining([
+        `المجموعة هي مجلد يضم ملفات ${LRI}.tiger${PDI} على جهازك. استخدم إحدى البطاقات أدناه.`,
+        `أي مجلد يضم ملفات ${LRI}.tiger${PDI} تفتحه مباشرةً من القرص.`
+      ])
+    )
+    for (const text of texts) expect(text).toContain(`${LRI}.tiger${PDI} `)
+  })
+})
