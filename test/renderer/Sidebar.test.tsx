@@ -117,6 +117,25 @@ describe('Sidebar ARIA tree', () => {
     expect(focused()).toHaveAccessibleName('Orders')
   })
 
+  it('in a right-to-left layout the arrows mirror: Right collapses and goes up, Left expands and enters', () => {
+    document.documentElement.dir = 'rtl'
+    try {
+      setup()
+      item('Orders').focus()
+      key('ArrowRight')
+      expect(item('Orders')).toHaveAttribute('aria-expanded', 'false')
+      key('ArrowRight')
+      expect(focused()).toHaveAccessibleName('Shop API')
+      key('ArrowDown')
+      key('ArrowLeft')
+      expect(item('Orders')).toHaveAttribute('aria-expanded', 'true')
+      key('ArrowLeft')
+      expect(focused()).toHaveAccessibleName('GET List orders')
+    } finally {
+      document.documentElement.dir = 'ltr'
+    }
+  })
+
   it('Enter opens requests, folders and collections', () => {
     const p = setup()
     item('GET List orders').focus()

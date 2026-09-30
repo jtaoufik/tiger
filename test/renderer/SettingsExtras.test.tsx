@@ -22,6 +22,7 @@ beforeEach(() => {
 
 const fallbackSettings: Settings = {
   theme: 'system',
+  language: 'system',
   timeoutMs: 30000,
   fontSize: 13,
   followRedirects: true,

@@ -3,9 +3,9 @@
  * came in partly (grouped per request so the list reads like a checklist).
  */
 
-import { folderPaths } from './common'
+import { folderPaths, warning } from './common'
 import type { KeyValue, TigerEnvironment } from '../types'
-import type { ImportResult, ImportWarning } from './types'
+import type { ImportResult, ImportWarning, MessageI18n } from './types'
 
 export interface ImportSummary {
   name: string
@@ -13,16 +13,33 @@ export interface ImportSummary {
   folders: number
   environments: number
   /** Warnings grouped by the item they concern, in first-seen order. */
-  items: Array<{ request?: string; path: string[]; messages: string[] }>
+  items: SummaryItem[]
+}
+
+export interface SummaryItem {
+  request?: string
+  path: string[]
+  messages: string[]
+  /**
+   * Parallel to `messages`: the catalog key and values of each one, so the
+   * report can show it in the user's language. Left out when none has one.
+   */
+  i18n?: Array<MessageI18n | undefined>
 }
 
 export function summarizeImport(result: ImportResult): ImportSummary {
-  const groups = new Map<string, { request?: string; path: string[]; messages: string[] }>()
+  const groups = new Map<string, SummaryItem>()
   const add = (w: ImportWarning) => {
     const path = w.path ?? []
     const key = `${path.join('/')}\u0000${w.request ?? ''}`
     const group = groups.get(key) ?? { request: w.request, path, messages: [] }
-    if (!group.messages.includes(w.message)) group.messages.push(w.message)
+    if (!group.messages.includes(w.message)) {
+      group.messages.push(w.message)
+      if (w.i18n) {
+        const list = (group.i18n ??= group.messages.slice(0, -1).map(() => undefined))
+        list.push(w.i18n)
+      } else group.i18n?.push(undefined)
+    }
     groups.set(key, group)
   }
   for (const w of result.warnings ?? []) add(w)
@@ -55,7 +72,7 @@ export function layerCollectionVariables(result: ImportResult): ImportResult {
     environments = [{ name, variables: vars }]
     warnings.push({
       request: name,
-      message: `Collection variables became the environment "${name}". It is selected for you.`
+      ...warning('imports.collectionVarsEnv', { name })
     })
   } else {
     environments = envs.map((env) => {
@@ -64,9 +81,7 @@ export function layerCollectionVariables(result: ImportResult): ImportResult {
     })
     warnings.push({
       request: 'Collection variables',
-      message: `Tiger has one variable scope, so the collection variables (${vars
-        .map((v) => v.name)
-        .join(', ')}) were added to each environment. Values set in an environment win.`
+      ...warning('imports.collectionVarsLayered', { names: vars.map((v) => v.name).join(', ') })
     })
   }
   return { ...rest, environments, warnings }

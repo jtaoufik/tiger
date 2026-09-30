@@ -2,6 +2,7 @@ import type { UpdateInfo } from '@core/version'
 import { releaseNotesUrl, updateStatusText, type UpdateState } from '@core/updateState'
 import { Modal } from './Modal'
 import { CheckIcon, DownloadIcon, RefreshIcon } from './Icons'
+import { useT } from '../i18n'
 import './UpdateBanner.css'
 
 /** Website download page: the fallback when an in-app update cannot run. */
@@ -32,19 +33,20 @@ export function UpdateModal(props: ManualProps | AutoProps) {
 
 /** Website-link flow: dev, Store, .deb, tar.gz and the Windows portable builds. */
 function ManualUpdate({ info, currentVersion, onDownload, onClose }: ManualProps) {
+  const t = useT()
   return (
     <Modal
-      title={`Update available · v${info.latest}`}
+      title={t('settings.update.manualTitle', { version: info.latest })}
       onClose={onClose}
       width={480}
-      description={`You are on v${currentVersion}. Version ${info.latest} is ready to download.`}
+      description={t('settings.update.manualDesc', { current: currentVersion, latest: info.latest })}
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>
-            Later
+            {t('settings.update.later')}
           </button>
           <button type="button" className="btn accent" data-autofocus onClick={onDownload}>
-            <DownloadIcon size={14} /> Download update
+            <DownloadIcon size={14} /> {t('settings.update.downloadUpdate')}
           </button>
         </>
       }
@@ -52,7 +54,7 @@ function ManualUpdate({ info, currentVersion, onDownload, onClose }: ManualProps
       {info.notes.length > 0 && (
         <section aria-labelledby="update-notes-label">
           <h3 id="update-notes-label" className="section-label" style={{ marginTop: 0 }}>
-            What changed
+            {t('settings.update.whatChanged')}
           </h3>
           <ul className="changelog">
             {info.notes.map((note, i) => (
@@ -75,13 +77,14 @@ function AutoUpdate({
   onOpenExternal,
   onClose
 }: AutoProps) {
+  const t = useT()
   const status = state.status
   const description =
     status === 'idle' || status === 'checking'
-      ? 'Checking for updates…'
+      ? t('settings.update.status.checking')
       : status === 'up-to-date'
-        ? `Tiger ${currentVersion} is the latest version.`
-        : updateStatusText(state)
+        ? t('settings.update.upToDateVersion', { version: currentVersion })
+        : updateStatusText(state, t)
 
   const notes =
     'version' in state && state.version ? (
@@ -90,7 +93,7 @@ function AutoUpdate({
         className="update-notes"
         onClick={() => onOpenExternal(releaseNotesUrl(state.version!))}
       >
-        Release notes for {state.version}
+        {t('settings.update.releaseNotesFor', { version: state.version })}
       </button>
     ) : null
 
@@ -100,10 +103,10 @@ function AutoUpdate({
       footer = (
         <>
           <button type="button" className="btn" onClick={onClose}>
-            Later
+            {t('settings.update.later')}
           </button>
           <button type="button" className="btn accent" data-autofocus onClick={onDownload}>
-            <DownloadIcon size={14} /> Download
+            <DownloadIcon size={14} /> {t('settings.update.download')}
           </button>
         </>
       )
@@ -112,10 +115,10 @@ function AutoUpdate({
       footer = (
         <>
           <button type="button" className="btn" onClick={onClose}>
-            Later
+            {t('settings.update.later')}
           </button>
           <button type="button" className="btn accent" data-autofocus onClick={onRestart}>
-            <CheckIcon size={14} /> Restart now
+            <CheckIcon size={14} /> {t('settings.update.restartNow')}
           </button>
         </>
       )
@@ -124,10 +127,10 @@ function AutoUpdate({
       footer = (
         <>
           <button type="button" className="btn" onClick={() => onOpenExternal(DOWNLOAD_PAGE)}>
-            Download from website
+            {t('settings.update.downloadFromWebsite')}
           </button>
           <button type="button" className="btn accent" data-autofocus onClick={onRetry}>
-            <RefreshIcon size={14} /> Try again
+            <RefreshIcon size={14} /> {t('common.retry')}
           </button>
         </>
       )
@@ -135,21 +138,21 @@ function AutoUpdate({
     case 'downloading':
       footer = (
         <button type="button" className="btn" data-autofocus onClick={onClose}>
-          Continue in background
+          {t('settings.update.continueInBackground')}
         </button>
       )
       break
     default:
       footer = (
         <button type="button" className="btn" data-autofocus onClick={onClose}>
-          {status === 'up-to-date' ? 'OK' : 'Close'}
+          {status === 'up-to-date' ? t('common.ok') : t('common.close')}
         </button>
       )
   }
 
   return (
     <Modal
-      title="Software update"
+      title={t('settings.update.title')}
       onClose={onClose}
       width={440}
       description={description}
@@ -160,12 +163,12 @@ function AutoUpdate({
           className="update-modal-progress"
           max={100}
           value={state.percent}
-          aria-label={`Downloading update ${state.version}`}
+          aria-label={t('settings.update.downloadingAria', { version: state.version })}
         />
       )}
       {status === 'downloaded' && (
         <p style={{ margin: 0, color: 'var(--text-dim)' }}>
-          Choose Later to install it the next time you quit Tiger.
+          {t('settings.update.laterHint')}
         </p>
       )}
       {notes}

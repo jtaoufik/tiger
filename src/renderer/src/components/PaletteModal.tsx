@@ -1,6 +1,14 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { searchItems, type SearchItem } from '@core/search'
-import { matchActions, shortcutKeys, type ActionDef, type ActionId } from '@core/actions'
+import {
+  actionDescription,
+  actionLabel,
+  matchActions,
+  shortcutKeys,
+  type ActionDef,
+  type ActionId
+} from '@core/actions'
+import { useT } from '../i18n'
 import { actionIcon } from '../actions'
 import { MOD } from '../platform'
 import { ArrowDownIcon, ArrowUpIcon, SearchIcon } from './Icons'
@@ -28,6 +36,7 @@ type Row = { kind: 'request'; item: SearchItem } | { kind: 'command'; action: Ac
  * highlighted option so screen readers follow the arrow keys.
  */
 export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
+  const t = useT()
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -44,8 +53,8 @@ export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
     [items, text, commandsOnly]
   )
   const commands = useMemo(
-    () => (onCommand ? matchActions(text, commandsOnly ? 12 : 6) : []),
-    [text, commandsOnly, onCommand]
+    () => (onCommand ? matchActions(text, t, commandsOnly ? 12 : 6) : []),
+    [text, commandsOnly, onCommand, t]
   )
   const rows: Row[] = useMemo(
     () => [
@@ -93,18 +102,27 @@ export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
     // optionId derives from uid, which is stable for the component's life.
   }, [clamped, rows])
 
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
   const countText = !text.trim()
-    ? `${plural(requests.length, 'request')}${onCommand ? ` and ${plural(commands.length, 'command')}` : ''}. Type to filter, arrows to move, Enter to open.`
+    ? onCommand
+      ? t('modals.palette.countBoth', {
+          requests: t('modals.palette.requestsCount', { count: requests.length }),
+          commands: t('modals.palette.commandsCount', { count: commands.length })
+        })
+      : t('modals.palette.countRequests', {
+          requests: t('modals.palette.requestsCount', { count: requests.length })
+        })
     : rows.length
       ? onCommand
-        ? `${plural(requests.length, 'matching request')}, ${plural(commands.length, 'matching command')}`
-        : plural(requests.length, 'matching request')
+        ? t('modals.palette.matchBoth', {
+            requests: t('modals.palette.matchingRequests', { count: requests.length }),
+            commands: t('modals.palette.matchingCommands', { count: commands.length })
+          })
+        : t('modals.palette.matchingRequests', { count: requests.length })
       : onCommand
-        ? 'No matching requests or commands'
-        : 'No matching requests'
+        ? t('modals.palette.noneBoth')
+        : t('modals.palette.noneRequests')
 
-  const name = onCommand ? 'Command palette' : 'Go to request'
+  const name = onCommand ? t('modals.palette.commandPalette') : t('modals.palette.goToRequest')
 
   const renderRow = (row: Row, i: number) => {
     const common = {
@@ -139,9 +157,9 @@ export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
           {actionIcon(a.id as ActionId, 15)}
         </span>
         <span className="palette-cmd-text">
-          <span className="row-label">{a.label}</span>
+          <span className="row-label">{actionLabel(a.id as ActionId, t)}</span>
           <span className="palette-cmd-desc" id={`${uid}-d-${a.id}`}>
-            {a.description}
+            {actionDescription(a.id as ActionId, t)}
           </span>
         </span>
         {keys.length > 0 && (
@@ -181,7 +199,9 @@ export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
             aria-autocomplete="list"
             aria-activedescendant={active ? optionId(clamped) : undefined}
             aria-label={name}
-            placeholder={onCommand ? 'Search requests and commands…' : 'Go to request…'}
+            placeholder={
+              onCommand ? t('modals.palette.placeholderAll') : t('modals.palette.placeholderRequests')
+            }
             value={query}
             spellCheck={false}
             autoComplete="off"
@@ -190,23 +210,24 @@ export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
               setIndex(0)
             }}
           />
+          {/* i18n-ignore: key cap */}
           <kbd aria-hidden="true">esc</kbd>
         </div>
         <div id={listId} className="palette-list" role="listbox" aria-label={name}>
           {requests.length > 0 && (
-            <div role="group" aria-label="Requests">
+            <div role="group" aria-label={t('modals.palette.groupRequests')}>
               {commands.length > 0 && (
                 <div className="palette-group" aria-hidden="true">
-                  Requests
+                  {t('modals.palette.groupRequests')}
                 </div>
               )}
               {rows.slice(0, requests.length).map((row, i) => renderRow(row, i))}
             </div>
           )}
           {commands.length > 0 && (
-            <div role="group" aria-label="Commands">
+            <div role="group" aria-label={t('modals.palette.groupCommands')}>
               <div className="palette-group" aria-hidden="true">
-                Commands
+                {t('modals.palette.groupCommands')}
               </div>
               {rows.slice(requests.length).map((row, i) => renderRow(row, requests.length + i))}
             </div>
@@ -214,10 +235,11 @@ export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
         </div>
         {rows.length === 0 && (
           <div className="palette-empty">
-            <b>{onCommand ? 'Nothing matches' : 'No matching requests'}</b>
+            <b>
+              {onCommand ? t('modals.palette.emptyTitleAll') : t('modals.palette.emptyTitleRequests')}
+            </b>
             <span>
-              Try part of the name, the method (get, post) or the collection
-              {onCommand ? ', or a command like "import" or "environment"' : ''}.
+              {onCommand ? t('modals.palette.emptyHintAll') : t('modals.palette.emptyHintRequests')}
             </span>
           </div>
         )}
@@ -229,18 +251,20 @@ export function PaletteModal({ items, onPick, onCommand, onClose }: Props) {
             <kbd>
               <ArrowDownIcon size={11} />
             </kbd>{' '}
-            move
+            {t('modals.palette.footMove')}
           </span>
           <span>
-            <kbd>Enter</kbd> open
+            <kbd>Enter</kbd> {t('modals.palette.footOpen')}
           </span>
           {onCommand && (
             <span>
-              <kbd>&gt;</kbd> commands only
+              {/* i18n-ignore: key cap */}
+              <kbd>&gt;</kbd> {t('modals.palette.footCommands')}
             </span>
           )}
           <span>
-            <kbd>esc</kbd> close
+            {/* i18n-ignore: key cap */}
+            <kbd>esc</kbd> {t('modals.palette.footClose')}
           </span>
         </div>
         <div id={`${uid}-count`} className="tg-sr-only" role="status" aria-live="polite">

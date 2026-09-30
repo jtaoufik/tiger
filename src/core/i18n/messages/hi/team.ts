@@ -1,0 +1,318 @@
+import type { NamespaceCatalog } from '../../translator'
+import type { team as en } from '../en/team'
+
+export const team: NamespaceCatalog<typeof en> = {
+  'team.git.err.authRequired':
+    'प्रमाणीकरण आवश्यक है। Git क्रेडेंशियल हेल्पर सेट करें, या अपने एजेंट में कुंजी के साथ SSH URL का उपयोग करें।',
+  'team.git.err.sshKey':
+    'SSH कुंजी स्वीकार नहीं की गई। सही कुंजी अपने SSH एजेंट में जोड़ें (जैसे ssh-add ~/.ssh/id_ed25519)।',
+  'team.git.err.authFailed':
+    'प्रमाणीकरण विफल रहा। अपना उपयोगकर्ता नाम और पर्सनल एक्सेस टोकन जाँचें।',
+  'team.git.err.notFound':
+    'रिपॉज़िटरी नहीं मिली। URL जाँचें, या पक्का करें कि आपके खाते के पास पहुँच है।',
+  'team.git.err.network':
+    'होस्ट तक नहीं पहुँचा जा सका। अपना नेटवर्क या रिपॉज़िटरी का URL जाँचें।',
+  'team.git.err.identity': 'संस्करण सहेजने से पहले Git को आपका नाम और ईमेल चाहिए।',
+  'team.git.err.rejected':
+    'टीम की रिपॉज़िटरी में ऐसे बदलाव हैं जो आपके पास अभी नहीं हैं। पहले सिंक करके उन्हें मिलाएँ।',
+  'team.git.err.noCommits': 'अभी कोई सहेजा हुआ संस्करण नहीं है। पहले एक संस्करण सहेजें।',
+  'team.git.prefix.save': 'आपके बदलाव सहेजे नहीं जा सके: {detail}',
+  'team.git.prefix.get': 'टीम के बदलाव नहीं मिल सके: {detail}',
+  'team.git.prefix.share': 'आपके बदलाव साझा नहीं हो सके: {detail}',
+  'team.git.prefix.combine': 'बदलाव मिलाए नहीं जा सके: {detail}',
+  'team.git.prefix.restore': 'बदलाव वापस नहीं लाए जा सके: {detail}',
+  'team.git.noRemote': 'कोई रिमोट कॉन्फ़िगर नहीं है',
+  'team.git.refreshed': 'रिमोट से ताज़ा किया गया',
+  'team.git.fetchFailed': 'ताज़ा करना विफल रहा',
+  'team.git.addFailed': 'git add विफल रहा',
+  'team.git.committed': 'संस्करण सहेजा गया',
+  'team.git.nothingToCommit': 'सहेजने के लिए कुछ नहीं है',
+  'team.git.identityInvalid': 'अपना नाम और एक मान्य ईमेल पता दर्ज करें',
+  'team.git.identitySaved': 'संस्करण {name} के नाम से सहेजे जाएँगे',
+  'team.git.saveNameFailed': 'आपका नाम सहेजा नहीं जा सका',
+  'team.git.upToDate': 'अद्यतन है',
+  'team.git.pullFailed': 'बदलाव लाना विफल रहा',
+  'team.git.pushed': 'साझा किया गया',
+  'team.git.pushFailed': 'साझा करना विफल रहा',
+  'team.git.trackingOn': 'संस्करण ट्रैकिंग चालू है',
+  'team.git.initFailed': 'git init विफल रहा',
+  'team.git.notSetUp': 'यह फ़ोल्डर अभी सिंक के लिए सेट नहीं है',
+  'team.git.savedLocalOnly': 'इस कंप्यूटर पर सहेजा गया (अभी कोई साझा रिपॉज़िटरी जुड़ी नहीं है)',
+  'team.git.publishFailed': 'प्रकाशित करना विफल रहा',
+  'team.git.sharedNow': 'साझा किया गया: आपका संग्रह अब टीम की रिपॉज़िटरी में है',
+  'team.git.conflictSame': 'आपने और एक सहकर्मी ने एक ही चीज़ बदली है।',
+  'team.git.pullFailedLower': 'बदलाव लाना विफल रहा',
+  'team.git.inSync': 'सब कुछ आपकी टीम के साथ सिंक है',
+  'team.git.mergeFailed': 'मिलाना विफल रहा',
+  'team.git.doneChoices': 'हो गया: आपके चुनाव लागू करके टीम के साथ साझा कर दिए गए।',
+  'team.git.doneMine': 'हो गया: जहाँ बदलाव टकराए, वहाँ आपका संस्करण चुना गया।',
+  'team.git.doneTheirs': 'हो गया: जहाँ बदलाव टकराए, वहाँ टीम का संस्करण चुना गया।',
+  'team.git.notRepoUrl': 'यह रिपॉज़िटरी का URL नहीं लगता',
+  'team.git.addRemoteFailed': 'रिमोट जोड़ा नहीं जा सका',
+  'team.git.cannotReach': 'रिपॉज़िटरी तक नहीं पहुँचा जा सका',
+  'team.git.connected': 'साझा रिपॉज़िटरी से जुड़ गया',
+  'team.git.createdBranch': '{branch} बनाई गई और उस पर स्विच किया गया',
+  'team.git.switchedBranch': '{branch} पर स्विच किया गया',
+  'team.git.saveOrDiscard': 'स्विच करने से पहले अपने बदलाव सहेजें या छोड़ें।',
+  'team.git.checkoutFailed': 'स्विच करना विफल रहा',
+  'team.git.noVersionBack': 'अभी लौटने के लिए कोई सहेजा हुआ संस्करण नहीं है। पहले एक संस्करण सहेजें।',
+  'team.git.discardFailed': 'बदलाव छोड़े नहीं जा सके',
+  'team.git.nothingToDiscard': 'छोड़ने के लिए कुछ नहीं है',
+  'team.git.discarded': 'बिना सहेजे बदलाव छोड़ दिए गए',
+  'team.git.nothingToUndo': 'पहले जैसा करने के लिए कुछ नहीं है',
+  'team.git.applyFailed': 'लागू करना विफल रहा',
+  'team.git.restored': 'बदलाव वापस आ गए',
+  'team.git.cloned': '{dir} में क्लोन किया गया',
+  'team.git.cloneFailed': 'क्लोन करना विफल रहा',
+
+  'team.ux.checking.label': 'जाँच रहे हैं…',
+  'team.ux.checking.short': 'जाँच जारी',
+  'team.ux.checking.detail': 'संस्करण ट्रैकिंग जाँची जा रही है।',
+  'team.ux.untracked.label': 'ट्रैक नहीं हो रहा',
+  'team.ux.untracked.detail':
+    'बदलावों का इतिहास रखने और इस संग्रह को टीम के साथ साझा करने के लिए संस्करण ट्रैकिंग चालू करें।',
+  'team.ux.conflict.label': 'टकराव: निर्णय चाहिए',
+  'team.ux.conflict.short': 'टकराव',
+  'team.ux.conflict.detail':
+    'आपने और एक सहकर्मी ने एक ही अनुरोध बदला है। चुनें कि कौन सा संस्करण रखना है।',
+  'team.ux.updates.label': {
+    one: 'टीम से {count} अपडेट',
+    other: 'टीम से {count} अपडेट'
+  },
+  'team.ux.updates.detailBoth': 'आपकी टीम ने बदलाव किए हैं और आपने भी। सिंक दोनों को मिला देता है।',
+  'team.ux.updates.detailTeam':
+    'आपकी टीम ने ऐसे बदलाव किए हैं जो आपके पास अभी नहीं हैं। उन्हें पाने के लिए सिंक करें।',
+  'team.ux.localChanges.label': { one: '{count} स्थानीय बदलाव', other: '{count} स्थानीय बदलाव' },
+  'team.ux.localChanges.detailShared':
+    'इस कंप्यूटर पर सहेजे गए, अभी साझा नहीं हुए। टीम के साथ साझा करने के लिए सिंक करें।',
+  'team.ux.localChanges.detailLocal':
+    'इस कंप्यूटर पर सहेजे गए। इन्हें इतिहास में रखने के लिए एक संस्करण सहेजें।',
+  'team.ux.toShare.label': { one: '{count} संस्करण साझा करना बाकी', other: '{count} संस्करण साझा करना बाकी' },
+  'team.ux.toShare.detail':
+    'संस्करण के रूप में सहेजे गए, अभी साझा नहीं हुए। टीम के साथ साझा करने के लिए सिंक करें।',
+  'team.ux.localOnly.label': 'सिर्फ़ इस कंप्यूटर पर',
+  'team.ux.localOnly.detail':
+    'संस्करण इस कंप्यूटर पर रखे जाते हैं। टीम के साथ काम करने के लिए साझा रिपॉज़िटरी जोड़ें।',
+  'team.ux.unpublished.label': 'अभी साझा नहीं हुआ',
+  'team.ux.unpublished.detail':
+    'साझा रिपॉज़िटरी से जुड़ा है। इस संग्रह को उसमें प्रकाशित करने के लिए एक बार सिंक करें।',
+  'team.ux.upToDate.label': 'अद्यतन है',
+  'team.ux.upToDate.detail': 'सब कुछ आपकी टीम के साथ सिंक है।',
+
+  'team.ux.name.collection': 'संग्रह की सेटिंग्स',
+  'team.ux.name.folder': '{folder} फ़ोल्डर की सेटिंग्स',
+  'team.ux.name.folderFallback': 'फ़ोल्डर',
+  'team.ux.name.environment': '{name} परिवेश',
+  'team.ux.note.update': '{items} अपडेट किए',
+  'team.ux.note.add': '{items} जोड़े',
+  'team.ux.note.remove': '{items} हटाए',
+  'team.ux.note.separator': ', ',
+  'team.ux.note.pair': '{a} और {b}',
+  'team.ux.note.more': '{a}, {b} और {count} अन्य',
+  'team.ux.note.requests': { one: '{count} अनुरोध', other: '{count} अनुरोध' },
+
+  'team.ux.url.noSpaces': 'रिपॉज़िटरी के पते में खाली जगह नहीं होती।',
+  'team.ux.url.addHttps': 'शुरुआत में https:// जोड़ें।',
+  'team.ux.url.paste':
+    'GitHub के Code बटन या GitLab के Clone बटन से पता चिपकाएँ। यह https:// या git@ से शुरू होता है।',
+  'team.ux.url.incomplete': 'यह पता पूरा नहीं है। इसे अपनी रिपॉज़िटरी के पेज से दोबारा कॉपी करें।',
+  'team.ux.url.accountPage': 'यह खाते का पेज है। रिपॉज़िटरी खोलें और उसका पता कॉपी करें।',
+  'team.ux.url.repoPage': 'यह रिपॉज़िटरी के अंदर का पेज है। इसके बजाय रिपॉज़िटरी का पता इस्तेमाल करें।',
+  'team.ux.url.addPath': 'सर्वर के नाम के बाद रिपॉज़िटरी का पाथ जोड़ें।',
+
+  'team.ux.link.gcm': 'Git Credential Manager इंस्टॉल करें',
+  'team.ux.link.githubToken': 'GitHub: पर्सनल एक्सेस टोकन बनाएँ',
+  'team.ux.link.gitlabToken': 'GitLab: पर्सनल एक्सेस टोकन बनाएँ',
+  'team.ux.link.githubSsh': 'GitHub: SSH कुंजी से जुड़ें',
+  'team.ux.link.gitForWindows': 'Git for Windows डाउनलोड करें',
+  'team.ux.help.authRequired.title': 'इस रिपॉज़िटरी तक पहुँचने के लिए साइन-इन ज़रूरी है',
+  'team.ux.help.authRequired.winStep1':
+    'Git for Windows में Git Credential Manager शामिल है। दोबारा कोशिश करें: साइन-इन विंडो खुलनी चाहिए।',
+  'team.ux.help.authRequired.winStep2':
+    'विंडो नहीं खुली? Git for Windows दोबारा इंस्टॉल करें और "Git Credential Manager" पर टिक रहने दें।',
+  'team.ux.help.authRequired.sshStep':
+    'या अगर आपके पास पहले से SSH कुंजी है तो SSH पता (git@…) इस्तेमाल करें।',
+  'team.ux.help.authRequired.step1':
+    'Git Credential Manager इंस्टॉल करें, फिर दोबारा कोशिश करें और खुलने वाली ब्राउज़र विंडो में साइन इन करें।',
+  'team.ux.help.authRequired.step2':
+    'या टर्मिनल से एक बार साइन इन करें: इस पते के साथ git clone चलाएँ और पासवर्ड की जगह पर्सनल एक्सेस टोकन चिपकाएँ।',
+  'team.ux.help.authFailed.title': 'आपका साइन-इन अस्वीकार कर दिया गया',
+  'team.ux.help.authFailed.step1':
+    'GitHub और GitLab यहाँ खाते के पासवर्ड स्वीकार नहीं करते: पासवर्ड की जगह पर्सनल एक्सेस टोकन इस्तेमाल करें।',
+  'team.ux.help.authFailed.win':
+    'हो सकता है गलत पासवर्ड सहेजा गया हो: उसे Windows Credential Manager में हटाएँ, फिर दोबारा कोशिश करें।',
+  'team.ux.help.authFailed.mac':
+    'हो सकता है गलत पासवर्ड सहेजा गया हो: उसे Keychain Access में हटाएँ (सर्वर का नाम खोजें), फिर दोबारा कोशिश करें।',
+  'team.ux.help.authFailed.other':
+    'हो सकता है आपके क्रेडेंशियल हेल्पर ने गलत पासवर्ड सहेजा हो: उसे हटाएँ, फिर दोबारा कोशिश करें।',
+  'team.ux.help.sshKey.title': 'आपकी SSH कुंजी स्वीकार नहीं की गई',
+  'team.ux.help.sshKey.step1': 'जाँचें कि आपकी पब्लिक कुंजी GitHub या GitLab खाते में जुड़ी है।',
+  'team.ux.help.sshKey.win':
+    '"OpenSSH Authentication Agent" सेवा शुरू करें, फिर टर्मिनल में ssh-add चलाएँ।',
+  'team.ux.help.sshKey.other': 'टर्मिनल में अपनी कुंजी लोड करें: ssh-add ~/.ssh/id_ed25519',
+  'team.ux.help.sshKey.step3': 'या इसके बजाय https:// पता इस्तेमाल करें।',
+  'team.ux.help.notFound.title': 'रिपॉज़िटरी नहीं मिली',
+  'team.ux.help.notFound.step1':
+    'पता जाँचें: उसे GitHub के Code बटन या GitLab के Clone बटन से कॉपी करें।',
+  'team.ux.help.notFound.step2':
+    'निजी रिपॉज़िटरी है? उसके मालिक से अपने खाते को पहुँच देने को कहें।',
+  'team.ux.help.notFound.step3':
+    'किसी दूसरे खाते से साइन इन हैं? हो सकता है रिपॉज़िटरी उस खाते से छिपी हो।',
+  'team.ux.help.network.title': 'सर्वर तक नहीं पहुँचा जा सका',
+  'team.ux.help.network.step1': 'अपना इंटरनेट कनेक्शन, VPN या प्रॉक्सी जाँचें, फिर दोबारा कोशिश करें।',
+  'team.ux.help.network.step2': 'पते में सर्वर का नाम जाँचें।',
+  'team.ux.help.rejected.title': 'आपकी टीम ने पहले बदलाव साझा कर दिए',
+  'team.ux.help.rejected.step1': 'उनके बदलाव पाने के लिए सिंक करें; आपके बदलाव उसके ठीक बाद साझा हो जाएँगे।',
+  'team.ux.help.noCommits.title': 'अभी कुछ सहेजा नहीं गया है',
+  'team.ux.help.noCommits.step1': 'पहले एक संस्करण सहेजें, फिर दोबारा कोशिश करें।',
+
+  'team.ux.progress.saving': 'आपके बदलाव संस्करण के रूप में सहेजे जा रहे हैं…',
+  'team.ux.progress.receiving': 'टीम के बदलाव लाए जा रहे हैं…',
+  'team.ux.progress.sending': 'आपके बदलाव साझा किए जा रहे हैं…',
+  'team.ux.progress.default': 'सिंक हो रहा है…',
+  'team.ux.synced.upToDate': 'सिंक हो गया: आप टीम के साथ पहले से अद्यतन हैं।',
+  'team.ux.synced.updates': { one: '{count} अपडेट', other: '{count} अपडेट' },
+  'team.ux.synced.received': {
+    one: 'सिंक हो गया: {count} अपडेट मिला।',
+    other: 'सिंक हो गया: {count} अपडेट मिले।'
+  },
+  'team.ux.synced.sent': {
+    one: 'सिंक हो गया: {count} अपडेट भेजा गया।',
+    other: 'सिंक हो गया: {count} अपडेट भेजे गए।'
+  },
+  'team.ux.synced.both': 'सिंक हो गया: {received} मिले, {sent} भेजे गए।',
+
+  'team.error.title': 'यह काम नहीं किया',
+  'team.dismiss': 'हटाएँ',
+  'team.identity.announce': 'संस्करण सहेजने से पहले Tiger को आपका नाम और ईमेल चाहिए।',
+  'team.identity.title': 'Tiger को बताएँ कि आप कौन हैं',
+  'team.identity.explain':
+    'हर संस्करण में एक नाम और ईमेल दर्ज होता है ताकि सहकर्मी जान सकें कि किसने क्या बदला। यह सिर्फ़ इस संग्रह के लिए सहेजा जाता है।',
+  'team.identity.name': 'आपका नाम',
+  'team.identity.email': 'कार्य ईमेल',
+  'team.identity.save': 'सहेजें और दोबारा कोशिश करें',
+  'team.url.hint':
+    'इसे GitHub के {code} बटन या GitLab के {clone} से कॉपी करें। उदाहरण: {https} या {ssh}',
+  'team.url.codeButton': 'Code',
+  'team.url.cloneButton': 'Clone',
+  'team.url.use': '{url} इस्तेमाल करें',
+  'team.setup.title': 'इस संग्रह को अपनी टीम के साथ साझा करें',
+  'team.setup.step1.title': 'संस्करण ट्रैकिंग चालू करें',
+  'team.setup.step2.title': 'साझा रिपॉज़िटरी जोड़ें',
+  'team.setup.step3.title': 'इसे अपनी टीम के साथ साझा करें',
+  'team.setup.done': ' (पूरा)',
+  'team.setup.current': ' (मौजूदा चरण)',
+  'team.setup.todo': ' (करना बाकी)',
+  'team.setup.step1.text':
+    'Tiger इस फ़ोल्डर के हर बदलाव का इतिहास रखता है, ताकि आप देख सकें कि किसने क्या बदला और वापस लौट सकें। अभी कुछ भी आपके कंप्यूटर से बाहर नहीं जाता।',
+  'team.setup.step1.button': 'संस्करण ट्रैकिंग चालू करें',
+  'team.setup.step1.progress': 'संस्करण ट्रैकिंग चालू की जा रही है…',
+  'team.setup.step2.text':
+    'GitHub, GitLab या अपनी कंपनी के सर्वर पर एक खाली रिपॉज़िटरी बनाएँ (आपकी टीम का कोई डेवलपर यह एक मिनट में कर सकता है), फिर उसका पता यहाँ चिपकाएँ।',
+  'team.setup.step2.label': 'रिपॉज़िटरी का पता',
+  'team.setup.step2.connect': 'जोड़ें',
+  'team.setup.step2.progress': 'रिपॉज़िटरी की पहुँच जाँची जा रही है…',
+  'team.setup.step3.hasContent':
+    'रिपॉज़िटरी में पहले से सामग्री है: पहला सिंक उसे इस संग्रह के साथ मिला देगा।',
+  'team.setup.step3.empty':
+    'Tiger पहला संस्करण सहेजकर अपलोड करता है। इसके बाद सहकर्मी उसे पाने के लिए "टीम संग्रह से जुड़ें" इस्तेमाल करते हैं।',
+  'team.setup.step3.button': 'अभी साझा करें',
+  'team.setup.commitNote': 'संग्रह को टीम के साथ साझा किया',
+  'team.changes.added': 'जोड़े गए',
+  'team.changes.changed': 'बदले गए',
+  'team.changes.removed': 'हटाए गए',
+  'team.changes.discardOne': '{name} के बदलाव छोड़ें',
+  'team.changes.in': '{name} में बदलाव',
+  'team.changes.noLines': 'पंक्तियों में कोई बदलाव नहीं (सिर्फ़ नाम या अनुमतियाँ बदलीं)।',
+  'team.discard.kindAdded': 'नया, हटा दिया जाएगा',
+  'team.discard.kindRemoved': 'हटाया गया, वापस आ जाएगा',
+  'team.discard.kindEdited': 'संपादन खो जाएँगे',
+  'team.discard.titleOne': '{name} के बदलाव छोड़ें?',
+  'team.discard.titleMany': '{count} बदलाव छोड़ें?',
+  'team.discard.description':
+    'ये अनुरोध आखिरी सहेजे गए संस्करण पर लौट जाएँगे। आप इसे तुरंत बाद पहले जैसा कर सकते हैं।',
+  'team.discard.one': 'छोड़ें',
+  'team.discard.many': '{count} बदलाव छोड़ें',
+  'team.conflict.deleted': 'इस संस्करण में हटाया गया',
+  'team.conflict.title': {
+    one: 'आपने और एक सहकर्मी ने एक ही अनुरोध बदला है',
+    other: 'आपने और एक सहकर्मी ने एक ही अनुरोध बदले हैं'
+  },
+  'team.conflict.explain':
+    'हर अनुरोध के लिए अपना संस्करण रखें या टीम का। सिर्फ़ वही पंक्तियाँ आपके चुनाव के अनुसार होंगी जिन्हें आप दोनों ने बदला; बाकी हर बदलाव, आपका हो या टीम का, रखा जाता है। इतिहास में दोनों संस्करण रहते हैं।',
+  'team.conflict.loading': 'दोनों संस्करण लोड हो रहे हैं…',
+  'team.conflict.yours': 'आपका संस्करण',
+  'team.conflict.theirs': 'टीम का संस्करण',
+  'team.conflict.which': '{name} का कौन सा संस्करण रखना है',
+  'team.conflict.keepMine': 'मेरा रखें',
+  'team.conflict.keepTheirs': 'उनका रखें',
+  'team.conflict.finish': 'सिंक पूरा करें',
+  'team.conflict.keepAllMine': 'सब मेरे रखें',
+  'team.conflict.keepAllTheirs': 'सब उनके रखें',
+  'team.conflict.keepMyVersion': 'मेरा संस्करण रखें',
+  'team.conflict.useTeams': 'टीम का संस्करण इस्तेमाल करें',
+  'team.conflict.later': 'बाद में तय करें',
+  'team.conflict.chooseEach': 'सिंक पूरा करने के लिए हर अनुरोध का एक संस्करण चुनें।',
+  'team.conflict.announce':
+    'टकराव: आपने और एक सहकर्मी ने एक ही अनुरोध बदला है। चुनें कि कौन सा संस्करण रखना है।',
+  'team.join.desktopOnly': 'टीम संग्रह से जुड़ने के लिए Tiger डेस्कटॉप ऐप चाहिए।',
+  'team.join.downloading': 'टीम संग्रह डाउनलोड हो रहा है…',
+  'team.join.description':
+    'अपनी टीम द्वारा git रिपॉज़िटरी में साझा किए गए संग्रह की एक प्रति पाएँ। फिर आप उनके बदलाव पाने और अपने साझा करने के लिए सिंक कर सकते हैं।',
+  'team.join.downloadingButton': 'डाउनलोड हो रहा है…',
+  'team.join.choose': 'फ़ोल्डर चुनें और जुड़ें',
+  'team.join.step1': '1. रिपॉज़िटरी का पता',
+  'team.join.step2': '2. चुनें कि इसे इस कंप्यूटर पर कहाँ रखना है।',
+  'team.join.step2b': 'Tiger वहाँ रिपॉज़िटरी के नाम का एक फ़ोल्डर बनाता है।',
+  'team.join.step3': '3. यह यहीं खुलता है',
+  'team.join.step3b': 'साइडबार में, इस्तेमाल के लिए तैयार।',
+
+  'team.modal.checking': 'संस्करण ट्रैकिंग जाँची जा रही है…',
+  'team.modal.browserTitle': 'टीम सिंक डेस्कटॉप ऐप में है',
+  'team.modal.browserText':
+    'इस संग्रह को साझा करने और टीम के अपडेट पाने के लिए इसे Tiger डेस्कटॉप ऐप में खोलें।',
+  'team.modal.noGitTitle': 'Git इंस्टॉल नहीं है',
+  'team.modal.noGitText':
+    'Tiger संग्रह सिंक करने के लिए आपके पास मौजूद Git इस्तेमाल करता है, इसलिए आपकी SSH कुंजियाँ और क्रेडेंशियल काम करते रहते हैं। इसे एक बार इंस्टॉल करके लौट आएँ, रीस्टार्ट की ज़रूरत नहीं।',
+  'team.modal.noGitMac': 'macOS पर आप टर्मिनल में {command} भी चला सकते हैं।',
+  'team.modal.downloadGit': 'Git डाउनलोड करें',
+  'team.modal.checkAgain': 'दोबारा जाँचें',
+  'team.modal.syncTerm': 'टीम के बदलाव लाता है, फिर आपके साझा करता है · git pull + push',
+  'team.modal.checkUpdates': 'टीम के अपडेट जाँचें',
+  'team.modal.checkingUpdates': 'टीम के अपडेट जाँचे जा रहे हैं…',
+  'team.modal.savingVersion': 'संस्करण सहेजा जा रहा है…',
+  'team.modal.discarding': 'छोड़ा जा रहा है…',
+  'team.modal.discardedOne': '{name} के बदलाव छोड़ दिए गए।',
+  'team.modal.discardedMany': '{count} बदलाव छोड़ दिए गए।',
+  'team.modal.restoring': 'आपके बदलाव वापस लाए जा रहे हैं…',
+  'team.modal.combining': 'बदलाव मिलाकर साझा किए जा रहे हैं…',
+  'team.modal.undo': 'पहले जैसा करें',
+  'team.modal.yourChanges': 'आपके बदलाव',
+  'team.modal.discardAll': 'सब छोड़ें…',
+  'team.modal.describe': 'इस संस्करण का वर्णन करें',
+  'team.modal.suggested': 'आपके बदलावों से सुझाया गया। चाहें तो संपादित करें।',
+  'team.modal.shownInHistory': 'इतिहास में आपके नाम के साथ दिखेगा।',
+  'team.modal.saveTitle': 'संस्करण इस कंप्यूटर पर रखें, साझा किए बिना',
+  'team.modal.saveTerm': 'यहीं रखता है, कुछ साझा नहीं करता · git commit',
+  'team.modal.recent': 'हाल के संस्करण',
+  'team.modal.advanced': 'उन्नत',
+  'team.modal.forGitUsers': 'git उपयोगकर्ताओं के लिए',
+  'team.modal.versionLine': 'संस्करण रेखा',
+  'team.modal.versionLineHelp':
+    'संस्करणों की एक अलग रेखा, ताकि टीम की मुख्य रेखा को प्रभावित किए बिना बदलाव आज़माए जा सकें। आपके साझा करने के बाद सहकर्मी इसे देखते हैं।',
+  'team.modal.current': 'मौजूदा',
+  'team.modal.switching': '{branch} पर स्विच हो रहा है…',
+  'team.modal.newLineLabel': 'नई संस्करण रेखा का नाम',
+  'team.modal.newLinePlaceholder': 'नई रेखा, जैसे feature/refunds',
+  'team.modal.creating': '{branch} बनाई जा रही है…',
+  'team.modal.createSwitch': 'बनाएँ और स्विच करें',
+  'team.modal.oneStep': 'एक बार में एक चरण',
+  'team.modal.fastForward': 'सिर्फ़ फ़ास्ट-फ़ॉरवर्ड',
+  'team.modal.shareOnceFirst': 'पहले एक बार साझा करें',
+  'team.modal.getOnly': 'सिर्फ़ टीम के बदलाव लें',
+  'team.modal.gettingTeam': 'टीम के बदलाव लाए जा रहे हैं…',
+  'team.modal.shareOnly': 'सिर्फ़ संस्करण साझा करें',
+  'team.modal.sharingVersions': 'आपके संस्करण साझा किए जा रहे हैं…',
+  'team.modal.allUnsaved': 'सभी बिना सहेजे बदलाव',
+  'team.modal.allUnsavedDiff': 'सभी बिना सहेजे बदलाव, diff के रूप में'
+}

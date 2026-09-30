@@ -4,6 +4,7 @@ import { envToVars } from '@core/interpolate'
 import { computeStats, runPool, type PerfStats } from '@core/perf'
 import { resolveAuth } from '@core/collectionSettings'
 import type { TigerAuth, TigerEnvironment, TigerRequest } from '@core/types'
+import { useT } from '../i18n'
 import { GaugeIcon } from './Icons'
 import './a11y.css'
 import './PerfPane.css'
@@ -20,6 +21,7 @@ interface Props {
  * report latency percentiles. A lightweight load check on the live request.
  */
 export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
+  const t = useT()
   const [total, setTotal] = useState(50)
   const [concurrency, setConcurrency] = useState(10)
   const [running, setRunning] = useState(false)
@@ -67,34 +69,47 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
 
   const canRun = !!window.tiger && !running
   const statusText = running
-    ? `${done} of ${total} sent`
+    ? t('request.perf.sent', { done, total })
     : stats
-      ? `Done: ${stats.okCount} of ${stats.count} returned 2xx, p50 ${stats.p50} ms, p95 ${stats.p95} ms`
+      ? t('request.perf.statusDone', {
+          ok: stats.okCount,
+          count: stats.count,
+          p50: t.number(stats.p50),
+          p95: t.number(stats.p95)
+        })
       : ''
   const cells: Array<[string, string | number, string]> = stats
     ? [
-        ['2xx ok', `${stats.okCount}/${stats.count}`, `${stats.okCount} of ${stats.count} responses were 2xx`],
-        ['avg ms', stats.avg, `average ${stats.avg} milliseconds`],
-        ['p50 ms', stats.p50, `median ${stats.p50} milliseconds`],
-        ['p95 ms', stats.p95, `95th percentile ${stats.p95} milliseconds`],
-        ['min ms', stats.min, `fastest ${stats.min} milliseconds`],
-        ['max ms', stats.max, `slowest ${stats.max} milliseconds`]
+        [
+          t('request.perf.cellOk'),
+          `${t.number(stats.okCount)}/${t.number(stats.count)}`,
+          t('request.perf.spokenOk', { ok: stats.okCount, count: stats.count })
+        ],
+        [t('request.perf.cellAvg'), t.number(stats.avg), t('request.perf.spokenAvg', { value: t.number(stats.avg) })],
+        [t('request.perf.cellP50'), t.number(stats.p50), t('request.perf.spokenP50', { value: t.number(stats.p50) })],
+        [t('request.perf.cellP95'), t.number(stats.p95), t('request.perf.spokenP95', { value: t.number(stats.p95) })],
+        [t('request.perf.cellMin'), t.number(stats.min), t('request.perf.spokenMin', { value: t.number(stats.min) })],
+        [t('request.perf.cellMax'), t.number(stats.max), t('request.perf.spokenMax', { value: t.number(stats.max) })]
       ]
     : []
+
+  // The sentence is one message; the method and URL are spliced in at {request}.
+  const [leadBefore, leadAfter = ''] = t('request.perf.lead', { request: '\u0001' }).split('\u0001')
 
   return (
     <div className="perf-pane">
       <p className="perf-lead">
-        Sends <b>{request.method.toUpperCase()}</b>{' '}
+        {leadBefore}
+        <b>{request.method.toUpperCase()}</b>{' '}
         <span className="perf-url" title={request.url}>
-          {request.url || 'this request'}
-        </span>{' '}
-        repeatedly with bounded concurrency and reports latency percentiles.
+          {request.url || t('request.perf.thisRequest')}
+        </span>
+        {leadAfter}
       </p>
 
       <div className="row-2">
         <div className="field">
-          <label htmlFor={`${uid}-total`}>Total requests</label>
+          <label htmlFor={`${uid}-total`}>{t('request.perf.total')}</label>
           <input
             id={`${uid}-total`}
             type="number"
@@ -106,11 +121,11 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
             onChange={(e) => setTotal(Math.max(1, Math.min(2000, Number(e.target.value) || 1)))}
           />
           <div id={`${uid}-total-hint`} className="perf-hint">
-            1 to 2000
+            {t('request.perf.totalHint')}
           </div>
         </div>
         <div className="field">
-          <label htmlFor={`${uid}-conc`}>Concurrency</label>
+          <label htmlFor={`${uid}-conc`}>{t('request.perf.concurrency')}</label>
           <input
             id={`${uid}-conc`}
             type="number"
@@ -122,14 +137,14 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
             onChange={(e) => setConcurrency(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
           />
           <div id={`${uid}-conc-hint`} className="perf-hint">
-            Requests in flight at once, 1 to 200
+            {t('request.perf.concurrencyHint')}
           </div>
         </div>
       </div>
 
       {!window.tiger && (
         <div className="cv-dim perf-note" role="note">
-          Load tests need the desktop app.
+          {t('request.perf.needsDesktop')}
         </div>
       )}
 
@@ -138,16 +153,16 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
           <div
             className="perf-bar"
             role="progressbar"
-            aria-label="Load test progress"
+            aria-label={t('request.perf.progress')}
             aria-valuemin={0}
             aria-valuemax={total}
             aria-valuenow={done}
-            aria-valuetext={`${done} of ${total} sent`}
+            aria-valuetext={t('request.perf.sent', { done, total })}
           >
             <div className="perf-fill" style={{ width: `${(done / total) * 100}%` }} />
           </div>
           <span className="m" aria-hidden="true">
-            {done} / {total}
+            {t('request.perf.progressText', { done, total })}
           </span>
         </div>
       )}
@@ -156,7 +171,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
       </div>
 
       {stats && (
-        <dl className="perf-stats" aria-label="Latency results">
+        <dl className="perf-stats" aria-label={t('request.perf.results')}>
           {cells.map(([label, value, spoken]) => (
             <div className="perf-cell" key={label}>
               <dt className="l">{label}</dt>
@@ -169,10 +184,13 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
       )}
 
       {stats && Object.keys(statusBuckets).length > 0 && (
-        <ul className="perf-buckets" aria-label="Responses by status class">
+        <ul className="perf-buckets" aria-label={t('request.perf.buckets')}>
           {Object.entries(statusBuckets).map(([bucket, n]) => (
             <li key={bucket} className={`git-chip ${bucket === '2xx' ? 'synced' : 'behind'}`}>
-              {bucket === 'error' ? 'errors' : bucket}: {n}
+              {t('request.perf.bucket', {
+                bucket: bucket === 'error' ? t('request.perf.errors') : bucket,
+                n
+              })}
             </li>
           ))}
         </ul>
@@ -181,11 +199,11 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
       <div className="perf-actions">
         {running ? (
           <button type="button" className="btn danger" onClick={() => (cancelled.current = true)}>
-            Stop
+            {t('request.perf.stop')}
           </button>
         ) : (
           <button type="button" className="btn accent" disabled={!canRun} onClick={run}>
-            <GaugeIcon size={14} /> Run {total} request{total === 1 ? '' : 's'}
+            <GaugeIcon size={14} /> {t('request.perf.run', { count: total })}
           </button>
         )}
       </div>

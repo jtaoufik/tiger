@@ -33,7 +33,8 @@ import {
   pathVariableWarning,
   scalar,
   str,
-  type Json
+  type Json,
+  warning
 } from './common'
 import type { ImportedFolder, ImportResult, ImportedRequest, ImportWarning } from './types'
 
@@ -142,15 +143,16 @@ function toBody(raw: unknown, name: string, path: string[], warnings: ImportWarn
           warnings.push({
             request: name,
             path,
-            message: `Form field "${e.key}" is a file upload with no file saved in the export. Pick the file in the body tab.`
+            ...warning('imports.formFileMissing', { field: e.key })
           })
         } else {
           warnings.push({
             request: name,
             path,
-            message: `Form field "${e.key}" uploads ${sources.join(', ')}. Check the file exists on this machine.${
-              sources.length > 1 ? ' Only the first file was kept.' : ''
-            }`
+            ...warning(sources.length > 1 ? 'imports.formFileUploadFirstOnly' : 'imports.formFileUpload', {
+              field: e.key,
+              files: sources.join(', ')
+            })
           })
         }
         lines.push(`${prefix}${e.key}: @file:${sources[0] ?? ''}`)
@@ -173,7 +175,7 @@ function toBody(raw: unknown, name: string, path: string[], warnings: ImportWarn
     warnings.push({
       request: name,
       path,
-      message: 'Sends a binary file body, which Tiger does not support yet. The body was left empty.'
+      ...warning('imports.binaryBody')
     })
   }
   return emptyBody()
@@ -242,8 +244,7 @@ export function toAuth(
         if (p.client_authentication === 'body') {
           warnings.push({
             ...label,
-            message:
-              'OAuth 2.0 sends the client credentials in the body in Postman; Tiger sends them as a Basic header. Check the token request works.'
+            ...warning('imports.oauthBodyCreds')
           })
         }
         return {
@@ -258,20 +259,20 @@ export function toAuth(
       if (p.accessToken) {
         warnings.push({
           ...label,
-          message: `OAuth 2.0 "${grant}" is not supported. The saved access token was imported as a Bearer token; it will expire.`
+          ...warning('imports.oauthUnsupportedToken', { grant })
         })
         return { type: 'bearer', token: p.accessToken }
       }
       warnings.push({
         ...label,
-        message: `OAuth 2.0 "${grant}" is not supported. Auth was set to none; get a token and use Bearer auth.`
+        ...warning('imports.oauthUnsupportedNone', { grant })
       })
       return { type: 'none' }
     }
     default:
       warnings.push({
         ...label,
-        message: `${AUTH_NAMES[type] ?? type} auth is not supported. Auth was set to none; set it up again.`
+        ...warning('imports.authUnsupported', { auth: AUTH_NAMES[type] ?? type })
       })
       return { type: 'none' }
   }
@@ -309,7 +310,7 @@ function toRequest(
     warnings.push({
       request: name,
       path,
-      message: `Method ${str(r.method).toUpperCase()} is not supported, so this request was skipped.`
+      ...warning('imports.methodUnsupported', { method: str(r.method).toUpperCase() })
     })
     return null
   }
@@ -317,7 +318,7 @@ function toRequest(
   const parts = splitUrl(r.url)
   const { url, missing } = applyPathVariables(parts.url, parts.pathVars)
   if (missing.length) {
-    warnings.push({ request: name, path, message: pathVariableWarning(missing) })
+    warnings.push({ request: name, path, ...pathVariableWarning(missing) })
   }
   const req: TigerRequest = {
     name,
@@ -393,14 +394,12 @@ function noteCopiedScripts(
   warnings: ImportWarning[]
 ): void {
   if (!scripts.pre && !scripts.post) return
-  const kinds = [scripts.pre && 'pre-request', scripts.post && 'test'].filter(Boolean).join(' and ')
+  const kind = scripts.pre && scripts.post ? 'Both' : scripts.pre ? 'Pre' : 'Post'
   const n = countRequests(items)
   warnings.push({
     request: owner,
     path,
-    message: `${owner} has ${kinds} scripts. Tiger runs scripts per request, so they were copied into its ${n} request${
-      n === 1 ? '' : 's'
-    }. Edit them there.`
+    ...warning(`imports.scriptsCopied${kind}`, { owner, count: n })
   })
 }
 
@@ -437,15 +436,14 @@ export function importPostman(raw: unknown): ImportResult {
     if (globals) {
       warnings.push({
         request: name,
-        message:
-          'Tiger has no global variables, so Postman globals became an environment named "Globals". Copy the ones you need into your environment.'
+        ...warning('imports.postmanGlobals')
       })
     }
     const secrets = env.variables.filter((v) => v.secret && !v.value).map((v) => v.name)
     if (secrets.length) {
       warnings.push({
         request: name,
-        message: `Secret values are not exported by Postman: ${secrets.join(', ')}. Fill them in.`
+        ...warning('imports.secretsNotExported', { names: secrets.join(', ') })
       })
     }
     return { name, source: 'postman', requests: [], environments: [env], warnings }
@@ -455,8 +453,7 @@ export function importPostman(raw: unknown): ImportResult {
   const name = str(info.name, str(root.name, 'Imported collection'))
   if (!Array.isArray(root.item) && Array.isArray(root.requests)) {
     warnings.push({
-      message:
-        'This is a Postman v1 collection. Export it again from Postman as Collection v2.1 and import that file.'
+      ...warning('imports.postmanV1')
     })
     return { name, source: 'postman', requests: [], warnings }
   }

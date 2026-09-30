@@ -1,6 +1,8 @@
 import type { KeyValue, TigerEnvironment } from '@core/types'
 import { KeyValueEditor } from './KeyValueEditor'
 import { Modal } from './Modal'
+import { NODE_MARK, withNode } from './withNode'
+import { useT } from '../i18n'
 
 interface Props {
   env: TigerEnvironment | null
@@ -9,40 +11,45 @@ interface Props {
 }
 
 export function EnvironmentModal({ env, onChange, onClose }: Props) {
+  const t = useT()
   return (
     <Modal
-      title={env ? `Environment · ${env.name}` : 'Environment'}
+      title={env ? t('modals.environment.titleNamed', { name: env.name }) : t('modals.environment.title')}
       onClose={onClose}
       width={560}
       description={
         env ? (
-          <>
-            Reference these anywhere with <span className="token">{'{{name}}'}</span>.
-          </>
+          withNode(
+            t('modals.environment.description', { token: NODE_MARK }),
+            <span className="token">{'{{name}}'}</span>
+          )
         ) : undefined
       }
     >
       {env ? (
         <>
           <h3 className="section-label" style={{ marginTop: 0 }}>
-            Variables
+            {t('modals.environment.variables')}
           </h3>
           <KeyValueEditor
             items={env.variables}
-            placeholder={['Variable', 'Value']}
-            noun="Variable"
+            placeholder={[t('modals.environment.variable'), t('common.value')]}
+            noun={t('modals.environment.variable')}
             onChange={onChange}
           />
         </>
       ) : (
         <div className="modal-empty">
-          <h3>No environment selected</h3>
+          <h3>{t('modals.environment.emptyTitle')}</h3>
           <p>
-            Choose one from the top bar, or open a collection that has an
-            <code> environments/</code> folder.
+            {withNode(
+              t('modals.environment.emptyBody', { folder: NODE_MARK }),
+              // i18n-ignore: folder name
+              <code>environments/</code>
+            )}
           </p>
           <button type="button" className="btn" onClick={onClose}>
-            Close
+            {t('common.close')}
           </button>
         </div>
       )}

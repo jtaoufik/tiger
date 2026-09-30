@@ -3,6 +3,7 @@ import type { DocsPage } from '@core/actions'
 import { CloseIcon } from './Icons'
 import { HelpLink } from './HelpLink'
 import { useDialog } from './useDialog'
+import { useT } from '../i18n'
 import './a11y.css'
 import './Modal.css'
 
@@ -33,6 +34,7 @@ export function Modal({
   className,
   help
 }: Props) {
+  const t = useT()
   const backdropRef = useRef<HTMLDivElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -66,8 +68,8 @@ export function Modal({
             type="button"
             className="icon-btn modal-close"
             onClick={onClose}
-            title="Close (Esc)"
-            aria-label="Close dialog"
+            title={t('modals.modal.closeTitle')}
+            aria-label={t('modals.modal.closeLabel')}
           >
             <CloseIcon />
           </button>

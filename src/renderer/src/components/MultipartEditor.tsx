@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { FILE_PREFIX } from '@core/multipart'
 import type { KeyValue } from '@core/types'
+import { useT } from '../i18n'
 import { CloseIcon, FileIcon, FolderOpenIcon } from './Icons'
 import './KeyValueEditor.css'
 import './MultipartEditor.css'
@@ -15,6 +16,7 @@ interface Props {
  * `@file:<path>`; the picker fills it, and it stays hand-editable.
  */
 export function MultipartEditor({ items, onChange }: Props) {
+  const t = useT()
   // Always show one trailing empty row to type into (KeyValueEditor pattern).
   const rows = [...items, { name: '', value: '', enabled: true }]
   const listRef = useRef<HTMLDivElement>(null)
@@ -40,16 +42,18 @@ export function MultipartEditor({ items, onChange }: Props) {
   }
 
   const pickFile = async (index: number) => {
-    const path = await window.tiger?.pickFile?.([{ name: 'All files', extensions: ['*'] }])
+    const path = await window.tiger?.pickFile?.([{ name: t('request.multipart.allFiles'), extensions: ['*'] }])
     if (path) update(index, { value: `${FILE_PREFIX}${path}` })
   }
 
   return (
-    <div className="multipart kv-editor" ref={listRef} role="group" aria-label="Form fields" aria-describedby={hintId}>
+    <div className="multipart kv-editor" ref={listRef} role="group" aria-label={t('request.multipart.group')} aria-describedby={hintId}>
       {rows.map((row, i) => {
         const isFile = row.value.startsWith(FILE_PREFIX)
         const isBlank = i === rows.length - 1
-        const rowName = isBlank ? 'New field' : `Field ${i + 1}`
+        const rowName = isBlank
+          ? t('request.multipart.newField')
+          : t('request.multipart.field', { n: i + 1 })
         return (
           <div
             className={`kv ${row.enabled === false ? 'disabled' : ''} ${isBlank ? 'kv-blank' : ''}`}
@@ -61,16 +65,18 @@ export function MultipartEditor({ items, onChange }: Props) {
               checked={row.enabled !== false}
               disabled={isBlank}
               onChange={(e) => update(i, { enabled: e.target.checked })}
-              aria-label={isBlank ? 'Enable new field' : `Enable field ${i + 1}`}
-              title={row.enabled === false ? 'Disabled: click to enable' : 'Enabled: click to disable'}
+              aria-label={
+                isBlank ? t('request.multipart.enableNew') : t('request.multipart.enable', { n: i + 1 })
+              }
+              title={row.enabled === false ? t('request.multipart.disabledTip') : t('request.kv.enabledTip')}
             />
             <input
               type="text"
               data-kv-cell="name"
               value={row.name}
-              placeholder="Field"
+              placeholder={t('request.multipart.fieldPlaceholder')}
               spellCheck={false}
-              aria-label={`${rowName} name`}
+              aria-label={t('request.kv.cellName', { row: rowName })}
               title={row.name.length > 32 ? row.name : undefined}
               onChange={(e) => update(i, { name: e.target.value })}
             />
@@ -79,9 +85,13 @@ export function MultipartEditor({ items, onChange }: Props) {
               <input
                 type="text"
                 value={row.value}
-                placeholder="Text value, or pick a file"
+                placeholder={t('request.multipart.valuePlaceholder')}
                 spellCheck={false}
-                aria-label={`${rowName} ${isFile ? 'file path' : 'value'}`}
+                aria-label={
+                  isFile
+                    ? t('request.multipart.filePath', { row: rowName })
+                    : t('request.kv.cellValue', { row: rowName })
+                }
                 title={row.value.length > 32 ? row.value : undefined}
                 onChange={(e) => update(i, { value: e.target.value })}
               />
@@ -89,8 +99,8 @@ export function MultipartEditor({ items, onChange }: Props) {
             <button
               type="button"
               className="icon-btn mp-pick"
-              title="Choose a file for this field"
-              aria-label={`Choose a file for ${rowName.toLowerCase()}`}
+              title={t('request.multipart.pickTip')}
+              aria-label={t('request.multipart.pick', { row: rowName.toLowerCase() })}
               onClick={() => pickFile(i)}
               disabled={!window.tiger}
             >
@@ -102,8 +112,16 @@ export function MultipartEditor({ items, onChange }: Props) {
               <button
                 type="button"
                 className="icon-btn danger kv-remove"
-                title={`Remove ${row.name ? `"${row.name}"` : `field ${i + 1}`}`}
-                aria-label={`Remove field ${i + 1}${row.name ? ` (${row.name})` : ''}`}
+                title={
+                  row.name
+                    ? t('request.multipart.removeTipNamed', { name: row.name })
+                    : t('request.multipart.removeTip', { n: i + 1 })
+                }
+                aria-label={
+                  row.name
+                    ? t('request.multipart.removeNamed', { n: i + 1, name: row.name })
+                    : t('request.multipart.remove', { n: i + 1 })
+                }
                 onClick={() => remove(i)}
               >
                 <CloseIcon size={14} />
@@ -113,8 +131,7 @@ export function MultipartEditor({ items, onChange }: Props) {
         )
       })}
       <div className="mp-hint" id={hintId}>
-        File rows upload the file at the given path (value format: {FILE_PREFIX}/path/to/file).
-        Text rows are sent as ordinary form fields.
+        {t('request.multipart.hint', { prefix: FILE_PREFIX })}
       </div>
     </div>
   )

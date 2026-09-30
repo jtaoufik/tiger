@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
 import { buildAppMenu } from './menu'
+import { broadcastLocale, mainLocale, mainT, resolveAppLocale, setMainLocale } from './i18n'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import {
   applyNetworkSettings,
@@ -121,7 +122,10 @@ function createWindow(): BrowserWindow {
     // glass layer instead, and `backgroundColor` above covers the window base.
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
-      sandbox: false
+      sandbox: false,
+      // The renderer loads this language's catalog before its first paint, so
+      // a non-English UI never flashes English first.
+      additionalArguments: [`--tiger-locale=${mainLocale()}`]
     }
   })
 
@@ -162,9 +166,9 @@ function createWindow(): BrowserWindow {
       dialog
         .showMessageBox(win, {
           type: 'warning',
-          message: 'You have unsaved changes',
-          detail: 'Closing now discards edits that are not saved yet.',
-          buttons: ['Close Anyway', 'Keep Editing'],
+          message: mainT('main.dialog.unsavedTitle'),
+          detail: mainT('main.dialog.unsavedDetail'),
+          buttons: [mainT('main.dialog.closeAnyway'), mainT('main.dialog.keepEditing')],
           defaultId: 1,
           cancelId: 1
         })
@@ -235,7 +239,7 @@ function createWindow(): BrowserWindow {
 function registerIpc(): void {
   ipcMain.handle('tiger:openCollection', async () => {
     const result = await dialog.showOpenDialog(parentWindow()!, {
-      title: 'Open a Tiger collection folder',
+      title: mainT('main.dialog.openCollection'),
       properties: ['openDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return null
@@ -246,8 +250,8 @@ function registerIpc(): void {
     const folder = sanitizeCollectionName(name)
     if (!folder) return null
     const result = await dialog.showOpenDialog(parentWindow()!, {
-      title: `Choose where to create "${folder}"`,
-      buttonLabel: 'Create here',
+      title: mainT('main.dialog.newCollection', { name: folder }),
+      buttonLabel: mainT('main.dialog.createHere'),
       properties: ['openDirectory', 'createDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return null
@@ -349,8 +353,14 @@ function registerIpc(): void {
     const next = saveSettings(patch)
     applyNetworkSettings()
     applyUpdateSettings(next)
+    if (patch.language !== undefined && setMainLocale(resolveAppLocale(next.language))) {
+      // Live switch: the native menu is rebuilt and every window re-renders.
+      buildAppMenu()
+      broadcastLocale(mainLocale())
+    }
     return next
   })
+  ipcMain.handle('tiger:locale', () => mainLocale())
 
   ipcMain.handle('tiger:track', (_e, event: AnalyticsEvent) => track(event))
 
@@ -407,8 +417,8 @@ function registerIpc(): void {
   ipcMain.handle('tiger:git:discard', (_e, root: string, paths?: string[]) => gitDiscard(root, paths))
   ipcMain.handle('tiger:git:clone', async (_e, url: string) => {
     const dest = await dialog.showOpenDialog(parentWindow()!, {
-      title: 'Choose where to save the team collection',
-      buttonLabel: 'Save here',
+      title: mainT('main.dialog.cloneTitle'),
+      buttonLabel: mainT('main.dialog.saveHere'),
       properties: ['openDirectory', 'createDirectory']
     })
     if (dest.canceled || !dest.filePaths[0]) return null
@@ -481,6 +491,7 @@ app.whenReady().then(() => {
   if (isE2E()) blockExternalNetwork()
   registerIpc()
   applyNetworkSettings()
+  setMainLocale(resolveAppLocale(loadSettings().language))
   buildAppMenu()
   const win = createWindow()
 

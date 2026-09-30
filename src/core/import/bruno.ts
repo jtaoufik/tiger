@@ -25,7 +25,14 @@ import {
   type TigerEnvironment,
   type TigerRequest
 } from '../types'
-import { applyPathVariables, checkRequest, joinScripts, pathVariableWarning } from './common'
+import {
+  applyPathVariables,
+  checkRequest,
+  joinScripts,
+  pathVariableWarning,
+  warning,
+  type WarningText
+} from './common'
 import type { ImportedFolder, ImportedRequest, ImportResult, ImportWarning } from './types'
 
 const BLOCK_HEADER = /^([A-Za-z][\w-]*)(?::([\w:-]+))?\s*\{\s*$/
@@ -136,7 +143,7 @@ const AUTH_NAMES: Record<string, string> = {
 function resolveAuth(
   blocks: RawBlock[],
   selector: string | undefined,
-  warn: (m: string) => void
+  warn: (w: WarningText) => void
 ): TigerAuth | undefined {
   const authBlocks = blocks.filter((b) => b.name === 'auth' && b.subtype)
   const mode = selector ?? (authBlocks.length === 1 ? authBlocks[0].subtype : undefined)
@@ -145,7 +152,7 @@ function resolveAuth(
   const block = authBlocks.find((b) => b.subtype === mode)
   const auth = brunoAuth(mode, block?.content ?? '')
   if (!auth) {
-    warn(`${AUTH_NAMES[mode] ?? mode} auth is not supported. Auth was set to none; set it up again.`)
+    warn(warning('imports.authUnsupported', { auth: AUTH_NAMES[mode] ?? mode }))
     return { type: 'none' }
   }
   return auth
@@ -234,7 +241,7 @@ export function importBrunoRequest(
     query: [],
     body: emptyBody()
   }
-  const warn = (message: string) => warnings.push({ request: request.name || 'Request', path, message })
+  const warn = (w: WarningText) => warnings.push({ request: request.name || 'Request', path, ...w })
   let authMode: string | undefined
   let pathVars: KeyValue[] = []
   let pre: string | undefined
@@ -284,8 +291,11 @@ export function importBrunoRequest(
           if (r.file === undefined) continue
           warn(
             r.file
-              ? `Form field "${r.kv.name}" uploads ${r.file}. Check the file exists on this machine.${r.extra ? ' Only the first file was kept.' : ''}`
-              : `Form field "${r.kv.name}" is a file upload with no file chosen. Pick the file in the body tab.`
+              ? warning(r.extra ? 'imports.formFileUploadFirstOnly' : 'imports.formFileUpload', {
+                  field: r.kv.name,
+                  files: r.file
+                })
+              : warning('imports.formFileNone', { field: r.kv.name })
           )
         }
         content = rows.map((r) => r.line).join('\n')
@@ -307,7 +317,7 @@ export function importBrunoRequest(
     } else if (block.name === 'vars' && (block.subtype === 'pre-request' || block.subtype === 'post-response')) {
       const names = keyValues(block.content).map((kv) => kv.name)
       if (names.length) {
-        warn(`Request variables (${block.subtype}) are not supported: ${names.join(', ')}. Set them in an environment or a script.`)
+        warn(warning('imports.requestVariables', { kind: block.subtype ?? '', names: names.join(', ') }))
       }
     }
   }
@@ -325,7 +335,7 @@ export function importBrunoRequest(
 
   const converted = asserts ? assertionsToScript(asserts) : { skipped: [] as string[] }
   if (converted.skipped.length) {
-    warn(`Assertions not converted to tests: ${converted.skipped.join('; ')}. Add them as tests.`)
+    warn(warning('imports.assertionsSkipped', { items: converted.skipped.join('; ') }))
   }
   if (pre) request.preScript = pre
   const postAll = joinScripts(post, tests, converted.script)
@@ -370,7 +380,7 @@ export interface BrunoFolderSettings {
   vars: KeyValue[]
 }
 
-export function importBrunoFolderSettings(text: string, warn: (m: string) => void = () => {}): BrunoFolderSettings {
+export function importBrunoFolderSettings(text: string, warn: (w: WarningText) => void = () => {}): BrunoFolderSettings {
   const blocks = tokenizeBrunoBlocks(text)
   const out: BrunoFolderSettings = { headers: [], vars: [] }
   let authMode: string | undefined
@@ -441,20 +451,23 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
         if (secrets.length) {
           warnings.push({
             request: envName,
-            message: `Secret values are never saved to disk by Bruno: ${secrets.join(', ')}. Add them to the "${envName}" environment.`
+            ...warning('imports.brunoSecrets', { names: secrets.join(', '), env: envName })
           })
         }
       } else if (fileName === 'collection.bru' || fileName === 'folder.bru') {
         const label = dir.length ? `Folder "${dir[dir.length - 1]}"` : 'Collection'
         settings.set(
           dir.join('/'),
-          importBrunoFolderSettings(file.text, (message) => warnings.push({ request: label, path: dir.slice(0, -1), message }))
+          importBrunoFolderSettings(file.text, (w) => warnings.push({ request: label, path: dir.slice(0, -1), ...w }))
         )
       } else {
         requestFiles.push(file)
       }
     } catch (e) {
-      warnings.push({ request: file.segments.join('/'), message: `Could not be read: ${(e as Error).message}` })
+      warnings.push({
+        request: file.segments.join('/'),
+        ...warning('imports.couldNotRead', { error: (e as Error).message })
+      })
     }
   }
 
@@ -498,7 +511,11 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
       checkRequest(req, path, warnings)
       requests.push(imported)
     } catch (e) {
-      warnings.push({ request: file.segments.join('/'), path, message: `Could not be read: ${(e as Error).message}` })
+      warnings.push({
+        request: file.segments.join('/'),
+        path,
+        ...warning('imports.couldNotRead', { error: (e as Error).message })
+      })
     }
   }
 
@@ -521,7 +538,14 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
       warnings.push({
         request: label,
         path: parent,
-        message: `${label} has ${copied.join(' and ')}. Tiger keeps these per request, so they were copied into each request below it. Edit them there.`
+        ...warning(
+          copied.length > 1
+            ? 'imports.folderCopiedBoth'
+            : copied[0] === 'headers'
+              ? 'imports.folderCopiedHeaders'
+              : 'imports.folderCopiedScripts',
+          { label }
+        )
       })
     }
     if (s.vars.length) {
@@ -531,7 +555,7 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
         warnings.push({
           request: label,
           path: parent,
-          message: `Folder variables are not supported: ${s.vars.map((v) => v.name).join(', ')}. Add them to an environment.`
+          ...warning('imports.folderVariables', { names: s.vars.map((v) => v.name).join(', ') })
         })
       }
     }

@@ -1,3 +1,4 @@
+import { englishT } from '../../src/core/i18n/english'
 import { describe, expect, it } from 'vitest'
 import {
   friendlyUpdateError,
@@ -101,26 +102,26 @@ describe('updateBanner / updateStatusText', () => {
   })
 
   it('writes the owner-facing copy', () => {
-    expect(updateStatusText({ status: 'downloading', version: '0.7.1', percent: 42 })).toBe(
+    expect(updateStatusText({ status: 'downloading', version: '0.7.1', percent: 42 }, englishT)).toBe(
       'Downloading update 0.7.1… 42%'
     )
-    expect(updateStatusText({ status: 'downloaded', version: '0.7.1' })).toBe(
+    expect(updateStatusText({ status: 'downloaded', version: '0.7.1' }, englishT)).toBe(
       'Tiger 0.7.1 is ready. Restart to update.'
     )
-    expect(updateStatusText({ status: 'available', version: '0.7.1' })).toBe(
+    expect(updateStatusText({ status: 'available', version: '0.7.1' }, englishT)).toBe(
       'Tiger 0.7.1 is available.'
     )
-    expect(updateStatusText({ status: 'up-to-date' })).toBe("You're on the latest version.")
-    expect(updateStatusText({ status: 'idle' })).toBe('')
+    expect(updateStatusText({ status: 'up-to-date' }, englishT)).toBe("You're on the latest version.")
+    expect(updateStatusText({ status: 'idle' }, englishT)).toBe('')
   })
 })
 
 describe('friendlyUpdateError', () => {
   it('offline', () => {
-    expect(friendlyUpdateError(new Error('net::ERR_INTERNET_DISCONNECTED'))).toMatch(
+    expect(friendlyUpdateError(new Error('net::ERR_INTERNET_DISCONNECTED'), englishT)).toMatch(
       /Couldn't reach/
     )
-    expect(friendlyUpdateError(new Error('getaddrinfo ENOTFOUND github.com'))).toMatch(
+    expect(friendlyUpdateError(new Error('getaddrinfo ENOTFOUND github.com'), englishT)).toMatch(
       /Couldn't reach/
     )
   })
@@ -130,23 +131,23 @@ describe('friendlyUpdateError', () => {
       new Error('Cannot find latest-mac.yml in the latest release artifacts\n<xml>'),
       { code: 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' }
     )
-    expect(friendlyUpdateError(e)).toBe('No update is published for this platform yet.')
+    expect(friendlyUpdateError(e, englishT)).toBe('No update is published for this platform yet.')
   })
 
   it('signature / checksum', () => {
     const sig = Object.assign(new Error('x'), { code: 'ERR_UPDATER_INVALID_SIGNATURE' })
-    expect(friendlyUpdateError(sig)).toMatch(/failed verification/)
-    expect(friendlyUpdateError(new Error('sha512 checksum mismatch, expected a, got b'))).toMatch(
+    expect(friendlyUpdateError(sig, englishT)).toMatch(/failed verification/)
+    expect(friendlyUpdateError(new Error('sha512 checksum mismatch, expected a, got b'), englishT)).toMatch(
       /failed verification/
     )
   })
 
   it('anything else: first line only, capped', () => {
-    const msg = friendlyUpdateError(new Error(`${'a'.repeat(300)}\n    at stack`))
+    const msg = friendlyUpdateError(new Error(`${'a'.repeat(300)}\n    at stack`), englishT)
     expect(msg.startsWith('Update failed: ')).toBe(true)
     expect(msg).not.toContain('stack')
     expect(msg.length).toBeLessThan(170)
-    expect(friendlyUpdateError(undefined)).toBe('Update failed.')
+    expect(friendlyUpdateError(undefined, englishT)).toBe('Update failed.')
   })
 })
 

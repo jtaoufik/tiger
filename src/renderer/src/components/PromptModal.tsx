@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { Modal } from './Modal'
+import { useT } from '../i18n'
 
 interface Props {
   title: string
@@ -16,11 +17,12 @@ export function PromptModal({
   title,
   label,
   placeholder,
-  confirmLabel = 'OK',
+  confirmLabel,
   initialValue = '',
   onSubmit,
   onCancel
 }: Props) {
+  const t = useT()
   const [value, setValue] = useState(initialValue)
   const [error, setError] = useState<string | null>(null)
   const inputId = useId()
@@ -29,7 +31,7 @@ export function PromptModal({
   const submit = () => {
     const v = value.trim()
     if (!v) {
-      setError(`${label} is required.`)
+      setError(t('modals.prompt.required', { label }))
       return
     }
     onSubmit(v)
@@ -43,10 +45,10 @@ export function PromptModal({
       footer={
         <>
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="submit" form={`${inputId}-form`} className="btn accent">
-            {confirmLabel}
+            {confirmLabel ?? t('common.ok')}
           </button>
         </>
       }
@@ -63,7 +65,7 @@ export function PromptModal({
           <label htmlFor={inputId}>
             <span>{label}</span>
             <span className="req-mark" aria-hidden="true">
-              (required)
+              {t('modals.prompt.requiredMark')}
             </span>
           </label>
           <input

@@ -5,6 +5,7 @@ import type { TigerEnvironment } from '@core/types'
 import { cancelRequest, runRequest } from '../runRequest'
 import { runScriptIsolated } from '../scriptSandbox'
 import { Modal } from './Modal'
+import { useT } from '../i18n'
 import { CheckIcon, PlayIcon, StopIcon, XCircleIcon } from './Icons'
 import './a11y.css'
 import './RunnerModal.css'
@@ -24,6 +25,7 @@ type Phase = 'loading' | 'ready' | 'running' | 'done'
 const RUNNER_KEY = 'collection-runner'
 
 export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose }: Props) {
+  const t = useT()
   const [phase, setPhase] = useState<Phase>('loading')
   const [items, setItems] = useState<RunnerItem[]>([])
   const [results, setResults] = useState<RunnerResult[]>([])
@@ -83,38 +85,45 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
   const failed = results.filter((r) => !r.passed).length
   const progressText =
     phase === 'running'
-      ? `${done} of ${items.length} done${failed ? `, ${failed} failed` : ''}`
+      ? t(failed ? 'modals.runner.runningFailed' : 'modals.runner.running', {
+          done,
+          total: items.length,
+          failed
+        })
       : summary
-        ? `Finished${summary.stopped ? ' (stopped)' : ''}: ${summary.passed} passed, ${summary.failed} failed`
+        ? t(summary.stopped ? 'modals.runner.finishedStopped' : 'modals.runner.finished', {
+            passed: summary.passed,
+            failed: summary.failed
+          })
         : ''
 
   return (
     <Modal
-      title={`Run · ${title}`}
+      title={t('modals.runner.title', { title })}
       onClose={onClose}
       width={680}
-      help={{ page: 'runner', topic: 'Collection runner' }}
+      help={{ page: 'runner', topic: t('modals.runner.topic') }}
       description={
         phase !== 'loading' && items.length > 0
-          ? 'Sends every request in order. Saved values and scripts run between them, and each test shows pass or fail.'
+          ? t('modals.runner.description')
           : undefined
       }
       footer={
         phase !== 'loading' && items.length > 0 ? (
           <>
             <button type="button" className="btn" onClick={onClose}>
-              Close
+              {t('common.close')}
             </button>
             {phase === 'running' ? (
               <button type="button" className="btn danger" onClick={stop}>
-                <StopIcon size={13} /> Stop
+                <StopIcon size={13} /> {t('modals.runner.stop')}
               </button>
             ) : (
               <button type="button" className="btn accent" data-autofocus onClick={start}>
                 <PlayIcon size={13} />{' '}
                 {phase === 'done'
-                  ? 'Run again'
-                  : `Run ${items.length} request${items.length === 1 ? '' : 's'}`}
+                  ? t('modals.runner.runAgain')
+                  : t('modals.runner.run', { count: items.length })}
               </button>
             )}
           </>
@@ -123,17 +132,17 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
     >
       {phase === 'loading' && (
         <div className="cv-dim" role="status">
-          Loading requests…
+          {t('modals.runner.loading')}
         </div>
       )}
 
       {phase !== 'loading' && items.length === 0 && (
         <div className="modal-empty">
           <PlayIcon size={28} />
-          <h3>Nothing to run yet</h3>
-          <p>This scope has no requests. Add one from the sidebar, then run again.</p>
+          <h3>{t('modals.runner.emptyTitle')}</h3>
+          <p>{t('modals.runner.emptyBody')}</p>
           <button type="button" className="btn" data-autofocus onClick={onClose}>
-            Close
+            {t('common.close')}
           </button>
         </div>
       )}
@@ -145,7 +154,7 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
               <div
                 className="runner-bar"
                 role="progressbar"
-                aria-label="Run progress"
+                aria-label={t('modals.runner.progress')}
                 aria-valuemin={0}
                 aria-valuemax={items.length}
                 aria-valuenow={done}
@@ -163,8 +172,10 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
                   ) : (
                     <CheckIcon size={14} aria-hidden="true" />
                   )}
-                  {summary.passed} passed · {summary.failed} failed
-                  {summary.stopped ? ' · stopped' : ''}
+                  {t(summary.stopped ? 'modals.runner.summaryStopped' : 'modals.runner.summary', {
+                    passed: summary.passed,
+                    failed: summary.failed
+                  })}
                 </span>
               ) : (
                 <span className="cv-dim runner-count">
@@ -179,15 +190,15 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
 
           <div className="runner-list">
             <table className="runner-table">
-              <caption className="tg-sr-only">Requests in this run and their results</caption>
+              <caption className="tg-sr-only">{t('modals.runner.caption')}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Method</th>
-                  <th scope="col">Request</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Time</th>
-                  <th scope="col">Tests</th>
-                  <th scope="col">Result</th>
+                  <th scope="col">{t('modals.runner.colMethod')}</th>
+                  <th scope="col">{t('modals.runner.colRequest')}</th>
+                  <th scope="col">{t('modals.runner.colStatus')}</th>
+                  <th scope="col">{t('modals.runner.colTime')}</th>
+                  <th scope="col">{t('modals.runner.colTests')}</th>
+                  <th scope="col">{t('modals.runner.colResult')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -217,28 +228,28 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
                         {r?.status !== undefined ? (
                           <span className={r.status < 400 ? 'runner-ok' : 'runner-bad'}>{r.status}</span>
                         ) : (
-                          <span className="runner-na">{running ? 'sending…' : ''}</span>
+                          <span className="runner-na">{running ? t('modals.runner.sending') : ''}</span>
                         )}
                       </td>
-                      <td className="runner-num">{r?.timeMs !== undefined ? `${r.timeMs} ms` : ''}</td>
+                      <td className="runner-num">{r?.timeMs !== undefined ? t('common.ms', { value: r.timeMs }) : ''}</td>
                       <td className="runner-num">
                         {r && r.tests.length > 0
-                          ? `${r.tests.filter((t) => t.passed).length}/${r.tests.length}`
+                          ? `${r.tests.filter((test) => test.passed).length}/${r.tests.length}`
                           : ''}
                       </td>
                       <td>
                         {r ? (
                           r.passed ? (
                             <span className="runner-verdict ok">
-                              <CheckIcon size={14} aria-hidden="true" /> Pass
+                              <CheckIcon size={14} aria-hidden="true" /> {t('modals.runner.pass')}
                             </span>
                           ) : (
                             <span className="runner-verdict bad">
-                              <XCircleIcon size={14} aria-hidden="true" /> Fail
+                              <XCircleIcon size={14} aria-hidden="true" /> {t('modals.runner.fail')}
                             </span>
                           )
                         ) : (
-                          <span className="runner-na">{running ? 'Running' : 'Pending'}</span>
+                          <span className="runner-na">{running ? t('modals.runner.statusRunning') : t('modals.runner.statusPending')}</span>
                         )}
                       </td>
                     </tr>

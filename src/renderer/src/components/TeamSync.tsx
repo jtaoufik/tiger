@@ -5,7 +5,16 @@
  * Wording and rules live in ../gitUx.ts.
  */
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode
+} from 'react'
 import { splitDiff } from '@core/diffView'
 import type { GitActionResult, GitConflict, GitErrorCode, GitStatus } from '../../../main/git'
 import type { OpenedCollection } from '../../../preload'
@@ -28,8 +37,10 @@ import {
   type SyncKind,
   type SyncSummary
 } from '../gitUx'
+import type { MessageKey } from '@core/i18n'
 import { announce } from '../a11y'
 import { actionLabel } from '../actions'
+import { t as tr, useT } from '../i18n'
 import { Modal } from './Modal'
 import {
   ArrowDownIcon,
@@ -84,6 +95,14 @@ export function GitTerm({ children }: { children: ReactNode }) {
   return <span className="ts-term">git {children}</span>
 }
 
+/** Fill {name} slots of a translated sentence with elements, keeping the sentence whole. */
+export function rich(text: string, nodes: Record<string, ReactNode>): ReactNode[] {
+  return text.split(/(\{\w+\})/).map((part, i) => {
+    const name = /^\{(\w+)\}$/.exec(part)?.[1]
+    return name && name in nodes ? <Fragment key={i}>{nodes[name]}</Fragment> : part
+  })
+}
+
 function openLink(url: string): void {
   if (window.tiger?.openExternal) window.tiger.openExternal(url)
   else window.open(url, '_blank', 'noopener')
@@ -110,6 +129,7 @@ export function ErrorPanel({
   onRetry?: () => void
   onDismiss?: () => void
 }) {
+  const t = useT()
   const help = errorHelp(error.code, currentPlatform())
   const titleId = useId()
   if (error.code === 'identity' && root) {
@@ -119,7 +139,7 @@ export function ErrorPanel({
     <div className="ts-error" role="alert" aria-labelledby={titleId}>
       <WarningIcon size={16} className="ts-error-icon" />
       <div className="ts-error-body">
-        <b id={titleId}>{help?.title ?? 'That did not work'}</b>
+        <b id={titleId}>{help?.title ?? t('team.error.title')}</b>
         <p className="ts-error-msg">{error.message}</p>
         {help && help.steps.length > 0 && (
           <ol className="ts-error-steps">
@@ -141,12 +161,12 @@ export function ErrorPanel({
           <div className="ts-row">
             {onRetry && (
               <button type="button" className="btn" onClick={onRetry}>
-                <RefreshIcon size={14} /> Try again
+                <RefreshIcon size={14} /> {t('common.retry')}
               </button>
             )}
             {onDismiss && (
               <button type="button" className="btn ghost" onClick={onDismiss}>
-                Dismiss
+                {t('team.dismiss')}
               </button>
             )}
           </div>
@@ -165,15 +185,17 @@ function IdentityForm({
   onSaved?: () => void
   onDismiss?: () => void
 }) {
+  const t = useT()
   const uid = useId()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [problem, setProblem] = useState('')
   useEffect(
     () =>
-      announce('Tiger needs your name and email before it can save a version.', {
+      announce(t('team.identity.announce'), {
         assertive: true
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   )
   const save = async (): Promise<void> => {
@@ -194,20 +216,17 @@ function IdentityForm({
     >
       <UsersIcon size={16} className="ts-error-icon" />
       <div className="ts-error-body">
-        <b id={`${uid}-t`}>Tell Tiger who you are</b>
-        <p className="ts-error-msg">
-          Each version records a name and email so teammates know who changed what. Saved for this
-          collection only.
-        </p>
+        <b id={`${uid}-t`}>{t('team.identity.title')}</b>
+        <p className="ts-error-msg">{t('team.identity.explain')}</p>
         <div className="ts-identity">
-          <label htmlFor={`${uid}-n`}>Your name</label>
+          <label htmlFor={`${uid}-n`}>{t('team.identity.name')}</label>
           <input
             id={`${uid}-n`}
             value={name}
             autoComplete="name"
             onChange={(e) => setName(e.target.value)}
           />
-          <label htmlFor={`${uid}-e`}>Work email</label>
+          <label htmlFor={`${uid}-e`}>{t('team.identity.email')}</label>
           <input
             id={`${uid}-e`}
             type="email"
@@ -224,11 +243,11 @@ function IdentityForm({
         )}
         <div className="ts-row">
           <button type="submit" className="btn accent" disabled={!name.trim() || !email.trim()}>
-            Save and try again
+            {t('team.identity.save')}
           </button>
           {onDismiss && (
             <button type="button" className="btn ghost" onClick={onDismiss}>
-              Cancel
+              {t('common.cancel')}
             </button>
           )}
         </div>
@@ -251,6 +270,7 @@ function RepoUrlField({
   onChange: (v: string) => void
   onSubmit?: () => void
 }) {
+  const t = useT()
   const check = validateRepoUrl(value)
   const showProblem = value.trim().length > 0 && !check.ok
   return (
@@ -262,7 +282,7 @@ function RepoUrlField({
         value={value}
         spellCheck={false}
         autoComplete="off"
-        placeholder="https://github.com/your-team/payments-api.git"
+        placeholder="https://github.com/your-team/payments-api.git" // i18n-ignore: example address
         aria-invalid={showProblem || undefined}
         aria-describedby={`${id}-hint${showProblem ? ` ${id}-problem` : ''}`}
         onChange={(e) => onChange(e.target.value)}
@@ -271,16 +291,19 @@ function RepoUrlField({
         }}
       />
       <div className="ts-hint" id={`${id}-hint`}>
-        Copy it from the <b>Code</b> button on GitHub or <b>Clone</b> on GitLab. Examples:{' '}
-        <code>https://github.com/your-team/payments-api.git</code> or{' '}
-        <code>git@github.com:your-team/payments-api.git</code>
+        {rich(t('team.url.hint'), {
+          code: <b>{t('team.url.codeButton')}</b>,
+          clone: <b>{t('team.url.cloneButton')}</b>,
+          https: <code>https://github.com/your-team/payments-api.git</code>,
+          ssh: <code>git@github.com:your-team/payments-api.git</code> // i18n-ignore: example address
+        })}
       </div>
       {showProblem && (
         <div className="ts-invalid" id={`${id}-problem`} aria-live="polite">
           {check.message}
           {check.fix && (
             <button type="button" className="ts-link" onClick={() => onChange(check.fix!)}>
-              Use {check.fix}
+              {t('team.url.use', { url: check.fix })}
             </button>
           )}
         </div>
@@ -379,12 +402,7 @@ export function useTeamSync(
         const result = await window.tiger.git.sync(root, message.trim())
         if (result.conflict) {
           setConflict(root, true)
-          announce(
-            'Conflict: you and a teammate changed the same request. Choose which version to keep.',
-            {
-              assertive: true
-            }
-          )
+          announce(tr('team.conflict.announce'), { assertive: true })
         } else if (result.ok) {
           setConflict(root, false)
           onToast(syncResultText(result))
@@ -426,12 +444,13 @@ export function ProgressLine({ text }: { text: string | null }) {
 // ---------------------------------------------------------------------------
 
 const STEPS = [
-  { title: 'Turn on version tracking', term: 'init' },
-  { title: 'Connect a shared repository', term: 'remote add' },
-  { title: 'Share it with your team', term: 'push' }
-] as const
+  { k: 'team.setup.step1.title', term: 'init' },
+  { k: 'team.setup.step2.title', term: 'remote add' },
+  { k: 'team.setup.step3.title', term: 'push' }
+] as const satisfies ReadonlyArray<{ k: MessageKey; term: string }>
 
 export function SetupStepper({ root, state }: { root: string; state: TeamSyncState }) {
+  const t = useT()
   const uid = useId()
   const [url, setUrl] = useState('')
   const [remoteHasContent, setRemoteHasContent] = useState(false)
@@ -441,7 +460,7 @@ export function SetupStepper({ root, state }: { root: string; state: TeamSyncSta
 
   const connect = async (): Promise<void> => {
     if (!check.ok) return
-    const result = await state.run('Checking access to the repository…', () =>
+    const result = await state.run(t('team.setup.step2.progress'), () =>
       window.tiger!.git.setRemote(root, url.trim())
     )
     if (result?.ok) setRemoteHasContent(!!result.remoteHasContent)
@@ -450,7 +469,7 @@ export function SetupStepper({ root, state }: { root: string; state: TeamSyncSta
   return (
     <section className="ts-setup" aria-labelledby={`${uid}-h`}>
       <h3 className="ts-h" id={`${uid}-h`}>
-        Share this collection with your team
+        {t('team.setup.title')}
       </h3>
       <ol className="ts-steps">
         {STEPS.map((s, i) => {
@@ -458,7 +477,7 @@ export function SetupStepper({ root, state }: { root: string; state: TeamSyncSta
           const state_ = n < step ? 'done' : n === step ? 'current' : 'todo'
           return (
             <li
-              key={s.title}
+              key={s.k}
               className={`ts-step ${state_}`}
               aria-current={n === step ? 'step' : undefined}
             >
@@ -467,44 +486,38 @@ export function SetupStepper({ root, state }: { root: string; state: TeamSyncSta
               </span>
               <div className="ts-step-body">
                 <div className="ts-step-title">
-                  <b>{s.title}</b> <GitTerm>{s.term}</GitTerm>
+                  <b>{t(s.k)}</b> <GitTerm>{s.term}</GitTerm>
                   <span className="sr-only">
                     {state_ === 'done'
-                      ? ' (done)'
+                      ? t('team.setup.done')
                       : state_ === 'current'
-                        ? ' (current step)'
-                        : ' (to do)'}
+                        ? t('team.setup.current')
+                        : t('team.setup.todo')}
                   </span>
                 </div>
                 {n === 1 && step === 1 && (
                   <>
-                    <p>
-                      Tiger keeps a history of every change in this folder, so you can see who
-                      changed what and go back. Nothing leaves your computer yet.
-                    </p>
+                    <p>{t('team.setup.step1.text')}</p>
                     <button
                       type="button"
                       className="btn accent"
                       disabled={state.busy !== null}
                       onClick={() =>
-                        state.run('Turning on version tracking…', () =>
+                        state.run(t('team.setup.step1.progress'), () =>
                           window.tiger!.git.init(root)
                         )
                       }
                     >
-                      Turn on version tracking
+                      {t('team.setup.step1.button')}
                     </button>
                   </>
                 )}
                 {n === 2 && step === 2 && (
                   <>
-                    <p>
-                      Create an empty repository on GitHub, GitLab or your company server (a
-                      developer on your team can do this in a minute), then paste its address here.
-                    </p>
+                    <p>{t('team.setup.step2.text')}</p>
                     <RepoUrlField
                       id={`${uid}-url`}
-                      label="Repository address"
+                      label={t('team.setup.step2.label')}
                       value={url}
                       onChange={setUrl}
                       onSubmit={connect}
@@ -515,7 +528,7 @@ export function SetupStepper({ root, state }: { root: string; state: TeamSyncSta
                       disabled={state.busy !== null || !check.ok}
                       onClick={connect}
                     >
-                      Connect
+                      {t('team.setup.step2.connect')}
                     </button>
                   </>
                 )}
@@ -523,16 +536,16 @@ export function SetupStepper({ root, state }: { root: string; state: TeamSyncSta
                   <>
                     <p>
                       {remoteHasContent
-                        ? 'The repository already has content: the first sync combines it with this collection.'
-                        : 'Tiger saves a first version and uploads it. Teammates then use "Join a team collection" to get it.'}
+                        ? t('team.setup.step3.hasContent')
+                        : t('team.setup.step3.empty')}
                     </p>
                     <button
                       type="button"
                       className="btn accent"
                       disabled={state.busy !== null}
-                      onClick={() => state.sync('Share collection with the team')}
+                      onClick={() => state.sync(t('team.setup.commitNote'))}
                     >
-                      <CloudUploadIcon size={14} /> Share now
+                      <CloudUploadIcon size={14} /> {t('team.setup.step3.button')}
                     </button>
                   </>
                 )}
@@ -551,12 +564,12 @@ export function SetupStepper({ root, state }: { root: string; state: TeamSyncSta
 
 const GROUPS: Array<{
   key: keyof GroupedChanges
-  title: string
+  k: MessageKey
   icon: (p: IconProps) => ReactNode
 }> = [
-  { key: 'added', title: 'Added', icon: PlusIcon },
-  { key: 'changed', title: 'Changed', icon: PencilIcon },
-  { key: 'removed', title: 'Removed', icon: TrashIcon }
+  { key: 'added', k: 'team.changes.added', icon: PlusIcon },
+  { key: 'changed', k: 'team.changes.changed', icon: PencilIcon },
+  { key: 'removed', k: 'team.changes.removed', icon: TrashIcon }
 ]
 
 /** Request names for the changed paths, read from disk (deleted: last version). */
@@ -587,6 +600,7 @@ function ChangeRow({
   onDiscard: (items: ChangeItem[]) => void
   disabled: boolean
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [diff, setDiff] = useState<string | null>(null)
   const uid = useId()
@@ -616,8 +630,8 @@ function ChangeRow({
           type="button"
           className="icon-btn ts-discard-one"
           disabled={disabled}
-          title={`Discard changes to ${item.name}`}
-          aria-label={`Discard changes to ${item.name}`}
+          title={t('team.changes.discardOne', { name: item.name })}
+          aria-label={t('team.changes.discardOne', { name: item.name })}
           onClick={() => onDiscard([item])}
         >
           <UndoIcon size={13} />
@@ -628,13 +642,13 @@ function ChangeRow({
           className="git-diff ts-diff"
           id={`${uid}-d`}
           role="region"
-          aria-label={`Changes in ${item.name}`}
+          aria-label={t('team.changes.in', { name: item.name })}
           tabIndex={0}
         >
           {diff === null ? (
-            <div className="cv-dim">Loading…</div>
+            <div className="cv-dim">{t('common.loading')}</div>
           ) : lines.length === 0 ? (
-            <div className="cv-dim">No line changes (renamed or permissions only).</div>
+            <div className="cv-dim">{t('team.changes.noLines')}</div>
           ) : (
             lines.map((line, i) => (
               <div key={i} className={`dl-${line.kind}`}>
@@ -659,6 +673,7 @@ export function ChangeList({
   busy: boolean
   onDiscard: (items: ChangeItem[]) => void
 }) {
+  const t = useT()
   const uid = useId()
   return (
     <div className="ts-groups">
@@ -667,7 +682,7 @@ export function ChangeList({
         return (
           <div key={g.key} className={`ts-group ts-${g.key}`}>
             <h4 id={`${uid}-${g.key}`}>
-              <Icon size={13} /> {g.title}{' '}
+              <Icon size={13} /> {t(g.k)}{' '}
               <span className="ts-count">({groups[g.key].length})</span>
             </h4>
             <ul aria-labelledby={`${uid}-${g.key}`}>
@@ -700,28 +715,33 @@ export function DiscardConfirm({
   onConfirm: () => void
   onCancel: () => void
 }) {
+  const t = useT()
   const kindOf = (item: ChangeItem): string =>
     groups.added.some((i) => i.path === item.path)
-      ? 'new, will be deleted'
+      ? t('team.discard.kindAdded')
       : groups.removed.some((i) => i.path === item.path)
-        ? 'removed, will come back'
-        : 'edits will be lost'
+        ? t('team.discard.kindRemoved')
+        : t('team.discard.kindEdited')
   const title =
-    items.length === 1 ? `Discard changes to ${items[0].name}?` : `Discard ${items.length} changes?`
+    items.length === 1
+      ? t('team.discard.titleOne', { name: items[0].name })
+      : t('team.discard.titleMany', { count: items.length })
   return (
     <Modal
       title={title}
       role="alertdialog"
       width={460}
       onClose={onCancel}
-      description="These requests go back to the last saved version. You can undo this right after."
+      description={t('team.discard.description')}
       footer={
         <>
           <button type="button" className="btn" data-autofocus onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" className="btn danger" onClick={onConfirm}>
-            {items.length === 1 ? 'Discard' : `Discard ${items.length} changes`}
+            {items.length === 1
+              ? t('team.discard.one')
+              : t('team.discard.many', { count: items.length })}
           </button>
         </>
       }
@@ -767,12 +787,13 @@ function SideBySide({
   text: string | null
   other: string | null
 }) {
+  const t = useT()
   const lines = markDifferences(text, other)
   return (
     <div className="ts-side">
       <div className="ts-side-label">{label}</div>
       {text === null ? (
-        <div className="ts-side-empty">Deleted in this version</div>
+        <div className="ts-side-empty">{t('team.conflict.deleted')}</div>
       ) : (
         <pre tabIndex={0} aria-label={label}>
           {lines.map((l, i) => (
@@ -798,6 +819,7 @@ export function ConflictPanel({
   onResolve: (prefer: 'mine' | 'theirs', choices?: Record<string, 'mine' | 'theirs'>) => void
   onLater: () => void
 }) {
+  const t = useT()
   const uid = useId()
   const [items, setItems] = useState<GitConflict[] | null>(null)
   const [choices, setChoices] = useState<Record<string, 'mine' | 'theirs'>>({})
@@ -820,30 +842,25 @@ export function ConflictPanel({
   return (
     <section className="ts-conflict" aria-labelledby={`${uid}-h`}>
       <h3 className="ts-h" id={`${uid}-h`} ref={headingRef} tabIndex={-1}>
-        <WarningIcon size={15} /> You and a teammate changed the same{' '}
-        {all.length === 1 ? 'request' : 'requests'}
+        <WarningIcon size={15} /> {t('team.conflict.title', { count: all.length })}
       </h3>
-      <p className="ts-explain">
-        For each request, keep your version or the team's. Only the lines you both edited follow
-        your choice; every other edit, from you or the team, is kept. The history keeps both
-        versions.
-      </p>
-      {items === null && <div className="cv-dim">Loading the two versions…</div>}
+      <p className="ts-explain">{t('team.conflict.explain')}</p>
+      {items === null && <div className="cv-dim">{t('team.conflict.loading')}</div>}
       {all.map((c) => (
         <fieldset key={c.path} className="ts-conflict-item">
           <legend title={c.path}>{c.name}</legend>
           <div className="ts-sides">
-            <SideBySide label="Your version" text={c.mine} other={c.theirs} />
-            <SideBySide label="Team's version" text={c.theirs} other={c.mine} />
+            <SideBySide label={t('team.conflict.yours')} text={c.mine} other={c.theirs} />
+            <SideBySide label={t('team.conflict.theirs')} text={c.theirs} other={c.mine} />
           </div>
-          <div className="ts-row" role="group" aria-label={`Which version of ${c.name} to keep`}>
+          <div className="ts-row" role="group" aria-label={t('team.conflict.which', { name: c.name })}>
             <button
               type="button"
               className={`btn ${choices[c.path] === 'mine' ? 'accent' : ''}`}
               aria-pressed={choices[c.path] === 'mine'}
               onClick={() => setChoices((prev) => ({ ...prev, [c.path]: 'mine' }))}
             >
-              {choices[c.path] === 'mine' && <CheckIcon size={14} />} Keep mine
+              {choices[c.path] === 'mine' && <CheckIcon size={14} />} {t('team.conflict.keepMine')}
             </button>
             <button
               type="button"
@@ -851,7 +868,7 @@ export function ConflictPanel({
               aria-pressed={choices[c.path] === 'theirs'}
               onClick={() => setChoices((prev) => ({ ...prev, [c.path]: 'theirs' }))}
             >
-              {choices[c.path] === 'theirs' && <CheckIcon size={14} />} Keep theirs
+              {choices[c.path] === 'theirs' && <CheckIcon size={14} />} {t('team.conflict.keepTheirs')}
             </button>
           </div>
         </fieldset>
@@ -865,13 +882,13 @@ export function ConflictPanel({
               disabled={busy || !decided}
               onClick={() => onResolve('mine', choices)}
             >
-              Finish sync
+              {t('team.conflict.finish')}
             </button>
             <button type="button" className="btn" disabled={busy} onClick={() => setAll('mine')}>
-              Keep all mine
+              {t('team.conflict.keepAllMine')}
             </button>
             <button type="button" className="btn" disabled={busy} onClick={() => setAll('theirs')}>
-              Keep all theirs
+              {t('team.conflict.keepAllTheirs')}
             </button>
           </>
         ) : (
@@ -883,7 +900,7 @@ export function ConflictPanel({
                 disabled={busy}
                 onClick={() => onResolve('mine')}
               >
-                Keep my version
+                {t('team.conflict.keepMyVersion')}
               </button>
               <button
                 type="button"
@@ -891,17 +908,17 @@ export function ConflictPanel({
                 disabled={busy}
                 onClick={() => onResolve('theirs')}
               >
-                Use the team's version
+                {t('team.conflict.useTeams')}
               </button>
             </>
           )
         )}
         <button type="button" className="btn ghost" disabled={busy} onClick={onLater}>
-          Decide later
+          {t('team.conflict.later')}
         </button>
       </div>
       {all.length > 0 && !decided && (
-        <p className="ts-hint">Choose a version for each request to finish the sync.</p>
+        <p className="ts-hint">{t('team.conflict.chooseEach')}</p>
       )}
     </section>
   )
@@ -918,6 +935,7 @@ export function JoinTeamModal({
   onCancel: () => void
   onJoined: (opened: OpenedCollection) => void
 }) {
+  const t = useT()
   const uid = useId()
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -926,12 +944,12 @@ export function JoinTeamModal({
   const join = async (): Promise<void> => {
     if (!check.ok || busy) return
     if (!window.tiger?.git) {
-      setError({ message: 'Joining a team collection needs the Tiger desktop app.' })
+      setError({ message: t('team.join.desktopOnly') })
       return
     }
     setBusy(true)
     setError(null)
-    announce('Downloading the team collection…')
+    announce(t('team.join.downloading'))
     try {
       const opened = await window.tiger.git.clone(url.trim())
       if (!opened) return // folder picker cancelled: stay here
@@ -950,14 +968,14 @@ export function JoinTeamModal({
       title={actionLabel('join-team')}
       onClose={onCancel}
       width={560}
-      description="Get a copy of a collection your team shares in a git repository. You can then sync to get their changes and share yours."
+      description={t('team.join.description')}
       footer={
         <>
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" className="btn accent" disabled={!check.ok || busy} onClick={join}>
-            {busy ? 'Downloading…' : 'Choose folder and join'}
+            {busy ? t('team.join.downloadingButton') : t('team.join.choose')}
           </button>
         </>
       }
@@ -966,22 +984,22 @@ export function JoinTeamModal({
         <li>
           <RepoUrlField
             id={`${uid}-url`}
-            label="1. Repository address"
+            label={t('team.join.step1')}
             value={url}
             onChange={setUrl}
             onSubmit={join}
           />
         </li>
         <li>
-          <b>2. Choose where to keep it on this computer.</b>{' '}
-          <span className="cv-dim">Tiger creates a folder named after the repository there.</span>
+          <b>{t('team.join.step2')}</b>{' '}
+          <span className="cv-dim">{t('team.join.step2b')}</span>
         </li>
         <li>
-          <b>3. It opens here</b> <span className="cv-dim">in the sidebar, ready to use.</span>{' '}
-          <GitTerm>clone</GitTerm>
+          <b>{t('team.join.step3')}</b> <span className="cv-dim">{t('team.join.step3b')}</span>{' '}
+          <GitTerm>clone</GitTerm> {/* i18n-ignore: git term */}
         </li>
       </ol>
-      <ProgressLine text={busy ? 'Downloading the team collection…' : null} />
+      <ProgressLine text={busy ? t('team.join.downloading') : null} />
       {error && <ErrorPanel error={error} onRetry={check.ok ? join : undefined} />}
     </Modal>
   )

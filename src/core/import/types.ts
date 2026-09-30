@@ -1,3 +1,4 @@
+import type { MessageKey, Vars } from '../i18n'
 import type { KeyValue, TigerAuth, TigerEnvironment, TigerRequest } from '../types'
 
 /** A request plus the folder path it lives under within a collection. */
@@ -24,7 +25,16 @@ export interface ImportedFolder {
 export interface ImportWarning {
   request?: string
   path?: string[]
+  /** The English text: what tests and the MCP tools read. */
   message: string
+  /** The same warning as a catalog key, so the report can show it in the user's language. */
+  i18n?: MessageI18n
+}
+
+/** A translatable message: catalog key plus its {placeholders}. */
+export interface MessageI18n {
+  key: MessageKey
+  vars?: Vars
 }
 
 export interface ImportResult {

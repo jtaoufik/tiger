@@ -32,7 +32,9 @@ import {
   pathVariableWarning,
   scalar,
   str,
-  type Json
+  type Json,
+  type WarningText,
+  warning
 } from './common'
 import type { ImportedFolder, ImportResult, ImportedRequest, ImportWarning } from './types'
 
@@ -84,7 +86,7 @@ function formLines(params: unknown, tags: Set<string>, onFile: (name: string, fi
 function toBody(
   raw: unknown,
   tags: Set<string>,
-  warn: (message: string) => void
+  warn: (w: WarningText) => void
 ): TigerBody {
   const body = (raw ?? {}) as Json
   const mime = str(body.mimeType).split(';')[0].trim().toLowerCase()
@@ -115,14 +117,14 @@ function toBody(
     const content = formLines(body.params, tags, (name, file) =>
       warn(
         file
-          ? `Form field "${name}" uploads ${file}. Check the file exists on this machine.`
-          : `Form field "${name}" is a file upload with no file chosen. Pick the file in the body tab.`
+          ? warning('imports.formFileUpload', { field: name, files: file })
+          : warning('imports.formFileNone', { field: name })
       )
     )
     return { type: 'multipart', content }
   }
   if (mime === 'application/octet-stream' || str(body.fileName)) {
-    warn('Sends a binary file body, which Tiger does not support yet. The body was left empty.')
+    warn(warning('imports.binaryBody'))
     return emptyBody()
   }
   if (mime.startsWith('text/') || mime.includes('yaml') || (text && !mime)) {
@@ -141,7 +143,7 @@ const AUTH_NAMES: Record<string, string> = {
   netrc: 'Netrc'
 }
 
-function toAuth(raw: unknown, tags: Set<string>, warn: (m: string) => void): TigerAuth | undefined {
+function toAuth(raw: unknown, tags: Set<string>, warn: (w: WarningText) => void): TigerAuth | undefined {
   if (!raw || typeof raw !== 'object') return undefined
   const a = raw as Json
   const type = str(a.type)
@@ -152,14 +154,14 @@ function toAuth(raw: unknown, tags: Set<string>, warn: (m: string) => void): Tig
     case 'bearer': {
       const prefix = str(a.prefix)
       if (prefix && prefix.toLowerCase() !== 'bearer') {
-        warn(`Bearer auth uses the prefix "${prefix}". Tiger always sends "Bearer"; add an Authorization header instead if the server needs "${prefix}".`)
+        warn(warning('imports.bearerPrefix', { prefix }))
       }
       return { type: 'bearer', token: t(a.token) }
     }
     case 'basic':
       return { type: 'basic', username: t(a.username), password: t(a.password) }
     case 'apikey': {
-      if (a.addTo === 'cookie') warn('API key is sent as a cookie in Insomnia; Tiger sends it as a header. Check the server accepts that.')
+      if (a.addTo === 'cookie') warn(warning('imports.apiKeyCookie'))
       return {
         type: 'apikey',
         key: t(a.key),
@@ -179,11 +181,11 @@ function toAuth(raw: unknown, tags: Set<string>, warn: (m: string) => void): Tig
           scope: t(a.scope)
         }
       }
-      warn(`OAuth 2.0 "${grant}" is not supported. Auth was set to none; get a token and use Bearer auth.`)
+      warn(warning('imports.oauthUnsupportedNone', { grant }))
       return { type: 'none' }
     }
     default:
-      warn(`${AUTH_NAMES[type] ?? type} auth is not supported. Auth was set to none; set it up again.`)
+      warn(warning('imports.authUnsupported', { auth: AUTH_NAMES[type] ?? type }))
       return { type: 'none' }
   }
 }
@@ -302,22 +304,18 @@ export function importInsomnia(raw: unknown): ImportResult {
   for (const group of groups.values()) {
     const tags = new Set<string>()
     const path = pathOf(str(group._id))
-    const warn = (message: string) => warnings.push({ request: str(group.name), path: path.slice(0, -1), message })
+    const warn = (w: WarningText) => warnings.push({ request: str(group.name), path: path.slice(0, -1), ...w })
     const auth = toAuth(group.authentication, tags, warn)
     const docs = str(group.description).trim() ? str(group.description) : undefined
     if (auth || docs) folders.push({ path, ...(auth ? { auth } : {}), ...(docs ? { docs } : {}) })
     const folderVars = flattenEnvData(group.environment)
     if (folderVars.length) {
-      warn(
-        `Folder variables are not supported: ${folderVars
-          .map((v) => v.name)
-          .join(', ')}. Add them to an environment.`
-      )
+      warn(warning('imports.folderVariables', { names: folderVars.map((v) => v.name).join(', ') }))
     }
     if (str(group.preRequestScript).trim() || str(group.afterResponseScript).trim()) {
-      warn('Folder scripts were copied into each request in this folder. Edit them there.')
+      warn(warning('imports.folderScripts'))
     }
-    if (tags.size) warn(`Uses template tags Tiger cannot run: ${[...tags].join(', ')}.`)
+    if (tags.size) warn(warning('imports.templateTags', { tags: [...tags].join(', ') }))
   }
 
   const requests: ImportedRequest[] = []
@@ -333,10 +331,10 @@ export function importInsomnia(raw: unknown): ImportResult {
     const parentId = str(r.parentId)
     const path = pathOf(parentId)
     const tags = new Set<string>()
-    const warn = (message: string) => warnings.push({ request: name, path, message })
+    const warn = (w: WarningText) => warnings.push({ request: name, path, ...w })
     const method = str(r.method, 'GET').toLowerCase()
     if (!isHttpMethod(method)) {
-      warn(`Method ${str(r.method).toUpperCase()} is not supported, so this request was skipped.`)
+      warn(warning('imports.methodUnsupported', { method: str(r.method).toUpperCase() }))
       continue
     }
 
@@ -365,12 +363,12 @@ export function importInsomnia(raw: unknown): ImportResult {
     const post = joinScripts(...chain.map((g) => str(g.afterResponseScript)), str(r.afterResponseScript))
     if (pre) request.preScript = pre
     if (post) request.postScript = post
-    if (tags.size) warn(`Uses template tags Tiger cannot run: ${[...tags].join(', ')}. They were kept as text.`)
+    if (tags.size) warn(warning('imports.templateTagsKept', { tags: [...tags].join(', ') }))
     checkRequest(request, path, warnings)
     requests.push({ path, request })
   }
   for (const [kind, count] of Object.entries(skipped)) {
-    warnings.push({ message: `${count} ${kind} request${count === 1 ? ' was' : 's were'} skipped: Tiger sends HTTP requests only.` })
+    warnings.push(warning('imports.skippedRequests', { count, kind }))
   }
 
   // Environments: base (parent is a workspace) merged under each sub env.
@@ -396,7 +394,7 @@ export function importInsomnia(raw: unknown): ImportResult {
     }
   }
   if (envTags.size) {
-    warnings.push({ message: `Environment values use template tags Tiger cannot run: ${[...envTags].join(', ')}.` })
+    warnings.push(warning('imports.envTemplateTags', { tags: [...envTags].join(', ') }))
   }
 
   const name =

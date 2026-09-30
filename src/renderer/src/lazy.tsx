@@ -11,6 +11,8 @@
  * swaps in the moment the chunk resolves.
  */
 import { useEffect, useState, type ComponentType, type JSX } from 'react'
+import type { MessageKey } from '@core/i18n'
+import { useT } from './i18n'
 import './lazy.css'
 
 type Loader<P> = () => Promise<ComponentType<P>>
@@ -24,7 +26,8 @@ export interface LazySurface<P> {
 const registry: Array<() => Promise<unknown>> = []
 
 /**
- * @param label what is loading, for the status message ("Loading settings…").
+ * @param label what is loading, for the status message ("Loading settings…"): a
+ *   `sidebar.lazy.*` message key (translated), or plain text.
  * @param overlay true for dialogs: the placeholder floats instead of taking space.
  */
 export function lazySurface<P extends object>(
@@ -78,13 +81,15 @@ export function LoadingSurface({
   overlay?: boolean
   failed?: boolean
 }) {
+  const t = useT()
+  const name = label.startsWith('sidebar.lazy.') ? t(label as MessageKey) : label
   return (
     <div
       className={`lazy-loading${overlay ? ' overlay' : ''}`}
       role={failed ? 'alert' : 'status'}
       aria-live={failed ? undefined : 'polite'}
     >
-      {failed ? `Could not load ${label}. Close it and try again.` : `Loading ${label}…`}
+      {failed ? t('sidebar.lazy.failed', { label: name }) : t('sidebar.lazy.loading', { label: name })}
     </div>
   )
 }

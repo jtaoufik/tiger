@@ -33,6 +33,7 @@ import {
   type UpdateEvent,
   type UpdateState
 } from '../core/updateState'
+import { mainTranslator } from './i18n'
 import { loadSettings, type Settings } from './settings'
 
 type AutoUpdater = (typeof import('electron-updater'))['autoUpdater']
@@ -97,7 +98,7 @@ function loadUpdater(): Promise<AutoUpdater> {
     autoUpdater.on('update-not-available', () => dispatch({ type: 'not-available' }))
     autoUpdater.on('download-progress', (p) => dispatch({ type: 'progress', percent: p.percent }))
     autoUpdater.on('update-downloaded', (info) => dispatch({ type: 'downloaded', version: info.version }))
-    autoUpdater.on('error', (err) => dispatch({ type: 'error', message: friendlyUpdateError(err) }))
+    autoUpdater.on('error', (err) => dispatch({ type: 'error', message: friendlyUpdateError(err, mainTranslator()) }))
     loaded = autoUpdater
     return autoUpdater
   })
@@ -132,7 +133,7 @@ export async function checkNow(): Promise<UpdateState> {
     const autoUpdater = await loadUpdater()
     await autoUpdater.checkForUpdates()
   } catch (err) {
-    dispatch({ type: 'error', message: friendlyUpdateError(err) })
+    dispatch({ type: 'error', message: friendlyUpdateError(err, mainTranslator()) })
   }
   return state
 }
@@ -144,7 +145,7 @@ export function downloadNow(): void {
   loadUpdater()
     .then((autoUpdater) => autoUpdater.downloadUpdate())
     .catch((err) => {
-      dispatch({ type: 'error', message: friendlyUpdateError(err) })
+      dispatch({ type: 'error', message: friendlyUpdateError(err, mainTranslator()) })
     })
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import type { Translator } from '@core/i18n'
 import { humanSize, type FormattedResponse } from '@core/response'
 import { parseSetCookie } from '@core/cookies'
 import { findMatches } from '@core/textSearch'
@@ -21,6 +22,7 @@ import { HelpLink } from './HelpLink'
 import './a11y.css'
 import './ResponsePanel.css'
 import { MOD } from '../platform'
+import { useT } from '../i18n'
 
 // Hard cap on what we render into the DOM. A multi-MB body laid out as
 // `white-space: pre` is what froze the viewer on big responses; past this
@@ -59,6 +61,7 @@ function downloadText(filename: string, text: string): boolean {
 }
 
 export function ResponsePanel({ state }: Props) {
+  const t = useT()
   const [tab, setTab] = useState<RespTab>('body')
   const [pretty, setPretty] = useState(true)
   const [wrap, setWrap] = useState(false)
@@ -129,11 +132,11 @@ export function ResponsePanel({ state }: Props) {
 
   if (!state) {
     return (
-      <section className="panel response" aria-label="Response">
+      <section className="panel response" aria-label={t('response.title')}>
         <div className="empty">
           <Logo size={54} rounded />
-          <h3>Ready when you are</h3>
-          <div>Pick a request and hit Send to see the response here.</div>
+          <h3>{t('response.empty.title')}</h3>
+          <div>{t('response.empty.body')}</div>
         </div>
       </section>
     )
@@ -141,10 +144,10 @@ export function ResponsePanel({ state }: Props) {
 
   if (state.loading) {
     return (
-      <section className="panel response" aria-label="Response" aria-busy="true">
+      <section className="panel response" aria-label={t('response.title')} aria-busy="true">
         <div className="empty">
           <div className="status-pill resp-sending" role="status">
-            Sending request…
+            {t('response.sending')}
           </div>
         </div>
       </section>
@@ -153,10 +156,10 @@ export function ResponsePanel({ state }: Props) {
 
   if (state.error) {
     return (
-      <section className="panel response" aria-label="Response">
+      <section className="panel response" aria-label={t('response.title')}>
         <div className="empty" role="alert">
           <div className="status-pill status-bad resp-status">
-            <XCircleIcon size={14} aria-hidden="true" /> Request failed
+            <XCircleIcon size={14} aria-hidden="true" /> {t('response.failed')}
           </div>
           <div className="resp-error-text">{state.error}</div>
         </div>
@@ -173,19 +176,19 @@ export function ResponsePanel({ state }: Props) {
   const isHtml = /text\/html/i.test(res.contentType)
   const showImage = !!res.imageDataUrl && preview
   const showHtmlPreview = isHtml && preview && !res.imageDataUrl
-  const verdict = statusWord(res.status, res.ok)
+  const verdict = statusWord(res.status, res.ok, t)
   const statusLine = `${res.status} ${res.statusText || verdict}`.trim()
 
-  const t = res.timings
-  const timingRows: Array<[string, number]> = t
+  const tm = res.timings
+  const timingRows: Array<[string, string, number]> = tm
     ? ([
-        t.dns != null ? ['DNS lookup', t.dns] : null,
-        t.tcp != null ? ['TCP connect', t.tcp] : null,
-        t.tls != null ? ['TLS handshake', t.tls] : null,
-        ['Waiting (TTFB)', t.waiting],
-        ['Download', t.download],
-        ['Total', t.total]
-      ].filter(Boolean) as Array<[string, number]>)
+        tm.dns != null ? ['dns', t('response.timing.dns'), tm.dns] : null,
+        tm.tcp != null ? ['tcp', t('response.timing.tcp'), tm.tcp] : null,
+        tm.tls != null ? ['tls', t('response.timing.tls'), tm.tls] : null,
+        ['waiting', t('response.timing.waiting'), tm.waiting],
+        ['download', t('response.timing.download'), tm.download],
+        ['total', t('response.timing.total'), tm.total]
+      ].filter(Boolean) as Array<[string, string, number]>)
     : []
   const cookies = parseSetCookie(
     res.headers.filter((h) => h.name.toLowerCase() === 'set-cookie').map((h) => h.value)
@@ -215,15 +218,23 @@ export function ResponsePanel({ state }: Props) {
   }
 
   const tabDefs: Array<{ id: RespTab; label: string; name: string }> = [
-    { id: 'body', label: 'Body', name: 'Body' },
-    { id: 'headers', label: `Headers (${res.headers.length})`, name: `Headers, ${res.headers.length}` },
-    { id: 'cookies', label: `Cookies (${cookies.length})`, name: `Cookies, ${cookies.length}` },
+    { id: 'body', label: t('response.tabs.body'), name: t('response.tabs.body') },
+    {
+      id: 'headers',
+      label: t('response.tabs.headers', { count: t.number(res.headers.length) }),
+      name: t('response.tabs.headersName', { count: t.number(res.headers.length) })
+    },
+    {
+      id: 'cookies',
+      label: t('response.tabs.cookies', { count: t.number(cookies.length) }),
+      name: t('response.tabs.cookiesName', { count: t.number(cookies.length) })
+    },
     ...(tests.length
       ? [
           {
             id: 'tests' as const,
-            label: `Tests (${testsPassed}/${tests.length})`,
-            name: `Tests, ${testsPassed} of ${tests.length} passed`
+            label: t('response.tabs.tests', { passed: testsPassed, total: tests.length }),
+            name: t('response.tabs.testsName', { passed: testsPassed, total: tests.length })
           }
         ]
       : [])
@@ -235,10 +246,18 @@ export function ResponsePanel({ state }: Props) {
     current,
     setTab
   )
-  const kind = res.isJson ? 'JSON' : isHtml ? 'HTML' : res.imageDataUrl ? 'image' : 'text'
+  const kind = t(
+    res.isJson
+      ? 'response.kind.json'
+      : isHtml
+        ? 'response.kind.html'
+        : res.imageDataUrl
+          ? 'response.kind.image'
+          : 'response.kind.text'
+  )
 
   return (
-    <section className="panel response" aria-label="Response">
+    <section className="panel response" aria-label={t('response.title')}>
       <div className="response-head">
         <span
           className={`status-pill resp-status ${res.ok ? 'status-ok' : 'status-bad'}`}
@@ -250,7 +269,9 @@ export function ResponsePanel({ state }: Props) {
             <XCircleIcon size={13} aria-hidden="true" />
           )}
           <span>{statusLine}</span>
-          {res.statusText && <span className="tg-sr-only">, {verdict}</span>}
+          {res.statusText && (
+            <span className="tg-sr-only">{t('response.verdict.srSuffix', { verdict })}</span>
+          )}
         </span>
         <span className="timing-wrap">
           <span
@@ -258,59 +279,64 @@ export function ResponsePanel({ state }: Props) {
             tabIndex={timingRows.length ? 0 : undefined}
             aria-describedby={timingRows.length ? `${uid}-timing` : undefined}
           >
-            Time <b>{res.timeMs} ms</b>
+            {t('response.meta.time')} <b>{t('response.meta.ms', { ms: t.number(res.timeMs) })}</b>
           </span>
           {timingRows.length > 0 && (
             <span className="timing-pop" role="tooltip" id={`${uid}-timing`}>
-              {timingRows.map(([label, ms]) => (
-                <span key={label} className={`timing-row ${label === 'Total' ? 'total' : ''}`}>
+              {timingRows.map(([id, label, ms]) => (
+                <span key={id} className={`timing-row ${id === 'total' ? 'total' : ''}`}>
                   <span>{label}</span>
-                  <b>{ms} ms</b>
+                  <b>{t('response.meta.ms', { ms: t.number(ms) })}</b>
                 </span>
               ))}
             </span>
           )}
         </span>
         <span className="meta-chip">
-          Size <b>{res.sizeLabel}</b>
+          {t('response.meta.size')} <b>{res.sizeLabel}</b>
         </span>
         {/* One polite announcement per response, so screen readers hear the result. */}
         <span className="tg-sr-only" role="status" aria-live="polite">
-          {`Response ${statusLine}${res.statusText ? `, ${verdict}` : ''}, ${res.timeMs} milliseconds, ${res.sizeLabel}`}
+          {t(res.statusText ? 'response.announceVerdict' : 'response.announce', {
+            status: statusLine,
+            verdict,
+            ms: t.number(res.timeMs),
+            size: res.sizeLabel
+          })}
         </span>
         <span className="resp-spacer" />
         <button
           type="button"
           className="btn ghost resp-action"
-          title="Copy the response body to the clipboard"
-          aria-label={copied === 'ok' ? 'Response body copied' : 'Copy response body'}
+          title={t('response.copy.title')}
+          aria-label={copied === 'ok' ? t('response.copy.ariaDone') : t('response.copy.aria')}
           onClick={() => copyBody(res.body)}
         >
           {copied === 'ok' ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-          <span aria-hidden="true">{copied === 'ok' ? 'Copied' : 'Copy'}</span>
+          <span aria-hidden="true">{copied === 'ok' ? t('common.copied') : t('common.copy')}</span>
         </button>
         <button
           type="button"
           className="btn ghost resp-action"
-          title="Save the response body to a file"
-          aria-label="Save to file: response body"
+          title={t('response.save.title')}
+          aria-label={t('response.save.aria')}
           onClick={saveToFile}
         >
           <SaveIcon size={14} />
-          <span aria-hidden="true">Save to file</span>
+          <span aria-hidden="true">{t('response.save.label')}</span>
         </button>
-        <HelpLink page="response" topic="Response tools" />
+        <HelpLink page="response" topic={t('response.helpTopic')} />
         <span className="tg-sr-only" role="status" aria-live="polite">
           {copied === 'ok'
-            ? 'Response body copied to clipboard'
+            ? t('response.copy.announceOk')
             : copied === 'fail'
-              ? 'Copy failed: clipboard unavailable'
+              ? t('response.copy.announceFail')
               : ''}
         </span>
       </div>
 
       <div className="response-subhead">
-        <div className="seg resp-tabs" role="tablist" aria-label="Response sections" onKeyDown={tabs.onKeyDown}>
+        <div className="seg resp-tabs" role="tablist" aria-label={t('response.tabs.label')} onKeyDown={tabs.onKeyDown}>
           {tabDefs.map((d) => (
             <button
               key={d.id}
@@ -327,28 +353,28 @@ export function ResponsePanel({ state }: Props) {
         {current === 'body' && res.tooLargeToPretty && (
           <span
             className="meta-chip"
-            title="Highlighting and pretty-print are off for very large responses to keep Tiger responsive."
+            title={t('response.large.title')}
           >
-            Large response · raw
+            {t('response.large.chip')}
           </span>
         )}
         {current === 'body' && res.isJson && !res.tooLargeToPretty && (
-          <div className="seg mini" role="group" aria-label="JSON view">
+          <div className="seg mini" role="group" aria-label={t('response.jsonView')}>
             <button type="button" className={pretty ? 'on' : ''} aria-pressed={pretty} onClick={() => setPretty(true)}>
-              Pretty
+              {t('response.pretty')}
             </button>
             <button type="button" className={!pretty ? 'on' : ''} aria-pressed={!pretty} onClick={() => setPretty(false)}>
-              Raw
+              {t('response.raw')}
             </button>
           </div>
         )}
         {current === 'body' && (isHtml || res.imageDataUrl) && (
-          <div className="seg mini" role="group" aria-label="Preview mode">
+          <div className="seg mini" role="group" aria-label={t('response.previewMode')}>
             <button type="button" className={preview ? 'on' : ''} aria-pressed={preview} onClick={() => setPreview(true)}>
-              Preview
+              {t('response.preview')}
             </button>
             <button type="button" className={!preview ? 'on' : ''} aria-pressed={!preview} onClick={() => setPreview(false)}>
-              Raw
+              {t('response.raw')}
             </button>
           </div>
         )}
@@ -356,8 +382,8 @@ export function ResponsePanel({ state }: Props) {
           <button
             type="button"
             className={`icon-btn ${searchOpen ? 'on' : ''}`}
-            title={`Search in response (${MOD}+F)`}
-            aria-label="Search in response"
+            title={t('response.search.title', { shortcut: `${MOD}+F` })}
+            aria-label={t('response.search.label')}
             aria-pressed={searchOpen}
             aria-keyshortcuts={MOD === 'Cmd' ? 'Meta+F' : 'Control+F'}
             onClick={() => (searchOpen ? closeSearch() : openSearch())}
@@ -369,8 +395,8 @@ export function ResponsePanel({ state }: Props) {
           <button
             type="button"
             className={`icon-btn ${wrap ? 'on' : ''}`}
-            title={wrap ? 'Disable word wrap' : 'Wrap long lines'}
-            aria-label="Wrap long lines"
+            title={wrap ? t('response.wrap.off') : t('response.wrap.on')}
+            aria-label={t('response.wrap.aria')}
             aria-pressed={wrap}
             onClick={() => setWrap((w) => !w)}
           >
@@ -383,13 +409,13 @@ export function ResponsePanel({ state }: Props) {
         {current === 'body' ? (
           <>
             {searchOpen && (
-              <div className="resp-search" role="search" aria-label="Search in response">
+              <div className="resp-search" role="search" aria-label={t('response.search.label')}>
                 <SearchIcon size={13} aria-hidden="true" />
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search in response"
-                  aria-label="Search in response"
+                  placeholder={t('response.search.label')}
+                  aria-label={t('response.search.label')}
                   aria-describedby={`${uid}-search-help`}
                   aria-keyshortcuts="Enter Shift+Enter Escape"
                   value={query}
@@ -412,23 +438,28 @@ export function ResponsePanel({ state }: Props) {
                   }}
                 />
                 <span id={`${uid}-search-help`} className="tg-sr-only">
-                  Enter for next match, Shift+Enter for previous, Escape to close.
+                  {t('response.search.help')}
                 </span>
                 <span className="resp-search-count" aria-hidden="true">
-                  {matchTotal ? `${activeMatch + 1}/${matchTotal}${search.truncated ? '+' : ''}` : '0/0'}
+                  {matchTotal
+                    ? `${t.number(activeMatch + 1)}/${t.number(matchTotal)}${search.truncated ? '+' : ''}`
+                    : '0/0'}
                 </span>
                 <span className="tg-sr-only" role="status" aria-live="polite">
                   {query
                     ? matchTotal
-                      ? `Match ${activeMatch + 1} of ${matchTotal}${search.truncated ? ' or more' : ''}`
-                      : 'No matches'
+                      ? t(search.truncated ? 'response.search.matchMore' : 'response.search.match', {
+                          index: t.number(activeMatch + 1),
+                          total: t.number(matchTotal)
+                        })
+                      : t('response.search.none')
                     : ''}
                 </span>
                 <button
                   type="button"
                   className="icon-btn"
-                  title="Previous match (Shift+Enter)"
-                  aria-label="Previous match"
+                  title={t('response.search.prevTitle')}
+                  aria-label={t('response.search.prev')}
                   disabled={!matchTotal}
                   onClick={() => nextMatch(-1)}
                 >
@@ -437,8 +468,8 @@ export function ResponsePanel({ state }: Props) {
                 <button
                   type="button"
                   className="icon-btn"
-                  title="Next match (Enter)"
-                  aria-label="Next match"
+                  title={t('response.search.nextTitle')}
+                  aria-label={t('response.search.next')}
                   disabled={!matchTotal}
                   onClick={() => nextMatch(1)}
                 >
@@ -447,8 +478,8 @@ export function ResponsePanel({ state }: Props) {
                 <button
                   type="button"
                   className="icon-btn"
-                  title="Close search (Esc)"
-                  aria-label="Close search"
+                  title={t('response.search.closeTitle')}
+                  aria-label={t('response.search.close')}
                   onClick={closeSearch}
                 >
                   <CloseIcon size={14} />
@@ -457,13 +488,18 @@ export function ResponsePanel({ state }: Props) {
             )}
             {renderTruncated && (
               <div className="resp-truncated" role="status">
-                Body truncated to {humanSize(RENDER_LIMIT)} for performance. Use Copy or Save to get the
-                full {humanSize(fullText.length)} response.
+                {t('response.truncated', {
+                  limit: humanSize(RENDER_LIMIT),
+                  size: humanSize(fullText.length)
+                })}
               </div>
             )}
             {showImage ? (
               <div className="response-body img-preview" id={`${uid}-body`} tabIndex={-1}>
-                <img src={res.imageDataUrl} alt={`Response image (${res.contentType || 'image'}, ${res.sizeLabel})`} />
+                <img src={res.imageDataUrl} alt={t('response.imageAlt', {
+                    type: res.contentType || t('response.kind.image'),
+                    size: res.sizeLabel
+                  })} />
               </div>
             ) : showHtmlPreview ? (
               <iframe
@@ -471,14 +507,14 @@ export function ResponsePanel({ state }: Props) {
                 className="html-preview"
                 sandbox=""
                 srcDoc={res.raw}
-                title="HTML response preview (sandboxed)"
+                title={t('response.htmlPreviewTitle')}
               />
             ) : (
               <div
                 id={`${uid}-body`}
                 className={`response-body ${wrap ? 'is-wrapped' : ''}`}
                 role="region"
-                aria-label={`Response body, ${kind}${showPretty ? ', pretty-printed' : ''}`}
+                aria-label={t(showPretty ? 'response.bodyRegionPretty' : 'response.bodyRegion', { kind })}
                 tabIndex={0}
                 style={wrap ? { whiteSpace: 'pre-wrap', wordBreak: 'break-all' } : undefined}
               >
@@ -491,15 +527,15 @@ export function ResponsePanel({ state }: Props) {
                     activeRef={activeMarkRef}
                   />
                 ) : (
-                  <span className="resp-empty-body">Empty body. The server sent no content.</span>
+                  <span className="resp-empty-body">{t('response.emptyBody')}</span>
                 )}
               </div>
             )}
           </>
         ) : current === 'headers' ? (
-          <div className="response-body resp-list" role="region" aria-label="Response headers" tabIndex={0}>
+          <div className="response-body resp-list" role="region" aria-label={t('response.headersRegion')} tabIndex={0}>
             {res.headers.length === 0 ? (
-              <span className="resp-empty-body">No headers.</span>
+              <span className="resp-empty-body">{t('response.noHeaders')}</span>
             ) : (
               <dl className="resp-kv">
                 {res.headers.map((h, i) => (
@@ -512,9 +548,9 @@ export function ResponsePanel({ state }: Props) {
             )}
           </div>
         ) : current === 'cookies' ? (
-          <div className="response-body resp-list" role="region" aria-label="Response cookies" tabIndex={0}>
+          <div className="response-body resp-list" role="region" aria-label={t('response.cookiesRegion')} tabIndex={0}>
             {cookies.length === 0 ? (
-              <span className="resp-empty-body">No cookies. The response set none.</span>
+              <span className="resp-empty-body">{t('response.noCookies')}</span>
             ) : (
               <dl className="resp-kv">
                 {cookies.map((c, i) => (
@@ -530,10 +566,15 @@ export function ResponsePanel({ state }: Props) {
             )}
           </div>
         ) : (
-          <div className="response-body resp-list" role="region" aria-label="Test results" tabIndex={0}>
+          <div className="response-body resp-list" role="region" aria-label={t('response.testsRegion')} tabIndex={0}>
             <div className="resp-test-summary">
-              {testsPassed} of {tests.length} passed
-              {tests.length - testsPassed > 0 ? `, ${tests.length - testsPassed} failed` : ''}
+              {tests.length - testsPassed > 0
+                ? t('response.tests.summaryFailed', {
+                    passed: testsPassed,
+                    count: tests.length,
+                    failed: tests.length - testsPassed
+                  })
+                : t('response.tests.summary', { passed: testsPassed, count: tests.length })}
             </div>
             <ul className="resp-tests">
               {tests.map((x, i) => (
@@ -544,7 +585,7 @@ export function ResponsePanel({ state }: Props) {
                     ) : (
                       <XCircleIcon size={11} aria-hidden="true" />
                     )}
-                    {x.passed ? 'PASS' : 'FAIL'}
+                    {x.passed ? t('response.tests.pass') : t('response.tests.fail')}
                   </span>
                   <span>{x.name}</span>
                   {x.error && <span className="test-err">{x.error}</span>}
@@ -552,7 +593,7 @@ export function ResponsePanel({ state }: Props) {
               ))}
             </ul>
             {!!state.logs?.length && (
-              <div className="script-logs" aria-label="Script log">
+              <div className="script-logs" aria-label={t('response.scriptLog')}>
                 {state.logs.map((l, i) => (
                   <div key={i}>{l}</div>
                 ))}
@@ -566,10 +607,10 @@ export function ResponsePanel({ state }: Props) {
 }
 
 /** Plain-language outcome so status is never conveyed by color alone. */
-function statusWord(status: number, ok: boolean): string {
-  if (status >= 200 && status < 300) return 'Success'
-  if (status >= 300 && status < 400) return 'Redirect'
-  if (status >= 400 && status < 500) return 'Client error'
-  if (status >= 500) return 'Server error'
-  return ok ? 'OK' : 'Error'
+function statusWord(status: number, ok: boolean, t: Translator): string {
+  if (status >= 200 && status < 300) return t('response.verdict.success')
+  if (status >= 300 && status < 400) return t('response.verdict.redirect')
+  if (status >= 400 && status < 500) return t('response.verdict.clientError')
+  if (status >= 500) return t('response.verdict.serverError')
+  return ok ? t('response.verdict.ok') : t('response.verdict.error')
 }

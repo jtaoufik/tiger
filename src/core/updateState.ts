@@ -6,6 +6,7 @@
 
 import { REPO_URL } from './actions'
 import { compareVersions } from './version'
+import type { Translator } from './i18n'
 
 export type UpdateState =
   | { status: 'idle' }
@@ -97,20 +98,20 @@ export function updateBanner(state: UpdateState): UpdateBanner {
 }
 
 /** One-line status for banners, the modal and screen-reader announcements. */
-export function updateStatusText(state: UpdateState): string {
+export function updateStatusText(state: UpdateState, t: Translator): string {
   switch (state.status) {
     case 'idle':
       return ''
     case 'checking':
-      return 'Checking for updates…'
+      return t('settings.update.status.checking')
     case 'up-to-date':
-      return "You're on the latest version."
+      return t('settings.update.status.upToDate')
     case 'available':
-      return `Tiger ${state.version} is available.`
+      return t('settings.update.status.available', { version: state.version })
     case 'downloading':
-      return `Downloading update ${state.version}… ${state.percent}%`
+      return t('settings.update.status.downloading', { version: state.version, percent: state.percent })
     case 'downloaded':
-      return `Tiger ${state.version} is ready. Restart to update.`
+      return t('settings.update.status.downloaded', { version: state.version })
     case 'error':
       return state.message
   }
@@ -120,7 +121,7 @@ export function updateStatusText(state: UpdateState): string {
  * Turn an electron-updater error into one short sentence. Its raw messages
  * can carry stack traces and whole XML feeds, which never belong in the UI.
  */
-export function friendlyUpdateError(err: unknown): string {
+export function friendlyUpdateError(err: unknown, t: Translator): string {
   const e = (err ?? {}) as { code?: unknown; message?: unknown }
   const code = typeof e.code === 'string' ? e.code : ''
   const message = typeof e.message === 'string' ? e.message : String(err ?? '')
@@ -129,21 +130,21 @@ export function friendlyUpdateError(err: unknown): string {
       message
     )
   ) {
-    return "Couldn't reach the update server. Check your connection and try again."
+    return t('settings.update.error.offline')
   }
   if (
     code === 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' ||
     code === 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' ||
     code === 'ERR_UPDATER_ZIP_FILE_NOT_FOUND'
   ) {
-    return 'No update is published for this platform yet.'
+    return t('settings.update.error.notPublished')
   }
   if (code === 'ERR_UPDATER_INVALID_SIGNATURE' || /sha512 checksum mismatch/i.test(message)) {
-    return 'The downloaded update failed verification and was not installed.'
+    return t('settings.update.error.verification')
   }
   const first = message.split('\n')[0].trim()
   const short = first.length > 140 ? `${first.slice(0, 139)}…` : first
-  return short ? `Update failed: ${short}` : 'Update failed.'
+  return short ? t('settings.update.error.failedDetail', { detail: short }) : t('settings.update.error.failed')
 }
 
 /** GitHub release page for a version (release notes + manual downloads). */

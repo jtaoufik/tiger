@@ -18,6 +18,7 @@ import {
   type ImportWarning
 } from '../core/import'
 import { expandPaths, mergeImports, rootNameFor } from './importHelpers'
+import { mainT } from './i18n'
 import { targetAppWindow } from './windows'
 
 export type ImportKind = 'postman' | 'bruno' | 'openapi' | 'insomnia' | 'wsdl'
@@ -99,9 +100,9 @@ function failureWarnings(
       ? [
           {
             request: basename(files[i]),
-            message: `This file could not be imported: ${
-              r.reason instanceof Error ? r.reason.message : String(r.reason)
-            }`
+            message: mainT('main.import.failed', {
+              reason: r.reason instanceof Error ? r.reason.message : String(r.reason)
+            })
           }
         ]
       : []
@@ -115,7 +116,7 @@ function withWarnings(result: ImportResult, extra: ImportWarning[]): ImportResul
 
 async function importBrunoFolder(): Promise<ImportResult | null> {
   const result = await dialog.showOpenDialog(parentWindow()!, {
-    title: 'Import a Bruno collection folder',
+    title: mainT('main.import.brunoFolder'),
     properties: ['openDirectory']
   })
   if (result.canceled || !result.filePaths[0]) return null
@@ -207,25 +208,25 @@ export async function importFromDisk(kind: ImportKind): Promise<ImportResult | n
   if (kind === 'bruno') return importBrunoFolder()
 
   if (kind === 'postman') {
-    return importManyFiles('Postman collection', ['json'], 'postman', async (f) =>
+    return importManyFiles(mainT('main.import.postman'), ['json'], 'postman', async (f) =>
       importPostman(await readStructured(f))
     )
   }
   if (kind === 'insomnia') {
     return importManyFiles(
-      'Insomnia export',
+      mainT('main.import.insomnia'),
       ['json', 'yaml', 'yml'],
       'insomnia',
       async (f) => importInsomnia(await readStructured(f))
     )
   }
   if (kind === 'wsdl') {
-    return importManyFiles('WSDL document', ['wsdl', 'xml'], 'wsdl', async (f) =>
+    return importManyFiles(mainT('main.import.wsdl'), ['wsdl', 'xml'], 'wsdl', async (f) =>
       importWsdl(await readFile(f, 'utf8'))
     )
   }
   return importManyFiles(
-    'OpenAPI / Swagger document',
+    mainT('main.import.openapi'),
     ['json', 'yaml', 'yml'],
     'openapi',
     async (f) => importOpenApi(await readStructured(f))
@@ -240,7 +241,7 @@ export async function saveExport(
   // Request names can contain characters Windows filenames forbid.
   const safeName = defaultName.replace(/[\\/:*?"<>|]/g, '-')
   const result = await dialog.showSaveDialog(parentWindow()!, {
-    title: 'Export',
+    title: mainT('main.export.title'),
     defaultPath: safeName
   })
   if (result.canceled || !result.filePath) return null

@@ -1,4 +1,5 @@
 import { Modal } from './Modal'
+import { useT } from '../i18n'
 
 interface Props {
   title: string
@@ -18,6 +19,7 @@ export function ConfirmModal({
   onCancel,
   destructive = true
 }: Props) {
+  const t = useT()
   return (
     <Modal
       title={title}
@@ -29,7 +31,7 @@ export function ConfirmModal({
         <>
           {/* Cancel gets initial focus: Enter on a destructive dialog must be safe. */}
           <button type="button" className="btn" data-autofocus onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"

@@ -1,4 +1,5 @@
 import { net, session } from 'electron'
+import { mainT } from './i18n'
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { request as httpsRequest, type RequestOptions } from 'node:https'
@@ -138,7 +139,7 @@ function sendViaNode(
       if (s.certPassphrase) tls.passphrase = s.certPassphrase
     }
   } catch (e) {
-    return Promise.reject(new Error(`Could not read certificate file: ${(e as Error).message}`))
+    return Promise.reject(new Error(mainT('main.http.certRead', { reason: (e as Error).message })))
   }
 
   const follow = (
@@ -356,9 +357,9 @@ export async function getOAuthToken(auth: OAuth2, vars: VarMap): Promise<string>
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString()
   })
-  if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`)
+  if (!res.ok) throw new Error(mainT('main.http.tokenStatus', { status: res.status }))
   const json = (await res.json()) as { access_token?: string }
-  if (!json.access_token) throw new Error('Token response had no access_token')
+  if (!json.access_token) throw new Error(mainT('main.http.tokenMissing'))
   return json.access_token
 }
 

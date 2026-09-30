@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { UploadIcon } from './Icons'
+import { useT } from '../i18n'
 import './ImportDropZone.css'
 
 interface Props {
@@ -21,6 +22,7 @@ function hasFiles(e: DragEvent): boolean {
  * The overlay is visual only; the Import dialog is the keyboard path.
  */
 export function ImportDropZone({ onDropPaths, pathForFile, enabled = true }: Props) {
+  const t = useT()
   const [active, setActive] = useState(false)
   const depth = useRef(0)
   const onDropRef = useRef(onDropPaths)
@@ -87,10 +89,8 @@ export function ImportDropZone({ onDropPaths, pathForFile, enabled = true }: Pro
     <div className="import-drop" aria-hidden="true">
       <div className="import-drop-card">
         <UploadIcon size={28} />
-        <div className="import-drop-title">Drop to import</div>
-        <div className="import-drop-desc">
-          Postman, Insomnia or OpenAPI exports, or a Bruno collection folder
-        </div>
+        <div className="import-drop-title">{t('modals.dropZone.title')}</div>
+        <div className="import-drop-desc">{t('modals.dropZone.desc')}</div>
       </div>
     </div>
   )

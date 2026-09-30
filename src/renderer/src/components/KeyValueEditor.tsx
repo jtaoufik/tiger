@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { KeyValue } from '@core/types'
+import { useT } from '../i18n'
 import { CloseIcon, PlusIcon } from './Icons'
 import './a11y.css'
 import './KeyValueEditor.css'
@@ -19,11 +20,13 @@ const TOOLTIP_AT = 32
 
 export function KeyValueEditor({
   items,
-  placeholder = ['Key', 'Value'],
+  placeholder: placeholderProp,
   columns,
   noun,
   onChange
 }: Props) {
+  const t = useT()
+  const placeholder = placeholderProp ?? [t('common.key'), t('common.value')]
   const rows = [...items, { name: '', value: '', enabled: true }]
   const label = noun ?? placeholder[0]
   const lower = label.toLowerCase()
@@ -51,10 +54,11 @@ export function KeyValueEditor({
     setFocusRow(index)
   }
 
-  const rowName = (i: number) => (i === rows.length - 1 ? `New ${lower}` : `${label} ${i + 1}`)
+  const rowName = (i: number) =>
+    i === rows.length - 1 ? t('request.kv.newRow', { noun: lower }) : t('request.kv.row', { label, n: i + 1 })
 
   return (
-    <div className="kv-editor" ref={listRef} role="group" aria-label={`${label} list`}>
+    <div className="kv-editor" ref={listRef} role="group" aria-label={t('request.kv.list', { label })}>
       <div className="kv kv-head" aria-hidden="true">
         <span />
         <span>{(columns ?? placeholder)[0]}</span>
@@ -75,8 +79,12 @@ export function KeyValueEditor({
               checked={row.enabled !== false}
               disabled={isBlank}
               onChange={(e) => update(i, { enabled: e.target.checked })}
-              aria-label={isBlank ? `Enable new ${lower}` : `Enable ${lower} ${i + 1}`}
-              title={row.enabled === false ? 'Disabled: not sent. Click to enable' : 'Enabled: click to disable'}
+              aria-label={
+                isBlank
+                  ? t('request.kv.enableNew', { noun: lower })
+                  : t('request.kv.enable', { noun: lower, n: i + 1 })
+              }
+              title={row.enabled === false ? t('request.kv.disabledTip') : t('request.kv.enabledTip')}
             />
             <input
               type="text"
@@ -84,7 +92,7 @@ export function KeyValueEditor({
               value={row.name}
               placeholder={placeholder[0]}
               spellCheck={false}
-              aria-label={`${name} name`}
+              aria-label={t('request.kv.cellName', { row: name })}
               title={row.name.length > TOOLTIP_AT ? row.name : undefined}
               onChange={(e) => update(i, { name: e.target.value })}
               onKeyDown={(e) => {
@@ -100,7 +108,7 @@ export function KeyValueEditor({
               value={row.value}
               placeholder={placeholder[1]}
               spellCheck={false}
-              aria-label={`${name} value`}
+              aria-label={t('request.kv.cellValue', { row: name })}
               title={row.value.length > TOOLTIP_AT ? row.value : undefined}
               onChange={(e) => update(i, { value: e.target.value })}
               onKeyDown={(e) => {
@@ -117,8 +125,16 @@ export function KeyValueEditor({
               <button
                 type="button"
                 className="icon-btn danger kv-remove"
-                title={`Remove ${row.name ? `"${row.name}"` : `${lower} ${i + 1}`}`}
-                aria-label={`Remove ${lower} ${i + 1}${row.name ? ` (${row.name})` : ''}`}
+                title={
+                  row.name
+                    ? t('request.kv.removeTipNamed', { name: row.name })
+                    : t('request.kv.removeTip', { noun: lower, n: i + 1 })
+                }
+                aria-label={
+                  row.name
+                    ? t('request.kv.removeNamed', { noun: lower, n: i + 1, name: row.name })
+                    : t('request.kv.remove', { noun: lower, n: i + 1 })
+                }
                 onClick={() => remove(i)}
               >
                 <CloseIcon size={14} />
@@ -132,7 +148,7 @@ export function KeyValueEditor({
         className="btn ghost kv-add"
         onClick={() => setFocusRow(rows.length - 1)}
       >
-        <PlusIcon size={13} /> Add {lower}
+        <PlusIcon size={13} /> {t('request.kv.add', { noun: lower })}
       </button>
     </div>
   )

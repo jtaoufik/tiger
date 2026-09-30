@@ -7,6 +7,7 @@ import {
   type UpdateState
 } from '@core/updateState'
 import { announce } from './a11y'
+import { currentTranslator } from './i18n'
 
 /** Identity of what a banner shows, so "Later" hides only that one. */
 function bannerKey(state: UpdateState): string | null {
@@ -55,11 +56,11 @@ export function useUpdater() {
   useEffect(() => {
     if (state.status === lastStatus.current) return
     lastStatus.current = state.status
-    const text = updateStatusText(state)
+    const text = updateStatusText(state, currentTranslator())
     if (!text) return
     switch (state.status) {
       case 'downloading':
-        announce(`Downloading Tiger ${state.version} in the background.`)
+        announce(currentTranslator()('settings.update.announceDownloading', { version: state.version }))
         break
       case 'available':
       case 'downloaded':
