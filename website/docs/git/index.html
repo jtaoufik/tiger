@@ -3,24 +3,61 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Git workflow · Tiger docs</title>
-  <meta name="description" content="Tiger's built-in Git panel: status, diff, commit, pull, push, branches, log, discard, sync, and reviewing API changes in pull requests." />
+  <title>Git API Client: Team Sync for API Collections</title>
+  <meta name="description" content="Tiger Team sync shares an API collection through Git: see changes, save a version, sync with your team in one click, and review requests in pull requests." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/git/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/git/" />
+  <meta property="og:title" content="Git API Client: Team Sync for API Collections" />
+  <meta property="og:description" content="Tiger Team sync shares an API collection through Git: see changes, save a version, sync with your team in one click, and review requests in pull requests." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Git API Client: Team Sync for API Collections" />
+  <meta name="twitter:description" content="Tiger Team sync shares an API collection through Git: see changes, save a version, sync with your team in one click, and review requests in pull requests." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Git workflow" />
-  <meta property="og:description" content="Tiger's built-in Git panel: status, diff, commit, pull, push, branches, log, discard, sync, and reviewing API changes in pull requests." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Features",
+      "item": "https://jtaoufik.github.io/tiger/docs/requests-auth/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Team sync & Git"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Git workflow</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/requests-auth/">Features</a> › Team sync &amp; Git</div>
     <h1>Git workflow</h1>
     <p class="lead">
       Because every request is a plain-text <code>.tiger</code> file on disk, the collection
-      folder is a normal Git repository. Tiger surfaces the most common Git operations
-      directly in its sidebar panel so you never have to leave the app to version-control
-      your API definitions.
+      folder is a normal Git repository. Tiger's <strong>Team sync</strong> surfaces the most
+      common Git operations in plain words, so you never have to leave the app to
+      version-control and share your API definitions.
     </p>
 
     <h2>Why Git and API clients belong together</h2>
@@ -45,17 +82,32 @@
       other configuration you have set up in your terminal all work automatically.</p>
     </div>
 
-    <h2>The Git panel</h2>
+    <h2>Team sync</h2>
     <p>
-      Select a collection in the sidebar and open its Git panel (the icon that looks like a
-      branch, or via the collection context menu) to see the current state of the repository.
-      The panel shows:
+      Every collection stored in a folder has a <strong>Team sync</strong> status in the
+      sidebar and a Team sync card on its collection page. Click either (or use the
+      collection context menu) to open the Team sync dialog. It shows one status at a glance
+      (up to date, local changes, updates from your team, conflict) and one main button,
+      <strong>Sync with team</strong>, which gets your teammates' changes and shares yours in
+      a single step. Below the status:
     </p>
     <ul>
-      <li>The current branch name.</li>
-      <li>How many commits the local branch is <strong>ahead</strong> of or <strong>behind</strong> the upstream.</li>
-      <li>A list of every changed file and its status - modified, added, deleted, or untracked.</li>
+      <li><strong>Your changes</strong>, grouped by request, with a diff of every changed file and a way to discard a change.</li>
+      <li><strong>Save version</strong>: a note describing the change, kept on your computer without sharing it.</li>
+      <li><strong>Recent versions</strong>: the latest saved versions with author and date.</li>
+      <li><strong>Advanced</strong> (for Git users): the current branch, switch or create branches, get the team's changes only, share versions only, and the full diff.</li>
     </ul>
+    <p>
+      The Git terms in the rest of this page map to Team sync like this: commit is
+      <em>save version</em>, push is <em>share</em>, pull is <em>get team's changes</em>,
+      branch is <em>version line</em>, and remote is <em>shared repository</em>. The
+      sections below describe what happens underneath.
+    </p>
+    <figure class="shot">
+      <img src="/tiger/screenshots/team-sync.png" width="1280" height="800" loading="lazy"
+        alt="Tiger Team sync card on a collection page showing three local changes with a Sync with team button and a See changes link" />
+      <figcaption>Team sync on a collection with three local changes.</figcaption>
+    </figure>
     <p>
       Status is polled every 60 seconds passively. The passive poll deliberately does not
       contact the network: ahead/behind counts are computed from refs already on disk.
@@ -108,22 +160,22 @@
     <h3>Push</h3>
     <p>
       Pushes the current branch to its configured upstream remote. If no upstream is set
-      yet, use <strong>Set remote</strong> first (see below). Push uses your system Git
+      yet, connect the shared repository first (see Set remote below). Push uses your system Git
       credentials, so SSH keys, macOS Keychain entries, and Git credential helpers all
       work without additional setup.
     </p>
 
     <h3>Fetch</h3>
     <p>
-      Refreshes the remote-tracking refs so the ahead/behind counts in the status panel
+      Refreshes the remote-tracking refs so the up and down counts in the Team sync status
       reflect the real state of the remote. Fetch does not modify your working tree or
       local branch. It is triggered automatically as part of Sync but can also be run
-      on its own from the panel menu.
+      on its own with the refresh button next to the status.
     </p>
 
     <h3>Branches and checkout</h3>
     <p>
-      The branch picker in the Git panel shows all local branches and the current branch.
+      Under Advanced, the version line (branch) picker shows all local branches and the current branch.
       Select a branch to check it out. You can also create a new branch by typing a name
       that does not yet exist in the picker - Tiger runs <code>git checkout -b
       &lt;name&gt;</code> and switches to it immediately.
@@ -145,25 +197,25 @@
 
     <h3>Discard</h3>
     <p>
-      Discards all uncommitted changes to tracked files by running
-      <code>git reset - .</code> followed by <code>git checkout - .</code>. Untracked
-      files (files that have never been committed) are left in place. Tiger shows a
-      confirmation prompt before discarding because the operation is not reversible without
-      a prior stash.
+      <strong>Discard all</strong> (or discard a single request's change) throws away
+      unsaved edits. Under the hood Tiger moves them into a Git stash named
+      <em>Tiger: discarded changes</em>, including new files, and shows an
+      <strong>Undo</strong> button right after, so an accidental discard can be brought back.
+      Tiger asks for confirmation first.
     </p>
 
     <div class="callout warn">
       <span class="ic">!</span>
-      <p>Discard permanently removes uncommitted edits to tracked files. It does not
-      touch untracked files. There is no undo inside Tiger; commit or stash first if
-      you might want those changes back.</p>
+      <p>Undo is offered right after a discard. Once you move on, recovering the changes
+      means finding the stash with <code>git stash list</code>, so save a version first if
+      you might want the edits back.</p>
     </div>
 
     <h3>Init</h3>
     <p>
-      If you opened a plain folder that is not yet a Git repository, the Git panel shows
-      an <strong>Initialize repository</strong> button. This runs <code>git init</code>
-      in the collection root. After initialization the full Git panel becomes available.
+      If you opened a plain folder that is not yet a Git repository, Team sync shows
+      a <strong>Turn on version tracking</strong> step. This runs <code>git init</code>
+      in the collection root. After initialization the full Team sync dialog becomes available.
       You can then add a remote and push to share the collection with your team.
     </p>
 
@@ -185,7 +237,7 @@
 
     <h3>Clone</h3>
     <p>
-      From the sidebar welcome screen, choose <strong>Clone a repository</strong>, paste a
+      From the welcome screen or the sidebar, choose the clone option, paste a
       URL, and pick a parent directory. Tiger runs <code>git clone</code> and then opens
       the resulting folder as a collection. This is the recommended way to bring a shared
       team collection onto a new machine.
@@ -226,7 +278,7 @@
     </p>
     <ol>
       <li>
-        <strong>Create a feature branch.</strong> In the Tiger Git panel, type the new
+        <strong>Create a feature branch.</strong> In Team sync under Advanced, type the new
         branch name in the branch picker and press Enter. Tiger creates and checks it out.
       </li>
       <li>
@@ -236,7 +288,7 @@
       </li>
       <li>
         <strong>Commit.</strong> Write a descriptive message such as
-        <em>Add POST /orders endpoint with auth header</em> and commit from the panel.
+        <em>Add POST /orders endpoint with auth header</em> and save a version from Team sync.
       </li>
       <li>
         <strong>Push.</strong> Push the branch to the remote. If this is the first push

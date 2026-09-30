@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>What is Tiger? · Tiger docs</title>
-  <meta name="description" content="Tiger is a free, open source, git-native API client. Learn how it stores collections as plain-text files, runs requests locally, and fits an engineering team's workflow." />
+  <title>What is Tiger? A Free Git-Native API Client</title>
+  <meta name="description" content="Tiger is a free, open source git API client. Collections are plain-text files in your repo, requests run on your machine, no account. Learn how it works." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/getting-started/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/getting-started/" />
+  <meta property="og:title" content="What is Tiger? A Free Git-Native API Client" />
+  <meta property="og:description" content="Tiger is a free, open source git API client. Collections are plain-text files in your repo, requests run on your machine, no account. Learn how it works." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What is Tiger? A Free Git-Native API Client" />
+  <meta name="twitter:description" content="Tiger is a free, open source git API client. Collections are plain-text files in your repo, requests run on your machine, no account. Learn how it works." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="What is Tiger?" />
-  <meta property="og:description" content="A free, open source, git-native API client: plain-text collections, local-first requests, and a built-in MCP server." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Getting started",
+      "item": "https://jtaoufik.github.io/tiger/docs/getting-started/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "What is Tiger"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Getting started › What is Tiger</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/getting-started/">Getting started</a> › What is Tiger</div>
     <h1>What is Tiger?</h1>
     <p class="lead">
       Tiger is a free, open source desktop API client. It does what Postman, Insomnia and
@@ -22,7 +59,13 @@
       plain-text files in your own Git repository and runs entirely on your machine.
     </p>
 
-    <h2>The idea</h2>
+        <figure class="shot">
+      <img src="/tiger/screenshots/workspace.png" width="1440" height="900" loading="lazy"
+        alt="Tiger workspace with a demo collection in the sidebar, a GET request to {{baseUrl}}/posts and a Send button" />
+      <figcaption>The Tiger workspace: collections on the left, the request editor on the right.</figcaption>
+    </figure>
+
+<h2>The idea</h2>
     <p>
       Most API clients keep your collections in a proprietary cloud behind an account. Tiger
       keeps them as readable <code>.tiger</code> files in a folder you own. That folder is a

@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tiger vs Insomnia · Tiger docs</title>
-  <meta name="description" content="Tiger and Insomnia are both cross-platform API clients. Tiger is free, MIT-licensed, git-native, and account-free. Insomnia is capable but cloud-leaning. Full feature matrix." />
+  <title>Tiger vs Insomnia: Open Source Alternative Compared</title>
+  <meta name="description" content="Tiger vs Insomnia compared: account requirement, cloud sync, git storage, scripting, importers, MCP and platforms. Is a local-first client for you?" />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/compare/tiger-vs-insomnia/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/compare/tiger-vs-insomnia/" />
+  <meta property="og:title" content="Tiger vs Insomnia: Open Source Alternative Compared" />
+  <meta property="og:description" content="Tiger vs Insomnia compared: account requirement, cloud sync, git storage, scripting, importers, MCP and platforms. Is a local-first client for you?" />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tiger vs Insomnia: Open Source Alternative Compared" />
+  <meta name="twitter:description" content="Tiger vs Insomnia compared: account requirement, cloud sync, git storage, scripting, importers, MCP and platforms. Is a local-first client for you?" />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Tiger vs Insomnia" />
-  <meta property="og:description" content="Tiger and Insomnia are both cross-platform API clients. Tiger is free, MIT-licensed, git-native, and account-free. Insomnia is capable but cloud-leaning. Full feature matrix." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Compare",
+      "item": "https://jtaoufik.github.io/tiger/compare/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Tiger vs Insomnia"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Compare › Tiger vs Insomnia</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/compare/">Compare</a> › Tiger vs Insomnia</div>
     <h1>Tiger vs Insomnia</h1>
     <p class="lead">
       Insomnia is a capable API client with a free tier, cloud sync, and a plugin ecosystem.
@@ -48,7 +85,7 @@
         <thead>
           <tr>
             <th>Capability</th>
-            <th class="col-tiger">Tiger 0.4.0</th>
+            <th class="col-tiger">Tiger 0.7.0</th>
             <th>Insomnia</th>
           </tr>
         </thead>
@@ -74,7 +111,7 @@
             <td><span class="partial">Partial</span> - core request sending is offline; cloud sync requires connectivity</td>
           </tr>
           <tr>
-            <td>Built-in Git panel</td>
+            <td>Built-in Team sync (Git)</td>
             <td class="col-tiger"><span class="yes">Yes</span> - status, diff, commit, push, pull, branch, checkout, clone, log - all inside the app</td>
             <td><span class="no">No</span> - no native Git UI; uses its own proprietary sync layer</td>
           </tr>
@@ -125,7 +162,7 @@
           </tr>
           <tr>
             <td>Plugin ecosystem</td>
-            <td class="col-tiger"><span class="no">Not yet</span> - no plugin API in 0.4.0; scripting covers most custom logic</td>
+            <td class="col-tiger"><span class="no">Not yet</span> - no plugin API in 0.7.0; scripting covers most custom logic</td>
             <td><span class="yes">Yes</span> - published npm plugin API with a community registry</td>
           </tr>
           <tr>
@@ -200,7 +237,7 @@
 
     <h3>Performance runs</h3>
     <p>
-      Select any request, open the <strong>Perf</strong> tab, configure iterations and
+      Select any request, open the <strong>Load test</strong> tab, configure iterations and
       concurrency, and Tiger reports min, max, avg, p50, and p95 latency inline. Insomnia
       has no built-in load or performance runner.
     </p>
@@ -211,7 +248,7 @@
     <p>
       Insomnia has a published npm plugin API and a community registry of extensions for
       authentication helpers, response transformers, and more. Tiger's scripting covers a
-      lot of the same ground in 0.4.0, but if you depend on a specific Insomnia plugin,
+      lot of the same ground in 0.7.0, but if you depend on a specific Insomnia plugin,
       check whether a pre- or post-request script can replace it before switching.
     </p>
 
@@ -284,13 +321,13 @@
     <p>
       Collections are plain-text <code>.tiger</code> files on disk. You commit them to your
       existing Git repository and share changes the same way you share code: branches, pull
-      requests, and <code>git clone</code>. Tiger also ships a built-in Git panel for status,
-      diff, commit, push, pull, and branch management without leaving the app.
+      requests, and <code>git clone</code>. Tiger also ships built-in Team sync for status,
+      diffs, saving versions, sync, and branch management without leaving the app.
     </p>
 
     <h3>Does Tiger support Insomnia's plugin-style custom templates?</h3>
     <p>
-      Tiger does not have a plugin API in 0.4.0. Pre-request and post-response JavaScript
+      Tiger does not have a plugin API in 0.7.0. Pre-request and post-response JavaScript
       scripts cover most custom logic: you can generate dynamic values, modify the request
       before it sends, and assert on response shape. Dynamic built-ins like
       <code>{{$uuid}}</code>, <code>{{$timestamp}}</code>, and <code>{{$randomInt}}</code>

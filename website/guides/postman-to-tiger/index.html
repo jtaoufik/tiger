@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Postman to Tiger migration · Tiger docs</title>
-  <meta name="description" content="Export your Postman collection, import it into Tiger, and get your whole team on a git-native, account-free API client in under an hour." />
+  <title>Migrate from Postman to Tiger: Step-by-Step Guide</title>
+  <meta name="description" content="Move from Postman to Tiger: export your collection, import it, fix variables and scripts, and put the result in Git. What converts and what to check." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/guides/postman-to-tiger/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/guides/postman-to-tiger/" />
+  <meta property="og:title" content="Migrate from Postman to Tiger: Step-by-Step Guide" />
+  <meta property="og:description" content="Move from Postman to Tiger: export your collection, import it, fix variables and scripts, and put the result in Git. What converts and what to check." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Migrate from Postman to Tiger: Step-by-Step Guide" />
+  <meta name="twitter:description" content="Move from Postman to Tiger: export your collection, import it, fix variables and scripts, and put the result in Git. What converts and what to check." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Postman to Tiger migration" />
-  <meta property="og:description" content="Export your Postman collection, import it into Tiger, and get your whole team on a git-native, account-free API client in under an hour." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://jtaoufik.github.io/tiger/guides/postman-to-tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Postman to Tiger migration"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Guides › Postman to Tiger migration</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/guides/postman-to-tiger/">Guides</a> › Postman to Tiger migration</div>
     <h1>Postman &rarr; Tiger migration</h1>
     <p class="lead">Export your Postman collection, import it into Tiger, set your environments once, and commit. Your whole team is up and running in under an hour - no cloud account, no per-seat fee.</p>
 
@@ -22,7 +59,7 @@
     <p>You need:</p>
     <ul>
       <li>The Postman desktop app or web app, with the collection you want to migrate.</li>
-      <li>Tiger 0.4.0 or later. Download it from <a href="https://github.com/jtaoufik/tiger/releases/latest">GitHub Releases</a>, or on Windows via <code>winget install jtaoufik.Tiger</code>.</li>
+      <li>Tiger 0.4.0 or later. Download it from <a href="https://github.com/jtaoufik/tiger/releases/latest">GitHub Releases</a> or the <a href="/tiger/docs/install/">install page</a>.</li>
     </ul>
 
     <div class="callout note">

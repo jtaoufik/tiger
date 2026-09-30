@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tiger vs the field · Tiger docs</title>
-  <meta name="description" content="A fair, feature-by-feature comparison of Tiger against Postman, Bruno, Insomnia, and Hoppscotch across storage, pricing, scripting, and more." />
+  <title>Postman vs Bruno vs Insomnia vs Tiger: Comparison</title>
+  <meta name="description" content="Side-by-side comparison of Tiger, Postman, Bruno, Insomnia and Hoppscotch: price, accounts, offline use, git-native storage, scripting, MCP and platforms." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/compare/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/compare/" />
+  <meta property="og:title" content="Postman vs Bruno vs Insomnia vs Tiger: Comparison" />
+  <meta property="og:description" content="Side-by-side comparison of Tiger, Postman, Bruno, Insomnia and Hoppscotch: price, accounts, offline use, git-native storage, scripting, MCP and platforms." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Postman vs Bruno vs Insomnia vs Tiger: Comparison" />
+  <meta name="twitter:description" content="Side-by-side comparison of Tiger, Postman, Bruno, Insomnia and Hoppscotch: price, accounts, offline use, git-native storage, scripting, MCP and platforms." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Tiger vs the field" />
-  <meta property="og:description" content="A fair, feature-by-feature comparison of Tiger against Postman, Bruno, Insomnia, and Hoppscotch across storage, pricing, scripting, and more." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Compare",
+      "item": "https://jtaoufik.github.io/tiger/compare/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Tiger vs the field"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Compare › Tiger vs the field</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/compare/">Compare</a> › Tiger vs the field</div>
     <h1>Tiger vs the field</h1>
     <p class="lead">
       Tiger, Postman, Bruno, Insomnia, and Hoppscotch all let you build and send HTTP requests.
@@ -46,7 +83,7 @@
         <thead>
           <tr>
             <th>Feature</th>
-            <th class="col-tiger">Tiger 0.4.0</th>
+            <th class="col-tiger">Tiger 0.7.0</th>
             <th>Postman</th>
             <th>Bruno</th>
             <th>Insomnia</th>
@@ -144,7 +181,7 @@
           </tr>
           <tr>
             <td><strong>Native macOS / Windows / Linux</strong></td>
-            <td class="col-tiger"><span class="yes">Yes</span> - native Electron builds; Apple Silicon + Intel, Windows installer + winget, AppImage + .deb</td>
+            <td class="col-tiger"><span class="yes">Yes</span> - native Electron builds; Apple Silicon + Intel, Windows installer + portable, AppImage + .deb</td>
             <td><span class="yes">Yes</span></td>
             <td><span class="yes">Yes</span></td>
             <td><span class="yes">Yes</span></td>
@@ -174,7 +211,7 @@
       Bruno and Tiger both store requests as plain text files, one per request, in a folder you own.
       The difference is format: Bruno uses <code>.bru</code> files and Tiger uses <code>.tiger</code>
       files. Both are human-readable and produce useful <code>git diff</code> output. Tiger additionally
-      ships a built-in Git panel so you can commit, branch, pull, and push without leaving the app.
+      ships built-in Team sync so you can save versions, branch, and sync with your team without leaving the app.
     </p>
 
     <h2>Pricing in practice</h2>
@@ -221,20 +258,20 @@
 
     <h2>What Tiger does not have (yet)</h2>
     <p>
-      Fair comparison means listing gaps too. As of version 0.4.0:
+      Fair comparison means listing gaps too. As of version 0.7.0:
     </p>
     <ul>
       <li>No web interface - Tiger is a desktop app only. Hoppscotch and the Postman web app
           both work in a browser without installing anything.</li>
-      <li>No built-in team sync or shared workspace. Collaboration is entirely via Git
-          (push to a shared repo, open a pull request). Postman and Insomnia offer managed
-          sync that is easier for teams who do not want to self-host a Git remote.</li>
+      <li>No hosted shared workspace. Team sync shares a collection through a Git remote
+          you provide (GitHub, GitLab, your own server). Postman and Insomnia offer managed
+          sync that is easier for teams who do not want to run or pay for a Git remote.</li>
       <li>No marketplace of public APIs or collections. Postman's API Network has a large catalog
           of published collections. Tiger has no equivalent.</li>
       <li>No OAuth 2.0 authorization code or PKCE flows. Tiger supports the client credentials
           grant; interactive browser-based OAuth flows are not yet implemented.</li>
-      <li>Builds are not yet code-signed on all platforms. On macOS, right-click the app and
-          choose Open the first time. Windows builds install cleanly via winget.</li>
+      <li>Windows builds may show a SmartScreen "unknown publisher" prompt on first run
+          (click More info, then Run anyway). macOS builds are signed and notarized.</li>
     </ul>
 
     <div class="callout tip">

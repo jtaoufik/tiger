@@ -3,75 +3,112 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>A free Postman alternative · Tiger docs</title>
-  <meta name="description" content="Tiger is a free, open source, account-free API client that stores collections in Git and works fully offline. Import your Postman data in one step." />
+  <title>Postman Alternative: Free, Offline, No Account | Tiger</title>
+  <meta name="description" content="Looking for a Postman alternative? Tiger is a free, open source API client with no account, no cloud, git-friendly files and a built-in MCP server." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/alternatives/postman/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/alternatives/postman/" />
+  <meta property="og:title" content="Postman Alternative: Free, Offline, No Account | Tiger" />
+  <meta property="og:description" content="Looking for a Postman alternative? Tiger is a free, open source API client with no account, no cloud, git-friendly files and a built-in MCP server." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Postman Alternative: Free, Offline, No Account | Tiger" />
+  <meta name="twitter:description" content="Looking for a Postman alternative? Tiger is a free, open source API client with no account, no cloud, git-friendly files and a built-in MCP server." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="A free Postman alternative" />
-  <meta property="og:description" content="Tiger is a free, open source, account-free API client that stores collections in Git and works fully offline. Import your Postman data in one step." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Is Tiger really free for teams, or does it have a per-seat cost?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tiger is free to download and use for any team size under the MIT license. There is no per-seat charge. Advanced team features may become paid in a future release; pricing will be announced before anything changes for existing users."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Do I need to create an account to use Tiger?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "No. Tiger requires no account, no sign-up and no email address. Download it, open it, and start making requests."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do I import my Postman collections into Tiger?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Export each Postman collection as v2.0 or v2.1 JSON from Postman, then drag the file into Tiger or use File > Import. Folders, headers, query parameters, request bodies and variable references carry over automatically."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does Tiger work offline?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Tiger is a local desktop application. All collections live on your machine and in your Git repositories. There is no cloud sync requirement and no background service that needs internet access."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What protocols does Tiger support beyond REST?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Tiger supports REST, GraphQL (with schema introspection), SOAP/WSDL (new in 0.4.0), and ships a Model Context Protocol server so AI clients such as Claude can list and run your collections in agentic workflows."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How does my team collaborate without a sync server?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Collections are plain text files. Commit them to your Git repository. Sharing is a push, review is a pull request, and onboarding a new engineer is git clone. No sync subscription is required."
-        }
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is Tiger really free for teams?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Tiger is free to download and use for any team size with no per-seat charge under the MIT license. If advanced team features ever become paid, existing users will receive advance notice before anything changes."
       }
-    ]
-  }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to create an account?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Tiger requires no account, no sign-up and no email address. Download it, open it, and start making requests. There is no invitation workflow and no seat provisioning step."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Tiger work offline?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. All collections live on your machine and in your Git repositories. There is no cloud sync requirement and no background service that needs internet access. It works behind strict corporate firewalls and in air-gapped environments."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does my team collaborate without a sync server?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Collections are plain text files. Commit them to your Git repository. Sharing is a git push, review is a pull request, and onboarding a new engineer is git clone. No sync subscription is required and there is no proprietary workspace format to deal with."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What protocols does Tiger support beyond REST?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "REST, GraphQL (with schema introspection and a variables pane), SOAP via raw XML bodies, and WSDL import (new in 0.4.0, which generates SOAP envelope templates per binding operation). Tiger also ships an MCP server so AI clients can call your collections as tools."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my request data private?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Requests, tokens and responses never leave your machine. Tiger's optional anonymous analytics record only counts and status buckets - no URLs, hostnames, header values or bodies. Turn it off in Settings > Privacy at any time."
+      }
+    }
+  ]
+}
+  </script>
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://jtaoufik.github.io/tiger/guides/postman-to-tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "A free Postman alternative"
+    }
+  ]
+}
   </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Guides › A free Postman alternative</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/guides/postman-to-tiger/">Guides</a> › A free Postman alternative</div>
     <h1>A free Postman alternative</h1>
     <p class="lead">
       Postman moved team collaboration behind a paid tier in 2026. Tiger is a free, open source,
@@ -81,8 +118,8 @@
 
     <div class="callout note">
       <span class="ic">i</span>
-      <p><strong>Current version: Tiger 0.4.0.</strong> Available for macOS, Windows (including
-      <code>winget install jtaoufik.Tiger</code>), and Linux (AppImage and .deb).
+      <p><strong>Current version: Tiger 0.7.0.</strong> Available for macOS, Windows (installer
+      and portable), and Linux (AppImage and .deb).
       Download from <a href="https://github.com/jtaoufik/tiger/releases/latest">GitHub Releases</a>.</p>
     </div>
 
@@ -235,7 +272,7 @@ capture {
         <thead>
           <tr>
             <th>Capability</th>
-            <th class="col-tiger">Tiger 0.4.0</th>
+            <th class="col-tiger">Tiger 0.7.0</th>
             <th>Postman</th>
           </tr>
         </thead>
@@ -351,8 +388,8 @@ capture {
       </li>
       <li>
         <strong>Commit to your Git repository.</strong> Tiger has written each request as a
-        plain <code>.tiger</code> file on disk. Open the built-in Git panel, commit the folder,
-        and push. Every teammate gets the collection with a <code>git pull</code>.
+        plain <code>.tiger</code> file on disk. Open Team sync, save a version,
+        and sync. Every teammate gets the collection with a <code>git pull</code>.
       </li>
     </ol>
 
@@ -447,7 +484,7 @@ capture {
       </a>
       <a class="card" href="/tiger/docs/install/">
         <div class="t">Install Tiger</div>
-        <div class="d">Download links for macOS, Windows (winget and installer) and Linux (AppImage and .deb).</div>
+        <div class="d">Download links for macOS, Windows (installer and portable) and Linux (AppImage and .deb).</div>
       </a>
       <a class="card" href="/tiger/docs/mcp/">
         <div class="t">MCP server</div>

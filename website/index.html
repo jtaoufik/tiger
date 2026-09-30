@@ -4,108 +4,165 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>Tiger · The git-native API client - docs</title>
-  <meta name="description" content="Tiger is a free, open source, git-native API client. Collections are plain-text .tiger files, requests run entirely on your machine, and a built-in MCP server lets AI drive your API. Documentation, guides and comparisons." />
+  <title>Tiger: Free Open Source Postman Alternative, Git API Client</title>
+  <meta name="description" content="Tiger is a free, open source API client for Mac, Windows and Linux. Local-first, no account, git-native plain-text collections and a built-in MCP server." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/" />
-  <meta name="robots" content="index, follow" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/" />
+  <meta property="og:title" content="Tiger: Free Open Source Postman Alternative, Git API Client" />
+  <meta property="og:description" content="Tiger is a free, open source API client for Mac, Windows and Linux. Local-first, no account, git-native plain-text collections and a built-in MCP server." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tiger: Free Open Source Postman Alternative, Git API Client" />
+  <meta name="twitter:description" content="Tiger is a free, open source API client for Mac, Windows and Linux. Local-first, no account, git-native plain-text collections and a built-in MCP server." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
   <link rel="apple-touch-icon" href="/tiger/icon.png" />
-
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://jtaoufik.github.io/tiger/" />
-  <meta property="og:title" content="Tiger · The git-native API client" />
-  <meta property="og:description" content="Plain-text collections in your Git repo. Requests that never leave your machine. No account. A built-in MCP server. Free and open source." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Tiger · The git-native API client" />
-  <meta name="twitter:description" content="Plain-text collections in your Git repo. Requests that never leave your machine. No account. Free and open source." />
-  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/icon.png" />
 
   <link rel="stylesheet" href="/tiger/styles.css" />
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Tiger",
-    "operatingSystem": "macOS, Windows, Linux",
-    "applicationCategory": "DeveloperApplication",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-    "description": "A free, open source, git-native API client. Collections are plain-text .tiger files in your repo, requests run entirely on your machine, and a built-in MCP server lets AI assistants drive your API. Imports Postman, Insomnia, Bruno, OpenAPI and WSDL/SOAP.",
-    "url": "https://jtaoufik.github.io/tiger/",
-    "image": "https://jtaoufik.github.io/tiger/icon.png"
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Tiger",
+  "alternateName": "Tiger API Client",
+  "operatingSystem": "macOS, Windows, Linux",
+  "applicationCategory": "DeveloperApplication",
+  "softwareVersion": "0.7.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "isAccessibleForFree": true,
+  "license": "https://github.com/jtaoufik/tiger/blob/main/LICENSE",
+  "downloadUrl": "https://github.com/jtaoufik/tiger/releases/latest",
+  "url": "https://jtaoufik.github.io/tiger/",
+  "image": "https://jtaoufik.github.io/tiger/og-image.png",
+  "screenshot": "https://jtaoufik.github.io/tiger/screenshots/workspace.png",
+  "codeRepository": "https://github.com/jtaoufik/tiger",
+  "description": "A free, open source, git-native API client. Collections are plain-text .tiger files in your repo, requests run entirely on your machine, and a built-in MCP server lets AI assistants drive your API. Imports Postman, Insomnia, Bruno, OpenAPI and WSDL/SOAP.",
+  "author": {
+    "@type": "Person",
+    "name": "Taoufik Jabbari",
+    "url": "https://github.com/jtaoufik"
   }
+}
   </script>
 </head>
 <body>
   <article data-no-toc>
     <section class="hero">
-      <span class="pill">Free &amp; open source</span>
-      <h1>The git-native API client</h1>
+      <span class="pill">Free &amp; open source &middot; MIT</span>
+      <h1>The free, open source API client that lives in Git</h1>
       <p class="lead">
-        Tiger keeps your API collections as plain-text <code>.tiger</code> files in your
-        own Git repo, runs every request on your machine, and ships a built-in MCP server
-        so AI assistants can drive your API. No account, no cloud, no lock-in.
+        Tiger is a git-native API client for macOS, Windows and Linux, and a local-first
+        alternative to Postman, Insomnia and Bruno. Your collections are plain-text
+        <code>.tiger</code> files in your own Git repo, every request runs on your machine,
+        and a built-in MCP server lets AI assistants such as Claude and Cursor run your saved
+        requests. No account, no cloud, no lock-in.
       </p>
       <div class="cta" id="download-cta">
         <a class="btn primary" href="/tiger/docs/getting-started/">Get started →</a>
         <a class="btn" id="dl-windows" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe">Download for Windows</a>
         <a class="btn" id="dl-mac" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg">Download for macOS</a>
         <a class="btn" id="dl-linux" href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage">Download for Linux</a>
-        <!-- Get it from Microsoft Store: uncomment once Tiger is live on the Store
-             (see docs/RELEASING.md "Microsoft Store") and fill in the real product URL.
-        <a class="btn" href="https://apps.microsoft.com/detail/<STORE-PRODUCT-ID>">Get it from Microsoft Store</a>
-        -->
         <a class="btn" href="https://github.com/jtaoufik/tiger">Star on GitHub</a>
       </div>
       <p class="hero-note">
-        <a href="/tiger/docs/install/">All platforms and checksums</a> ·
-        Windows build may show a SmartScreen "unknown publisher" prompt until it's signed -
-        <a href="/tiger/docs/install/#windows">click through it here</a>.
+        Version 0.7.0 &middot; <a href="#download">All downloads</a> &middot;
+        <a href="/tiger/docs/install/">Install guide</a>
       </p>
     </section>
 
+    <figure class="shot">
+      <img src="/tiger/screenshots/workspace.png" width="1440" height="900"
+        alt="Tiger API client workspace: a collection sidebar with a GET request open and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+      <figcaption>The Tiger workspace with a demo collection.</figcaption>
+    </figure>
+
+    <h2>Why Tiger</h2>
+    <ul>
+      <li><strong>Git-native.</strong> Collections are human-readable text files. Diff them, branch them, review them in a pull request.</li>
+      <li><strong>Local-first and offline.</strong> No backend and no sync service. Requests, tokens and responses stay on your machine.</li>
+      <li><strong>No account.</strong> Download and go. Free for personal and commercial use under the MIT license.</li>
+      <li><strong>Built for AI.</strong> The bundled MCP server exposes your saved requests as tools any MCP client can call.</li>
+      <li><strong>Broad import support.</strong> Bring collections over from Postman, Insomnia, Bruno, OpenAPI, WSDL/SOAP or a curl command.</li>
+      <li><strong>Cross-platform.</strong> Native desktop builds for macOS, Windows and Linux.</li>
+    </ul>
+
+    <h2>What is in Tiger 0.7.0</h2>
+    <ul>
+      <li><strong><a href="/tiger/docs/scripts/">Save values</a></strong> to pass a response value into the next request, and <strong><a href="/tiger/docs/scripts/">Scripts &amp; tests</a></strong> with pre-request and post-response JavaScript.</li>
+      <li><strong><a href="/tiger/docs/runner/">Collection runner and Load test</a></strong> for pass/fail runs and p50/p95 timings.</li>
+      <li><strong><a href="/tiger/docs/git/">Team sync</a></strong> to share a collection through Git with one Sync with team button.</li>
+      <li><strong><a href="/tiger/docs/mcp/">AI assistants (MCP)</a></strong> so Claude, Cursor and other MCP clients can list and run your requests.</li>
+      <li><strong><a href="/tiger/docs/requests-auth/">Requests and auth</a></strong> including OAuth 2.0, GraphQL, multipart, proxies and client certificates (mTLS).</li>
+      <li><strong><a href="/tiger/docs/environments/">Environments and secrets</a></strong> with masked secret variables.</li>
+    </ul>
+
+    <figure class="shot">
+      <img src="/tiger/screenshots/team-sync.png" width="1280" height="800" loading="lazy"
+        alt="Tiger Team sync card for a Payments API collection showing three local changes and a Sync with team button" />
+      <figcaption>Team sync shows what changed and shares it with one click.</figcaption>
+    </figure>
+
+    <h2 id="download">Download Tiger</h2>
+    <p>Free, no sign-up. Every build is on <a href="https://github.com/jtaoufik/tiger/releases/latest">GitHub Releases</a>.</p>
+    <ul>
+      <li><strong>Windows:</strong> <a href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe">Setup installer</a> or <a href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Portable-windows-x64.exe">portable EXE</a>. Microsoft Store and winget listings are coming soon.</li>
+      <li><strong>macOS:</strong> <a href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg">Apple Silicon</a> or <a href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.dmg">Intel</a> DMG, signed and notarized.</li>
+      <li><strong>Linux:</strong> <a href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage">AppImage</a> or <a href="https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-amd64.deb">.deb</a> for Debian and Ubuntu.</li>
+    </ul>
+    <p class="hero-note">
+      The Windows build may show a SmartScreen "unknown publisher" prompt on first run;
+      <a href="/tiger/docs/install/#windows">here is how to click through it</a>.
+    </p>
+
+    <h2>Switching from Postman, Insomnia or Bruno</h2>
+    <p>
+      Export from your current tool and import the file into Tiger. Folders, requests,
+      variables and auth carry over, and the result is a folder you can commit.
+    </p>
+    <ul>
+      <li><a href="/tiger/docs/importing/">Importing collections</a>: Postman, Insomnia, Bruno, OpenAPI, WSDL/SOAP and curl.</li>
+      <li><a href="/tiger/guides/postman-to-tiger/">Postman to Tiger migration guide</a>.</li>
+      <li><a href="/tiger/alternatives/postman/">A free Postman alternative</a> and the <a href="/tiger/compare/">full comparison</a> with <a href="/tiger/compare/tiger-vs-bruno/">Bruno</a>, <a href="/tiger/compare/tiger-vs-insomnia/">Insomnia</a> and <a href="/tiger/compare/tiger-vs-hoppscotch/">Hoppscotch</a>.</li>
+    </ul>
+
+    <h2>Explore the docs</h2>
     <div class="card-grid">
       <a class="card" href="/tiger/docs/getting-started/">
         <div class="t">What is Tiger</div>
-        <div class="d">The five-minute tour of how Tiger works and who it's for.</div>
+        <div class="d">The five-minute tour of how Tiger works and who it is for.</div>
       </a>
       <a class="card" href="/tiger/docs/install/">
         <div class="t">Install</div>
-        <div class="d">macOS, Windows and Linux builds, plus winget.</div>
+        <div class="d">macOS, Windows (installer or portable) and Linux builds.</div>
       </a>
       <a class="card" href="/tiger/docs/first-request/">
         <div class="t">Your first request</div>
         <div class="d">Create a collection, send a request, save it to Git.</div>
       </a>
-      <a class="card" href="/tiger/docs/importing/">
-        <div class="t">Importing</div>
-        <div class="d">Postman, Insomnia, Bruno, OpenAPI, WSDL/SOAP and curl.</div>
-      </a>
       <a class="card" href="/tiger/docs/mcp/">
         <div class="t">MCP server</div>
         <div class="d">Let Claude and other assistants run your saved requests.</div>
       </a>
-      <a class="card" href="/tiger/compare/">
-        <div class="t">Tiger vs the field</div>
-        <div class="d">How Tiger compares to Postman, Bruno, Insomnia and Hoppscotch.</div>
+      <a class="card" href="/tiger/docs/faq/">
+        <div class="t">FAQ</div>
+        <div class="d">Cost, privacy, offline use, platforms and migration.</div>
       </a>
-    </div>
-
-    <h2>Why Tiger</h2>
-    <ul>
-      <li><strong>Git-native.</strong> Collections are human-readable text files. Diff them, branch them, review them in a PR.</li>
-      <li><strong>Local-first &amp; private.</strong> No backend and no telemetry of your traffic - requests, tokens and responses stay on your machine.</li>
-      <li><strong>No account.</strong> Download and go. Free for personal and commercial use.</li>
-      <li><strong>Broad import support.</strong> Bring collections over from Postman, Insomnia, Bruno, OpenAPI, WSDL/SOAP or a curl command.</li>
-      <li><strong>Built for AI.</strong> The bundled MCP server exposes your saved requests as tools any MCP client can call.</li>
-      <li><strong>Cross-platform.</strong> Native desktop builds for macOS, Windows and Linux.</li>
-    </ul>
-
-    <div class="callout note">
-      <span class="ic">›</span>
-      <p>New here? Start with <a href="/tiger/docs/getting-started/">What is Tiger</a>, then send
-      <a href="/tiger/docs/first-request/">your first request</a>.</p>
+      <a class="card" href="/tiger/use-cases/mcp-api-client/">
+        <div class="t">MCP API client</div>
+        <div class="d">Use cases and example prompts for AI-driven API work.</div>
+      </a>
     </div>
   </article>
   <script>

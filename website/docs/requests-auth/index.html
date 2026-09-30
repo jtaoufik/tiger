@@ -3,18 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Requests &amp; auth · Tiger docs</title>
-  <meta name="description" content="Build HTTP requests in Tiger: methods, URL, headers, query params, every body type, and all auth schemes including OAuth2 client credentials." />
+  <title>Requests and Auth in Tiger: OAuth 2.0, Bearer, mTLS</title>
+  <meta name="description" content="Build HTTP requests in Tiger: methods, params, headers, JSON, GraphQL, multipart, plus Bearer, Basic, API key, OAuth 2.0, proxy and client certificates." />
   <link rel="canonical" href="https://jtaoufik.github.io/tiger/docs/requests-auth/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tiger API Client" />
+  <meta property="og:url" content="https://jtaoufik.github.io/tiger/docs/requests-auth/" />
+  <meta property="og:title" content="Requests and Auth in Tiger: OAuth 2.0, Bearer, mTLS" />
+  <meta property="og:description" content="Build HTTP requests in Tiger: methods, params, headers, JSON, GraphQL, multipart, plus Bearer, Basic, API key, OAuth 2.0, proxy and client certificates." />
+  <meta property="og:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta property="og:image:width" content="1440" />
+  <meta property="og:image:height" content="900" />
+  <meta property="og:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Requests and Auth in Tiger: OAuth 2.0, Bearer, mTLS" />
+  <meta name="twitter:description" content="Build HTTP requests in Tiger: methods, params, headers, JSON, GraphQL, multipart, plus Bearer, Basic, API key, OAuth 2.0, proxy and client certificates." />
+  <meta name="twitter:image" content="https://jtaoufik.github.io/tiger/og-image.png" />
+  <meta name="twitter:image:alt" content="Tiger API client workspace with a collection sidebar, a GET request and tabs for Params, Body, Headers, Auth, Save values, Scripts and tests, Notes, Code snippet and Load test" />
   <link rel="icon" type="image/png" href="/tiger/icon.png" />
-  <meta property="og:title" content="Requests &amp; auth" />
-  <meta property="og:description" content="Build HTTP requests in Tiger: methods, URL, headers, query params, every body type, and all auth schemes including OAuth2 client credentials." />
-  <meta property="og:image" content="https://jtaoufik.github.io/tiger/icon.png" />
   <link rel="stylesheet" href="/tiger/styles.css" />
+  <script type="application/ld+json" data-bc>
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Tiger",
+      "item": "https://jtaoufik.github.io/tiger/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Features",
+      "item": "https://jtaoufik.github.io/tiger/docs/requests-auth/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Requests & auth"
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <article>
-    <div class="breadcrumb"><a href="/tiger/">Docs</a> › Features › Requests &amp; auth</div>
+    <div class="breadcrumb"><a href="/tiger/">Tiger</a> › <a href="/tiger/docs/requests-auth/">Features</a> › Requests &amp; auth</div>
     <h1>Requests &amp; auth</h1>
     <p class="lead">
       Every Tiger request has a method, a URL, headers, query params, a body and an auth block.
