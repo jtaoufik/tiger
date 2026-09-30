@@ -39,6 +39,7 @@ const fallbackSettings: Settings = {
   proxyUsername: '',
   proxyPassword: '',
   clientCertSubject: '',
+  autoInstallUpdates: true,
   analyticsEnabled: true,
   clientId: 'test-client-id'
 }
@@ -204,5 +205,23 @@ describe('SettingsView extras', () => {
       const input = screen.getByPlaceholderText('passphrase') as HTMLInputElement
       expect(input.value).toBe('external')
     })
+  })
+
+  it('toggles "Install updates automatically" on the About tab (default on)', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'About' }))
+    const toggle = screen.getByRole('switch', { name: 'Install updates automatically' })
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(toggle)
+    expect(onChange).toHaveBeenCalledWith({ autoInstallUpdates: false })
+
+    rerender(
+      <SettingsView settings={{ ...fallbackSettings, autoInstallUpdates: false }} onChange={onChange} />
+    )
+    const off = screen.getByRole('switch', { name: 'Install updates automatically' })
+    expect(off).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(off)
+    expect(onChange).toHaveBeenLastCalledWith({ autoInstallUpdates: true })
   })
 })

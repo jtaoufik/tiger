@@ -38,7 +38,7 @@ export const TABS: { id: SettingsTab; label: string; intro: string; docs?: DocsP
     docs: 'mcp'
   },
   { id: 'privacy', label: 'Privacy', intro: 'What Tiger sends about its own usage. Never your requests.' },
-  { id: 'about', label: 'About', intro: 'Version and project information.' }
+  { id: 'about', label: 'About', intro: 'Version, updates and project information.' }
 ]
 
 function basename(p: string): string {
@@ -575,6 +575,30 @@ export function SettingsView({ settings, onChange }: Props) {
             aria-label="Analytics"
             aria-describedby={`${uid}-analytics-desc`}
             onClick={() => onChange({ analyticsEnabled: !settings.analyticsEnabled })}
+          >
+            <span className="knob" />
+          </button>
+        </div>
+      )}
+
+      {tab === 'about' && (
+        <div className="setting-row">
+          <div>
+            <div className="label">Install updates automatically</div>
+            <div className="desc" id={`${uid}-updates-desc`}>
+              Downloads new versions in the background and installs them when you restart or quit
+              Tiger. When off, Tiger asks before downloading. Microsoft Store and Linux .deb installs
+              update through their own store or package manager.
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`switch ${settings.autoInstallUpdates !== false ? 'on' : ''}`}
+            role="switch"
+            aria-checked={settings.autoInstallUpdates !== false}
+            aria-label="Install updates automatically"
+            aria-describedby={`${uid}-updates-desc`}
+            onClick={() => onChange({ autoInstallUpdates: settings.autoInstallUpdates === false })}
           >
             <span className="knob" />
           </button>

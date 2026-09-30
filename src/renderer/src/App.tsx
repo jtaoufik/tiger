@@ -50,6 +50,8 @@ import { ContextMenu, type MenuItem } from './components/ContextMenu'
 import { PaletteModal } from './components/PaletteModal'
 import { Resizer } from './components/Resizer'
 import { UpdateModal } from './components/UpdateModal'
+import { UpdateBanner } from './components/UpdateBanner'
+import { useUpdater } from './useUpdater'
 import type { UpdateInfo } from '@core/version'
 import { docsUrl, REPO_URL, type ActionId, type RequestSectionId } from '@core/actions'
 import { actionItem, actionTitle } from './actions'
@@ -141,6 +143,7 @@ const FALLBACK_SETTINGS: Settings = {
   proxyUsername: '',
   proxyPassword: '',
   clientCertSubject: '',
+  autoInstallUpdates: true,
   analyticsEnabled: true,
   clientId: 'local'
 }
@@ -275,7 +278,7 @@ export default function App() {
   const [appVersion, setAppVersion] = useState('dev')
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
-  const [downloadedUpdate, setDownloadedUpdate] = useState<string | null>(null)
+  const updater = useUpdater()
   const [gitStates, setGitStates] = useState<Record<string, SyncState>>({})
   const [gitColId, setGitColId] = useState<string | null>(null)
   /** Opened from the "Sync with team" command: start syncing right away. */
@@ -376,16 +379,22 @@ export default function App() {
       trackEvent(events.appOpened())
     })
     window.tiger?.version?.().then(setAppVersion)
+  }, [])
+
+  // Website-link update check at startup, only for installs electron-updater
+  // cannot update in place (dev, Store, .deb, tar.gz, Windows portable/zip).
+  // Auto-update installs are checked by the main process and shown by UpdateBanner.
+  const manualChecked = useRef(false)
+  useEffect(() => {
+    if (updater.mode !== 'manual' || manualChecked.current) return
+    manualChecked.current = true
     window.tiger?.checkUpdate?.().then((info) => {
       if (info) {
         setUpdate(info)
         setUpdateModalOpen(true)
       }
     })
-    // electron-updater (packaged builds) downloads in the background and fires
-    // this when the new version is ready to install on restart.
-    window.tiger?.onUpdateDownloaded?.((info) => setDownloadedUpdate(info.version))
-  }, [])
+  }, [updater.mode])
 
   useEffect(() => {
     const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
@@ -2172,6 +2181,11 @@ export default function App() {
     docs: () => openExternal(docsUrl('getting-started')),
     'report-issue': () => openExternal(`${REPO_URL}/issues`),
     'check-update': () => {
+      if (updater.mode === 'auto') {
+        setUpdateModalOpen(true)
+        void updater.check()
+        return
+      }
       if (!window.tiger?.checkUpdate) return toast('Updates are checked in the desktop app')
       window.tiger.checkUpdate().then((info) => {
         if (info) {
@@ -2713,8 +2727,21 @@ export default function App() {
           onClose={() => setPaletteOpen(false)}
         />
       )}
-      {updateModalOpen && update && (
+      {updateModalOpen && updater.mode === 'auto' && (
         <UpdateModal
+          kind="auto"
+          state={updater.state}
+          currentVersion={appVersion}
+          onRetry={() => void updater.check()}
+          onDownload={updater.download}
+          onRestart={updater.restart}
+          onOpenExternal={(url) => void window.tiger?.openExternal?.(url)}
+          onClose={() => setUpdateModalOpen(false)}
+        />
+      )}
+      {updateModalOpen && updater.mode !== 'auto' && update && (
+        <UpdateModal
+          kind="manual"
           info={update}
           currentVersion={appVersion}
           onDownload={() => {
@@ -2780,26 +2807,14 @@ export default function App() {
         />
       )}
 
-      {downloadedUpdate && (
-        <div className="update-ready" role="status">
-          <CheckIcon size={15} />
-          <span>
-            Tiger {downloadedUpdate} is ready to install.
-          </span>
-          <button className="btn accent" onClick={() => window.tiger?.installUpdate?.()}>
-            Restart &amp; update
-          </button>
-          <button
-            type="button"
-            className="icon-btn"
-            title="Dismiss"
-            aria-label="Dismiss update notice"
-            onClick={() => setDownloadedUpdate(null)}
-          >
-            <CloseIcon size={14} />
-          </button>
-        </div>
-      )}
+      <UpdateBanner
+        kind={updateModalOpen ? null : updater.banner}
+        state={updater.state}
+        onRestart={updater.restart}
+        onDownload={updater.download}
+        onLater={updater.dismiss}
+        onOpenExternal={(url) => void window.tiger?.openExternal?.(url)}
+      />
       {/* Always mounted so screen readers pick up each new toast (polite);
           failures carry role=alert and are read immediately. */}
       <div className="toasts" aria-live="polite" aria-relevant="additions">

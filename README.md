@@ -28,6 +28,13 @@
 | macOS (Apple Silicon) | [**Download .dmg**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg) | Signed and notarized. |
 | macOS (Intel) | [Download .dmg](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.dmg) | Signed and notarized. |
 | Linux | [**AppImage**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.AppImage) | Or `.deb` on the [releases page](https://github.com/jtaoufik/tiger/releases/latest). |
+| Windows (portable) | [Portable zip](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Portable-windows-x64.zip) | Portable (zip): unzip and run Tiger.exe. |
+| macOS (zip) | [Apple Silicon](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.zip) · [Intel](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.zip) | Unzip and move Tiger.app to Applications. |
+| Linux (tar.gz) | [tar.gz](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-linux-x64.tar.gz) | tar.gz: extract and run `./tiger-api-client`. |
+
+Installs from the Windows Setup exe, the macOS dmg or zip and the Linux AppImage update
+themselves in the app (Restart now, or on next quit). The Windows portable exe and zip, the
+`.deb` and the tar.gz do not auto-update: Help > Check for Updates links the new download.
 
 <!-- Get it from Microsoft Store: uncomment once Tiger is live on the Store (see
 docs/RELEASING.md "Microsoft Store") and fill in the real product URL.

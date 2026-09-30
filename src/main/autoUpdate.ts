@@ -1,51 +1,127 @@
 /**
- * Background auto-update via electron-updater + GitHub Releases. Only runs in
- * packaged builds. Downloads a newer release in the background and, once ready,
- * notifies the renderer so it can offer "Restart to update". Never throws into
- * startup: every failure is swallowed and logged.
+ * In-app updates via electron-updater + GitHub Releases.
  *
- * Requires the build to be published with `electron-builder --publish always`
- * (package.json build.publish points at the GitHub repo), so the release
- * carries the latest.yml / latest-mac.yml metadata electron-updater reads.
+ * The release workflow attaches latest.yml / latest-mac.yml / latest-linux.yml,
+ * the .blockmap files and the mac zips to every tagged release, and
+ * electron-updater's GitHub provider reads the repo's /releases/latest (never a
+ * prerelease). Which installs update themselves is decided by
+ * core/updateMode.ts: mac, the Windows NSIS install and the Linux AppImage do;
+ * dev, the Microsoft Store, .deb, tar.gz and the Windows portable exe/zip keep
+ * the website-link flow (http.ts checkForUpdate).
+ *
+ * The main process owns the update state (core/updateState.ts) and broadcasts
+ * every change on `tiger:update:state`, so a window that loads late still
+ * gets the current state through `tiger:update:getState`.
+ *
+ * Never throws into startup: failures become an `error` state that only the
+ * Check for Updates dialog shows.
  */
 
 import { app, BrowserWindow } from 'electron'
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import electronUpdater from 'electron-updater'
+import { resolveUpdateMode, type UpdateModeInfo } from '../core/updateMode'
+import {
+  friendlyUpdateError,
+  INITIAL_UPDATE_STATE,
+  reduceUpdate,
+  type UpdateEvent,
+  type UpdateState
+} from '../core/updateState'
+import { loadSettings, type Settings } from './settings'
 
 const { autoUpdater } = electronUpdater
 
-export function initAutoUpdate(): void {
-  // Never in dev, and never in a Microsoft Store build: the Store owns updates for
-  // MSIX installs (policy requires it), and electron-updater's GitHub-releases flow
-  // would try to replace a Store-managed install out from under it.
-  if (!app.isPackaged || process.windowsStore) return
+const SIX_HOURS = 6 * 60 * 60 * 1000
 
-  autoUpdater.autoDownload = true
-  autoUpdater.autoInstallOnAppQuit = true
+let modeInfo: UpdateModeInfo | null = null
+let state: UpdateState = INITIAL_UPDATE_STATE
 
-  const send = (channel: string, payload?: unknown) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(channel, payload)
-    }
-  }
-
-  autoUpdater.on('update-available', (info) => send('tiger:update:available', { version: info.version }))
-  autoUpdater.on('update-downloaded', (info) =>
-    send('tiger:update:downloaded', { version: info.version, notes: info.releaseNotes })
-  )
-  autoUpdater.on('error', () => {
-    /* offline / no release / unsigned: ignore, manual check still works */
+function detectMode(): UpdateModeInfo {
+  const nsisInstalled =
+    process.platform === 'win32' &&
+    // build.productName in package.json; NSIS names the uninstaller after it.
+    existsSync(join(dirname(process.execPath), 'Uninstall Tiger.exe'))
+  return resolveUpdateMode({
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+    windowsStore: process.windowsStore,
+    env: process.env,
+    nsisInstalled
   })
-
-  autoUpdater.checkForUpdates().catch(() => {
-    /* never disturb startup */
-  })
-
-  // Re-check every 6 hours while the app stays open.
-  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 60 * 60 * 1000)
 }
 
-/** Quit and install a downloaded update (called from the renderer). */
+export function getUpdateMode(): UpdateModeInfo {
+  if (!modeInfo) modeInfo = detectMode()
+  return modeInfo
+}
+
+export function getUpdateState(): UpdateState {
+  return state
+}
+
+function isAuto(): boolean {
+  return getUpdateMode().mode === 'auto'
+}
+
+function dispatch(event: UpdateEvent): void {
+  const next = reduceUpdate(state, event)
+  if (next === state) return
+  state = next
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('tiger:update:state', state)
+  }
+}
+
+export function initAutoUpdate(): void {
+  if (!isAuto()) return
+
+  autoUpdater.autoDownload = loadSettings().autoInstallUpdates !== false
+  // "Later" means: install silently the next time Tiger quits.
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('checking-for-update', () => dispatch({ type: 'checking' }))
+  autoUpdater.on('update-available', (info) =>
+    dispatch({ type: 'available', version: info.version, autoDownload: autoUpdater.autoDownload })
+  )
+  autoUpdater.on('update-not-available', () => dispatch({ type: 'not-available' }))
+  autoUpdater.on('download-progress', (p) => dispatch({ type: 'progress', percent: p.percent }))
+  autoUpdater.on('update-downloaded', (info) => dispatch({ type: 'downloaded', version: info.version }))
+  autoUpdater.on('error', (err) => dispatch({ type: 'error', message: friendlyUpdateError(err) }))
+
+  void checkNow()
+  // Re-check every 6 hours while the app stays open.
+  setInterval(() => void checkNow(), SIX_HOURS)
+}
+
+/** Settings changed: follow the "Install updates automatically" toggle. */
+export function applyUpdateSettings(settings: Pick<Settings, 'autoInstallUpdates'>): void {
+  if (!isAuto()) return
+  autoUpdater.autoDownload = settings.autoInstallUpdates !== false
+}
+
+/** Check now (Help > Check for Updates). Resolves with the state afterwards. */
+export async function checkNow(): Promise<UpdateState> {
+  if (!isAuto()) return state
+  try {
+    await autoUpdater.checkForUpdates()
+  } catch (err) {
+    dispatch({ type: 'error', message: friendlyUpdateError(err) })
+  }
+  return state
+}
+
+/** Download an available update when automatic install is off. */
+export function downloadNow(): void {
+  if (!isAuto() || state.status !== 'available') return
+  dispatch({ type: 'download-started' })
+  autoUpdater.downloadUpdate().catch((err) => {
+    dispatch({ type: 'error', message: friendlyUpdateError(err) })
+  })
+}
+
+/** Quit and install a downloaded update (Restart now). */
 export function quitAndInstall(): void {
-  if (app.isPackaged && !process.windowsStore) autoUpdater.quitAndInstall()
+  if (isAuto() && state.status === 'downloaded') autoUpdater.quitAndInstall()
 }

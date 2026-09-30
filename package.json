@@ -97,6 +97,13 @@
             "arm64",
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "hardenedRuntime": true,
@@ -106,6 +113,7 @@
     },
     "win": {
       "icon": "build/icon.ico",
+      "artifactName": "Tiger-Portable-${version}-windows-${arch}.${ext}",
       "target": [
         {
           "target": "nsis",
@@ -115,6 +123,12 @@
         },
         {
           "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "x64"
           ]
@@ -151,6 +165,7 @@
     },
     "linux": {
       "icon": "build/icon.png",
+      "artifactName": "Tiger-${version}-linux-${arch}.${ext}",
       "category": "Development",
       "maintainer": "Taoufik Jabbari <jtaoufik@users.noreply.github.com>",
       "synopsis": "Offline, git-friendly API client with a frosted-glass UI",
@@ -163,6 +178,12 @@
         },
         {
           "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
           "arch": [
             "x64"
           ]

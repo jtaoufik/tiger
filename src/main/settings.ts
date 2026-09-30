@@ -45,6 +45,9 @@ export interface Settings {
   /** When a server requests a client certificate, pick the one whose subject contains this text. */
   clientCertSubject: string
 
+  /** Download new releases in the background and install them on quit (auto-update installs only). */
+  autoInstallUpdates: boolean
+
   // Analytics (anonymous, on by default; toggle off any time)
   analyticsEnabled: boolean
   clientId: string
@@ -72,6 +75,7 @@ function defaults(): Settings {
     proxyUsername: '',
     proxyPassword: '',
     clientCertSubject: '',
+    autoInstallUpdates: true,
     analyticsEnabled: true,
     clientId: randomUUID()
   }
