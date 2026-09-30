@@ -158,15 +158,20 @@ export async function launchTiger(
   }
 }
 
-/** Resolves once the main window has been shown (it is created hidden). */
-export function windowShown(app: ElectronApplication): Promise<boolean> {
+/**
+ * The main window once its page has loaded. Under TIGER_E2E the app keeps its
+ * windows hidden and unfocused (src/main/headless.ts): runs on a developer's
+ * machine must never pop a window or steal focus.
+ */
+export function windowState(app: ElectronApplication): Promise<{ loaded: boolean; visible: boolean; focused: boolean }> {
   return app.evaluate(
     ({ BrowserWindow }) =>
-      new Promise<boolean>((done) => {
+      new Promise<{ loaded: boolean; visible: boolean; focused: boolean }>((done) => {
         const win = BrowserWindow.getAllWindows()[0]
-        if (!win) return done(false)
-        if (win.isVisible()) return done(true)
-        win.once('show', () => done(true))
+        if (!win) return done({ loaded: false, visible: false, focused: false })
+        const report = () => done({ loaded: true, visible: win.isVisible(), focused: win.isFocused() })
+        if (!win.webContents.isLoading()) return report()
+        win.webContents.once('did-finish-load', report)
       })
   )
 }

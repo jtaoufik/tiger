@@ -99,7 +99,9 @@ const electron = spawn(
   [APP, `--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${userData}`, '--lang=en-US'],
   {
     stdio: ['ignore', 'pipe', 'pipe'],
-    detached: true
+    detached: true,
+    // Headless: the window stays hidden and never takes focus (src/main/headless.ts).
+    env: { ...process.env, TIGER_E2E: '1' }
   }
 )
 let electronOut = ''

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
-import { perfExit, perfMark, perfRendererMark } from './perf'
+import { perfMark, perfRendererMark } from './perf'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
@@ -27,6 +27,13 @@ import {
   quitAndInstall
 } from './autoUpdate'
 import { blockExternalNetwork, isE2E } from './e2eGuard'
+import {
+  enterHeadlessMode,
+  headlessWebPreferences,
+  headlessWindowOptions,
+  isHeadless,
+  mayShowWindow
+} from './headless'
 import {
   gitAvailable,
   gitBranches,
@@ -86,6 +93,16 @@ function parentWindow(): BrowserWindow | undefined {
  */
 let hasUnsavedChanges = false
 
+/** e2e and benchmark runs: windows stay hidden and the app never activates. */
+const headless = isHeadless()
+if (headless) {
+  try {
+    enterHeadlessMode(app)
+  } catch {
+    /* not available before ready on this version: whenReady repeats it */
+  }
+}
+
 function createWindow(): BrowserWindow {
   const settings = loadSettings()
   const dark =
@@ -125,17 +142,20 @@ function createWindow(): BrowserWindow {
       sandbox: false,
       // The renderer loads this language's catalog before its first paint, so
       // a non-English UI never flashes English first.
-      additionalArguments: [`--tiger-locale=${mainLocale()}`]
-    }
+      additionalArguments: [`--tiger-locale=${mainLocale()}`],
+      ...headlessWebPreferences(headless)
+    },
+    ...headlessWindowOptions(headless)
   })
 
-  if (saved?.maximized) win.maximize()
+  // maximize() would show a hidden window on Windows.
+  if (saved?.maximized && mayShowWindow(headless)) win.maximize()
 
   win.once('ready-to-show', () => {
     perfMark('main:ready-to-show')
-    // Startup benchmarks (TIGER_PERF_EXIT) never show the window: nothing
-    // flashes on screen or steals focus while a script loops cold starts.
-    if (!perfExit) win.show()
+    // Automated runs (e2e, startup benchmarks) never show the window: nothing
+    // flashes on screen or steals focus on the machine running them.
+    if (mayShowWindow(headless)) win.show()
   })
   perfMark('main:window-created')
 
@@ -469,6 +489,7 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   perfMark('main:ready')
+  if (headless) enterHeadlessMode(app)
   // Proxy authentication: answer 407 challenges with the configured credentials
   // instead of letting Electron fail the request silently.
   app.on('login', (event, _webContents, _request, authInfo, callback) => {
@@ -502,7 +523,7 @@ app.whenReady().then(() => {
     // explicitly so the mascot shows instead of the stock Electron logo.
     // Decoding the 1024 px PNG blocks the main process for ~60 ms, which used
     // to sit in front of createWindow and then in front of the page load.
-    if (process.platform === 'darwin' && !app.isPackaged) {
+    if (process.platform === 'darwin' && !app.isPackaged && !headless) {
       setImmediate(() => {
         try {
           app.dock.setIcon(join(__dirname, '../../build/icon.png'))
