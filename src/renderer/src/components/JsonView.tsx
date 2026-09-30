@@ -3,7 +3,7 @@ import { tokenizeJson } from '@core/jsonHighlight'
 import './JsonView.css'
 
 /** Above this size highlighting would jank the UI; fall back to plain text. */
-const HIGHLIGHT_LIMIT = 400_000
+export const HIGHLIGHT_LIMIT = 400_000
 
 export function JsonView({ text }: { text: string }) {
   const tokens = useMemo(

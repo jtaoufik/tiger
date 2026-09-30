@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { humanSize, type FormattedResponse } from '@core/response'
 import { parseSetCookie } from '@core/cookies'
-import { findMatches, splitByRanges } from '@core/textSearch'
+import { findMatches } from '@core/textSearch'
 import { Logo } from '../Logo'
 import {
   ArrowDownIcon,
@@ -14,7 +14,8 @@ import {
   WrapIcon,
   XCircleIcon
 } from './Icons'
-import { JsonView } from './JsonView'
+import { HIGHLIGHT_LIMIT } from './JsonView'
+import { BodyText } from './BodyText'
 import { tablist } from './tablist'
 import { HelpLink } from './HelpLink'
 import './a11y.css'
@@ -482,25 +483,13 @@ export function ResponsePanel({ state }: Props) {
                 style={wrap ? { whiteSpace: 'pre-wrap', wordBreak: 'break-all' } : undefined}
               >
                 {bodyText ? (
-                  searchOpen && query && matchTotal ? (
-                    splitByRanges(bodyText, search.ranges).map((seg, i) =>
-                      seg.match === null ? (
-                        seg.text
-                      ) : (
-                        <mark
-                          key={i}
-                          ref={seg.match === activeMatch ? activeMarkRef : undefined}
-                          className={seg.match === activeMatch ? 'hit active' : 'hit'}
-                        >
-                          {seg.text}
-                        </mark>
-                      )
-                    )
-                  ) : showPretty ? (
-                    <JsonView text={bodyText} />
-                  ) : (
-                    bodyText
-                  )
+                  <BodyText
+                    text={bodyText}
+                    highlight={showPretty && bodyText.length <= HIGHLIGHT_LIMIT}
+                    ranges={searchOpen && query && matchTotal ? search.ranges : null}
+                    activeMatch={activeMatch}
+                    activeRef={activeMarkRef}
+                  />
                 ) : (
                   <span className="resp-empty-body">Empty body. The server sent no content.</span>
                 )}
