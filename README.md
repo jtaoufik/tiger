@@ -38,7 +38,8 @@ Free, no sign-up. Version 0.7.0.
 
 | Platform | Download | Notes |
 |---|---|---|
-| Windows | [**Setup installer**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe) | Recommended. Adds Start menu and desktop shortcuts. |
+| Windows | [**Microsoft Store**](https://apps.microsoft.com/detail/9NGWQHFNMQ2G) | Recommended: signed by Microsoft, no warning, updates itself. |
+| Windows (Setup exe) | [Setup installer](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Setup-windows-x64.exe) | No Store needed. Adds Start menu and desktop shortcuts. |
 | Windows (portable) | [Portable EXE](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-Portable-windows-x64.exe) | No install. Run it from any folder or USB drive. |
 | macOS (Apple Silicon) | [**Download .dmg**](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-arm64.dmg) | M1 and later. Signed and notarized. |
 | macOS (Intel) | [Download .dmg](https://github.com/jtaoufik/tiger/releases/latest/download/Tiger-mac-x64.dmg) | Signed and notarized. |
@@ -50,9 +51,9 @@ Free, no sign-up. Version 0.7.0.
 
 Installs from the Windows Setup exe, the macOS dmg or zip and the Linux AppImage update themselves in the app (Restart now, or on next quit). The portable exe and zip, the `.deb` and the tar.gz do not: Help > Check for Updates links the new download.
 
-Coming soon: a Microsoft Store listing ("Tiger API Client") and `winget install jtaoufik.Tiger`, both pending review.
+Coming soon: `winget install jtaoufik.Tiger`, pending review.
 
-See [all downloads and checksums](https://github.com/jtaoufik/tiger/releases/latest) or the [install guide](https://jtaoufik.github.io/tiger/docs/install/). The Windows build can show a SmartScreen "unknown publisher" prompt on first run: click **More info**, then **Run anyway**.
+See [all downloads and checksums](https://github.com/jtaoufik/tiger/releases/latest) or the [install guide](https://jtaoufik.github.io/tiger/docs/install/). The GitHub Windows builds (Setup exe, portable exe and zip) can show a SmartScreen "unknown publisher" prompt on first run: click **More info**, then **Run anyway**.
 
 ## Features
 
