@@ -25,8 +25,9 @@ test('app starts, shows its window title and lists the collection requests', asy
   // The environments folder is not a request folder.
   await expect(col.getByRole('treeitem', { name: 'environments' })).toHaveCount(0)
 
-  // The window title follows the opened request.
-  await expect(page).toHaveTitle(/^Create post - Tiger$/)
+  // The window title follows the opened request: the first one in the
+  // collection's own order (seq), List posts, not the first by name.
+  await expect(page).toHaveTitle(/^List posts - Tiger$/)
 
   expect(tiger.errors).toEqual([])
 })
