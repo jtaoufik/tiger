@@ -32,6 +32,7 @@ export const menu: NamespaceCatalog<typeof en> = {
   'menu.toggleDevTools': 'डेवलपर टूल',
   'menu.minimize': 'छोटा करें',
   'menu.zoomWindow': 'ज़ूम',
+  'menu.maximize': 'बड़ा करें',
   'menu.front': 'सभी को सामने लाएँ',
   'menu.close': 'बंद करें',
   'menu.aboutDetail': 'संस्करण {version}'

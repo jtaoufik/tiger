@@ -54,6 +54,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.teamSyncNeedsFolder': 'La synchronisation d\'équipe nécessite une collection enregistrée dans un dossier. Ouvrez-en une depuis le disque d\'abord.',
   'app.toast.updatesDesktopOnly': 'Les mises à jour se vérifient dans l\'application de bureau',
   'app.toast.latestVersion': 'Vous avez la dernière version',
+  'app.toast.updatesFromStore': 'Le Microsoft Store tient Tiger à jour.',
   'app.toast.gitOpenFolderFirst': 'Ouvrez d\'abord un dossier de collection pour le synchroniser avec Git',
   'app.toast.folderCreated': 'Dossier {name} créé avec une première requête',
   'app.toast.folderCreateFailed': 'Impossible de créer le dossier : {message}',

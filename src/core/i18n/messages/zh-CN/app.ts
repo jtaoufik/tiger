@@ -54,6 +54,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.teamSyncNeedsFolder': '团队同步需要保存在文件夹中的集合。请先从磁盘打开一个。',
   'app.toast.updatesDesktopOnly': '更新在桌面应用中检查',
   'app.toast.latestVersion': '已是最新版本',
+  'app.toast.updatesFromStore': 'Microsoft Store 会让 Tiger 保持最新。',
   'app.toast.gitOpenFolderFirst': '请先打开集合文件夹，再通过 Git 同步',
   'app.toast.folderCreated': '已创建文件夹 {name}，其中包含第一个请求',
   'app.toast.folderCreateFailed': '无法创建文件夹：{message}',

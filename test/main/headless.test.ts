@@ -52,7 +52,11 @@ describe('headless automated runs', () => {
     for (const line of main.split('\n').filter((l) => /\.show\(\)/.test(l))) {
       expect(line).toMatch(/mayShowWindow\(headless\)/)
     }
-    expect(main).not.toMatch(/\.(focus|moveTop|showInactive)\(\)/)
+    // Focusing is only for a launch the user made (a second instance), behind the same gate.
+    for (const line of main.split('\n').filter((l) => /\.focus\(\)/.test(l))) {
+      expect(line).toMatch(/mayShowWindow\(headless\)/)
+    }
+    expect(main).not.toMatch(/\.(moveTop|showInactive)\(\)/)
     expect(main).toMatch(/\.\.\.headlessWindowOptions\(headless\)/)
     expect(main).toMatch(/\.\.\.headlessWebPreferences\(headless\)/)
     expect(main).toMatch(/if \(headless\) enterHeadlessMode\(app\)/)

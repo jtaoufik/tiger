@@ -47,9 +47,14 @@ export function serializeEnvironment(env: TigerEnvironment): string {
 
 /**
  * Whether an environment's name says production ("Prod", "production",
- * "live-eu"; not "preprod" or "products"). Tiger never selects one of these
- * by itself, so an import cannot send to production by surprise.
+ * "live-eu", "prod_eu", "PROD_US", "prodEU", "prd", "Prod2"; not "preprod",
+ * "products" or "liveness"). Tiger never selects one of these by itself, so
+ * an import cannot send to production by surprise.
  */
 export function looksLikeProduction(name: string): boolean {
-  return /\b(prod|production|live)\b/i.test(name)
+  const words = name
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z]+/)
+  return words.some((w) => w === 'prod' || w === 'production' || w === 'prd' || w === 'live')
 }

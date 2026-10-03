@@ -173,10 +173,22 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
     label: t('menu.window'),
     submenu: [
       { role: 'minimize', label: t('menu.minimize') },
-      { role: 'zoom', label: t('menu.zoomWindow') },
+      // "Zoom" is a macOS window action; Windows and Linux maximize instead.
+      isMac
+        ? { role: 'zoom', label: t('menu.zoomWindow') }
+        : {
+            label: t('menu.maximize'),
+            click: (_item, win) => {
+              if (!win) return
+              if (win.isMaximized()) win.unmaximize()
+              else win.maximize()
+            }
+          },
       ...(isMac
         ? ([sep, { role: 'front', label: t('menu.front') }] as const)
-        : ([{ role: 'close', label: t('menu.close') }] as const))
+        : // Ctrl+W belongs to File > Close Tab; the role's own default
+          // (Ctrl+W) was registered last and closed the whole window instead.
+          ([{ role: 'close', label: t('menu.close'), accelerator: 'Ctrl+Shift+W' }] as const))
     ]
   })
 

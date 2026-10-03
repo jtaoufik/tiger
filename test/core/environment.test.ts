@@ -38,3 +38,15 @@ describe('parseEnvironment', () => {
     expect(parseEnvironment(serializeEnvironment(env))).toEqual(env)
   })
 })
+
+describe('looksLikeProduction', () => {
+  it('recognises production however it is spelled, and nothing else', async () => {
+    const { looksLikeProduction } = await import('../../src/core/environment')
+    for (const name of ['Prod', 'production', 'live-eu', 'prod_eu', 'PROD_US', 'prodEU', 'prd', 'Prod2', 'EU Production', 'my-api (prod)']) {
+      expect(looksLikeProduction(name), name).toBe(true)
+    }
+    for (const name of ['preprod', 'products', 'liveness', 'dev', 'staging', 'Productivity', 'reproduce']) {
+      expect(looksLikeProduction(name), name).toBe(false)
+    }
+  })
+})

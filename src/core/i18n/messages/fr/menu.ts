@@ -32,6 +32,7 @@ export const menu: NamespaceCatalog<typeof en> = {
   'menu.toggleDevTools': 'Outils de développement',
   'menu.minimize': 'Réduire',
   'menu.zoomWindow': 'Zoom',
+  'menu.maximize': 'Agrandir',
   'menu.front': 'Tout ramener au premier plan',
   'menu.close': 'Fermer',
   'menu.aboutDetail': 'Version {version}'

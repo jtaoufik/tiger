@@ -54,6 +54,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.teamSyncNeedsFolder': 'تتطلب مزامنة الفريق مجموعة محفوظة في مجلد. افتح واحدة من القرص أولاً.',
   'app.toast.updatesDesktopOnly': 'يتم التحقق من التحديثات في تطبيق سطح المكتب',
   'app.toast.latestVersion': 'لديك أحدث إصدار',
+  'app.toast.updatesFromStore': 'يُبقي Microsoft Store تطبيق Tiger محدّثًا.',
   'app.toast.gitOpenFolderFirst': 'افتح مجلد مجموعة أولاً لمزامنته مع Git',
   'app.toast.folderCreated': 'تم إنشاء المجلد {name} مع أول طلب',
   'app.toast.folderCreateFailed': 'تعذّر إنشاء المجلد: {message}',

@@ -32,6 +32,7 @@ export const menu: NamespaceCatalog<typeof en> = {
   'menu.toggleDevTools': 'أدوات المطور',
   'menu.minimize': 'تصغير',
   'menu.zoomWindow': 'تكبير/تصغير',
+  'menu.maximize': 'تكبير',
   'menu.front': 'إحضار الكل إلى الأمام',
   'menu.close': 'إغلاق',
   'menu.aboutDetail': 'الإصدار {version}'

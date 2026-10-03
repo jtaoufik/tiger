@@ -280,6 +280,12 @@ export default function App() {
     bootDemo ? Object.fromEntries(sampleRequests.map((r) => [r.id, r.request])) : {}
   )
   const [pathById, setPathById] = useState<Record<string, string>>({})
+  /**
+   * Paths known before the next render: opening a collection selects its
+   * first request in the same tick, when pathById does not have it yet (the
+   * editor used to say "No request open").
+   */
+  const freshPaths = useRef<Record<string, string>>({})
   const [activeId, setActiveId] = useState<string | null>(
     bootDemo ? (sampleRequests[0]?.id ?? null) : null
   )
@@ -662,9 +668,10 @@ export default function App() {
   const loadRequest = useCallback(
     async (id: string): Promise<TigerRequest | undefined> => {
       if (requestsById[id]) return requestsById[id]
-      if (pathById[id] && window.tiger) {
+      const path = pathById[id] ?? freshPaths.current[id]
+      if (path && window.tiger) {
         try {
-          const parsed = parseRequest(await window.tiger.readFile(pathById[id]))
+          const parsed = parseRequest(await window.tiger.readFile(path))
           savedText.current[id] = serializeRequest(parsed)
           editedIds.current.delete(id)
           setRequestsById((prev) => ({ ...prev, [id]: parsed }))
@@ -1340,10 +1347,9 @@ export default function App() {
         }
         return [...prev, next]
       })
-      setPathById((prev) => ({
-        ...prev,
-        ...Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
-      }))
+      const paths = Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
+      freshPaths.current = { ...freshPaths.current, ...paths }
+      setPathById((prev) => ({ ...prev, ...paths }))
       // Folder auth applies from the first send, not only once the folder page was opened.
       if (opened.folders?.length) {
         setFolderSettings((prev) => {
@@ -1563,6 +1569,46 @@ export default function App() {
       if (result.requests.length === 0) {
         const target =
           activeCollection ?? collectionsRef.current[collectionsRef.current.length - 1]
+        // Postman globals on their own sit under every environment the
+        // collection already has (Postman resolves environment > globals),
+        // instead of becoming a "Globals" environment that replaced the
+        // selected one and sent requests to another host.
+        const globalsOnly = !raw.environments?.length && !raw.collectionVariables?.length && !!raw.globals?.length
+        if (globalsOnly && target?.environments.length) {
+          const globals = raw.globals!
+          const layered: EnvRef[] = []
+          for (const ref of target.environments) {
+            let env = ref.data ?? null
+            if (!env && ref.path && window.tiger) {
+              try {
+                env = parseEnvironment(await window.tiger.readFile(ref.path))
+              } catch {
+                env = null
+              }
+            }
+            if (!env) {
+              layered.push(ref)
+              continue
+            }
+            const own = new Set(env.variables.map((v) => v.name))
+            const next = { ...env, variables: [...globals.filter((v) => !own.has(v.name)), ...env.variables] }
+            if (ref.path && window.tiger) {
+              await window.tiger.writeFile(ref.path, serializeEnvironment(next))
+              layered.push({ name: ref.name, path: ref.path })
+            } else {
+              layered.push({ ...ref, data: next })
+            }
+            if (activeEnvRef.current.key === `${target.id}${SEP}${ref.name}`) {
+              activeEnvRef.current = { key: activeEnvRef.current.key, env: next }
+              setActiveEnv(next)
+            }
+          }
+          setCollections((prev) => prev.map((c) => (c.id === target.id ? { ...c, environments: layered } : c)))
+          setImportReport({ summary, environmentsTarget: target.name })
+          announce(importReportSentence(summary))
+          trackEvent(events.collectionImported(result.source, 0))
+          return
+        }
         if (envRefs.length && target) {
           const taken = new Set(target.environments.map((e) => e.name))
           // A collection imported without an environment keeps its variables as
@@ -2744,6 +2790,8 @@ export default function App() {
         return
       }
       if (!window.tiger?.checkUpdate) return toast(t('app.toast.updatesDesktopOnly'))
+      // The website check is off in a Store install; "latest version" would be a guess.
+      if (updater.fromStore) return toast(t('app.toast.updatesFromStore'))
       window.tiger.checkUpdate().then((info) => {
         if (info) {
           setUpdate(info)

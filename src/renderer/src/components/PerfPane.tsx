@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import { buildRequest, type BuiltRequest } from '@core/request'
+import { buildRequest } from '@core/request'
 import { envToVars } from '@core/interpolate'
 import { computeStats, runPool, type PerfStats } from '@core/perf'
 import { resolveAuth } from '@core/collectionSettings'
@@ -42,14 +42,11 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
     cancelled.current = false
 
     const vars = envToVars(env)
-    let built: BuiltRequest
+    let effective: TigerRequest
     try {
       // One OAuth2 token for the whole run, not one exchange per request.
-      const effective = await withOAuthToken(
-        { ...request, auth: resolveAuth(request, collectionAuth) },
-        vars
-      )
-      built = buildRequest(effective, vars)
+      effective = await withOAuthToken({ ...request, auth: resolveAuth(request, collectionAuth) }, vars)
+      buildRequest(effective, vars)
     } catch (e) {
       setError((e as Error).message)
       setRunning(false)
@@ -65,6 +62,9 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
       async () => {
         if (cancelled.current) return
         try {
+          // Built per request: {{$guid}}, {{$timestamp}} and the like get a
+          // fresh value each time, as they do on Send.
+          const built = buildRequest(effective, vars)
           const res = await window.tiger!.send(built, timeoutMs, undefined, { record: false })
           times.push(res.timeMs)
           const bucket = `${Math.floor(res.status / 100)}xx`

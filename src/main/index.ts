@@ -110,6 +110,38 @@ if (headless) {
   }
 }
 
+// Windows groups a running app with its pinned and Start menu shortcuts by
+// this id; the installer stamps the shortcuts with the appId. (The Store
+// package carries its own identity.)
+if (process.platform === 'win32' && !process.windowsStore) app.setAppUserModelId('com.taoufikjabbari.tiger')
+
+// One Tiger per profile. Windows (unlike macOS) starts a second process on
+// every launch from the Start menu or taskbar; two processes overwrite each
+// other's settings and session, and an update installer closes both. The
+// second launch now brings the running window forward instead.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    // The user launched Tiger again: show the window they already have
+    // (never in an automated run, which has no user to show it to).
+    const win = appWindows()[0]
+    if (!win || !mayShowWindow(headless)) return
+    if (win.isMinimized()) win.restore()
+    if (mayShowWindow(headless)) win.show()
+    if (mayShowWindow(headless)) win.focus()
+  })
+}
+
+/**
+ * The title bar, native menus and dialogs follow Tiger's theme, not only the
+ * OS one: a dark Tiger used to sit in a white Windows frame.
+ */
+function applyNativeTheme(theme: Settings['theme']): void {
+  nativeTheme.themeSource = theme
+  for (const win of appWindows()) win.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0f1117' : '#eef1f7')
+}
+
 function createWindow(): BrowserWindow {
   const settings = loadSettings()
   const dark =
@@ -411,6 +443,7 @@ function registerIpc(): void {
     const next = saveSettings(patch)
     applyNetworkSettings()
     applyUpdateSettings(next)
+    if (patch.theme !== undefined) applyNativeTheme(next.theme)
     if (patch.language !== undefined && setMainLocale(resolveAppLocale(next.language))) {
       // Live switch: the native menu is rebuilt and every window re-renders.
       buildAppMenu()
@@ -569,6 +602,7 @@ app.whenReady().then(() => {
   if (isE2E()) blockExternalNetwork()
   registerIpc()
   applyNetworkSettings()
+  nativeTheme.themeSource = loadSettings().theme
   setMainLocale(resolveAppLocale(loadSettings().language))
   buildAppMenu()
   const win = createWindow()

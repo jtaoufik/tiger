@@ -52,6 +52,7 @@ export const app = {
   'app.toast.teamSyncNeedsFolder': 'Team sync needs a collection saved in a folder. Open one from disk first.',
   'app.toast.updatesDesktopOnly': 'Updates are checked in the desktop app',
   'app.toast.latestVersion': 'You\'re on the latest version',
+  'app.toast.updatesFromStore': 'The Microsoft Store keeps Tiger up to date.',
   'app.toast.gitOpenFolderFirst': 'Open a collection folder first to sync it with Git',
   'app.toast.folderCreated': 'Folder {name} created with a first request',
   'app.toast.folderCreateFailed': 'Could not create the folder: {message}',

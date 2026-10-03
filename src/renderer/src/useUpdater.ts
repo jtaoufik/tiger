@@ -22,6 +22,8 @@ function bannerKey(state: UpdateState): string | null {
  */
 export function useUpdater() {
   const [mode, setMode] = useState<UpdateMode | null>(null)
+  /** Microsoft Store install: the Store updates Tiger, never Tiger itself. */
+  const [fromStore, setFromStore] = useState(false)
   const [state, setState] = useState<UpdateState>(INITIAL_UPDATE_STATE)
   const [dismissed, setDismissed] = useState<string | null>(null)
   const userInitiated = useRef(false)
@@ -40,6 +42,7 @@ export function useUpdater() {
       .then((info) => {
         if (cancelled) return
         setMode(info.mode)
+        setFromStore(info.mode === 'manual' && info.reason === 'store')
         if (info.mode !== 'auto') return
         off = api.onUpdateState?.(setState)
         api.updateState?.().then((s) => !cancelled && setState(s))
@@ -99,6 +102,7 @@ export function useUpdater() {
 
   return {
     mode,
+    fromStore,
     state,
     /** Banner to show now, or null (none, or hidden with Later). */
     banner: key && key !== dismissed ? updateBanner(state) : null,

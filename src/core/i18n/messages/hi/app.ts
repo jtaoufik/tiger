@@ -54,6 +54,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.teamSyncNeedsFolder': 'टीम सिंक के लिए फ़ोल्डर में सहेजा गया संग्रह चाहिए। पहले डिस्क से कोई खोलें।',
   'app.toast.updatesDesktopOnly': 'अपडेट डेस्कटॉप ऐप में जांचे जाते हैं',
   'app.toast.latestVersion': 'आप नवीनतम संस्करण पर हैं',
+  'app.toast.updatesFromStore': 'Microsoft Store Tiger को अपडेट रखता है।',
   'app.toast.gitOpenFolderFirst': 'Git से सिंक करने के लिए पहले संग्रह फ़ोल्डर खोलें',
   'app.toast.folderCreated': 'फ़ोल्डर {name} पहले अनुरोध के साथ बनाया गया',
   'app.toast.folderCreateFailed': 'फ़ोल्डर नहीं बनाया जा सका: {message}',

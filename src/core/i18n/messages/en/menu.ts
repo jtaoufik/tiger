@@ -34,6 +34,7 @@ export const menu = {
 
   'menu.minimize': 'Minimize',
   'menu.zoomWindow': 'Zoom',
+  'menu.maximize': 'Maximize',
   'menu.front': 'Bring All to Front',
   'menu.close': 'Close',
 

@@ -257,3 +257,30 @@ describe('the environment manager', () => {
     await waitFor(() => expect(managerCollection()).toBe('Alpha'))
   })
 })
+
+describe('Postman globals imported on their own', () => {
+  it('sit under the selected environment instead of replacing it', async () => {
+    const globalsOnly: ImportResult = {
+      name: 'Globals',
+      source: 'postman',
+      requests: [],
+      globals: [
+        { name: 'host', value: 'https://globals.test', enabled: true },
+        { name: 'apiVersion', value: 'v2', enabled: true }
+      ]
+    }
+    const alpha = collection('Alpha', 'Get alpha', 'https://alpha.test')
+    alpha.requests[0].request.url = '{{host}}/{{apiVersion}}/get-alpha'
+    const b = bridge([alpha, globalsOnly])
+    ;(window as { tiger?: unknown }).tiger = b
+    render(<App />)
+    await importVia('Postman')
+    await importVia('Postman')
+    expect(pickedEnv()).toBe('Alpha env')
+    expect([...envPicker().options].map((o) => o.textContent)).not.toContain('Globals')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(b.send).toHaveBeenCalled())
+    // The environment's own host wins; the global fills what it lacks.
+    expect(lastSentUrl(b)).toBe('https://alpha.test/v2/get-alpha')
+  })
+})
