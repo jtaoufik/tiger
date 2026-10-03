@@ -796,13 +796,26 @@ export function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trees])
 
-  // The active request is always visible: its folders open when it becomes active.
+  // The active request is always visible: its folders open when it becomes
+  // active, and its row scrolls into view (an import lands at the bottom).
   useLayoutEffect(() => {
     const keys = activePathKeys()
     if (!keys.length) return
     setCollapsed((prev) =>
       keys.some((k) => prev.has(k)) ? new Set([...prev].filter((k) => !keys.includes(k))) : prev
     )
+    // The active row is always rendered (pinned when the tree is windowed).
+    // Ids contain U+001F, so locate it by dataset rather than a CSS selector.
+    const id = activeId
+    const timer = setTimeout(() => {
+      for (const row of document.querySelectorAll<HTMLElement>('.tree-row[data-entry-id]')) {
+        if (row.dataset.entryId === id) {
+          row.scrollIntoView?.({ block: 'nearest' })
+          break
+        }
+      }
+    }, 0)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
 

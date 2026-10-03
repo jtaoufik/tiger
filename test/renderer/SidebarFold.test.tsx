@@ -80,6 +80,24 @@ describe('Sidebar folding for collections that arrive later', () => {
     expect(shown('GET Get admin')).toBe(true)
   })
 
+  it('scrolls the request that becomes active into view (an import lands at the bottom)', () => {
+    const scrolled: string[] = []
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: HTMLElement) {
+      scrolled.push(this.dataset.entryId ?? '')
+    }
+    vi.useFakeTimers()
+    try {
+      const { rerender } = render(<Sidebar {...props([shop], 'r1')} />)
+      rerender(<Sidebar {...props([shop, imported], 'i2')} />)
+      vi.runAllTimers()
+      expect(scrolled).toContain('i2')
+    } finally {
+      vi.useRealTimers()
+      Element.prototype.scrollIntoView = original
+    }
+  })
+
   it('folds a collection that is closed and opened again', () => {
     const { rerender } = render(<Sidebar {...props([shop], 'r2')} />)
     rerender(<Sidebar {...props([shop, imported], 'r2')} />)
