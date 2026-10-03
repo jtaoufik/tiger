@@ -16,6 +16,7 @@ import type {
 
 const ENVIRONMENTS_DIR = 'environments'
 const COLLECTION_FILE = 'collection.tiger'
+const FOLDER_FILE = 'folder.tiger'
 
 export function createFsStore(root: string): CollectionStore {
   async function walk(dir: string, acc: RequestRef[]): Promise<void> {
@@ -23,6 +24,9 @@ export function createFsStore(root: string): CollectionStore {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
         if (entry.name !== ENVIRONMENTS_DIR && !entry.name.startsWith('.')) await walk(full, acc)
+      } else if (entry.name === COLLECTION_FILE || entry.name === FOLDER_FILE) {
+        // Collection and folder settings, not requests (as in src/main/collection.ts).
+        continue
       } else if (entry.isFile() && entry.name.endsWith('.tiger')) {
         let name = basename(entry.name, '.tiger')
         try {
