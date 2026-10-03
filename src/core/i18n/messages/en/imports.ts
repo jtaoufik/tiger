@@ -91,6 +91,8 @@ export const imports = {
     'Tiger has one variable scope, so the collection variables ({names}) were added to each environment. Values set in an environment win.',
   'imports.folderRenamed':
     'Two folders here are named "{name}". Tiger tells folders apart by name, so this one is now "{renamed}", with its own requests and settings.',
+  'imports.securityPartial':
+    'The API also requires {schemes} here, which Tiger cannot set up. Add it to the request by hand.',
 
   // Import report modal
   'imports.report.title': 'Imported {name}',

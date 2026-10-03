@@ -70,6 +70,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.collectionVarsLayered':
     'Tiger 只有一个变量作用域，因此集合变量（{names}）已添加到每个环境中。环境中设置的值优先。',
   'imports.folderRenamed': '此处有两个文件夹都名为“{name}”。Tiger 按名称区分文件夹，因此这个文件夹现名为“{renamed}”，并保留自己的请求和设置。',
+  'imports.securityPartial': '此 API 在这里还要求 {schemes}，Tiger 无法自动设置。请手动将其添加到请求中。',
 
   'imports.report.title': '已导入 {name}',
   'imports.report.statsLabel': '已导入',

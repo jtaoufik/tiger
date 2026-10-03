@@ -7,7 +7,8 @@
  * `{{id}}`); server URL variables; Swagger 2 `in: body` / `formData`
  * parameters; form, multipart and XML request bodies; and the document's
  * security scheme (bearer, basic, API key, OAuth 2 client credentials) as the
- * collection auth.
+ * collection auth. An operation with `security: []` sends no credentials, and
+ * API keys required together with the auth are sent as well.
  */
 
 import { findMissingVars } from '../interpolate'
@@ -120,6 +121,8 @@ function placeholdersOf(request: TigerRequest, collectionAuth?: TigerAuth): stri
 
 function exampleOf(doc: Json, p: Json): unknown {
   if (p.example !== undefined) return p.example
+  // Swagger 2 keeps a parameter's type and default on the parameter itself.
+  if (p.default !== undefined) return p.default
   const schema = deref(doc, p.schema)
   if (schema.example !== undefined) return schema.example
   if (schema.default !== undefined) return schema.default
@@ -132,14 +135,21 @@ function exampleOf(doc: Json, p: Json): unknown {
   return undefined
 }
 
+/**
+ * Headers that the auth and the request body set. OpenAPI 3 says header
+ * parameters with these names are ignored; Swagger 2 has no such rule, but
+ * an empty one would still replace the token or the body's media type.
+ */
+const RESERVED_HEADERS = new Set(['accept', 'content-type', 'authorization'])
+
 function paramsOf(doc: Json, params: Json[], where: string): KeyValue[] {
+  const reserved = (p: Json) => where === 'header' && RESERVED_HEADERS.has(str(p.name).toLowerCase())
   return params
-    .filter((p) => p.in === where)
-    .map((p) => ({
-      name: str(p.name),
-      value: scalar(exampleOf(doc, p)),
-      enabled: p.required === true
-    }))
+    .filter((p) => p.in === where && !(reserved(p) && doc.openapi !== undefined))
+    .map((p) => {
+      const value = scalar(exampleOf(doc, p))
+      return { name: str(p.name), value, enabled: p.required === true && !(reserved(p) && !value) }
+    })
 }
 
 /** A JSON example built from a schema when the spec gives none. */
@@ -189,28 +199,52 @@ function formFromSchema(doc: Json, schema: unknown, multipart: boolean): string 
     .join('\n')
 }
 
-function bodyOf(doc: Json, op: Json, params: Json[]): TigerBody {
+/** `application/json; charset=utf-8` -> `application/json`. */
+function mediaType(type: string): string {
+  return type.split(';')[0].trim().toLowerCase()
+}
+
+/** What Tiger sends as Content-Type for a body type when the request sets none. */
+const DEFAULT_CONTENT_TYPE: Partial<Record<TigerBody['type'], string>> = {
+  json: 'application/json',
+  xml: 'text/xml',
+  text: 'text/plain'
+}
+
+/**
+ * The request body, and the Content-Type to send with it when the declared
+ * media type is not the one Tiger sends by default for that body type
+ * (application/vnd.api+json, application/xml, text/csv...).
+ */
+function bodyOf(doc: Json, op: Json, params: Json[]): { body: TigerBody; contentType?: string } {
   // Swagger 2: a single `in: body` parameter, or `in: formData` fields.
   const bodyParam = params.find((p) => p.in === 'body')
   if (bodyParam) {
     const ex = exampleOf(doc, bodyParam) ?? sampleFromSchema(doc, bodyParam.schema)
-    return { type: 'json', content: ex == null ? '{}' : JSON.stringify(ex, null, 2) }
+    return { body: { type: 'json', content: ex == null ? '{}' : JSON.stringify(ex, null, 2) } }
   }
   const formParams = params.filter((p) => p.in === 'formData')
   if (formParams.length) {
     const multipart = formParams.some((p) => p.type === 'file')
     return {
-      type: multipart ? 'multipart' : 'form',
-      content: formParams
-        .map((p) => (p.type === 'file' ? `${str(p.name)}: @file:` : `${str(p.name)}: ${scalar(p.default ?? '')}`))
-        .join('\n')
+      body: {
+        type: multipart ? 'multipart' : 'form',
+        content: formParams
+          .map((p) => (p.type === 'file' ? `${str(p.name)}: @file:` : `${str(p.name)}: ${scalar(p.default ?? '')}`))
+          .join('\n')
+      }
     }
   }
 
   const rb = deref(doc, op.requestBody)
   const content = (rb.content ?? {}) as Json
   const types = Object.keys(content)
-  const jsonType = types.find((t) => t === 'application/json' || /\+json$/.test(t) || t.endsWith('/json'))
+  const find = (test: (type: string) => boolean) => types.find((t) => test(mediaType(t)))
+  const declared = (type: string, body: TigerBody) => {
+    const fallback = DEFAULT_CONTENT_TYPE[body.type]
+    return fallback && mediaType(type) !== fallback ? { body, contentType: type.trim() } : { body }
+  }
+  const jsonType = find((t) => t === 'application/json' || /\+json$/.test(t) || t.endsWith('/json'))
   if (jsonType) {
     const media = (content[jsonType] ?? {}) as Json
     let example = media.example ?? deref(doc, media.schema).example
@@ -218,77 +252,169 @@ function bodyOf(doc: Json, op: Json, params: Json[]): TigerBody {
       example = deref(doc, Object.values(media.examples as Json)[0]).value
     }
     if (example === undefined && media.schema) example = sampleFromSchema(doc, media.schema)
-    return {
+    return declared(jsonType, {
       type: 'json',
       content: example !== undefined && example !== null ? JSON.stringify(example, null, 2) : '{}'
-    }
+    })
   }
-  if (content['application/x-www-form-urlencoded']) {
-    const media = content['application/x-www-form-urlencoded'] as Json
-    return { type: 'form', content: formFromSchema(doc, media.schema, false) }
+  const formType = find((t) => t === 'application/x-www-form-urlencoded')
+  if (formType) {
+    const media = (content[formType] ?? {}) as Json
+    return { body: { type: 'form', content: formFromSchema(doc, media.schema, false) } }
   }
-  if (content['multipart/form-data']) {
-    const media = content['multipart/form-data'] as Json
-    return { type: 'multipart', content: formFromSchema(doc, media.schema, true) }
+  const multipartType = find((t) => t === 'multipart/form-data')
+  if (multipartType) {
+    const media = (content[multipartType] ?? {}) as Json
+    return { body: { type: 'multipart', content: formFromSchema(doc, media.schema, true) } }
   }
-  const xmlType = types.find((t) => t.includes('xml'))
+  const xmlType = find((t) => t.includes('xml'))
   if (xmlType) {
     const media = (content[xmlType] ?? {}) as Json
-    return { type: 'xml', content: typeof media.example === 'string' ? media.example : '' }
+    return declared(xmlType, { type: 'xml', content: typeof media.example === 'string' ? media.example : '' })
   }
-  const textType = types.find((t) => t.startsWith('text/'))
+  const textType = find((t) => t.startsWith('text/'))
   if (textType) {
     const media = (content[textType] ?? {}) as Json
-    return { type: 'text', content: scalar(media.example ?? '') }
+    return declared(textType, { type: 'text', content: scalar(media.example ?? '') })
   }
-  return emptyBody()
+  return { body: emptyBody() }
 }
 
-/** The first usable security scheme the document (or operation) requires. */
-function securityAuth(doc: Json, requirement: unknown, warnings: ImportWarning[], label?: string): TigerAuth | undefined {
-  const schemes = {
+function securitySchemes(doc: Json): Json {
+  return {
     ...(((doc.components as Json | undefined)?.securitySchemes ?? {}) as Json),
     ...((doc.securityDefinitions ?? {}) as Json)
   }
-  const reqs = asArray(requirement)
-  if (reqs.length === 0) return undefined
-  for (const r of reqs) {
-    const names = Object.keys((r ?? {}) as Json)
-    if (names.length === 0) return { type: 'none' } // `{}` = auth optional
-    const scheme = deref(doc, schemes[names[0]])
-    const type = str(scheme.type)
-    const httpScheme = str(scheme.scheme).toLowerCase()
-    if ((type === 'http' && httpScheme === 'bearer') || type === 'openIdConnect') {
-      return { type: 'bearer', token: '{{token}}' }
-    }
-    if ((type === 'http' && httpScheme === 'basic') || type === 'basic') {
-      return { type: 'basic', username: '{{username}}', password: '{{password}}' }
-    }
-    if (type === 'apiKey') {
-      if (scheme.in === 'cookie') break
-      return { type: 'apikey', key: str(scheme.name), value: '{{apiKey}}', in: scheme.in === 'query' ? 'query' : 'header' }
-    }
-    if (type === 'oauth2') {
-      const flows = (scheme.flows ?? {}) as Json
-      const cc = (flows.clientCredentials ?? (scheme.flow === 'application' ? scheme : undefined)) as Json | undefined
-      if (cc) {
-        return {
-          type: 'oauth2',
-          grantType: 'client_credentials',
-          tokenUrl: str(cc.tokenUrl),
-          clientId: '{{clientId}}',
-          clientSecret: '{{clientSecret}}',
-          scope: Object.keys((cc.scopes ?? {}) as Json).join(' ')
-        }
-      }
-      return { type: 'bearer', token: '{{token}}' }
+}
+
+/**
+ * The variable each API key scheme sends: `{{apiKey}}` for a document's only
+ * one; with several, each gets its own, named after its scheme, so two keys
+ * required together never share a value.
+ */
+function apiKeyVariables(doc: Json): Map<string, string> {
+  const schemes = securitySchemes(doc)
+  const names = Object.keys(schemes).filter((name) => str(deref(doc, schemes[name]).type) === 'apiKey')
+  if (names.length === 1) return new Map([[names[0], 'apiKey']])
+  const taken = new Set(['token', 'username', 'password', 'clientId', 'clientSecret', 'baseUrl'])
+  return new Map(
+    names.map((name) => {
+      const base = name.replace(/[^\w.-]+/g, '_') || 'apiKey'
+      let variable = base
+      for (let n = 2; taken.has(variable); n++) variable = `${base}_${n}`
+      taken.add(variable)
+      return [name, variable]
+    })
+  )
+}
+
+/** One security scheme as Tiger auth, or undefined when Tiger cannot send it (a cookie API key...). */
+function schemeAuth(scheme: Json, apiKeyVariable: string): TigerAuth | undefined {
+  const type = str(scheme.type)
+  const httpScheme = str(scheme.scheme).toLowerCase()
+  if ((type === 'http' && httpScheme === 'bearer') || type === 'openIdConnect') {
+    return { type: 'bearer', token: '{{token}}' }
+  }
+  if ((type === 'http' && httpScheme === 'basic') || type === 'basic') {
+    return { type: 'basic', username: '{{username}}', password: '{{password}}' }
+  }
+  if (type === 'apiKey') {
+    if (scheme.in === 'cookie') return undefined
+    return {
+      type: 'apikey',
+      key: str(scheme.name),
+      value: `{{${apiKeyVariable}}}`,
+      in: scheme.in === 'query' ? 'query' : 'header'
     }
   }
-  warnings.push({
-    request: label ?? 'Collection auth',
-    ...warning('imports.securityUnmapped')
-  })
+  if (type === 'oauth2') {
+    const flows = (scheme.flows ?? {}) as Json
+    const cc = (flows.clientCredentials ?? (scheme.flow === 'application' ? scheme : undefined)) as Json | undefined
+    if (cc) {
+      return {
+        type: 'oauth2',
+        grantType: 'client_credentials',
+        tokenUrl: str(cc.tokenUrl),
+        clientId: '{{clientId}}',
+        clientSecret: '{{clientSecret}}',
+        scope: Object.keys((cc.scopes ?? {}) as Json).join(' ')
+      }
+    }
+    return { type: 'bearer', token: '{{token}}' }
+  }
   return undefined
+}
+
+type ApiKeyAuth = Extract<TigerAuth, { type: 'apikey' }>
+
+interface Security {
+  auth?: TigerAuth
+  /**
+   * API keys required together with `auth`. Tiger auth holds one scheme, so
+   * these go on the request as headers or query parameters.
+   */
+  alsoSent: ApiKeyAuth[]
+}
+
+/**
+ * The first usable requirement of the document (or an operation). Its
+ * schemes are all required: one becomes the auth (one that uses the
+ * Authorization header first), the other API keys are sent with it, and a
+ * scheme Tiger cannot add is reported.
+ */
+function securityOf(
+  doc: Json,
+  requirement: unknown,
+  apiKeys: Map<string, string>,
+  warnings: ImportWarning[],
+  label = 'Collection auth'
+): Security {
+  const schemes = securitySchemes(doc)
+  for (const r of asArray(requirement)) {
+    const names = Object.keys((r ?? {}) as Json)
+    if (names.length === 0) return { auth: { type: 'none' }, alsoSent: [] } // `{}` = auth optional
+    const mapped = names.map((name) => ({
+      name,
+      auth: schemeAuth(deref(doc, schemes[name]), apiKeys.get(name) ?? 'apiKey')
+    }))
+    const usable = mapped.filter((m) => m.auth)
+    if (usable.length === 0) {
+      if (deref(doc, schemes[names[0]]).in === 'cookie') break
+      continue
+    }
+    const primary = usable.find((m) => m.auth!.type !== 'apikey') ?? usable[0]
+    const alsoSent: ApiKeyAuth[] = []
+    const missing: string[] = []
+    for (const m of mapped) {
+      if (m === primary) continue
+      if (m.auth?.type === 'apikey') alsoSent.push(m.auth)
+      else missing.push(m.name)
+    }
+    if (missing.length) {
+      warnings.push({ request: label, ...warning('imports.securityPartial', { schemes: missing.join(', ') }) })
+    }
+    return { auth: primary.auth, alsoSent }
+  }
+  if (asArray(requirement).length) warnings.push({ request: label, ...warning('imports.securityUnmapped') })
+  return { alsoSent: [] }
+}
+
+/**
+ * Credentials come from the security scheme: a parameter with the same name
+ * stays, disabled, so an empty one never replaces them, and each API key
+ * required alongside the auth is sent with its own variable.
+ */
+function applySecurity(request: TigerRequest, auth: TigerAuth | undefined, alsoSent: ApiKeyAuth[]): void {
+  const rows = (where: 'header' | 'query') => (where === 'header' ? request.headers : request.query)
+  const same = (where: 'header' | 'query', a: string, b: string) =>
+    where === 'header' ? a.toLowerCase() === b.toLowerCase() : a === b
+  const sets: Array<{ in: 'header' | 'query'; name: string }> = alsoSent.map((k) => ({ in: k.in, name: k.key }))
+  if (auth?.type === 'apikey') sets.push({ in: auth.in, name: auth.key })
+  else if (auth && auth.type !== 'none') sets.push({ in: 'header', name: 'Authorization' })
+  for (const target of sets) {
+    for (const row of rows(target.in)) if (same(target.in, row.name, target.name)) row.enabled = false
+  }
+  for (const key of alsoSent) rows(key.in).push({ name: key.key, value: key.value, enabled: true })
 }
 
 export function importOpenApi(raw: unknown): ImportResult {
@@ -300,7 +426,9 @@ export function importOpenApi(raw: unknown): ImportResult {
   const paths = (doc.paths ?? {}) as Json
   const requests: ImportedRequest[] = []
   const warnings: ImportWarning[] = []
-  const auth = securityAuth(doc, doc.security, warnings)
+  const apiKeys = apiKeyVariables(doc)
+  const collection = securityOf(doc, doc.security, apiKeys, warnings)
+  const auth = collection.auth
   let needsToken = auth && auth.type !== 'none'
 
   for (const [path, methodsRaw] of Object.entries(paths)) {
@@ -326,23 +454,35 @@ export function importOpenApi(raw: unknown): ImportResult {
         return `{{${name}}}`
       })
       const name = str(op.summary) || str(op.operationId) || `${method.toUpperCase()} ${path}`
+      const { body, contentType } = bodyOf(doc, op, params)
       const request: ImportedRequest['request'] = {
         name,
         method,
         url,
         query: paramsOf(doc, params, 'query'),
         headers: paramsOf(doc, params, 'header'),
-        body: bodyOf(doc, op, params)
+        body
+      }
+      if (contentType && !request.headers.some((h) => h.enabled && h.name.toLowerCase() === 'content-type')) {
+        request.headers.push({ name: 'Content-Type', value: contentType, enabled: true })
       }
       const docs = str(op.description)
       if (docs.trim()) request.docs = docs
-      if (op.security !== undefined) {
-        const opAuth = securityAuth(doc, op.security, warnings, name)
-        if (opAuth) {
-          request.auth = opAuth
-          if (opAuth.type !== 'none') needsToken = true
+      // An operation's own security replaces the document's; `security: []`
+      // marks it public, so it must not inherit the collection's credentials.
+      let security = collection
+      if (Array.isArray(op.security) && op.security.length === 0) {
+        security = { auth: { type: 'none' }, alsoSent: [] }
+        request.auth = { type: 'none' }
+      } else if (op.security !== undefined) {
+        const own = securityOf(doc, op.security, apiKeys, warnings, name)
+        if (own.auth) {
+          security = own
+          request.auth = own.auth
+          if (own.auth.type !== 'none') needsToken = true
         }
       }
+      applySecurity(request, security.auth, security.alsoSent)
       if (params.some((p) => p.in === 'cookie')) {
         warnings.push({
           request: name,

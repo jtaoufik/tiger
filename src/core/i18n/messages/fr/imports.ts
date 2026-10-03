@@ -103,6 +103,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'Tiger n’a qu’une seule portée de variables : les variables de collection ({names}) ont donc été ajoutées à chaque environnement. Les valeurs définies dans un environnement l’emportent.',
   'imports.folderRenamed':
     'Deux dossiers portent ici le nom « {name} ». Tiger distingue les dossiers par leur nom : celui-ci s’appelle donc désormais « {renamed} », avec ses propres requêtes et réglages.',
+  'imports.securityPartial':
+    'L’API exige aussi {schemes} ici, que Tiger ne peut pas configurer. Ajoutez-le à la requête à la main.',
 
   'imports.report.title': '{name} importé',
   'imports.report.statsLabel': 'Importé',
