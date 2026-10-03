@@ -1,7 +1,17 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../../src/renderer/src/App'
-import type { ImportResult } from '../../src/core/import/types'
+import {
+  bridge,
+  collection,
+  environmentOnly,
+  envPicker,
+  importVia,
+  installMatchMedia,
+  lastSentUrl,
+  pickedEnv,
+  sidebar
+} from './appHarness'
 
 // The real analytics module pulls in Firebase.
 vi.mock('../../src/renderer/src/analytics', () => ({
@@ -10,89 +20,7 @@ vi.mock('../../src/renderer/src/analytics', () => ({
   trackEvent: vi.fn()
 }))
 
-beforeAll(() => {
-  window.matchMedia ??= ((query: string) => ({
-    matches: false,
-    media: query,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    onchange: null,
-    dispatchEvent: () => false
-  })) as unknown as typeof window.matchMedia
-})
-
-/** One top-level GET request per collection, its host taken from {{host}}. */
-function collection(name: string, request: string, host?: string): ImportResult {
-  return {
-    name,
-    source: 'postman',
-    requests: [
-      {
-        path: [],
-        request: {
-          name: request,
-          method: 'get',
-          url: `{{host}}/${request.toLowerCase().replace(/\s+/g, '-')}`,
-          headers: [],
-          query: [],
-          body: { type: 'none', content: '' }
-        }
-      }
-    ],
-    ...(host
-      ? { environments: [{ name: `${name} env`, variables: [{ name: 'host', value: host, enabled: true }] }] }
-      : {})
-  }
-}
-
-function environmentOnly(envName: string, host: string): ImportResult {
-  return {
-    name: envName,
-    source: 'postman',
-    requests: [],
-    environments: [{ name: envName, variables: [{ name: 'host', value: host, enabled: true }] }]
-  }
-}
-
-function bridge(imports: ImportResult[]) {
-  const queue = [...imports]
-  return {
-    importCollection: vi.fn(async () => queue.shift() ?? null),
-    send: vi.fn(async (_built: { url: string }, _timeoutMs?: number, _cancelKey?: string) => ({
-      status: 200,
-      statusText: 'OK',
-      headers: {},
-      body: '{}',
-      timeMs: 1
-    })),
-    getSettings: vi.fn().mockResolvedValue({ theme: 'system', timeoutMs: 30000, fontSize: 13, analyticsEnabled: false }),
-    version: vi.fn().mockResolvedValue('test'),
-    checkUpdate: vi.fn().mockResolvedValue(null),
-    onUpdateDownloaded: vi.fn(),
-    onShortcut: vi.fn(),
-    historyRead: vi.fn().mockResolvedValue([]),
-    historyAppend: vi.fn(),
-    track: vi.fn()
-  }
-}
-
-async function importVia(source: string) {
-  fireEvent.click(screen.getByRole('button', { name: 'Import' }))
-  const choice = [...document.querySelectorAll<HTMLButtonElement>('.modal button.choice')].find((b) =>
-    b.textContent?.startsWith(source)
-  )
-  fireEvent.click(choice!)
-  fireEvent.click(await screen.findByRole('button', { name: 'Done' }))
-}
-
-const sidebar = () => document.querySelector('.sidebar') as HTMLElement
-const envPicker = () => screen.getByLabelText('Active environment') as HTMLSelectElement
-const pickedEnv = () => envPicker().selectedOptions[0]?.textContent
-
-/** The URL the last send put on the wire. */
-const lastSentUrl = (b: ReturnType<typeof bridge>) => b.send.mock.calls.at(-1)?.[0].url
+beforeAll(installMatchMedia)
 
 afterEach(() => {
   delete (window as { tiger?: unknown }).tiger
@@ -179,8 +107,7 @@ describe('actions on a request or collection that is not the active one', () => 
 
   it('exports the collection whose menu was used, with that collection’s variables', async () => {
     const b = await twoCollectionsAlphaActive()
-    const exportCollection = vi.fn(async (_filename: string, _text: string) => '/tmp/out.json')
-    ;(window as { tiger?: Record<string, unknown> }).tiger!.exportCollection = exportCollection
+    const exportCollection = b.exportCollection
     fireEvent.contextMenu(within(sidebar()).getByText('Beta').closest('.col-head')!)
     fireEvent.click(screen.getByText(/^Export/))
     const choice = [...document.querySelectorAll<HTMLButtonElement>('.modal button.choice')].find((el) =>

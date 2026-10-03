@@ -350,7 +350,12 @@ export default function App() {
     { id?: string; colId?: string; path?: string[]; nonce: number } | null
   >(null)
   /** Ask the request editor to show a section (menu "Load test"). */
-  const [showSection, setShowSection] = useState<{ id: RequestSectionId; nonce: number } | null>(null)
+  /** A section to open from outside (menu "Load test"), for that request only: it must not stick to the next one. */
+  const [showSection, setShowSection] = useState<{
+    id: RequestSectionId
+    nonce: number
+    requestId: string
+  } | null>(null)
   const [editorH, setEditorH] = useState<number | null>(() => {
     const stored = Number(readStored('tiger.editorH'))
     return stored > 0 ? stored : null
@@ -1360,6 +1365,7 @@ export default function App() {
       )
       openTab({ kind: 'request', id })
       setActiveId(id)
+      setInspect(null)
       setModal('none')
       setView('workspace')
       toast(t('app.toast.curlImported'))
@@ -1425,7 +1431,9 @@ export default function App() {
         }
       }
 
-      const colId = `import-${++importCount.current}`
+      // Unique across launches: history keeps request ids, and a fresh import
+      // must not inherit the sends of an earlier one.
+      const colId = `import-${Date.now().toString(36)}-${++importCount.current}`
       const entries: SidebarEntry[] = result.requests.map((r, i) => ({
         id: `${colId}${SEP}${i}`,
         name: r.request.name,
@@ -1460,6 +1468,8 @@ export default function App() {
       if (entries[0]) {
         openTab({ kind: 'request', id: entries[0].id })
         setActiveId(entries[0].id)
+        // Show it: a collection or folder page left open would hide the new tab.
+        setInspect(null)
       }
       setView('workspace')
       // Select the first imported environment so {{variables}} resolve at once.
@@ -2430,7 +2440,7 @@ export default function App() {
       setView('workspace')
       const tab = openTabs.find((t) => t.kind === 'request' && t.id === activeId)
       if (tab) activateTab(tab)
-      setShowSection({ id: 'perf', nonce: Date.now() })
+      setShowSection({ id: 'perf', nonce: Date.now(), requestId: activeId })
     },
     'run-collection': () => {
       const t = currentTarget()
@@ -2795,7 +2805,7 @@ export default function App() {
                     getBuilt={() =>
                       activeEffective ? buildRequest(activeEffective, envToVars(activeEnv)) : null
                     }
-                    showSection={showSection}
+                    showSection={showSection?.requestId === activeId ? showSection : null}
                     perf={{
                       collectionAuth: inheritedAuth,
                       env: activeEnv,
