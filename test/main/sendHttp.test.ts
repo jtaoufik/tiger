@@ -2,6 +2,10 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { brotliCompressSync, deflateRawSync, deflateSync, gzipSync } from 'node:zlib'
 
 // sendHttp with Electron stubbed: what reaches a loopback server through the
 // Node send path. Chromium's own path (net.request) is checked end to end in
@@ -72,6 +76,53 @@ beforeEach(() => {
 })
 afterEach(() => {
   delete process.env.TIGER_E2E
+})
+
+describe('compressed responses on the Node send path (certificate files configured)', () => {
+  const payload = JSON.stringify({ zipped: 'hello-tiger' })
+  const encoded: Record<string, [string, Buffer]> = {
+    '/gzip': ['gzip', gzipSync(payload)],
+    '/x-gzip': ['x-gzip', gzipSync(payload)],
+    '/deflate': ['deflate', deflateSync(payload)],
+    '/raw-deflate': ['deflate', deflateRawSync(payload)],
+    '/br': ['br', brotliCompressSync(payload)],
+    '/gzip-then-br': ['gzip, br', brotliCompressSync(gzipSync(payload))]
+  }
+
+  beforeEach(() => {
+    const dir = mkdtempSync(join(tmpdir(), 'tiger-ca-'))
+    writeFileSync(join(dir, 'ca.pem'), '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n')
+    settings.value = { ...defaults, caFile: join(dir, 'ca.pem') }
+    route = (req, res) => {
+      const path = req.url ?? ''
+      if (path === '/not-gzip') {
+        res.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'gzip' })
+        res.end('plain text, not gzip')
+        return true
+      }
+      if (path === '/zstd') {
+        res.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Encoding': 'zstd' })
+        res.end('zstd is not decoded')
+        return true
+      }
+      const hit = encoded[path]
+      if (!hit) return false
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Encoding': hit[0] })
+      res.end(hit[1])
+      return true
+    }
+  })
+
+  it.each(Object.keys(encoded))('decodes %s', async (path) => {
+    const res = await sendHttp({ method: 'GET', url: `${base}${path}`, headers: { 'Accept-Encoding': 'gzip, deflate, br' } })
+    expect(res.body).toBe(payload)
+    expect(chromium.request).not.toHaveBeenCalled()
+  })
+
+  it('shows a body that does not decode, or uses an unknown coding, as received', async () => {
+    expect((await sendHttp({ method: 'GET', url: `${base}/not-gzip`, headers: {} })).body).toBe('plain text, not gzip')
+    expect((await sendHttp({ method: 'GET', url: `${base}/zstd`, headers: {} })).body).toBe('zstd is not decoded')
+  })
 })
 
 describe('headers Chromium keeps for itself', () => {

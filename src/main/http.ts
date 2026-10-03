@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { request as httpsRequest, type RequestOptions } from 'node:https'
 import { STATUS_CODES, request as httpRequest } from 'node:http'
+import { promisify } from 'node:util'
+import { brotliDecompress, gunzip, inflate, inflateRaw } from 'node:zlib'
 import { attachCookieStore, cookieHeaderFor, cookiesSettled, storeCookies } from './cookieJar'
 import { isE2E, isLoopbackOrLocal } from './e2eGuard'
 import type { BuiltRequest } from '../core/request'
@@ -300,6 +302,37 @@ function chromiumHop(
   })
 }
 
+const gunzipAsync = promisify(gunzip)
+const inflateAsync = promisify(inflate)
+const inflateRawAsync = promisify(inflateRaw)
+const brotliDecompressAsync = promisify(brotliDecompress)
+
+/**
+ * Undo the response's Content-Encoding (gzip, deflate, br; the last one
+ * applied first), as Chromium does on its own path. A body that does not
+ * decode, or uses another coding, is shown as received.
+ */
+async function decodeBody(body: Buffer, contentEncoding: string | undefined): Promise<Buffer> {
+  const codings = (contentEncoding ?? '')
+    .split(',')
+    .map((c) => c.trim().toLowerCase())
+    .filter((c) => c && c !== 'identity')
+  if (!codings.length || !body.length) return body
+  let out = body
+  try {
+    for (const coding of codings.reverse()) {
+      if (coding === 'gzip' || coding === 'x-gzip') out = await gunzipAsync(out)
+      // "deflate" is meant to be zlib-wrapped, but some servers send it raw.
+      else if (coding === 'deflate') out = await inflateAsync(out).catch(() => inflateRawAsync(out))
+      else if (coding === 'br') out = await brotliDecompressAsync(out)
+      else return body
+    }
+    return out
+  } catch {
+    return body
+  }
+}
+
 type TlsFiles = Pick<RequestOptions, 'ca' | 'cert' | 'key' | 'pfx' | 'passphrase'>
 
 /** The imported certificate files, for the Node send path. */
@@ -355,14 +388,14 @@ function nodeHop(
       const headersAt = Date.now()
       const chunks: Buffer[] = []
       res.on('data', (chunk: Buffer) => chunks.push(chunk))
-      res.on('end', () => {
+      res.on('end', async () => {
         const location = res.headers.location
         resolve({
           status: res.statusCode ?? 0,
           statusText: res.statusMessage ?? '',
           ...joinHeaders(res.headers),
           ...(location ? { location } : {}),
-          body: Buffer.concat(chunks),
+          body: await decodeBody(Buffer.concat(chunks), res.headers['content-encoding']),
           headersAt,
           phases: {
             ...(dnsAt ? { dns: dnsAt - started } : {}),
