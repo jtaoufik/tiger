@@ -41,7 +41,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.ssl.label': '验证 SSL 证书',
   'settings.ssl.desc': '关闭后允许自签名证书（仅限开发）。',
   'settings.proxy.label': '使用代理',
-  'settings.proxy.desc': '让所有请求经由 HTTP/HTTPS 或 SOCKS 代理发送。',
+  'settings.proxy.desc': '通过 HTTP/HTTPS 或 SOCKS 代理发送所有请求。关闭时，Tiger 使用系统代理设置。',
   'settings.proxy.url.label': '代理 URL',
   'settings.proxy.url.desc': '例如 http://127.0.0.1:8080 或 socks5://127.0.0.1:1080',
   'settings.proxy.username.label': '代理用户名',
@@ -86,7 +86,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.passphrase.label': '证书口令',
   'settings.passphrase.desc': '如果上面的密钥或证书包设有密码，用它来解锁。',
   'settings.passphrase.placeholder': '口令',
-  'settings.certHint': '使用导入证书的请求不会经过代理。',
+  'settings.certHint': '使用导入证书的请求，或设置了 Host、Sec-Fetch-*、Proxy-* 或 Transfer-Encoding 请求头的请求，不经过代理。',
 
   'settings.mcp.intro':
     'Tiger 内置 MCP（Model Context Protocol）服务器，可向 Claude Desktop 和其他兼容 MCP 的客户端开放你的集合。把下面的代码片段添加到你的 {file} 即可连接。',

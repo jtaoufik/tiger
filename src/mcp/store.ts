@@ -1,4 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises'
+import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
+import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib'
 import { readTextFile } from '../main/textFile'
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
@@ -172,6 +175,48 @@ async function wireRequest(
 }
 
 /** Sends requests with Node's fetch. `root` is the collection folder, for relative file paths. */
+/** One request through node:http(s), for what fetch refuses; the response is decoded like fetch does. */
+function sendRaw(
+  url: string,
+  method: string,
+  headers: Record<string, string>,
+  body: string | Uint8Array,
+  signal: AbortSignal
+): Promise<Omit<RawResponse, 'timeMs'>> {
+  return new Promise((done, failed) => {
+    const send = url.startsWith('https:') ? httpsRequest : httpRequest
+    // Node frames no GET body by itself: without a length the server reads
+    // the body as a second, broken request.
+    const length = typeof body === 'string' ? Buffer.byteLength(body) : body.byteLength
+    const req = send(url, { method, headers: { ...headers, 'Content-Length': String(length) }, signal }, (res) => {
+      const decode =
+        res.headers['content-encoding'] === 'gzip'
+          ? createGunzip()
+          : res.headers['content-encoding'] === 'deflate'
+            ? createInflate()
+            : res.headers['content-encoding'] === 'br'
+              ? createBrotliDecompress()
+              : null
+      const stream = decode ? res.pipe(decode) : res
+      const chunks: Buffer[] = []
+      stream.on('data', (c: Buffer) => chunks.push(c))
+      stream.on('error', failed)
+      stream.on('end', () => {
+        const out: Record<string, string> = {}
+        for (const [k, v] of Object.entries(res.headers)) if (v !== undefined) out[k] = Array.isArray(v) ? v.join(', ') : v
+        done({
+          status: res.statusCode ?? 0,
+          statusText: res.statusMessage ?? '',
+          headers: out,
+          body: Buffer.concat(chunks).toString('utf8')
+        })
+      })
+    })
+    req.on('error', failed)
+    req.end(body)
+  })
+}
+
 export function createNodeRunner(root?: string): HttpRunner {
   return {
     oauthToken: exchangeOAuthToken,
@@ -181,6 +226,11 @@ export function createNodeRunner(root?: string): HttpRunner {
       const started = Date.now()
       try {
         const { headers: sentHeaders, body: sentBody } = await wireRequest(built, root)
+        // fetch refuses a body on GET or HEAD, which some APIs read
+        // (Elasticsearch searches): those go out through node:http(s).
+        if (sentBody !== undefined && /^(GET|HEAD)$/i.test(built.method)) {
+          return { ...(await sendRaw(built.url, built.method, sentHeaders, sentBody, controller.signal)), timeMs: Date.now() - started }
+        }
         const res = await fetch(built.url, {
           method: built.method,
           headers: sentHeaders,

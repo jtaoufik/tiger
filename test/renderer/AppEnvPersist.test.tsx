@@ -70,7 +70,7 @@ describe('environments across a restart', () => {
     ;(window as { tiger?: unknown }).tiger = b
     render(<App />)
     await waitFor(() => expect(pickedEnv()).toBe('staging'))
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send' }))
     await waitFor(() => expect(b.send).toHaveBeenCalled())
     expect(lastSentUrl(b)).toBe('https://staging.test/me?t=t-2')
   })
@@ -85,7 +85,7 @@ describe('environments across a restart', () => {
     render(<App />)
     await waitFor(() => expect(pickedEnv()).toBe('dev'))
     await within(sidebar()).findByText('Me')
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Send' }))
     await waitFor(() => expect(b.files.get('/col/environments/dev.tiger')).not.toContain('token'))
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(b.send).toHaveBeenCalledTimes(2))

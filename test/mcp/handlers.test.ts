@@ -341,3 +341,16 @@ describe('handleRunRequest', () => {
     expect(result.content[0].text).toContain('get.tiger')
   })
 })
+
+describe('handleRunRequest and API keys in the query string', () => {
+  it('sends the key but never echoes it back to the AI client', async () => {
+    const runner = fakeRunner()
+    const keyStore = makeStore({
+      readCollectionAuth: async () => ({ type: 'apikey', key: 'api_key', value: 's3cret-key', in: 'query' })
+    })
+    const result = await handleRunRequest(keyStore, runner, { path: 'inherit.tiger' })
+    expect(runner.last?.url).toBe('https://api.test/me?api_key=s3cret-key')
+    expect(result.content[0].text).not.toContain('s3cret-key')
+    expect(JSON.parse(result.content[0].text).request.url).toBe('https://api.test/me?api_key=***')
+  })
+})

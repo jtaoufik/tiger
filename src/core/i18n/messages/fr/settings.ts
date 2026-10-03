@@ -47,7 +47,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.ssl.desc':
     'Désactivez pour autoriser les certificats auto-signés (développement uniquement).',
   'settings.proxy.label': 'Utiliser un proxy',
-  'settings.proxy.desc': 'Faire passer toutes les requêtes par un proxy HTTP/HTTPS ou SOCKS.',
+  'settings.proxy.desc': 'Faire passer toutes les requêtes par un proxy HTTP/HTTPS ou SOCKS. Désactivé, Tiger suit les réglages de proxy du système.',
   'settings.proxy.url.label': 'URL du proxy',
   'settings.proxy.url.desc': 'ex. http://127.0.0.1:8080 ou socks5://127.0.0.1:1080',
   'settings.proxy.username.label': 'Nom d’utilisateur du proxy',
@@ -96,7 +96,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.passphrase.label': 'Phrase secrète du certificat',
   'settings.passphrase.desc': 'Déverrouille la clé ou le bundle ci-dessus, s’il a un mot de passe.',
   'settings.passphrase.placeholder': 'phrase secrète',
-  'settings.certHint': 'Les requêtes qui utilisent des certificats importés contournent le proxy.',
+  'settings.certHint': 'Les requêtes qui utilisent des certificats importés, ou qui fixent un en-tête Host, Sec-Fetch-*, Proxy-* ou Transfer-Encoding, contournent le proxy.',
 
   'settings.mcp.intro':
     'Tiger inclut un serveur MCP (Model Context Protocol) qui expose vos collections à Claude Desktop et aux autres clients compatibles MCP. Ajoutez l’extrait ci-dessous à votre {file} pour vous connecter.',

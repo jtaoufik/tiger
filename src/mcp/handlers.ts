@@ -6,7 +6,7 @@
 
 import { nearestFolderAuth, resolveAuth } from '../core/collectionSettings'
 import { envToVars, type VarMap } from '../core/interpolate'
-import { buildRequest, type BuiltRequest } from '../core/request'
+import { buildRequest, redactedUrl, type BuiltRequest } from '../core/request'
 import { formatResponse, type RawResponse } from '../core/response'
 import { parseRequest } from '../core/tigerFormat'
 import type { TigerAuth, TigerEnvironment, TigerRequest } from '../core/types'
@@ -177,7 +177,8 @@ export async function handleRunRequest(
   try {
     const formatted = formatResponse(await runner.send(built, args.timeoutMs))
     return ok({
-      request: { method: built.method, url: built.url },
+      // An API key sent in the query string is not echoed back to the client.
+      request: { method: built.method, url: redactedUrl(built) },
       environment: args.environment ?? null,
       status: formatted.status,
       statusText: formatted.statusText,
@@ -188,7 +189,7 @@ export async function handleRunRequest(
       body: formatted.body
     })
   } catch (e) {
-    return fail(sanitizeError(`Request to ${built.url} failed: ${(e as Error).message}`))
+    return fail(sanitizeError(`Request to ${redactedUrl(built)} failed: ${(e as Error).message}`))
   }
 }
 

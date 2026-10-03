@@ -43,7 +43,7 @@ export const settings = {
   'settings.ssl.label': 'Verify SSL certificates',
   'settings.ssl.desc': 'Turn off to allow self-signed certificates (development only).',
   'settings.proxy.label': 'Use a proxy',
-  'settings.proxy.desc': 'Route all requests through an HTTP/HTTPS or SOCKS proxy.',
+  'settings.proxy.desc': 'Route all requests through an HTTP/HTTPS or SOCKS proxy. When off, Tiger uses the system proxy settings.',
   'settings.proxy.url.label': 'Proxy URL',
   'settings.proxy.url.desc': 'e.g. http://127.0.0.1:8080 or socks5://127.0.0.1:1080',
   'settings.proxy.username.label': 'Proxy username',
@@ -91,7 +91,7 @@ export const settings = {
   'settings.passphrase.label': 'Certificate passphrase',
   'settings.passphrase.desc': 'Unlocks the key or bundle above, if it has a password.',
   'settings.passphrase.placeholder': 'passphrase',
-  'settings.certHint': 'Requests using imported certificates bypass the proxy.',
+  'settings.certHint': 'Requests using imported certificates, or setting a Host, Sec-Fetch-*, Proxy-* or Transfer-Encoding header, bypass the proxy.',
 
   'settings.mcp.intro':
     'Tiger ships a built-in MCP server (Model Context Protocol) that exposes your collections to Claude Desktop and other MCP-compatible clients. Add the snippet below to your {file} to connect.',

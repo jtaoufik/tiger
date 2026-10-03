@@ -100,7 +100,8 @@ export async function runRequest(
         const res = await fetch(built.url, {
           method: built.method,
           headers: sendHeaders,
-          body: bodyPayload,
+          // A browser cannot send a GET or HEAD body (the desktop app can).
+          body: /^(GET|HEAD)$/i.test(built.method) ? undefined : bodyPayload,
           signal: controller.signal
         })
         const headersAt = performance.now()

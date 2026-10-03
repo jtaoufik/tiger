@@ -44,7 +44,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.ssl.label': 'التحقق من شهادات SSL',
   'settings.ssl.desc': 'أوقفه للسماح بالشهادات الموقّعة ذاتيًا (للتطوير فقط).',
   'settings.proxy.label': 'استخدام وكيل',
-  'settings.proxy.desc': 'تمرير كل الطلبات عبر وكيل HTTP/HTTPS أو SOCKS.',
+  'settings.proxy.desc': 'توجيه كل الطلبات عبر وكيل HTTP/HTTPS أو SOCKS. عند الإيقاف، يستخدم Tiger إعدادات الوكيل في النظام.',
   'settings.proxy.url.label': 'عنوان URL للوكيل',
   'settings.proxy.url.desc': 'مثل http://127.0.0.1:8080 أو socks5://127.0.0.1:1080',
   'settings.proxy.username.label': 'اسم مستخدم الوكيل',
@@ -90,7 +90,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.passphrase.label': 'عبارة مرور الشهادة',
   'settings.passphrase.desc': 'تفتح المفتاح أو الحزمة أعلاه إن كانت محمية بكلمة مرور.',
   'settings.passphrase.placeholder': 'عبارة المرور',
-  'settings.certHint': 'الطلبات التي تستخدم شهادات مستوردة تتجاوز الوكيل.',
+  'settings.certHint': 'الطلبات التي تستخدم شهادات مستوردة، أو تضبط ترويسة Host أو Sec-Fetch-* أو Proxy-* أو Transfer-Encoding، لا تمر عبر الوكيل.',
 
   'settings.mcp.intro':
     'يتضمن Tiger خادم MCP (Model Context Protocol) مدمجًا يتيح مجموعاتك لـ Claude Desktop وغيره من عملاء MCP المتوافقين. أضف المقتطف أدناه إلى ملف {file} للاتصال.',

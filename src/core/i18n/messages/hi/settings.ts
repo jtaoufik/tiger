@@ -44,7 +44,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.ssl.label': 'SSL प्रमाणपत्र सत्यापित करें',
   'settings.ssl.desc': 'स्व-हस्ताक्षरित प्रमाणपत्रों की अनुमति के लिए बंद करें (केवल डेवलपमेंट के लिए)।',
   'settings.proxy.label': 'प्रॉक्सी इस्तेमाल करें',
-  'settings.proxy.desc': 'सभी अनुरोध HTTP/HTTPS या SOCKS प्रॉक्सी से भेजें।',
+  'settings.proxy.desc': 'सभी रिक्वेस्ट को HTTP/HTTPS या SOCKS प्रॉक्सी से भेजें। बंद होने पर Tiger सिस्टम की प्रॉक्सी सेटिंग इस्तेमाल करता है।',
   'settings.proxy.url.label': 'प्रॉक्सी URL',
   'settings.proxy.url.desc': 'जैसे http://127.0.0.1:8080 या socks5://127.0.0.1:1080',
   'settings.proxy.username.label': 'प्रॉक्सी उपयोगकर्ता नाम',
@@ -93,7 +93,7 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.passphrase.label': 'प्रमाणपत्र पासफ़्रेज़',
   'settings.passphrase.desc': 'ऊपर की कुंजी या बंडल को अनलॉक करता है, अगर उस पर पासवर्ड है।',
   'settings.passphrase.placeholder': 'पासफ़्रेज़',
-  'settings.certHint': 'आयात किए गए प्रमाणपत्रों वाले अनुरोध प्रॉक्सी को बायपास करते हैं।',
+  'settings.certHint': 'इम्पोर्ट किए गए सर्टिफ़िकेट वाली रिक्वेस्ट, या Host, Sec-Fetch-*, Proxy-* या Transfer-Encoding हेडर सेट करने वाली रिक्वेस्ट, प्रॉक्सी से नहीं जातीं।',
 
   'settings.mcp.intro':
     'Tiger में एक बिल्ट-इन MCP सर्वर (Model Context Protocol) है जो आपके संग्रह Claude Desktop और अन्य MCP-संगत क्लाइंट को उपलब्ध कराता है। कनेक्ट करने के लिए नीचे का स्निपेट अपनी {file} में जोड़ें।',
