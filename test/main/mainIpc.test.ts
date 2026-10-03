@@ -5,7 +5,7 @@
  * like NTFS does on Windows (asserted first).
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -92,13 +92,20 @@ afterAll(async () => {
   await rm(root, { recursive: true, force: true })
 })
 
-describe('renaming a folder only by case', () => {
-  it('runs on a disk that ignores case, like NTFS', async () => {
-    await mkdir(join(root, 'probe'))
-    expect(existsSync(join(root, 'PROBE'))).toBe(true)
-  })
+/** Windows (NTFS) and macOS (APFS) disks ignore case; Linux CI runners do not. */
+const caseInsensitiveDisk = (() => {
+  const dir = mkdtempSync(join(tmpdir(), 'tiger-case-'))
+  try {
+    mkdirSync(join(dir, 'probe'))
+    return existsSync(join(dir, 'PROBE'))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})()
 
-  it('renames "users" to "Users" instead of failing with "Already exists"', async () => {
+describe('renaming a folder only by case', () => {
+  // The case-only rename only exists where the disk ignores case.
+  it.runIf(caseInsensitiveDisk)('renames "users" to "Users" instead of failing with "Already exists"', async () => {
     await mkdir(join(root, 'users'))
     await writeFile(join(root, 'users', 'get.tiger'), 'meta {\n  name: Get\n}\nget {\n  url: x\n}\n')
     await handlers.get('tiger:moveFile')!({}, `${root}/users`, `${root}/Users`)
