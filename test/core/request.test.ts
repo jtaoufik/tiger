@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildRequest } from '../../src/core/request'
+import { importPostman } from '../../src/core/import'
 import type { TigerAuth, TigerRequest } from '../../src/core/types'
 
 function req(partial: Partial<TigerRequest>): TigerRequest {
@@ -121,5 +122,47 @@ describe('buildRequest', () => {
       req({ url: 'https://x.com/p?x=1#frag', query: [{ name: 'a', value: '2', enabled: true }] })
     )
     expect(built.url).toBe('https://x.com/p?x=1&a=2#frag')
+  })
+})
+
+describe('buildRequest: query encoding', () => {
+  it('keeps percent-escapes a query value already holds (pasted, or imported from Postman)', () => {
+    const built = buildRequest(
+      req({
+        url: 'https://auth.test/authorize',
+        query: [
+          { name: 'redirect_uri', value: 'https%3A%2F%2Fapp.test%2Fcb', enabled: true },
+          { name: 'q', value: 'a%20b', enabled: true },
+          { name: 'filter%5Bstatus%5D', value: 'open', enabled: true }
+        ]
+      })
+    )
+    expect(built.url).toBe('https://auth.test/authorize?redirect_uri=https%3A%2F%2Fapp.test%2Fcb&q=a%20b&filter%5Bstatus%5D=open')
+  })
+
+  it('still encodes what would change the query: spaces, & = # +, and a % that starts no escape', () => {
+    const built = buildRequest(
+      req({ query: [{ name: 'q', value: 'a b&c=d#e+f 100% %zz', enabled: true }] })
+    )
+    expect(built.url).toBe('https://api.test/things?q=a%20b%26c%3Dd%23e%2Bf%20100%25%20%25zz')
+  })
+
+  it('sends a Postman query value that is already encoded once, not twice', () => {
+    const [{ request }] = importPostman({
+      info: { name: 'OAuth', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/' },
+      item: [
+        {
+          name: 'Authorize',
+          request: {
+            method: 'GET',
+            url: {
+              raw: 'https://auth.test/authorize?redirect_uri=https%3A%2F%2Fapp.test%2Fcb',
+              query: [{ key: 'redirect_uri', value: 'https%3A%2F%2Fapp.test%2Fcb' }]
+            }
+          }
+        }
+      ]
+    }).requests
+    expect(buildRequest(request).url).toBe('https://auth.test/authorize?redirect_uri=https%3A%2F%2Fapp.test%2Fcb')
   })
 })

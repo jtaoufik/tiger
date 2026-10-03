@@ -29,11 +29,22 @@ function hasHeader(headers: Record<string, string>, name: string): boolean {
   return Object.keys(headers).some((k) => k.toLowerCase() === lower)
 }
 
+/**
+ * Percent-encode a query name or value. Escapes the text already holds (%3A,
+ * from a pasted URL or a Postman, Insomnia or Bruno import) are kept as they
+ * are, as those tools do, instead of being encoded a second time; a % that
+ * starts no escape is encoded like everything else that would change the query.
+ */
+function encodeQueryPart(text: string): string {
+  return text
+    .split(/(%[0-9A-Fa-f]{2})/)
+    .map((part, i) => (i % 2 ? part : encodeURIComponent(part)))
+    .join('')
+}
+
 function applyQuery(url: string, resolved: Array<{ name: string; value: string }>): string {
   if (!resolved.length) return url
-  const qs = resolved
-    .map((q) => `${encodeURIComponent(q.name)}=${encodeURIComponent(q.value)}`)
-    .join('&')
+  const qs = resolved.map((q) => `${encodeQueryPart(q.name)}=${encodeQueryPart(q.value)}`).join('&')
   // A trailing #fragment must stay at the very end of the URL, so split it off
   // before appending the query string and reattach it afterwards.
   const hashIdx = url.indexOf('#')
