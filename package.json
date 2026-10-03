@@ -33,7 +33,7 @@
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build:mcp": "esbuild src/mcp/server.ts --bundle --platform=node --format=esm --packages=external --outfile=out/mcp/server.mjs",
+    "build:mcp": "esbuild src/mcp/server.ts --bundle --platform=node --format=esm --outfile=out/mcp/server.mjs",
     "mcp": "node out/mcp/server.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

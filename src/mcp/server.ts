@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Tiger MCP server. Exposes a collection over the Model Context Protocol so an
  * AI client (Claude Desktop, Claude Code, …) can list, read and run requests.
@@ -7,6 +8,11 @@
  *
  * Register in Claude Desktop's config:
  *   { "mcpServers": { "tiger": { "command": "tiger-mcp", "args": ["/path/to/collection"] } } }
+ *
+ * `npm run build:mcp` bundles it, dependencies included, into one file
+ * (out/mcp/server.mjs) that needs only Node's built-ins: the installed app
+ * runs it from app.asar.unpacked, where no node_modules can be found, and its
+ * Settings snippet starts it with Tiger's own executable as Node.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
