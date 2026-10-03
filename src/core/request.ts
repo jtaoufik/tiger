@@ -53,6 +53,22 @@ function applyQuery(url: string, resolved: Array<{ name: string; value: string }
   return base + (base.includes('?') ? '&' : '?') + qs + fragment
 }
 
+const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i
+/** host[:port] then the end, a path, a query or a fragment: localhost:8080/x, api.test, [::1]:3000. */
+const BARE_HOST = /^(\[[0-9a-f:.]+\]|[^\s/?#{}:@[\]]+)(:\d+)?([/?#]|$)/i
+
+/**
+ * A URL typed without a scheme (127.0.0.1:3000/x, localhost:8080/x, api.test/x)
+ * goes out over http://, as in Postman, Insomnia and Bruno. Anything else, such
+ * as an unresolved {{variable}} or a bare path, is left as typed so the error
+ * names what is missing.
+ */
+function withDefaultScheme(url: string): string {
+  if (HAS_SCHEME.test(url)) return url
+  if (url.startsWith('//')) return `http:${url}`
+  return BARE_HOST.test(url) ? `http://${url}` : url
+}
+
 export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest {
   const method = req.method.toUpperCase()
   const auth = applyAuth(req.auth, vars)
@@ -63,7 +79,7 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
       .map((q) => ({ name: interpolate(q.name, vars), value: interpolate(q.value, vars) })),
     ...auth.query.map((q) => ({ name: q.name, value: q.value }))
   ]
-  const url = applyQuery(interpolate(req.url, vars), resolvedQuery)
+  const url = applyQuery(withDefaultScheme(interpolate(req.url, vars)), resolvedQuery)
 
   // Auth headers go first so an explicit request header can still override them.
   const headers: Record<string, string> = { ...auth.headers }

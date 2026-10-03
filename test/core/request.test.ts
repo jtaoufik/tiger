@@ -166,3 +166,27 @@ describe('buildRequest: query encoding', () => {
     expect(buildRequest(request).url).toBe('https://auth.test/authorize?redirect_uri=https%3A%2F%2Fapp.test%2Fcb')
   })
 })
+
+describe('buildRequest: URL without a scheme', () => {
+  it.each([
+    ['127.0.0.1:3000/x', 'http://127.0.0.1:3000/x'],
+    ['localhost:8080/x', 'http://localhost:8080/x'],
+    ['api.test/x?a=1', 'http://api.test/x?a=1'],
+    ['api.test', 'http://api.test'],
+    ['[::1]:3000/x', 'http://[::1]:3000/x'],
+    ['//api.test/x', 'http://api.test/x']
+  ])('sends %s over http:// like Postman (%s)', (typed, sent) => {
+    expect(buildRequest(req({ url: typed })).url).toBe(sent)
+  })
+
+  it('resolves variables first: {{host}}/x with host = api.test:8080 goes to http://api.test:8080/x', () => {
+    expect(buildRequest(req({ url: '{{host}}/x' }), { host: 'api.test:8080' }).url).toBe('http://api.test:8080/x')
+  })
+
+  it.each(['https://api.test/x', 'HTTP://api.test/x', 'ws://api.test/x', '{{baseUrl}}/x', '/x', '', 'mailto:a@b.test'])(
+    'leaves %s as written',
+    (typed) => {
+      expect(buildRequest(req({ url: typed })).url).toBe(typed)
+    }
+  )
+})
