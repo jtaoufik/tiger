@@ -139,7 +139,13 @@ describe('mergeImports', () => {
     expect(nested.auth).toBeUndefined()
     expect(nested.folders).toEqual([{ path: ['a'], auth: { type: 'bearer', token: 't' } }])
     expect(nested.warnings?.[0].path).toEqual(['a', 'Users'])
-    // A nested collection's variables become its own environment.
-    expect(nested.environments?.map((e) => e.name)).toEqual(['A variables', 'dev'])
+    // A nested collection's variables go under every environment, so they
+    // resolve whichever one is selected, instead of being an environment that
+    // would leave the other collection's variables unset.
+    expect(nested.environments?.map((e) => e.name)).toEqual(['dev'])
+    expect(nested.collectionVariables).toEqual([
+      { name: 'baseUrl', value: 'x', enabled: true },
+      { name: 'k', value: 'v', enabled: true }
+    ])
   })
 })

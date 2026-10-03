@@ -93,6 +93,8 @@ export const imports = {
     'Two folders here are named "{name}". Tiger tells folders apart by name, so this one is now "{renamed}", with its own requests and settings.',
   'imports.securityPartial':
     'The API also requires {schemes} here, which Tiger cannot set up. Add it to the request by hand.',
+  'imports.variablesRenamed':
+    'Another collection imported with this one also uses {names}. Each keeps its own values, so this one now uses {renamed}.',
 
   // Import report modal
   'imports.report.title': 'Imported {name}',

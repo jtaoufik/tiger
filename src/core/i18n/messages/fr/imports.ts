@@ -105,6 +105,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'Deux dossiers portent ici le nom « {name} ». Tiger distingue les dossiers par leur nom : celui-ci s’appelle donc désormais « {renamed} », avec ses propres requêtes et réglages.',
   'imports.securityPartial':
     'L’API exige aussi {schemes} ici, que Tiger ne peut pas configurer. Ajoutez-le à la requête à la main.',
+  'imports.variablesRenamed':
+    'Une autre collection importée avec celle-ci utilise aussi {names}. Chacune garde ses propres valeurs : celle-ci utilise donc désormais {renamed}.',
 
   'imports.report.title': '{name} importé',
   'imports.report.statsLabel': 'Importé',

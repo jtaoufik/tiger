@@ -110,6 +110,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'يوجد هنا مجلدان باسم "{name}". يميّز Tiger المجلدات بأسمائها، لذلك أصبح اسم هذا المجلد "{renamed}"، مع طلباته وإعداداته الخاصة.',
   'imports.securityPartial':
     'تتطلب الواجهة البرمجية هنا أيضًا {schemes}، ولا يستطيع Tiger إعداده. أضفه إلى الطلب يدويًا.',
+  'imports.variablesRenamed':
+    'تستخدم مجموعة أخرى مستوردة معها أيضًا {names}. تحتفظ كل مجموعة بقيمها الخاصة، لذلك تستخدم هذه المجموعة الآن {renamed}.',
 
   'imports.report.title': 'تم استيراد {name}',
   'imports.report.statsLabel': 'تم الاستيراد',

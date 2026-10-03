@@ -101,6 +101,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'यहाँ दो फ़ोल्डरों का नाम "{name}" है। Tiger फ़ोल्डरों को नाम से पहचानता है, इसलिए इस फ़ोल्डर का नाम अब "{renamed}" है, और इसके अपने अनुरोध और सेटिंग्स बने रहते हैं।',
   'imports.securityPartial':
     'API को यहाँ {schemes} भी चाहिए, जिसे Tiger सेट नहीं कर सकता। इसे अनुरोध में हाथ से जोड़ें।',
+  'imports.variablesRenamed':
+    'इसके साथ आयात किया गया एक और संग्रह भी {names} का उपयोग करता है। हर संग्रह अपने मान रखता है, इसलिए यह संग्रह अब {renamed} का उपयोग करता है।',
 
   'imports.report.title': '{name} आयात हुआ',
   'imports.report.statsLabel': 'आयात किया गया',
