@@ -57,6 +57,25 @@ function uniqueName(name: string, taken: Set<string>): string {
   return out
 }
 
+/** A host that says it is not production: staging2.api.test, api-dev.example.com, localhost:8080. */
+function isTestHost(host: string): boolean {
+  const name = host.toLowerCase().replace(/:\d+$/, '')
+  if (name === '[::1]' || name.startsWith('127.')) return true
+  return name
+    .split(/[.-]/)
+    .some((label) => /^(dev|develop|development|test|testing|stage|staging|stg|sandbox|qa|uat|preprod|local|localhost)\d*$/.test(label))
+}
+
+/**
+ * The environment name of a server with no description. Tiger never selects
+ * an environment named like production by itself, but a bare host does not
+ * say which it is, so the first server (usually production) was selected:
+ * a host that does not say it is a test one is named "Production (host)".
+ */
+function serverName(host: string): string {
+  return isTestHost(host) ? host : `Production (${host})`
+}
+
 /**
  * Servers become environments, so requests stay on `{{baseUrl}}` and choosing
  * an environment chooses the server. Server variables stay switchable:
@@ -73,17 +92,23 @@ function serversOf(doc: Json): Servers {
     const taken = new Set<string>()
     const environments = absolute.map((server, i) => {
       const url = str(server.url)
-      const host = url.replace(/^[a-z][a-z\d+.-]*:\/\//i, '').split('/')[0]
-      const fallback =
-        host && !host.includes('{') ? host : absolute.length === 1 ? 'Default' : `Server ${i + 1}`
       const variables: KeyValue[] = [
         { name: 'baseUrl', value: url.replace(SINGLE_BRACE, '{{$1}}').replace(/\/$/, ''), enabled: true }
       ]
+      const defaults = new Map<string, string>()
       for (const [name, raw] of Object.entries((server.variables ?? {}) as Json)) {
         const spec = (raw ?? {}) as Json
-        const value = spec.default ?? (Array.isArray(spec.enum) ? spec.enum[0] : '')
-        variables.push({ name, value: scalar(value), enabled: true })
+        const value = scalar(spec.default ?? (Array.isArray(spec.enum) ? spec.enum[0] : ''))
+        defaults.set(name, value)
+        variables.push({ name, value, enabled: true })
       }
+      // The host with its server variables at their defaults: {region}.api.test -> eu.api.test.
+      const host = url
+        .replace(SINGLE_BRACE, (_m, name: string) => defaults.get(name) ?? `{${name}}`)
+        .replace(/^[a-z][a-z\d+.-]*:\/\//i, '')
+        .split('/')[0]
+      const fallback =
+        host && !host.includes('{') ? serverName(host) : absolute.length === 1 ? 'Default' : `Server ${i + 1}`
       return { name: uniqueName(str(server.description).trim() || fallback, taken), variables }
     })
     return { prefix: '{{baseUrl}}', environments }
@@ -96,7 +121,7 @@ function serversOf(doc: Json): Servers {
     return {
       prefix: '{{baseUrl}}',
       environments: [
-        { name: host, variables: [{ name: 'baseUrl', value: `${scheme}://${host}${basePath}`, enabled: true }] }
+        { name: serverName(host), variables: [{ name: 'baseUrl', value: `${scheme}://${host}${basePath}`, enabled: true }] }
       ]
     }
   }
