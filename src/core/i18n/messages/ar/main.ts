@@ -10,6 +10,8 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.unsavedTitle': 'لديك تغييرات غير محفوظة',
   'main.dialog.unsavedDetail': 'سيؤدي الإغلاق الآن إلى تجاهل التعديلات التي لم تُحفظ بعد.',
   'main.dialog.closeAnyway': 'إغلاق على أي حال',
+  'main.dialog.updateUnsavedDetail': 'ستؤدي إعادة التشغيل للتحديث الآن إلى تجاهل التعديلات التي لم تُحفظ بعد.',
+  'main.dialog.restartAnyway': 'إعادة التشغيل على أي حال',
   'main.dialog.keepEditing': 'متابعة التحرير',
   'main.import.postman': 'مجموعة Postman',
   'main.import.insomnia': 'ملف تصدير Insomnia',

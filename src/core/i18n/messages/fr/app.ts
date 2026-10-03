@@ -56,6 +56,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.latestVersion': 'Vous avez la dernière version',
   'app.toast.gitOpenFolderFirst': 'Ouvrez d\'abord un dossier de collection pour le synchroniser avec Git',
   'app.toast.folderCreated': 'Dossier {name} créé avec une première requête',
+  'app.toast.folderCreateFailed': 'Impossible de créer le dossier : {message}',
   'app.menu.closeOthers': 'Fermer les autres',
   'app.menu.closeToRight': 'Fermer les onglets à droite',
   'app.menu.closeAll': 'Tout fermer',

@@ -10,6 +10,8 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.unsavedTitle': '有未保存的更改',
   'main.dialog.unsavedDetail': '现在关闭会丢弃尚未保存的编辑。',
   'main.dialog.closeAnyway': '仍然关闭',
+  'main.dialog.updateUnsavedDetail': '现在重启更新会丢弃尚未保存的编辑。',
+  'main.dialog.restartAnyway': '仍然重启',
   'main.dialog.keepEditing': '继续编辑',
   'main.import.postman': 'Postman 集合',
   'main.import.insomnia': 'Insomnia 导出文件',

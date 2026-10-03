@@ -14,6 +14,7 @@
  * `importBrunoCollection` classifies them; the main process only reads disk.
  */
 
+import { normalizeText } from '../text'
 import { findMissingVars } from '../interpolate'
 import { dedent, parseKeyValues, type RawBlock } from '../tigerFormat'
 import {
@@ -46,7 +47,7 @@ const BLOCK_END = /^\}\s*$/
  */
 export function tokenizeBrunoBlocks(input: string): RawBlock[] {
   const blocks: RawBlock[] = []
-  const lines = input.replace(/\r\n/g, '\n').split('\n')
+  const lines = normalizeText(input).split('\n')
   let i = 0
   while (i < lines.length) {
     const header = lines[i].match(BLOCK_HEADER)

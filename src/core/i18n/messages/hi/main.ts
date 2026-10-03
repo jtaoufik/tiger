@@ -10,6 +10,8 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.unsavedTitle': 'आपके बदलाव सहेजे नहीं गए हैं',
   'main.dialog.unsavedDetail': 'अभी बंद करने पर वे बदलाव हट जाएँगे जो अब तक सहेजे नहीं गए हैं।',
   'main.dialog.closeAnyway': 'फिर भी बंद करें',
+  'main.dialog.updateUnsavedDetail': 'अपडेट के लिए अभी रीस्टार्ट करने पर वे बदलाव हट जाएँगे जो अब तक सहेजे नहीं गए हैं।',
+  'main.dialog.restartAnyway': 'फिर भी रीस्टार्ट करें',
   'main.dialog.keepEditing': 'संपादन जारी रखें',
   'main.import.postman': 'Postman संग्रह',
   'main.import.insomnia': 'Insomnia निर्यात',

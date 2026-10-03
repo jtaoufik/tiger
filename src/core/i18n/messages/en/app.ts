@@ -54,6 +54,7 @@ export const app = {
   'app.toast.latestVersion': 'You\'re on the latest version',
   'app.toast.gitOpenFolderFirst': 'Open a collection folder first to sync it with Git',
   'app.toast.folderCreated': 'Folder {name} created with a first request',
+  'app.toast.folderCreateFailed': 'Could not create the folder: {message}',
   'app.menu.closeOthers': 'Close others',
   'app.menu.closeToRight': 'Close to the right',
   'app.menu.closeAll': 'Close all',

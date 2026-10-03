@@ -56,6 +56,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.latestVersion': 'आप नवीनतम संस्करण पर हैं',
   'app.toast.gitOpenFolderFirst': 'Git से सिंक करने के लिए पहले संग्रह फ़ोल्डर खोलें',
   'app.toast.folderCreated': 'फ़ोल्डर {name} पहले अनुरोध के साथ बनाया गया',
+  'app.toast.folderCreateFailed': 'फ़ोल्डर नहीं बनाया जा सका: {message}',
   'app.menu.closeOthers': 'अन्य बंद करें',
   'app.menu.closeToRight': 'दाईं ओर के टैब बंद करें',
   'app.menu.closeAll': 'सभी बंद करें',

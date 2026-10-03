@@ -10,6 +10,8 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.unsavedTitle': 'Vous avez des modifications non enregistrées',
   'main.dialog.unsavedDetail': 'Fermer maintenant supprime les modifications pas encore enregistrées.',
   'main.dialog.closeAnyway': 'Fermer quand même',
+  'main.dialog.updateUnsavedDetail': 'Redémarrer pour mettre à jour supprime les modifications pas encore enregistrées.',
+  'main.dialog.restartAnyway': 'Redémarrer quand même',
   'main.dialog.keepEditing': 'Continuer à modifier',
   'main.import.postman': 'Collection Postman',
   'main.import.insomnia': 'Export Insomnia',

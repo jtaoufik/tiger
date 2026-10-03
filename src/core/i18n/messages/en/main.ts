@@ -8,6 +8,8 @@ export const main = {
   'main.dialog.unsavedTitle': 'You have unsaved changes',
   'main.dialog.unsavedDetail': 'Closing now discards edits that are not saved yet.',
   'main.dialog.closeAnyway': 'Close Anyway',
+  'main.dialog.updateUnsavedDetail': 'Restarting to update discards edits that are not saved yet.',
+  'main.dialog.restartAnyway': 'Restart Anyway',
   'main.dialog.keepEditing': 'Keep Editing',
   'main.import.postman': 'Postman collection',
   'main.import.insomnia': 'Insomnia export',

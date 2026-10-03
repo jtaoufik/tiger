@@ -56,6 +56,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.latestVersion': 'لديك أحدث إصدار',
   'app.toast.gitOpenFolderFirst': 'افتح مجلد مجموعة أولاً لمزامنته مع Git',
   'app.toast.folderCreated': 'تم إنشاء المجلد {name} مع أول طلب',
+  'app.toast.folderCreateFailed': 'تعذّر إنشاء المجلد: {message}',
   'app.menu.closeOthers': 'إغلاق الأخرى',
   'app.menu.closeToRight': 'إغلاق علامات التبويب التالية',
   'app.menu.closeAll': 'إغلاق الكل',

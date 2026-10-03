@@ -216,3 +216,25 @@ describe('Bruno process.env values and lone environment files', () => {
     expect(result?.environments?.map((e) => e.name)).toEqual(['Local'])
   })
 })
+
+describe('exports saved by Windows tools', () => {
+  it('imports a Postman export saved with a BOM, and a .bru request with a BOM keeps its name', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tiger-bom-'))
+    const postman = join(dir, 'api.postman_collection.json')
+    await writeFile(
+      postman,
+      `﻿${JSON.stringify({
+        info: { name: 'API', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' },
+        item: [{ name: 'Ping', request: { method: 'GET', url: 'https://x.test/ping' } }]
+      })}`
+    )
+    const result = await importPaths([postman])
+    expect(result?.requests.map((r) => r.request.name)).toEqual(['Ping'])
+
+    const bru = join(dir, 'me.bru')
+    await writeFile(bru, '﻿meta {\r\n  name: Who am I\r\n  seq: 4\r\n}\r\n\r\nget {\r\n  url: https://x.test/me\r\n}\r\n')
+    const single = await importPaths([bru])
+    expect(single?.requests[0].request.name).toBe('Who am I')
+    expect(single?.requests[0].request.url).toBe('https://x.test/me')
+  })
+})

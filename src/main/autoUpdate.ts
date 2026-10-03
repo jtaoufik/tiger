@@ -149,6 +149,11 @@ export function downloadNow(): void {
     })
 }
 
+/** A downloaded update is waiting: Restart now would install it. */
+export function canInstallNow(): boolean {
+  return isAuto() && state.status === 'downloaded'
+}
+
 /** Quit and install a downloaded update (Restart now). */
 export async function quitAndInstall(): Promise<void> {
   if (isAuto() && state.status === 'downloaded') (await loadUpdater()).quitAndInstall()

@@ -1,4 +1,5 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir } from 'node:fs/promises'
+import { readTextFile } from './textFile'
 import { basename, join, relative, sep } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
 import { parseCollectionSettings, type CollectionSettings } from '../core/collectionSettings'
@@ -35,7 +36,7 @@ const norm = (p: string): string => (sep === '\\' ? p.split(sep).join('/') : p)
 
 async function readMeta(path: string): Promise<{ name: string; method: HttpMethod; seq?: number }> {
   try {
-    const r = parseRequest(await readFile(path, 'utf8'))
+    const r = parseRequest(await readTextFile(path))
     const seq = Number.isFinite(r.seq) ? r.seq : undefined
     return { name: r.name || basename(path, '.tiger'), method: r.method, ...(seq !== undefined ? { seq } : {}) }
   } catch {
@@ -123,7 +124,7 @@ async function readFolderSettings(files: ListedFile[]): Promise<FolderSettingsEn
   const folders = files.filter((f) => f.kind === 'folder')
   const parsed = await mapLimit(folders, READ_CONCURRENCY, async ({ full, folder }) => {
     try {
-      const settings = parseCollectionSettings(await readFile(full, 'utf8'))
+      const settings = parseCollectionSettings(await readTextFile(full))
       return { folder, ...(settings.auth ? { auth: settings.auth } : {}), ...(settings.docs ? { docs: settings.docs } : {}) }
     } catch {
       return { folder }
@@ -139,19 +140,26 @@ export interface EnvironmentRef {
 
 export async function readEnvironments(root: string): Promise<EnvironmentRef[]> {
   const dir = join(root, ENVIRONMENTS_DIR)
+  let entries
   try {
-    const entries = await readdir(dir, { withFileTypes: true })
-    const out: EnvironmentRef[] = []
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.tiger')) continue
-      const full = join(dir, entry.name)
-      const env = parseEnvironment(await readFile(full, 'utf8'))
-      out.push({ name: env.name || basename(entry.name, '.tiger'), path: norm(full) })
-    }
-    return out
+    entries = await readdir(dir, { withFileTypes: true })
   } catch {
     return []
   }
+  const out: EnvironmentRef[] = []
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.tiger')) continue
+    const full = join(dir, entry.name)
+    // One file Tiger cannot read (a typo, an unknown encoding) used to hide
+    // every environment, so no {{variable}} resolved. It now only hides itself.
+    try {
+      const env = parseEnvironment(await readTextFile(full))
+      out.push({ name: env.name || basename(entry.name, '.tiger'), path: norm(full) })
+    } catch {
+      /* skip the unreadable file */
+    }
+  }
+  return out
 }
 
 export interface OpenedCollectionPayload {
@@ -171,7 +179,7 @@ export interface OpenedCollectionPayload {
 export async function readOpenedCollection(root: string): Promise<OpenedCollectionPayload> {
   let settings: CollectionSettings = {}
   try {
-    settings = parseCollectionSettings(await readFile(join(root, 'collection.tiger'), 'utf8'))
+    settings = parseCollectionSettings(await readTextFile(join(root, 'collection.tiger')))
   } catch {
     /* optional file */
   }

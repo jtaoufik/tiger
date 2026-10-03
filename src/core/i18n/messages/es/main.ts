@@ -10,6 +10,8 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.unsavedTitle': 'Tienes cambios sin guardar',
   'main.dialog.unsavedDetail': 'Si cierras ahora, se descartan las ediciones que aún no se han guardado.',
   'main.dialog.closeAnyway': 'Cerrar de todos modos',
+  'main.dialog.updateUnsavedDetail': 'Si reinicias para actualizar, se descartan las ediciones que aún no se han guardado.',
+  'main.dialog.restartAnyway': 'Reiniciar de todos modos',
   'main.dialog.keepEditing': 'Seguir editando',
   'main.import.postman': 'Colección de Postman',
   'main.import.insomnia': 'Exportación de Insomnia',

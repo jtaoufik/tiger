@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog } from 'electron'
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir } from 'node:fs/promises'
+import { readTextFile } from './textFile'
 import { basename, extname, join, relative, sep } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { stat } from 'node:fs/promises'
@@ -48,7 +49,7 @@ async function pickPaths(title: string, extensions: string[]): Promise<string[] 
 }
 
 async function readStructured(path: string): Promise<unknown> {
-  const text = await readFile(path, 'utf8')
+  const text = await readTextFile(path)
   return /\.ya?ml$/i.test(path) ? parseYaml(text) : JSON.parse(text)
 }
 
@@ -144,7 +145,7 @@ export async function readBrunoFolder(root: string): Promise<ImportResult> {
       // Bruno reads {{process.env.NAME}} from the root .env file.
       const isRootDotenv = dir === root && entry.name === '.env'
       if (!entry.name.endsWith('.bru') && !isRootConfig && !isRootDotenv) continue
-      files.push({ segments: relative(root, full).split(sep), text: await readFile(full, 'utf8') })
+      files.push({ segments: relative(root, full).split(sep), text: await readTextFile(full) })
     }
   }
   await collect(root)
@@ -162,7 +163,7 @@ const DETECTABLE = ['json', 'yaml', 'yml', 'wsdl', 'xml']
 
 async function importDetected(file: string): Promise<ImportResult> {
   if (file.endsWith('.bru')) {
-    const text = await readFile(file, 'utf8')
+    const text = await readTextFile(file)
     const name = basename(file, '.bru')
     // An environment file dropped on its own, not a request.
     if (isBrunoEnvironment(text)) {
@@ -171,7 +172,7 @@ async function importDetected(file: string): Promise<ImportResult> {
     const imported = importBrunoRequest(text)
     return { name: imported.request.name || name, source: 'bruno', requests: [imported] }
   }
-  const text = await readFile(file, 'utf8')
+  const text = await readTextFile(file)
   const isXml = /\.(wsdl|xml)$/i.test(file)
   const parsed = isXml ? undefined : /\.ya?ml$/i.test(file) ? parseYaml(text) : JSON.parse(text)
   const format: DetectedFormat | null = detectFormat(basename(file), parsed, text)
@@ -232,7 +233,7 @@ export async function importFromDisk(kind: ImportKind): Promise<ImportResult | n
   }
   if (kind === 'wsdl') {
     return importManyFiles(mainT('main.import.wsdl'), ['wsdl', 'xml'], 'wsdl', async (f) =>
-      importWsdl(await readFile(f, 'utf8'))
+      importWsdl(await readTextFile(f))
     )
   }
   return importManyFiles(

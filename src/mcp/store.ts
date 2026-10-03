@@ -1,4 +1,5 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir } from 'node:fs/promises'
+import { readTextFile } from '../main/textFile'
 import { basename, join, relative } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
 import { parseEnvironment } from '../core/environment'
@@ -25,7 +26,7 @@ export function createFsStore(root: string): CollectionStore {
       } else if (entry.isFile() && entry.name.endsWith('.tiger')) {
         let name = basename(entry.name, '.tiger')
         try {
-          name = parseRequest(await readFile(full, 'utf8')).name || name
+          name = parseRequest(await readTextFile(full)).name || name
         } catch {
           /* keep filename */
         }
@@ -40,7 +41,7 @@ export function createFsStore(root: string): CollectionStore {
       const out: EnvironmentRef[] = []
       for (const entry of await readdir(dir, { withFileTypes: true })) {
         if (entry.isFile() && entry.name.endsWith('.tiger')) {
-          const env = parseEnvironment(await readFile(join(dir, entry.name), 'utf8'))
+          const env = parseEnvironment(await readTextFile(join(dir, entry.name)))
           out.push({ name: env.name || basename(entry.name, '.tiger'), path: join(ENVIRONMENTS_DIR, entry.name) })
         }
       }
@@ -52,7 +53,7 @@ export function createFsStore(root: string): CollectionStore {
 
   async function readCollectionAuth(): Promise<TigerAuth | undefined> {
     try {
-      const text = await readFile(join(root, COLLECTION_FILE), 'utf8')
+      const text = await readTextFile(join(root, COLLECTION_FILE))
       return parseCollectionSettings(text).auth
     } catch {
       // No collection.tiger (or unreadable): the collection has no default auth.
@@ -66,13 +67,13 @@ export function createFsStore(root: string): CollectionStore {
       await walk(root, acc)
       return acc
     },
-    readRequest: (path) => readFile(join(root, path), 'utf8'),
+    readRequest: (path) => readTextFile(join(root, path)),
     readCollectionAuth,
     listEnvironments,
     async readEnvironment(name) {
       const ref = (await listEnvironments()).find((e) => e.name === name)
       if (!ref) return null
-      return parseEnvironment(await readFile(join(root, ref.path), 'utf8'))
+      return parseEnvironment(await readTextFile(join(root, ref.path)))
     }
   }
 }

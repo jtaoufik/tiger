@@ -17,6 +17,7 @@ import {
 } from './http'
 import { importFromDisk, importPaths, saveExport, type ImportKind } from './importers'
 import { saveCollectionFiles } from './saveCollection'
+import { readTextFile } from './textFile'
 import type { CollectionFile } from '../core/collectionFiles'
 import { appendHistory, clearHistory, readHistory } from './history'
 import { clearCookies } from './cookieJar'
@@ -27,7 +28,8 @@ import {
   getUpdateMode,
   getUpdateState,
   initAutoUpdate,
-  quitAndInstall
+  quitAndInstall,
+  canInstallNow
 } from './autoUpdate'
 import { blockExternalNetwork, isE2E } from './e2eGuard'
 import {
@@ -95,6 +97,8 @@ function parentWindow(): BrowserWindow | undefined {
  * uses it to warn before the window (and the edits) go away.
  */
 let hasUnsavedChanges = false
+/** The user chose to restart for an update and drop unsaved edits: closing must not ask again. */
+let discardUnsavedForUpdate = false
 
 /** e2e and benchmark runs: windows stay hidden and the app never activates. */
 const headless = isHeadless()
@@ -184,7 +188,7 @@ function createWindow(): BrowserWindow {
   let closeConfirmed = false
   win.on('close', (e) => {
     // Unsaved request edits die with the window; warn once, close on confirm.
-    if (hasUnsavedChanges && !closeConfirmed) {
+    if (hasUnsavedChanges && !closeConfirmed && !discardUnsavedForUpdate) {
       e.preventDefault()
       dialog
         .showMessageBox(win, {
@@ -305,10 +309,8 @@ function registerIpc(): void {
 
   ipcMain.handle('tiger:reload', async (_e, root: string) => readCollection(root))
 
-  ipcMain.handle('tiger:readFile', async (_e, path: string) => {
-    const { readFile } = await import('node:fs/promises')
-    return readFile(path, 'utf8')
-  })
+  // Decoded like every other read: a BOM or UTF-16 file from a Windows tool reads as its text.
+  ipcMain.handle('tiger:readFile', async (_e, path: string) => readTextFile(path))
 
   ipcMain.handle('tiger:writeFile', async (_e, path: string, content: string) => {
     const { writeFile, mkdir } = await import('node:fs/promises')
@@ -319,15 +321,24 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('tiger:moveFile', async (_e, from: string, to: string) => {
-    const { rename, mkdir, access } = await import('node:fs/promises')
+    const { rename, mkdir, access, stat } = await import('node:fs/promises')
     const { dirname } = await import('node:path')
-    // Never silently overwrite an existing file or folder at the destination.
+    let exists = true
     try {
       await access(to)
-      throw new Error(`Already exists: ${to}`)
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+      exists = false
     }
+    // Never silently overwrite an existing file or folder at the destination,
+    // unless it is the source itself: "users" -> "Users" on Windows and macOS,
+    // whose disks ignore case, used to fail with "Already exists".
+    const sameEntry = async (): Promise<boolean> => {
+      if (from.toLowerCase() !== to.toLowerCase()) return false
+      const [a, b] = await Promise.all([stat(from), stat(to)])
+      return a.dev === b.dev && a.ino === b.ino
+    }
+    if (exists && !(await sameEntry())) throw new Error(`Already exists: ${to}`)
     await mkdir(dirname(to), { recursive: true })
     await rename(from, to)
     return true
@@ -413,7 +424,26 @@ function registerIpc(): void {
 
   ipcMain.handle('tiger:version', () => app.getVersion())
   ipcMain.handle('tiger:checkUpdate', () => checkForUpdate(app.getVersion()))
-  ipcMain.handle('tiger:installUpdate', () => quitAndInstall())
+  ipcMain.handle('tiger:installUpdate', async () => {
+    if (!canInstallNow()) return
+    // Ask before the installer starts, never after: on Windows it force-closes
+    // a Tiger whose window answered "Keep editing", and the edits with it.
+    if (hasUnsavedChanges) {
+      const options = {
+        type: 'warning' as const,
+        message: mainT('main.dialog.unsavedTitle'),
+        detail: mainT('main.dialog.updateUnsavedDetail'),
+        buttons: [mainT('main.dialog.restartAnyway'), mainT('main.dialog.keepEditing')],
+        defaultId: 1,
+        cancelId: 1
+      }
+      const win = parentWindow()
+      const { response } = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options)
+      if (response !== 0) return
+      discardUnsavedForUpdate = true
+    }
+    await quitAndInstall()
+  })
   ipcMain.handle('tiger:update:mode', () => getUpdateMode())
   ipcMain.handle('tiger:update:getState', () => getUpdateState())
   ipcMain.handle('tiger:update:check', () => checkNow())

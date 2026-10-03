@@ -9,7 +9,8 @@
  */
 
 import { execFile } from 'node:child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { readTextFile } from './textFile'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import type { MessageKey } from '../core/i18n'
@@ -255,7 +256,7 @@ export async function gitDiff(root: string): Promise<string> {
 }
 
 async function newFileDiff(root: string, path: string): Promise<string> {
-  const text = await readFile(join(root, path), 'utf8').catch(() => '')
+  const text = await readTextFile(join(root, path)).catch(() => '')
   const lines = text.replace(/\n$/, '').split('\n')
   return (
     `diff --git a/${path} b/${path}\nnew file\n--- /dev/null\n+++ b/${path}\n` +
@@ -286,7 +287,7 @@ export function requestNameFromText(text: string | null, path: string): string {
 export async function gitRequestNames(root: string, paths: string[]): Promise<Record<string, string>> {
   const entries = await Promise.all(
     paths.map(async (path) => {
-      let text: string | null = await readFile(join(root, path), 'utf8').catch(() => null)
+      let text: string | null = await readTextFile(join(root, path)).catch(() => null)
       if (text === null) {
         const shown = await run(['show', `HEAD:${path}`], root)
         text = shown.ok ? shown.stdout : null

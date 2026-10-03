@@ -1972,13 +1972,15 @@ export default function App() {
   /** Rename a folder: directory rename on disk plus path remaps in memory. */
   const renameFolder = useCallback(
     async (colId: string, path: string[], newName: string) => {
-      const trimmed = newName.trim()
       const col = collectionsRef.current.find((c) => c.id === colId)
-      if (!col || !trimmed || trimmed === path[path.length - 1]) return
-      if (/[/\\]/.test(trimmed)) {
+      if (/[/\\]/.test(newName)) {
         toast(t('app.toast.folderNoSlashes'), { error: true })
         return
       }
+      // Valid on every disk (and so for every teammate): no ":?*\"<>|", no
+      // trailing dot, no CON.
+      const trimmed = safeFileName(newName, '')
+      if (!col || !trimmed || trimmed === path[path.length - 1]) return
       const fromDir = col.root ? `${col.root}/${path.join('/')}` : null
       const toDir = col.root ? `${col.root}/${[...path.slice(0, -1), trimmed].join('/')}` : null
       if (fromDir && toDir && window.tiger) {
@@ -3215,14 +3217,20 @@ export default function App() {
           label={t('app.newFolder.label')}
           placeholder={t('app.newFolder.placeholder')}
           confirmLabel={t('app.newFolder.confirm')}
-          onSubmit={(name) => {
+          onSubmit={async (name) => {
             const target = newFolderIn
             setNewFolderIn(null)
-            const clean = name.trim().replace(/[\\/]+/g, '-')
+            // A name every disk accepts: "Auth: OAuth2", "What?" or "CON" fail
+            // on Windows, and a teammate on Windows could not clone them.
+            const clean = safeFileName(name, '')
             if (!clean) return
-            // A folder exists through its files: start it with a first request.
-            newRequest(target.colId, [...target.path, clean])
-            toast(t('app.toast.folderCreated', { name: clean }))
+            try {
+              // A folder exists through its files: start it with a first request.
+              await newRequest(target.colId, [...target.path, clean])
+              toast(t('app.toast.folderCreated', { name: clean }))
+            } catch (e) {
+              toast(t('app.toast.folderCreateFailed', { message: (e as Error).message }), { error: true })
+            }
           }}
           onCancel={() => setNewFolderIn(null)}
         />

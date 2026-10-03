@@ -56,6 +56,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.latestVersion': '已是最新版本',
   'app.toast.gitOpenFolderFirst': '请先打开集合文件夹，再通过 Git 同步',
   'app.toast.folderCreated': '已创建文件夹 {name}，其中包含第一个请求',
+  'app.toast.folderCreateFailed': '无法创建文件夹：{message}',
   'app.menu.closeOthers': '关闭其他',
   'app.menu.closeToRight': '关闭右侧标签页',
   'app.menu.closeAll': '全部关闭',

@@ -56,6 +56,7 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.toast.latestVersion': 'Tienes la última versión',
   'app.toast.gitOpenFolderFirst': 'Abre primero una carpeta de colección para sincronizarla con Git',
   'app.toast.folderCreated': 'Carpeta {name} creada con una primera solicitud',
+  'app.toast.folderCreateFailed': 'No se pudo crear la carpeta: {message}',
   'app.menu.closeOthers': 'Cerrar otras',
   'app.menu.closeToRight': 'Cerrar pestañas a la derecha',
   'app.menu.closeAll': 'Cerrar todas',

@@ -30,6 +30,7 @@ import {
   type TigerBody,
   type TigerRequest
 } from './types'
+import { normalizeText } from './text'
 
 export class TigerParseError extends Error {
   constructor(message: string) {
@@ -48,7 +49,11 @@ export interface RawBlock {
  * Split a `.tiger` document into its top-level `name[:subtype] { ... }` blocks.
  * Brace matching is depth-aware so JSON bodies with nested `{}` survive intact.
  */
-export function tokenizeBlocks(input: string): RawBlock[] {
+export function tokenizeBlocks(text: string): RawBlock[] {
+  // CRLF from a Git for Windows checkout used to leave "\r" in every body,
+  // script and doc: XML bodies went out with a newline before "<?xml", and
+  // each save added a blank line.
+  const input = normalizeText(text)
   const blocks: RawBlock[] = []
   const n = input.length
   let i = 0
