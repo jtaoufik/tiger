@@ -26,6 +26,7 @@ function Harness({ missing = [] as string[] }) {
       dirty
       missingVars={missing}
       onChange={setRequest}
+      onImportCurl={() => {}}
       onSend={() => {}}
       onCancel={() => {}}
       onSave={() => {}}

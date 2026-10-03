@@ -1580,6 +1580,20 @@ export default function App() {
     [activeCollection, collections, inspect, openTab, reviveIds, toast]
   )
 
+  /** Pasting a curl command into the URL bar fills in the open request in place. */
+  const importCurlIntoActive = useCallback(
+    (command: string) => {
+      const req = importCurl(command)
+      if (!req) {
+        toast(t('app.toast.curlParseFailed'), { error: true })
+        return
+      }
+      updateActive({ ...req, name: active?.name ?? req.name })
+      toast(t('app.toast.curlImported'))
+    },
+    [active, updateActive, toast]
+  )
+
   const cloneCollection = useCallback(() => setCloneOpen(true), [])
 
   /** The join dialog cloned it (and kept any error on screen); open it here. */
@@ -3173,6 +3187,7 @@ export default function App() {
                     dirty={dirty}
                     missingVars={missingVars}
                     onChange={updateActive}
+                    onImportCurl={importCurlIntoActive}
                     onSend={send}
                     onCancel={cancelActive}
                     onSave={save}
