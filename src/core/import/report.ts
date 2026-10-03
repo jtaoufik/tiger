@@ -62,8 +62,10 @@ export function summarizeImport(result: ImportResult): ImportSummary {
 export function layerCollectionVariables(result: ImportResult): ImportResult {
   if (!('collectionVariables' in result) && !('globals' in result)) return result
   const { collectionVariables: collection = [], globals = [], ...rest } = result
-  // Postman resolves environment > collection > globals.
-  const fromCollection = new Set(collection.map((v) => v.name))
+  // Postman resolves environment > collection > globals, skipping disabled
+  // rows: a disabled row hides nothing, its lower layer still applies.
+  const set = (vars: KeyValue[]) => new Set(vars.filter((v) => v.enabled !== false).map((v) => v.name))
+  const fromCollection = set(collection)
   const vars: KeyValue[] = [...globals.filter((v) => !fromCollection.has(v.name)), ...collection]
   if (vars.length === 0) return rest
   const envs = rest.environments ?? []
@@ -81,7 +83,7 @@ export function layerCollectionVariables(result: ImportResult): ImportResult {
     }
   } else {
     environments = envs.map((env) => {
-      const own = new Set(env.variables.map((v) => v.name))
+      const own = set(env.variables)
       return { ...env, variables: [...vars.filter((v) => !own.has(v.name)), ...env.variables] }
     })
     if (collection.length) {
