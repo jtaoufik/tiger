@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFsStore } from '../../src/mcp/store'
-import { handleListRequests } from '../../src/mcp/handlers'
+import { handleListEnvironments, handleListRequests } from '../../src/mcp/handlers'
 
 let base = ''
 beforeAll(() => {
@@ -41,5 +41,22 @@ describe('list_requests', () => {
     })
     const listed = JSON.parse((await handleListRequests(createFsStore(root))).content[0].text)
     expect(listed).toEqual([{ name: 'List', path: join('admin', 'list.tiger') }])
+  })
+})
+
+describe('list_environments', () => {
+  it('keeps every readable environment when one environment file cannot be read', async () => {
+    const root = collection({
+      'environments/dev.tiger': 'meta {\n  name: dev\n}\nvars {\n  baseUrl: https://dev.test\n}\n',
+      'environments/broken.tiger': '%% not a Tiger file {\n',
+      'environments/staging.tiger': 'meta {\n  name: staging\n}\nvars {\n  baseUrl: https://staging.test\n}\n'
+    })
+    const store = createFsStore(root)
+    const listed = JSON.parse((await handleListEnvironments(store)).content[0].text) as Array<{ name: string }>
+    expect(listed.map((e) => e.name).sort()).toEqual(['dev', 'staging'])
+    expect(await store.readEnvironment('staging')).toMatchObject({
+      name: 'staging',
+      variables: [{ name: 'baseUrl', value: 'https://staging.test' }]
+    })
   })
 })

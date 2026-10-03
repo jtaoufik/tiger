@@ -41,18 +41,25 @@ export function createFsStore(root: string): CollectionStore {
 
   async function listEnvironments(): Promise<EnvironmentRef[]> {
     const dir = join(root, ENVIRONMENTS_DIR)
+    let entries
     try {
-      const out: EnvironmentRef[] = []
-      for (const entry of await readdir(dir, { withFileTypes: true })) {
-        if (entry.isFile() && entry.name.endsWith('.tiger')) {
-          const env = parseEnvironment(await readTextFile(join(dir, entry.name)))
-          out.push({ name: env.name || basename(entry.name, '.tiger'), path: join(ENVIRONMENTS_DIR, entry.name) })
-        }
-      }
-      return out
+      entries = await readdir(dir, { withFileTypes: true })
     } catch {
       return []
     }
+    const out: EnvironmentRef[] = []
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.tiger')) continue
+      // One file Tiger cannot read hides only itself, as in the app's
+      // readEnvironments, not every environment of the collection.
+      try {
+        const env = parseEnvironment(await readTextFile(join(dir, entry.name)))
+        out.push({ name: env.name || basename(entry.name, '.tiger'), path: join(ENVIRONMENTS_DIR, entry.name) })
+      } catch {
+        /* skip the unreadable file */
+      }
+    }
+    return out
   }
 
   async function readCollectionAuth(): Promise<TigerAuth | undefined> {
