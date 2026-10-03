@@ -81,7 +81,10 @@ function run(
   return new Promise((resolve) => {
     execFile(
       'git',
-      args,
+      // git prints a path with any non-ASCII letter as "Requ\303\252tes/get.tiger"
+      // by default. Folders named in any language Tiger speaks must come back
+      // as they are on disk, or every per-file action gets a path that does not exist.
+      ['-c', 'core.quotePath=false', ...args],
       { cwd, timeout: timeoutMs, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } },
       (error, stdout, stderr) =>
         resolve({ ok: !error, stdout: stdout?.toString() ?? '', stderr: stderr?.toString() ?? '' })
@@ -179,11 +182,19 @@ export async function gitStatus(root: string): Promise<GitStatus> {
   const branch = (await run(['rev-parse', '--abbrev-ref', 'HEAD'], root)).stdout.trim()
 
   // -uall lists each new file (not just its folder), so the UI can name it.
-  const porcelain = await run(['status', '--porcelain', '-uall'], root)
-  const changedFiles = porcelain.stdout
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => ({ status: line.slice(0, 2).trim() || '??', path: unquote(line.slice(3)) }))
+  // -z ends each path with NUL and never quotes it: names with spaces or
+  // quotes come back exactly as on disk.
+  const porcelain = await run(['status', '--porcelain', '-z', '-uall'], root)
+  const changedFiles: GitStatus['changedFiles'] = []
+  const fields = porcelain.stdout.split('\0')
+  for (let i = 0; i < fields.length; i++) {
+    const entry = fields[i]
+    if (entry.length < 4) continue
+    const status = entry.slice(0, 2)
+    changedFiles.push({ status: status.trim() || '??', path: entry.slice(3) })
+    // A rename or copy is followed by the path it came from: skip that one.
+    if (/[RC]/.test(status)) i++
+  }
 
   const remotes = await run(['remote'], root)
   const hasRemote = remotes.ok && remotes.stdout.trim().length > 0
@@ -204,12 +215,6 @@ export async function gitStatus(root: string): Promise<GitStatus> {
     hasUpstream: counts !== null,
     hasRemote
   }
-}
-
-/** Porcelain quotes paths with spaces or non-ASCII; strip that for display. */
-function unquote(path: string): string {
-  const renamed = path.includes(' -> ') ? path.split(' -> ').pop()! : path
-  return renamed.startsWith('"') && renamed.endsWith('"') ? renamed.slice(1, -1) : renamed
 }
 
 async function aheadBehind(root: string): Promise<{ ahead: number; behind: number } | null> {
