@@ -11,6 +11,7 @@ import {
   cancelSend,
   checkForUpdate,
   getOAuthToken,
+  forgetOAuthToken,
   sendHttp,
   track
 } from './http'
@@ -335,25 +336,35 @@ function registerIpc(): void {
 
   ipcMain.handle('tiger:cancelSend', (_e, key: string) => cancelSend(key))
 
-  ipcMain.handle('tiger:send', async (_e, built: BuiltRequest, timeoutMs: number, key?: string) => {
-    const res = await sendHttp(built, timeoutMs, key)
-    appendHistory({
-      id: randomUUID(),
-      at: Date.now(),
-      method: built.method,
-      url: built.url,
-      status: res.status,
-      ok: res.status >= 200 && res.status < 300,
-      timeMs: res.timeMs,
-      requestId: key
-    })
-    return res
-  })
+  ipcMain.handle(
+    'tiger:send',
+    async (_e, built: BuiltRequest, timeoutMs: number, key?: string, options?: { record?: boolean }) => {
+      const res = await sendHttp(built, timeoutMs, key)
+      // A load test fires hundreds of sends: they must not push the user's real
+      // requests out of the 200-entry history.
+      if (options?.record === false) return res
+      appendHistory({
+        id: randomUUID(),
+        at: Date.now(),
+        method: built.method,
+        url: built.url,
+        status: res.status,
+        ok: res.status >= 200 && res.status < 300,
+        timeMs: res.timeMs,
+        requestId: key
+      })
+      return res
+    }
+  )
 
   ipcMain.handle(
     'tiger:oauthToken',
     async (_e, auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap) =>
       getOAuthToken(auth, vars)
+  )
+  ipcMain.handle(
+    'tiger:oauthForget',
+    (_e, auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap) => forgetOAuthToken(auth, vars)
   )
 
   ipcMain.handle('tiger:import', async (_e, kind: ImportKind) => importFromDisk(kind))

@@ -1,10 +1,11 @@
 import { useId, useRef, useState } from 'react'
-import { buildRequest } from '@core/request'
+import { buildRequest, type BuiltRequest } from '@core/request'
 import { envToVars } from '@core/interpolate'
 import { computeStats, runPool, type PerfStats } from '@core/perf'
 import { resolveAuth } from '@core/collectionSettings'
 import type { TigerAuth, TigerEnvironment, TigerRequest } from '@core/types'
 import { useT } from '../i18n'
+import { withOAuthToken } from '../runRequest'
 import { GaugeIcon } from './Icons'
 import './a11y.css'
 import './PerfPane.css'
@@ -28,6 +29,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
   const [done, setDone] = useState(0)
   const [stats, setStats] = useState<PerfStats | null>(null)
   const [statusBuckets, setStatusBuckets] = useState<Record<string, number>>({})
+  const [error, setError] = useState<string | null>(null)
   const cancelled = useRef(false)
   const uid = useId()
 
@@ -36,10 +38,23 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
     setStats(null)
     setDone(0)
     setStatusBuckets({})
+    setError(null)
     cancelled.current = false
 
-    const effective = { ...request, auth: resolveAuth(request, collectionAuth) }
-    const built = buildRequest(effective, envToVars(env))
+    const vars = envToVars(env)
+    let built: BuiltRequest
+    try {
+      // One OAuth2 token for the whole run, not one exchange per request.
+      const effective = await withOAuthToken(
+        { ...request, auth: resolveAuth(request, collectionAuth) },
+        vars
+      )
+      built = buildRequest(effective, vars)
+    } catch (e) {
+      setError((e as Error).message)
+      setRunning(false)
+      return
+    }
     const times: number[] = []
     const buckets: Record<string, number> = {}
     let okCount = 0
@@ -50,7 +65,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
       async () => {
         if (cancelled.current) return
         try {
-          const res = await window.tiger!.send(built, timeoutMs)
+          const res = await window.tiger!.send(built, timeoutMs, undefined, { record: false })
           times.push(res.timeMs)
           const bucket = `${Math.floor(res.status / 100)}xx`
           buckets[bucket] = (buckets[bucket] ?? 0) + 1
@@ -145,6 +160,12 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
       {!window.tiger && (
         <div className="cv-dim perf-note" role="note">
           {t('request.perf.needsDesktop')}
+        </div>
+      )}
+
+      {error && (
+        <div className="perf-note perf-error" role="alert">
+          {error}
         </div>
       )}
 

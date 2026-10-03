@@ -343,8 +343,38 @@ export async function sendHttp(
 
 type OAuth2 = Extract<TigerAuth, { type: 'oauth2' }>
 
+/**
+ * Tokens already obtained, keyed by the resolved token URL, client and scope,
+ * so Send, the runner and a load test reuse one token until it expires
+ * instead of asking the token endpoint again for every request.
+ */
+const oauthTokens = new Map<string, { token: string; expiresAt: number }>()
+
+/** Without `expires_in`, a token is reused for five minutes. */
+const OAUTH_DEFAULT_TTL_MS = 5 * 60_000
+/** Renew this long before the server's expiry, so a token never dies in flight. */
+const OAUTH_EXPIRY_MARGIN_MS = 30_000
+
+function oauthKey(auth: OAuth2, vars: VarMap): string {
+  return JSON.stringify([
+    interpolate(auth.tokenUrl, vars),
+    interpolate(auth.clientId, vars),
+    interpolate(auth.clientSecret, vars),
+    interpolate(auth.scope, vars)
+  ])
+}
+
+/** Drop a cached token (the API answered 401 with it), so the next send gets a fresh one. */
+export function forgetOAuthToken(auth: OAuth2, vars: VarMap): void {
+  oauthTokens.delete(oauthKey(auth, vars))
+}
+
 /** Client-credentials token exchange, run in main so it bypasses CORS. */
 export async function getOAuthToken(auth: OAuth2, vars: VarMap): Promise<string> {
+  const key = oauthKey(auth, vars)
+  const cached = oauthTokens.get(key)
+  if (cached && cached.expiresAt > Date.now()) return cached.token
+
   const body = new URLSearchParams({
     grant_type: auth.grantType,
     client_id: interpolate(auth.clientId, vars),
@@ -358,8 +388,14 @@ export async function getOAuthToken(auth: OAuth2, vars: VarMap): Promise<string>
     body: body.toString()
   })
   if (!res.ok) throw new Error(mainT('main.http.tokenStatus', { status: res.status }))
-  const json = (await res.json()) as { access_token?: string }
+  const json = (await res.json()) as { access_token?: string; expires_in?: number | string }
   if (!json.access_token) throw new Error(mainT('main.http.tokenMissing'))
+  const seconds = Number(json.expires_in)
+  const ttl =
+    Number.isFinite(seconds) && seconds > 0
+      ? Math.max(0, seconds * 1000 - OAUTH_EXPIRY_MARGIN_MS)
+      : OAUTH_DEFAULT_TTL_MS
+  if (ttl > 0) oauthTokens.set(key, { token: json.access_token, expiresAt: Date.now() + ttl })
   return json.access_token
 }
 

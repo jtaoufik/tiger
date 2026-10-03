@@ -60,13 +60,21 @@ const api = {
     ipcRenderer.invoke('tiger:moveFile', from, to),
   listEnvironments: (root: string): Promise<EnvironmentRef[]> =>
     ipcRenderer.invoke('tiger:listEnvironments', root),
-  send: (built: BuiltRequest, timeoutMs: number, cancelKey?: string): Promise<RawResponse> =>
-    ipcRenderer.invoke('tiger:send', built, timeoutMs, cancelKey),
+  /** `record: false` keeps the send out of the history (load tests). */
+  send: (
+    built: BuiltRequest,
+    timeoutMs: number,
+    cancelKey?: string,
+    options?: { record?: boolean }
+  ): Promise<RawResponse> => ipcRenderer.invoke('tiger:send', built, timeoutMs, cancelKey, options),
   /** Run a collection script in the isolated script host (never in this window). */
   runScript: (job: ScriptJob): Promise<ScriptRunResult> => ipcRenderer.invoke('tiger:script:run', job),
   cancelSend: (key: string): Promise<boolean> => ipcRenderer.invoke('tiger:cancelSend', key),
   oauthToken: (auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap): Promise<string> =>
     ipcRenderer.invoke('tiger:oauthToken', auth, vars),
+  /** Forget a cached OAuth2 token so the next send asks for a fresh one. */
+  oauthForget: (auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap): Promise<void> =>
+    ipcRenderer.invoke('tiger:oauthForget', auth, vars),
   importCollection: (kind: ImportKind): Promise<ImportResult | null> =>
     ipcRenderer.invoke('tiger:import', kind),
   /** Import dropped files or folders; the format is detected per file. */

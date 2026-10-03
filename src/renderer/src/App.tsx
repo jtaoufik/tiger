@@ -86,7 +86,7 @@ import {
   tabKey,
   type OpenTab
 } from './session'
-import { cancelRequest, runRequest } from './runRequest'
+import { cancelRequest, runRequest, withKnownOAuthToken, withOAuthToken } from './runRequest'
 import { announce, ensureLiveRegions, looksLikeError } from './a11y'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
 import { rendererPerfMark } from './perf'
@@ -1616,7 +1616,9 @@ export default function App() {
               : toast(t('app.toast.exportNeedsDesktop'))
           }
         } else if (format === 'curl' && activeEffective) {
-          await navigator.clipboard.writeText(toCurl(buildRequest(activeEffective, envToVars(activeEnv))))
+          const vars = envToVars(activeEnv)
+          const sent = await withOAuthToken(activeEffective, vars)
+          await navigator.clipboard.writeText(toCurl(buildRequest(sent, vars)))
           toast(t('app.toast.curlCopied'))
         }
         setModal('none')
@@ -2110,9 +2112,17 @@ export default function App() {
         (col && entry ? nearestFolderAuth(entry.folderPath, (p) => folderAuth(col.id, p)) : undefined) ??
         col?.auth
       const env = col ? await environmentFor(col.id) : activeEnv
+      const vars = envToVars(env)
+      let sent: TigerRequest
       try {
-        const sent = { ...req, auth: resolveAuth(req, inherited) }
-        await navigator.clipboard.writeText(toCurl(buildRequest(sent, envToVars(env))))
+        // An OAuth2 request is copied with the token it would be sent with.
+        sent = await withOAuthToken({ ...req, auth: resolveAuth(req, inherited) }, vars)
+      } catch (e) {
+        toast((e as Error).message, { error: true })
+        return
+      }
+      try {
+        await navigator.clipboard.writeText(toCurl(buildRequest(sent, vars)))
         toast(t('app.toast.curlCopied'))
       } catch {
         toast(t('app.toast.copyFailed'), { error: true })
@@ -2833,9 +2843,11 @@ export default function App() {
                     onSend={send}
                     onCancel={cancelActive}
                     onSave={save}
-                    getBuilt={() =>
-                      activeEffective ? buildRequest(activeEffective, envToVars(activeEnv)) : null
-                    }
+                    getBuilt={() => {
+                      if (!activeEffective) return null
+                      const vars = envToVars(activeEnv)
+                      return buildRequest(withKnownOAuthToken(activeEffective, vars), vars)
+                    }}
                     showSection={showSection?.requestId === activeId ? showSection : null}
                     perf={{
                       collectionAuth: inheritedAuth,

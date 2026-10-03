@@ -53,3 +53,9 @@
 .perf-pane .perf-bar {
   border-color: var(--border-strong);
 }
+/* The run could not start (an OAuth2 token request failed, for example). */
+.perf-error {
+  color: var(--m-delete);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
