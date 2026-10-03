@@ -57,6 +57,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'No se añadieron los parámetros de cookie ({names}). Añade un encabezado Cookie si hace falta.',
   'imports.securityPlaceholders':
     'La autenticación se configuró a partir del esquema de seguridad de la API, con variables de marcador como {token}. Defínelas en un entorno.',
+  'imports.baseUrlUnknown':
+    'La API no indica ningún host de servidor. Define baseUrl en el entorno "{name}" con un host como https://api.example.com antes de enviar.',
   'imports.apiKeyCookie':
     'En Insomnia la clave de API se envía en una cookie; Tiger la envía en un encabezado. Comprueba que el servidor lo acepta.',
   'imports.bearerPrefix':

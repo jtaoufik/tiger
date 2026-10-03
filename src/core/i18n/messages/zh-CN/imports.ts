@@ -36,6 +36,8 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.securityUnmapped': 'API 使用了 Tiger 无法映射的安全方案（Cookie API 密钥或类似方式）。请手动设置认证。',
   'imports.cookieParams': '未添加 Cookie 参数（{names}）。如有需要，请添加 Cookie 标头。',
   'imports.securityPlaceholders': '认证已根据 API 的安全方案设置，使用了 {token} 之类的占位变量。请在环境中设置它们。',
+  'imports.baseUrlUnknown':
+    'API 未指定服务器主机。发送前，请在环境“{name}”中把 baseUrl 设为主机地址，例如 https://api.example.com 。',
   'imports.apiKeyCookie': '在 Insomnia 中 API 密钥通过 Cookie 发送；Tiger 则通过标头发送。请确认服务器接受这种方式。',
   'imports.bearerPrefix':
     'Bearer 认证使用了前缀“{prefix}”。Tiger 始终发送“Bearer”；如果服务器需要“{prefix}”，请改为添加 Authorization 标头。',

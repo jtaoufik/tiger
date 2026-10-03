@@ -67,6 +67,8 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.cookieParams': 'لم تتم إضافة معلمات ملفات تعريف الارتباط ({names}). أضف ترويسة Cookie عند الحاجة.',
   'imports.securityPlaceholders':
     'تم إعداد المصادقة من مخطط أمان واجهة API مع متغيرات نائبة مثل {token}. عيّنها في بيئة.',
+  'imports.baseUrlUnknown':
+    'لا تحدد واجهة API أي مضيف للخادم. عيّن baseUrl في البيئة "{name}" إلى مضيف مثل https://api.example.com قبل الإرسال.',
   'imports.apiKeyCookie':
     'في Insomnia يُرسل مفتاح API في ملف تعريف ارتباط؛ أما Tiger فيرسله في ترويسة. تحقق من أن الخادم يقبل ذلك.',
   'imports.bearerPrefix':

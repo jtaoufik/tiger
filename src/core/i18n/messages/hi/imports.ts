@@ -56,6 +56,8 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.cookieParams': 'कुकी पैरामीटर ({names}) नहीं जोड़े गए। ज़रूरत हो तो Cookie हेडर जोड़ें।',
   'imports.securityPlaceholders':
     'प्रमाणीकरण API की सुरक्षा योजना से सेट किया गया, जिसमें {token} जैसे प्लेसहोल्डर वेरिएबल हैं। उन्हें परिवेश में सेट करें।',
+  'imports.baseUrlUnknown':
+    'API किसी सर्वर होस्ट का नाम नहीं देता। भेजने से पहले परिवेश "{name}" में baseUrl को https://api.example.com जैसे होस्ट पर सेट करें।',
   'imports.apiKeyCookie':
     'Insomnia में API कुंजी कुकी के रूप में भेजी जाती है; Tiger उसे हेडर के रूप में भेजता है। जाँचें कि सर्वर इसे स्वीकार करता है।',
   'imports.bearerPrefix':

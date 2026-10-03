@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { detectFormat, importCurl, importOpenApi, summarizeImport } from '../../src/core/import'
 import { applyPathVariables } from '../../src/core/import/common'
-import { findMissingVars, findUnknownDynamicVars, interpolate } from '../../src/core/interpolate'
+import { envToVars, findMissingVars, findUnknownDynamicVars, interpolate } from '../../src/core/interpolate'
 
 describe('detectFormat', () => {
   it('recognizes each tool from its content', () => {
@@ -132,8 +132,9 @@ describe('OpenAPI real-world shapes', () => {
   const byName = (n: string) => result.requests.find((r) => r.request.name === n)!.request
 
   it('resolves server variables, path templates and $ref parameters', () => {
-    expect(byName('Update pet').url).toBe('https://eu.pets.example.com/v1/pets/7')
-    expect(byName('Upload photo').url).toBe('https://eu.pets.example.com/v1/pets/{{petId}}/photo')
+    const vars = envToVars(result.environments?.[0])
+    expect(interpolate(byName('Update pet').url, vars)).toBe('https://eu.pets.example.com/v1/pets/7')
+    expect(interpolate(byName('Upload photo').url, vars)).toBe('https://eu.pets.example.com/v1/pets/{{petId}}/photo')
     expect(byName('Update pet').headers).toEqual([{ name: 'trace', value: '', enabled: false }])
     expect(byName('Update pet').docs).toBe('Replaces a pet.')
   })
@@ -164,7 +165,9 @@ describe('OpenAPI real-world shapes', () => {
         }
       }
     })
-    expect(swagger.requests[0].request.url).toBe('https://api.test/v2/pets')
+    expect(interpolate(swagger.requests[0].request.url, envToVars(swagger.environments?.[0]))).toBe(
+      'https://api.test/v2/pets'
+    )
     expect(JSON.parse(swagger.requests[0].request.body.content)).toEqual({ name: 'Tom' })
   })
 })

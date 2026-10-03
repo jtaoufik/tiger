@@ -52,6 +52,8 @@ export const imports = {
   'imports.cookieParams': 'Cookie parameters ({names}) were not added. Add a Cookie header if needed.',
   'imports.securityPlaceholders':
     'Auth was set up from the API security scheme with placeholder variables such as {token}. Set them in an environment.',
+  'imports.baseUrlUnknown':
+    'The API names no server host. Set baseUrl in the environment "{name}" to a host such as https://api.example.com before sending.',
   'imports.apiKeyCookie':
     'API key is sent as a cookie in Insomnia; Tiger sends it as a header. Check the server accepts that.',
   'imports.bearerPrefix':

@@ -10,7 +10,16 @@
  * collection auth.
  */
 
-import { emptyBody, isHttpMethod, type KeyValue, type TigerAuth, type TigerBody } from '../types'
+import { findMissingVars } from '../interpolate'
+import {
+  emptyBody,
+  isHttpMethod,
+  type KeyValue,
+  type TigerAuth,
+  type TigerBody,
+  type TigerEnvironment,
+  type TigerRequest
+} from '../types'
 import { asArray, checkRequest, scalar, str, warning, type Json } from './common'
 import type { ImportResult, ImportedRequest, ImportWarning } from './types'
 
@@ -27,26 +36,80 @@ function deref(doc: Json, value: unknown, depth = 0): Json {
   return deref(doc, cur, depth + 1)
 }
 
-function baseUrl(doc: Json): string {
-  const servers = doc.servers
-  if (Array.isArray(servers) && servers[0] && typeof (servers[0] as Json).url === 'string') {
-    const server = servers[0] as Json
-    let url = str(server.url)
-    const variables = (server.variables ?? {}) as Json
-    url = url.replace(/\{([^}]+)\}/g, (_m, name: string) => {
-      const def = (variables[name] as Json | undefined)?.default
-      return def !== undefined ? scalar(def) : `{{${name}}}`
+interface Servers {
+  /** What every request URL starts with: `{{baseUrl}}`, plus a relative server's path. */
+  prefix: string
+  environments: TigerEnvironment[]
+  /** The environment whose `baseUrl` the user must fill in: no server names a host. */
+  needsHost?: string
+}
+
+function uniqueName(name: string, taken: Set<string>): string {
+  let out = name
+  for (let n = 2; taken.has(out); n++) out = `${name} ${n}`
+  taken.add(out)
+  return out
+}
+
+/**
+ * Servers become environments, so requests stay on `{{baseUrl}}` and choosing
+ * an environment chooses the server. Server variables stay switchable:
+ * `https://{env}.api.test` becomes `https://{{env}}.api.test` with `env` set to
+ * its default in the same environment.
+ */
+function serversOf(doc: Json): Servers {
+  const servers = asArray(doc.servers).filter(
+    (s): s is Json => !!s && typeof s === 'object' && typeof (s as Json).url === 'string'
+  )
+  const absolute = servers.filter((s) => !str(s.url).startsWith('/'))
+  if (absolute.length) {
+    const taken = new Set<string>()
+    const environments = absolute.map((server, i) => {
+      const url = str(server.url)
+      const host = url.replace(/^[a-z][a-z\d+.-]*:\/\//i, '').split('/')[0]
+      const fallback =
+        host && !host.includes('{') ? host : absolute.length === 1 ? 'Default' : `Server ${i + 1}`
+      const variables: KeyValue[] = [
+        { name: 'baseUrl', value: url.replace(/\{([^{}]+)\}/g, '{{$1}}').replace(/\/$/, ''), enabled: true }
+      ]
+      for (const [name, raw] of Object.entries((server.variables ?? {}) as Json)) {
+        const spec = (raw ?? {}) as Json
+        const value = spec.default ?? (Array.isArray(spec.enum) ? spec.enum[0] : '')
+        variables.push({ name, value: scalar(value), enabled: true })
+      }
+      return { name: uniqueName(str(server.description).trim() || fallback, taken), variables }
     })
-    // A relative server URL ("/v1") needs a host from the environment.
-    return url.startsWith('/') ? `{{baseUrl}}${url.replace(/\/$/, '')}` : url.replace(/\/$/, '')
+    return { prefix: '{{baseUrl}}', environments }
   }
   // Swagger 2
   const host = str(doc.host)
+  const basePath = str(doc.basePath).replace(/\/$/, '')
   if (host) {
     const scheme = Array.isArray(doc.schemes) ? str(doc.schemes[0], 'https') : 'https'
-    return `${scheme}://${host}${str(doc.basePath).replace(/\/$/, '')}`
+    return {
+      prefix: '{{baseUrl}}',
+      environments: [
+        { name: host, variables: [{ name: 'baseUrl', value: `${scheme}://${host}${basePath}`, enabled: true }] }
+      ]
+    }
   }
-  return '{{baseUrl}}'
+  // No host anywhere ("/v1" or nothing): requests keep the path, the user supplies the host.
+  const relative = servers[0] ? str(servers[0].url).replace(/\/$/, '') : basePath
+  return {
+    prefix: `{{baseUrl}}${relative}`,
+    environments: [{ name: 'Default', variables: [{ name: 'baseUrl', value: '', enabled: true }] }],
+    needsHost: 'Default'
+  }
+}
+
+/** `{{name}}` tokens a request sends: URL, query, headers, body and auth. */
+function placeholdersOf(request: TigerRequest, collectionAuth?: TigerAuth): string[] {
+  const texts = [request.url, request.body.content]
+  for (const kv of [...request.query, ...request.headers]) texts.push(kv.name, kv.value)
+  for (const auth of [request.auth, collectionAuth]) {
+    for (const v of Object.values(auth ?? {})) if (typeof v === 'string') texts.push(v)
+  }
+  return texts.flatMap((t) => findMissingVars(t, {}))
 }
 
 function exampleOf(doc: Json, p: Json): unknown {
@@ -225,7 +288,9 @@ function securityAuth(doc: Json, requirement: unknown, warnings: ImportWarning[]
 export function importOpenApi(raw: unknown): ImportResult {
   const doc = (raw ?? {}) as Json
   const info = (doc.info ?? {}) as Json
-  const base = baseUrl(doc)
+  const { prefix, environments, needsHost } = serversOf(doc)
+  /** Path parameters left as `{{name}}`: each request fills its own, so no environment defines them. */
+  const pathPlaceholders = new Set<string>()
   const paths = (doc.paths ?? {}) as Json
   const requests: ImportedRequest[] = []
   const warnings: ImportWarning[] = []
@@ -247,10 +312,12 @@ export function importOpenApi(raw: unknown): ImportResult {
       const tag = Array.isArray(op.tags) ? str(op.tags[0]) : ''
       const folder = tag || path.split('/').filter(Boolean)[0] || ''
       const pathParams = new Map(params.filter((p) => p.in === 'path').map((p) => [str(p.name), p]))
-      const url = `${base}${path}`.replace(/(?<!\{)\{([^{}]+)\}(?!\})/g, (_m, name: string) => {
+      const url = `${prefix}${path}`.replace(/(?<!\{)\{([^{}]+)\}(?!\})/g, (_m, name: string) => {
         const p = pathParams.get(name)
         const ex = p ? exampleOf(doc, p) : undefined
-        return ex !== undefined ? scalar(ex) : `{{${name}}}`
+        if (ex !== undefined) return scalar(ex)
+        pathPlaceholders.add(name)
+        return `{{${name}}}`
       })
       const name = str(op.summary) || str(op.operationId) || `${method.toUpperCase()} ${path}`
       const request: ImportedRequest['request'] = {
@@ -293,11 +360,27 @@ export function importOpenApi(raw: unknown): ImportResult {
       ...warning('imports.securityPlaceholders', { token: '{{token}}' })
     })
   }
+  if (needsHost) {
+    warnings.push({ request: needsHost, ...warning('imports.baseUrlUnknown', { name: needsHost }) })
+  }
+  // Define every variable the requests now use (auth placeholders such as
+  // {{token}}, server variables the document did not declare), so a send never
+  // goes out with a literal {{name}} in it.
+  const used = new Set(requests.flatMap(({ request }) => placeholdersOf(request, auth)))
+  for (const env of environments) {
+    const defined = new Set(env.variables.map((v) => v.name))
+    for (const name of used) {
+      if (!defined.has(name) && !pathPlaceholders.has(name)) {
+        env.variables.push({ name, value: '', enabled: true })
+      }
+    }
+  }
   const docs = str(info.description)
   return {
     name: str(info.title, 'OpenAPI collection'),
     source: 'openapi',
     requests,
+    environments,
     ...(auth && auth.type !== 'none' ? { auth } : {}),
     ...(docs.trim() ? { docs } : {}),
     ...(warnings.length ? { warnings } : {})
