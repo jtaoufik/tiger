@@ -99,8 +99,9 @@ function sanitizeError(message: string, root?: string): string {
     out = out.replace(new RegExp(`${escaped}[/\\\\]?`, 'g'), '')
   }
   // Collapse any remaining absolute path (e.g. '/Users/foo/secret.tiger') to
-  // its last path segment.
-  out = out.replace(/(?:\/|[A-Za-z]:\\)[^\s'"]*[/\\]([^\s'"/\\]+)/g, '$1')
+  // its last path segment. Only a path that starts a word: the '//host/path'
+  // inside 'https://host/path' is a URL, kept whole.
+  out = out.replace(/(^|[\s'"(])(?:\/|[A-Za-z]:\\)[^\s'"]*[/\\]([^\s'"/\\]+)/g, '$1$2')
   // A bare leading-slash path with a single segment (e.g. '/secret.tiger').
   out = out.replace(/(^|[\s'"])\/([^\s'"/\\]+)/g, '$1$2')
   return out

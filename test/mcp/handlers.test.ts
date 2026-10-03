@@ -305,6 +305,27 @@ describe('handleRunRequest', () => {
     expect(result.content[0].text).not.toContain('Bearer leak')
   })
 
+  it('names the URL that failed intact, while still hiding file paths', async () => {
+    const failing = (message: string): HttpRunner => ({
+      oauthToken: async () => 'unused',
+      send: async () => {
+        throw new Error(message)
+      }
+    })
+    let result = await handleRunRequest(store, failing('fetch failed'), { path: 'users/get.tiger', environment: 'dev' })
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toBe('Request to https://api.test/users/1 failed: fetch failed')
+
+    result = await handleRunRequest(
+      store,
+      failing("ENOENT: no such file or directory, open '/Users/me/files/cat.png'"),
+      { path: 'users/get.tiger', environment: 'dev' }
+    )
+    expect(result.content[0].text).toBe(
+      "Request to https://api.test/users/1 failed: ENOENT: no such file or directory, open 'cat.png'"
+    )
+  })
+
   it('sanitizes absolute paths out of run errors', async () => {
     const result = await handleRunRequest(
       makeStore({
