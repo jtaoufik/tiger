@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { readTextFile } from '../main/textFile'
-import { basename, join, relative, resolve } from 'node:path'
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
 import { parseEnvironment } from '../core/environment'
 import { parseCollectionSettings } from '../core/collectionSettings'
@@ -21,6 +21,21 @@ const COLLECTION_FILE = 'collection.tiger'
 const FOLDER_FILE = 'folder.tiger'
 
 export function createFsStore(root: string): CollectionStore {
+  /**
+   * A path the AI client sent: relative to the collection, as list_requests
+   * gives them. An absolute one, or one that leaves the collection (`../`), is
+   * refused: an assistant steered by a page it read must not open other files,
+   * and a parse error quotes the start of the file.
+   */
+  function inCollection(path: string): string {
+    const full = resolve(root, path)
+    const rel = relative(root, full)
+    if (isAbsolute(path) || rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+      throw new Error('the path must be relative to the collection folder and stay inside it')
+    }
+    return full
+  }
+
   async function walk(dir: string, acc: RequestRef[]): Promise<void> {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
@@ -76,7 +91,7 @@ export function createFsStore(root: string): CollectionStore {
 
   async function readFolderAuth(folder: string[]): Promise<TigerAuth | undefined> {
     try {
-      const text = await readTextFile(join(root, ...folder, FOLDER_FILE))
+      const text = await readTextFile(inCollection(join(...folder, FOLDER_FILE)))
       return parseCollectionSettings(text).auth
     } catch {
       // No folder.tiger (or unreadable): the folder has no default auth.
@@ -90,7 +105,7 @@ export function createFsStore(root: string): CollectionStore {
       await walk(root, acc)
       return acc
     },
-    readRequest: (path) => readTextFile(join(root, path)),
+    readRequest: async (path) => readTextFile(inCollection(path)),
     readCollectionAuth,
     readFolderAuth,
     listEnvironments,

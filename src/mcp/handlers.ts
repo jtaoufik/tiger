@@ -135,10 +135,12 @@ export interface RunArgs {
 
 /** The folders a request file sits in, from the collection root down ('/' or '\' separated). */
 function folderPath(path: string): string[] {
-  return path
-    .split(/[\\/]/)
-    .filter((part) => part && part !== '.')
-    .slice(0, -1)
+  const parts: string[] = []
+  for (const part of path.split(/[\\/]/)) {
+    if (part === '..') parts.pop()
+    else if (part && part !== '.') parts.push(part)
+  }
+  return parts.slice(0, -1)
 }
 
 export async function handleRunRequest(

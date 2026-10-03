@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFsStore, createNodeRunner } from '../../src/mcp/store'
 import {
+  handleGetRequest,
   handleListEnvironments,
   handleListRequests,
   handleRunRequest,
@@ -131,6 +132,45 @@ describe('run_request bodies', () => {
     )
     expect(body).not.toContain('draft')
     expect(body.endsWith(`--${boundary}--\r\n`)).toBe(true)
+  })
+})
+
+describe('paths sent by the AI client', () => {
+  it('refuses one that leaves the collection folder, without quoting the file it points at', async () => {
+    const root = collection({ 'users/get.tiger': request('Get user') })
+    const secret = join(root, '..', 'secrets.env')
+    writeFileSync(secret, 'API_KEY=sk-live-123\n')
+    const store = createFsStore(root)
+    const runner = recordingRunner()
+
+    const outside = ['../secrets.env', join('users', '..', '..', 'secrets.env'), secret, join(root, 'users', 'get.tiger')]
+    for (const path of outside) {
+      const got = await handleGetRequest(store, path)
+      expect(got.isError).toBe(true)
+      expect(got.content[0].text).toContain('the path must be relative to the collection folder and stay inside it')
+      expect(got.content[0].text).not.toContain('sk-live')
+      const ran = await handleRunRequest(store, runner, { path })
+      expect(ran.isError).toBe(true)
+      expect(ran.content[0].text).not.toContain('sk-live')
+    }
+    expect(runner.sent).toEqual([])
+
+    // Relative paths inside the collection still work, however they are written.
+    expect((await handleGetRequest(store, join('users', 'get.tiger'))).isError).toBeFalsy()
+    expect((await handleGetRequest(store, './users/../users/get.tiger')).isError).toBeFalsy()
+  })
+
+  it('applies the folder auth of the folder a path written with .. ends up in', async () => {
+    const root = collection({
+      'collection.tiger': 'auth:bearer {\n  token: collection-token\n}\n',
+      'admin/folder.tiger': 'auth:bearer {\n  token: admin-token\n}\n',
+      'admin/users/list.tiger': request('List users'),
+      'public/get.tiger': request('Public')
+    })
+    const runner = recordingRunner()
+    await handleRunRequest(createFsStore(root), runner, { path: 'admin/../public/get.tiger' })
+    await handleRunRequest(createFsStore(root), runner, { path: 'public/../admin/users/list.tiger' })
+    expect(runner.sent.map((b) => b.headers.Authorization)).toEqual(['Bearer collection-token', 'Bearer admin-token'])
   })
 })
 
