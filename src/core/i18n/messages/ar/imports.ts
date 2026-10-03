@@ -84,6 +84,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.templateTags': 'يستخدم وسوم قوالب لا يستطيع Tiger تشغيلها: {tags}.',
   'imports.templateTagsKept': 'يستخدم وسوم قوالب لا يستطيع Tiger تشغيلها: {tags}. تم الاحتفاظ بها كنص.',
   'imports.envTemplateTags': 'تستخدم قيم البيئة وسوم قوالب لا يستطيع Tiger تشغيلها: {tags}.',
+  'imports.templateFilters': 'يستخدم مرشحات قوالب لا يطبقها Tiger: {filters}. تُستخدم قيمة المتغير كما هي.',
   'imports.skippedRequests': {
     zero: 'لم يتم تخطي أي طلبات {kind}: يرسل Tiger طلبات HTTP فقط.',
     one: 'تم تخطي طلب {kind} واحد: يرسل Tiger طلبات HTTP فقط.',

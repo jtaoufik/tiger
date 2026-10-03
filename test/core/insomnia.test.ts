@@ -93,3 +93,32 @@ describe('importInsomnia – graphql and xml bodies', () => {
     expect(body).toEqual({ type: 'xml', content: '<soap:Envelope/>' })
   })
 })
+
+describe('Insomnia template filters', () => {
+  it('resolves a variable that carries a filter, and reports the dropped filter', async () => {
+    const { importInsomnia } = await import('../../src/core/import/insomnia')
+    const result = importInsomnia({
+      _type: 'export',
+      __export_format: 4,
+      resources: [
+        { _id: 'wrk_1', _type: 'workspace', name: 'Shop' },
+        {
+          _id: 'req_1',
+          _type: 'request',
+          parentId: 'wrk_1',
+          name: 'Me',
+          method: 'GET',
+          url: '{{ _.base_url }}/me?q={{ _.query | urlencode }}',
+          headers: [{ name: 'Authorization', value: 'Bearer {{ _.token | trim | default("x") }}' }]
+        },
+        { _id: 'env_1', _type: 'environment', parentId: 'wrk_1', name: 'Base', data: { base_url: 'https://a.test', token: 't' } }
+      ]
+    })
+    const req = result.requests[0].request
+    expect(req.url).toBe('{{base_url}}/me?q={{query}}')
+    expect(req.headers[0].value).toBe('Bearer {{token}}')
+    const messages = (result.warnings ?? []).map((w) => w.message).join('\n')
+    expect(messages).toContain('template filters Tiger does not apply: urlencode, trim, default')
+    expect(messages).not.toContain('template tags')
+  })
+})

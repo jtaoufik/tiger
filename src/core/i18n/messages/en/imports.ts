@@ -69,6 +69,7 @@ export const imports = {
   'imports.templateTags': 'Uses template tags Tiger cannot run: {tags}.',
   'imports.templateTagsKept': 'Uses template tags Tiger cannot run: {tags}. They were kept as text.',
   'imports.envTemplateTags': 'Environment values use template tags Tiger cannot run: {tags}.',
+  'imports.templateFilters': 'Uses template filters Tiger does not apply: {filters}. The variable is used as it is.',
   'imports.skippedRequests': {
     one: '{count} {kind} request was skipped: Tiger sends HTTP requests only.',
     other: '{count} {kind} requests were skipped: Tiger sends HTTP requests only.'

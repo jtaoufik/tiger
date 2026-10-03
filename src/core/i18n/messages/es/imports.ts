@@ -78,6 +78,7 @@ export const imports: NamespaceCatalog<typeof en> = {
     'Usa etiquetas de plantilla que Tiger no puede ejecutar: {tags}. Se conservaron como texto.',
   'imports.envTemplateTags':
     'Los valores del entorno usan etiquetas de plantilla que Tiger no puede ejecutar: {tags}.',
+  'imports.templateFilters': 'Usa filtros de plantilla que Tiger no aplica: {filters}. La variable se usa tal cual.',
   'imports.skippedRequests': {
     one: 'Se omitió {count} solicitud {kind}: Tiger solo envía solicitudes HTTP.',
     other: 'Se omitieron {count} solicitudes {kind}: Tiger solo envía solicitudes HTTP.'

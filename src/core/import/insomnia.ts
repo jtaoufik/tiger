@@ -38,10 +38,25 @@ import {
 } from './common'
 import type { ImportedFolder, ImportResult, ImportedRequest, ImportWarning } from './types'
 
-/** Convert Insomnia template syntax; returns unsupported tag names found. */
+/** Marks a dropped Nunjucks filter in the `unsupported` set ("|upper"). */
+const FILTER_MARK = '|'
+
+/**
+ * Convert Insomnia template syntax; collects the tags Tiger cannot run and
+ * the filters it drops. `{{ _.token | trim }}` becomes `{{token}}`: the
+ * variable resolves, only the filter is lost (and reported), where it used
+ * to stay literal text that never resolved.
+ */
 export function convertTemplates(text: string, unsupported: Set<string>): string {
   if (!text || (!text.includes('{{') && !text.includes('{%'))) return text
   return text
+    .replace(/\{\{\s*(?:_\.)?([\w.$-]+)\s*\|([^{}]*)\}\}/g, (_match, name: string, filters: string) => {
+      for (const filter of filters.split('|')) {
+        const id = /^\s*(\w+)/.exec(filter)?.[1]
+        if (id) unsupported.add(`${FILTER_MARK}${id}`)
+      }
+      return `{{${name}}}`
+    })
     .replace(/\{\{\s*_\.([\w.$-]+)\s*\}\}/g, '{{$1}}')
     .replace(/\{\{\s*_\[\s*['"]([^'"]+)['"]\s*\]\s*\}\}/g, '{{$1}}')
     .replace(/\{%\s*(\w+)([^%]*)%\}/g, (match, tag: string, args: string) => {
@@ -53,6 +68,19 @@ export function convertTemplates(text: string, unsupported: Set<string>): string
       unsupported.add(tag)
       return match
     })
+}
+
+/** The warnings for what `convertTemplates` could not carry over. */
+function templateWarnings(
+  found: Set<string>,
+  tagKey: 'imports.templateTags' | 'imports.templateTagsKept' | 'imports.envTemplateTags'
+): WarningText[] {
+  const tags = [...found].filter((x) => !x.startsWith(FILTER_MARK))
+  const filters = [...new Set([...found].filter((x) => x.startsWith(FILTER_MARK)).map((x) => x.slice(1)))]
+  return [
+    ...(tags.length ? [warning(tagKey, { tags: tags.join(', ') })] : []),
+    ...(filters.length ? [warning('imports.templateFilters', { filters: filters.join(', ') })] : [])
+  ]
 }
 
 function toKeyValues(raw: unknown, tags: Set<string>): KeyValue[] {
@@ -315,7 +343,7 @@ export function importInsomnia(raw: unknown): ImportResult {
     if (str(group.preRequestScript).trim() || str(group.afterResponseScript).trim()) {
       warn(warning('imports.folderScripts'))
     }
-    if (tags.size) warn(warning('imports.templateTags', { tags: [...tags].join(', ') }))
+    templateWarnings(tags, 'imports.templateTags').forEach(warn)
   }
 
   const requests: ImportedRequest[] = []
@@ -363,7 +391,7 @@ export function importInsomnia(raw: unknown): ImportResult {
     const post = joinScripts(...chain.map((g) => str(g.afterResponseScript)), str(r.afterResponseScript))
     if (pre) request.preScript = pre
     if (post) request.postScript = post
-    if (tags.size) warn(warning('imports.templateTagsKept', { tags: [...tags].join(', ') }))
+    templateWarnings(tags, 'imports.templateTagsKept').forEach(warn)
     checkRequest(request, path, warnings)
     requests.push({ path, request })
   }
@@ -393,9 +421,7 @@ export function importInsomnia(raw: unknown): ImportResult {
       })
     }
   }
-  if (envTags.size) {
-    warnings.push(warning('imports.envTemplateTags', { tags: [...envTags].join(', ') }))
-  }
+  warnings.push(...templateWarnings(envTags, 'imports.envTemplateTags'))
 
   const name =
     workspaces.length === 1 ? str(workspaces[0].name, 'Insomnia collection') : 'Insomnia collection'

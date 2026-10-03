@@ -126,3 +126,32 @@ vars:secret [
     expect(debug.enabled).toBe(false)
   })
 })
+
+describe('importBrunoCollection – order', () => {
+  it('lists requests and folders in their seq order, whatever order the disk returns files in', async () => {
+    const { importBrunoCollection } = await import('../../src/core/import/bruno')
+    const bru = (name: string, seq: number) => `meta {\n  name: ${name}\n  type: http\n  seq: ${seq}\n}\n\nget {\n  url: https://a.test/${seq}\n}\n`
+    const folder = (name: string, seq: number) => `meta {\n  name: ${name}\n  seq: ${seq}\n}\n`
+    const result = importBrunoCollection(
+      [
+        { segments: ['z-last.bru'], text: bru('Logout', 3) },
+        { segments: ['b', 'folder.bru'], text: folder('Beta', 1) },
+        { segments: ['a-first.bru'], text: bru('Login', 1) },
+        { segments: ['b', 'two.bru'], text: bru('Second in Beta', 2) },
+        { segments: ['m-middle.bru'], text: bru('Me', 2) },
+        { segments: ['a', 'folder.bru'], text: folder('Alpha', 2) },
+        { segments: ['a', 'one.bru'], text: bru('Only in Alpha', 1) },
+        { segments: ['b', 'one.bru'], text: bru('First in Beta', 1) }
+      ],
+      'Shop'
+    )
+    expect(result.requests.map((r) => [r.path.join('/'), r.request.name])).toEqual([
+      ['', 'Login'],
+      ['', 'Me'],
+      ['', 'Logout'],
+      ['Beta', 'First in Beta'],
+      ['Beta', 'Second in Beta'],
+      ['Alpha', 'Only in Alpha']
+    ])
+  })
+})

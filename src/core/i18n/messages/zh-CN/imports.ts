@@ -52,6 +52,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.templateTags': '使用了 Tiger 无法运行的模板标签：{tags}。',
   'imports.templateTagsKept': '使用了 Tiger 无法运行的模板标签：{tags}。它们已作为文本保留。',
   'imports.envTemplateTags': '环境值使用了 Tiger 无法运行的模板标签：{tags}。',
+  'imports.templateFilters': '使用了 Tiger 不会应用的模板过滤器：{filters}。变量按原值使用。',
   'imports.skippedRequests': {
     other: '已跳过 {count} 个 {kind} 请求：Tiger 只发送 HTTP 请求。'
   },

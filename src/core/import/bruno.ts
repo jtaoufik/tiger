@@ -508,7 +508,7 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
     return chain
   }
 
-  const requests: ImportedRequest[] = []
+  const placed: Array<{ dir: string[]; imported: ImportedRequest }> = []
   for (const file of requestFiles) {
     const dir = file.segments.slice(0, -1)
     const path = displayPath(dir)
@@ -534,7 +534,7 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
       if (pre) req.preScript = pre
       if (post) req.postScript = post
       checkRequest(req, path, warnings)
-      requests.push(imported)
+      placed.push({ dir, imported })
     } catch (e) {
       warnings.push({
         request: file.segments.join('/'),
@@ -543,6 +543,26 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
       })
     }
   }
+
+  // Bruno lists folders and requests in their `seq` order, not by file name
+  // (and the disk returns files in no particular order).
+  const folderSeq = (dir: string[]) => settings.get(dir.join('/'))?.seq ?? Number.POSITIVE_INFINITY
+  const requestSeq = (r: ImportedRequest) => r.request.seq ?? Number.POSITIVE_INFINITY
+  placed.sort((a, b) => {
+    for (let i = 0; i < Math.min(a.dir.length, b.dir.length); i++) {
+      if (a.dir[i] === b.dir[i]) continue
+      return (
+        folderSeq(a.dir.slice(0, i + 1)) - folderSeq(b.dir.slice(0, i + 1)) ||
+        a.dir[i].localeCompare(b.dir[i])
+      )
+    }
+    return (
+      a.dir.length - b.dir.length ||
+      requestSeq(a.imported) - requestSeq(b.imported) ||
+      a.imported.request.name.localeCompare(b.imported.request.name)
+    )
+  })
+  const requests: ImportedRequest[] = placed.map((p) => p.imported)
 
   const folders: ImportedFolder[] = []
   let collectionAuth: TigerAuth | undefined

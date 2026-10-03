@@ -76,6 +76,7 @@ export const imports: NamespaceCatalog<typeof en> = {
     'ऐसे टेम्पलेट टैग इस्तेमाल हुए हैं जिन्हें Tiger नहीं चला सकता: {tags}। उन्हें टेक्स्ट के रूप में रखा गया।',
   'imports.envTemplateTags':
     'परिवेश के मान ऐसे टेम्पलेट टैग इस्तेमाल करते हैं जिन्हें Tiger नहीं चला सकता: {tags}।',
+  'imports.templateFilters': 'ऐसे टेम्पलेट फ़िल्टर इस्तेमाल हुए हैं जिन्हें Tiger लागू नहीं करता: {filters}। वेरिएबल जैसा है वैसा ही इस्तेमाल होता है।',
   'imports.skippedRequests': {
     one: '{count} {kind} अनुरोध छोड़ दिया गया: Tiger केवल HTTP अनुरोध भेजता है।',
     other: '{count} {kind} अनुरोध छोड़ दिए गए: Tiger केवल HTTP अनुरोध भेजता है।'

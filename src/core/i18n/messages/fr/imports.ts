@@ -79,6 +79,7 @@ export const imports: NamespaceCatalog<typeof en> = {
     'Utilise des balises de modèle que Tiger ne peut pas exécuter : {tags}. Elles ont été conservées comme texte.',
   'imports.envTemplateTags':
     'Les valeurs de l’environnement utilisent des balises de modèle que Tiger ne peut pas exécuter : {tags}.',
+  'imports.templateFilters': 'Utilise des filtres de modèle que Tiger n’applique pas : {filters}. La variable est utilisée telle quelle.',
   'imports.skippedRequests': {
     one: '{count} requête {kind} a été ignorée : Tiger n’envoie que des requêtes HTTP.',
     other: '{count} requêtes {kind} ont été ignorées : Tiger n’envoie que des requêtes HTTP.'
