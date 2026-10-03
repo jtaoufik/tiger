@@ -22,7 +22,7 @@ import {
 
 const root = process.env.TIGER_COLLECTION || process.argv[2] || process.cwd()
 const store = createFsStore(root)
-const runner = createNodeRunner()
+const runner = createNodeRunner(root)
 
 const server = new McpServer({ name: 'tiger', version: '0.1.0' })
 

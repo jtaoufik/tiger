@@ -1,10 +1,12 @@
-import { readdir } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { readTextFile } from '../main/textFile'
-import { basename, join, relative } from 'node:path'
+import { basename, join, relative, resolve } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
 import { parseEnvironment } from '../core/environment'
 import { parseCollectionSettings } from '../core/collectionSettings'
 import { interpolate, type VarMap } from '../core/interpolate'
+import { assembleMultipart, generateBoundary, type MultipartPart } from '../core/multipart'
+import type { BuiltRequest } from '../core/request'
 import type { RawResponse } from '../core/response'
 import type { TigerAuth } from '../core/types'
 import type {
@@ -123,7 +125,39 @@ async function exchangeOAuthToken(
   return json.access_token
 }
 
-export function createNodeRunner(): HttpRunner {
+/**
+ * Headers and body as sent. multipart/form-data rows are assembled here, as
+ * the app does at send time (src/main/http.ts): file rows are read from disk
+ * and the Content-Type carries the generated boundary. A relative file path is
+ * read from the collection folder, not from wherever the AI client started us.
+ */
+async function wireRequest(
+  built: BuiltRequest,
+  root: string | undefined
+): Promise<{ headers: Record<string, string>; body?: string | Uint8Array }> {
+  if (!built.multipart?.length) return { headers: built.headers, body: built.body }
+  const parts: MultipartPart[] = await Promise.all(
+    built.multipart.map(async (p) =>
+      p.isFile
+        ? {
+            name: p.name,
+            value: new Uint8Array(await readFile(resolve(root ?? '', p.value))),
+            fileName: basename(p.value)
+          }
+        : { name: p.name, value: p.value }
+    )
+  )
+  const { bytes, contentType } = assembleMultipart(parts, generateBoundary())
+  const headers = { ...built.headers }
+  for (const k of Object.keys(headers)) {
+    if (k.toLowerCase() === 'content-type') delete headers[k]
+  }
+  headers['Content-Type'] = contentType
+  return { headers, body: bytes }
+}
+
+/** Sends requests with Node's fetch. `root` is the collection folder, for relative file paths. */
+export function createNodeRunner(root?: string): HttpRunner {
   return {
     oauthToken: exchangeOAuthToken,
     async send(built, timeoutMs = 30000): Promise<RawResponse> {
@@ -131,10 +165,12 @@ export function createNodeRunner(): HttpRunner {
       const timer = setTimeout(() => controller.abort(), timeoutMs)
       const started = Date.now()
       try {
+        const { headers: sentHeaders, body: sentBody } = await wireRequest(built, root)
         const res = await fetch(built.url, {
           method: built.method,
-          headers: built.headers,
-          body: built.body,
+          headers: sentHeaders,
+          // A Uint8Array is a valid body; TS's BodyInit just doesn't know it.
+          body: sentBody as BodyInit | undefined,
           signal: controller.signal
         })
         const body = await res.text()

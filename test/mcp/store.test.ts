@@ -5,9 +5,11 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer, type IncomingHttpHeaders, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createFsStore } from '../../src/mcp/store'
+import { createFsStore, createNodeRunner } from '../../src/mcp/store'
 import {
   handleListEnvironments,
   handleListRequests,
@@ -16,11 +18,35 @@ import {
 } from '../../src/mcp/handlers'
 import type { BuiltRequest } from '../../src/core/request'
 
+/** What the loopback server received. */
+interface Seen {
+  method: string
+  url: string
+  headers: IncomingHttpHeaders
+  body: Buffer
+}
+const seen: Seen[] = []
+let server: Server
+let origin = ''
 let base = ''
-beforeAll(() => {
+beforeAll(async () => {
   base = mkdtempSync(join(tmpdir(), 'tiger-mcp-store-'))
+  server = createServer((req, res) => {
+    const chunks: Buffer[] = []
+    req.on('data', (c: Buffer) => chunks.push(c))
+    req.on('end', () => {
+      seen.push({ method: req.method ?? '', url: req.url ?? '', headers: req.headers, body: Buffer.concat(chunks) })
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end('{"ok":true}')
+    })
+  })
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done))
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
 })
-afterAll(() => rmSync(base, { recursive: true, force: true }))
+afterAll(async () => {
+  await new Promise<void>((done) => server.close(() => done()))
+  rmSync(base, { recursive: true, force: true })
+})
 
 let count = 0
 /** A fresh collection folder holding `files` (relative path -> content). */
@@ -76,6 +102,35 @@ describe('run_request auth', () => {
     await handleRunRequest(store, runner, { path: join('admin', 'users', 'list.tiger') })
     await handleRunRequest(store, runner, { path: join('public', 'get.tiger') })
     expect(runner.sent.map((b) => b.headers.Authorization)).toEqual(['Bearer folder-token', 'Bearer collection-token'])
+  })
+})
+
+describe('run_request bodies', () => {
+  it('sends multipart fields and files, reading a relative file path from the collection folder', async () => {
+    const root = collection({
+      'files/cat.txt': 'meow bytes',
+      'upload.tiger':
+        `meta {\n  name: Upload\n}\npost {\n  url: ${origin}/upload\n}\n` +
+        'headers {\n  Content-Type: application/json\n}\n' +
+        'body:multipart {\n  caption: holiday\n  photo: @file:files/cat.txt\n  ~draft: yes\n}\n'
+    })
+    seen.length = 0
+    const result = await handleRunRequest(createFsStore(root), createNodeRunner(root), { path: 'upload.tiger' })
+    expect(result.isError).toBeFalsy()
+
+    expect(seen).toHaveLength(1)
+    const type = String(seen[0].headers['content-type'])
+    // The boundary type replaces the request's own Content-Type, as in the app.
+    expect(type).toMatch(/^multipart\/form-data; boundary=\S+$/)
+    const boundary = type.split('boundary=')[1]
+    const body = seen[0].body.toString('utf8')
+    expect(body).toContain('Content-Disposition: form-data; name="caption"\r\n\r\nholiday\r\n')
+    expect(body).toContain(
+      'Content-Disposition: form-data; name="photo"; filename="cat.txt"\r\n' +
+        'Content-Type: application/octet-stream\r\n\r\nmeow bytes\r\n'
+    )
+    expect(body).not.toContain('draft')
+    expect(body.endsWith(`--${boundary}--\r\n`)).toBe(true)
   })
 })
 
