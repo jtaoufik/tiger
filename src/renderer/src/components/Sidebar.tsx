@@ -753,6 +753,59 @@ export function Sidebar({
     [collections]
   )
 
+  /** Keys of the active request's collection and folders, outermost first. */
+  const activePathKeys = (): string[] => {
+    if (!activeId) return []
+    const col = collections.find((c) => c.entries.some((e) => e.id === activeId))
+    const entry = col?.entries.find((e) => e.id === activeId)
+    if (!col || !entry) return []
+    return [
+      JSON.stringify([col.id]),
+      ...entry.folderPath.map((_, i) => JSON.stringify([col.id, ...entry.folderPath.slice(0, i + 1)]))
+    ]
+  }
+
+  /**
+   * A collection that arrives after the first render (import, open, team
+   * clone, session restore, or reopened after a close) starts with its folders
+   * folded: a large import used to open every folder at once. The folders
+   * leading to the active request stay open. Collections shown at first
+   * render (the demo) keep their folders as they are.
+   */
+  const seenCollections = useRef<Set<string> | null>(null)
+  useLayoutEffect(() => {
+    const ids = new Set(trees.map(({ col }) => col.id))
+    const seen = seenCollections.current
+    seenCollections.current = ids
+    if (seen === null) return
+    const fresh = trees.filter(({ col }) => !seen.has(col.id))
+    if (!fresh.length) return
+    const keep = new Set(activePathKeys())
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      const fold = (folder: TreeFolder) => {
+        for (const f of folder.folders) {
+          if (!keep.has(f.key)) next.add(f.key)
+          fold(f)
+        }
+      }
+      for (const { tree } of fresh) fold(tree)
+      return next
+    })
+    // activePathKeys reads the same render's props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trees])
+
+  // The active request is always visible: its folders open when it becomes active.
+  useLayoutEffect(() => {
+    const keys = activePathKeys()
+    if (!keys.length) return
+    setCollapsed((prev) =>
+      keys.some((k) => prev.has(k)) ? new Set([...prev].filter((k) => !keys.includes(k))) : prev
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId])
+
   const q = effectiveQuery.trim().toLowerCase()
 
   const searchHits = useMemo(
