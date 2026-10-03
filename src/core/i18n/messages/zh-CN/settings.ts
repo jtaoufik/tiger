@@ -96,6 +96,9 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.mcp.copySnippet': '复制代码片段',
   'settings.mcp.snippetCopied': '代码片段已复制',
   'settings.mcp.loading': '加载中…',
+  'settings.mcp.storeNote': '每次 Microsoft Store 更新都会把 Tiger 安装到新的文件夹。更新后，请重新复制代码片段。',
+  'settings.mcp.nodeNote':
+    '便携版 Tiger 从临时文件夹运行，因此此代码片段使用 Node.js，需要先安装它。安装版和 zip 版 Tiger 无需 Node.js 即可运行服务器。',
 
   'settings.analytics.label': '匿名使用统计',
   'settings.analytics.desc':

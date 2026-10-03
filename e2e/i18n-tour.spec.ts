@@ -290,7 +290,9 @@ for (const theme of ['light', 'dark'] as const) {
       await app.evaluate(({ ipcMain }) => {
         ipcMain.removeHandler('tiger:mcpInfo')
         ipcMain.handle('tiger:mcpInfo', () => ({
-          serverPath: '/Applications/Tiger.app/Contents/Resources/mcp/server.mjs'
+          command: '/Applications/Tiger.app/Contents/MacOS/Tiger',
+          serverPath: '/Applications/Tiger.app/Contents/Resources/app.asar.unpacked/out/mcp/server.mjs',
+          env: { ELECTRON_RUN_AS_NODE: '1' }
         }))
       })
       await page.getByRole('button', { name: named(k('app.top.settings')) }).click()

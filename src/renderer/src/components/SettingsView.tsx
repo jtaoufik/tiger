@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { Settings, ThemeChoice } from '../../../main/settings'
+import { mcpClientConfig, type McpInfo } from '../../../mcp/launch'
 import { Logo } from '../Logo'
 import { CheckIcon, CloseIcon, CopyIcon } from './Icons'
 import './SettingsExtras.css'
@@ -171,7 +172,7 @@ export function SettingsView({ settings, onChange }: Props) {
   const [tab, setTab] = useState<SettingsTab>('general')
   const [version, setVersion] = useState('')
   const [clearLabel, setClearLabel] = useState<'clear' | 'cleared'>('clear')
-  const [mcpServerPath, setMcpServerPath] = useState<string | null>(null)
+  const [mcpInfo, setMcpInfo] = useState<McpInfo | null>(null)
   const [copied, setCopied] = useState(false)
   const uid = useId()
 
@@ -196,7 +197,9 @@ export function SettingsView({ settings, onChange }: Props) {
 
   useEffect(() => {
     if (tab === 'mcp') {
-      window.tiger?.mcpInfo?.().then((info) => setMcpServerPath(info.serverPath))
+      // Main answers with a whole McpInfo (src/mcp/launch.ts); the preload
+      // bridge still types it by its serverPath alone.
+      window.tiger?.mcpInfo?.().then((info) => setMcpInfo(info as McpInfo))
     }
   }, [tab])
 
@@ -208,20 +211,7 @@ export function SettingsView({ settings, onChange }: Props) {
     })
   }
 
-  const mcpSnippet = mcpServerPath
-    ? JSON.stringify(
-        {
-          mcpServers: {
-            tiger: {
-              command: 'node',
-              args: [mcpServerPath, t('settings.mcp.pathPlaceholder')]
-            }
-          }
-        },
-        null,
-        2
-      )
-    : null
+  const mcpSnippet = mcpInfo ? mcpClientConfig(mcpInfo, t('settings.mcp.pathPlaceholder')) : null
 
   function handleCopyMcp() {
     if (!mcpSnippet) return
@@ -626,6 +616,8 @@ export function SettingsView({ settings, onChange }: Props) {
               <code>{t('settings.mcp.pathPlaceholder')}</code>
             )}
           </p>
+          {mcpInfo?.note === 'store' && <p className="mcp-note">{t('settings.mcp.storeNote')}</p>}
+          {mcpInfo?.note === 'node' && <p className="mcp-note">{t('settings.mcp.nodeNote')}</p>}
         </>
       )}
 

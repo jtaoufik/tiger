@@ -97,8 +97,12 @@ describe('SettingsView extras', () => {
     Object.defineProperty(window, 'tiger', { value: undefined, writable: true, configurable: true })
   })
 
-  it('MCP tab shows a code block with the server snippet when mcpInfo resolves', async () => {
-    const mcpInfo = vi.fn().mockResolvedValue({ serverPath: '/abs/path/to/server.mjs' })
+  it('MCP tab shows a snippet that runs the server with Tiger’s own executable as Node', async () => {
+    const mcpInfo = vi.fn().mockResolvedValue({
+      command: '/Applications/Tiger.app/Contents/MacOS/Tiger',
+      serverPath: '/abs/path/to/server.mjs',
+      env: { ELECTRON_RUN_AS_NODE: '1' }
+    })
     Object.defineProperty(window, 'tiger', {
       value: { mcpInfo },
       writable: true,
@@ -110,8 +114,37 @@ describe('SettingsView extras', () => {
     const codeBlock = await screen.findByText((content) =>
       content.includes('/abs/path/to/server.mjs')
     )
-    expect(codeBlock).toBeInTheDocument()
-    expect(codeBlock.textContent).toContain('"command": "node"')
+    // No "command": "node": most Windows machines have no Node installed.
+    expect(JSON.parse(codeBlock.textContent ?? '')).toEqual({
+      mcpServers: {
+        tiger: {
+          command: '/Applications/Tiger.app/Contents/MacOS/Tiger',
+          args: ['/abs/path/to/server.mjs', '<path to your collection folder>'],
+          env: { ELECTRON_RUN_AS_NODE: '1' }
+        }
+      }
+    })
+    expect(screen.queryByText(/Microsoft Store|portable/)).toBeNull()
+
+    Object.defineProperty(window, 'tiger', { value: undefined, writable: true, configurable: true })
+  })
+
+  it('MCP tab tells Microsoft Store users to copy the snippet again after an update', async () => {
+    const mcpInfo = vi.fn().mockResolvedValue({
+      command: 'C:\\Program Files\\WindowsApps\\Tiger_0.8.0.0_x64__abc123\\app\\Tiger.exe',
+      serverPath: 'C:\\Program Files\\WindowsApps\\Tiger_0.8.0.0_x64__abc123\\app\\resources\\server.mjs',
+      env: { ELECTRON_RUN_AS_NODE: '1' },
+      note: 'store'
+    })
+    Object.defineProperty(window, 'tiger', { value: { mcpInfo }, writable: true, configurable: true })
+
+    render(<SettingsView settings={fallbackSettings} onChange={vi.fn()} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'AI assistants (MCP)' }))
+    expect(
+      await screen.findByText(
+        'Each Microsoft Store update installs Tiger in a new folder. After an update, copy the snippet again.'
+      )
+    ).toBeInTheDocument()
 
     Object.defineProperty(window, 'tiger', { value: undefined, writable: true, configurable: true })
   })

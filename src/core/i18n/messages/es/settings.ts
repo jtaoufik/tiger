@@ -103,6 +103,10 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.mcp.copySnippet': 'Copiar fragmento',
   'settings.mcp.snippetCopied': 'Fragmento copiado',
   'settings.mcp.loading': 'Cargando…',
+  'settings.mcp.storeNote':
+    'Cada actualización de Microsoft Store instala Tiger en una carpeta nueva. Después de actualizar, vuelve a copiar el fragmento.',
+  'settings.mcp.nodeNote':
+    'Tiger portable se ejecuta desde una carpeta temporal, así que este fragmento usa Node.js, que debe estar instalado. Las versiones con instalador y zip de Tiger ejecutan el servidor sin él.',
 
   'settings.analytics.label': 'Analíticas de uso anónimas',
   'settings.analytics.desc':

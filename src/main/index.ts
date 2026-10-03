@@ -64,6 +64,7 @@ import {
   repoNameFromUrl
 } from './git'
 import { sanitizeCollectionName } from '../core/newCollection'
+import { resolveMcpLaunch, type McpInfo } from '../mcp/launch'
 import { disposeScriptHost, runIsolatedScript } from './scriptHost'
 import { appWindows, targetAppWindow } from './windows'
 import type { BuiltRequest } from '../core/request'
@@ -575,11 +576,39 @@ function registerIpc(): void {
     clearCookies()
   })
 
-  ipcMain.handle('tiger:mcpInfo', () => {
-    const serverPath = app.isPackaged
-      ? join(process.resourcesPath, 'app.asar.unpacked', 'out', 'mcp', 'server.mjs')
-      : join(app.getAppPath(), 'out', 'mcp', 'server.mjs')
-    return { serverPath }
+  // How an AI client starts the MCP server: Tiger's own executable run as Node
+  // (src/mcp/launch.ts). An install that moves (an AppImage's mount, the
+  // portable exe's temporary folder) gets a copy of the server under userData,
+  // refreshed at each start and whenever Settings shows the snippet.
+  const bundledServer = app.isPackaged
+    ? join(process.resourcesPath, 'app.asar.unpacked', 'out', 'mcp', 'server.mjs')
+    : join(app.getAppPath(), 'out', 'mcp', 'server.mjs')
+  const { copy: needsCopy, ...mcpInfo } = resolveMcpLaunch({
+    platform: process.platform,
+    windowsStore: process.windowsStore,
+    env: process.env,
+    execPath: process.execPath,
+    bundledServer,
+    copiedServer: join(app.getPath('userData'), 'mcp', 'server.mjs')
+  })
+  const refreshMcpServer = async (): Promise<void> => {
+    if (!needsCopy) return
+    const { copyFile, mkdir, rename } = await import('node:fs/promises')
+    const { dirname } = await import('node:path')
+    try {
+      await mkdir(dirname(mcpInfo.serverPath), { recursive: true })
+      // Renamed into place, so a client starting the server never reads half a file.
+      const temp = `${mcpInfo.serverPath}.${process.pid}.tmp`
+      await copyFile(bundledServer, temp)
+      await rename(temp, mcpInfo.serverPath)
+    } catch {
+      /* the snippet still shows; the AI client reports the missing file */
+    }
+  }
+  void refreshMcpServer()
+  ipcMain.handle('tiger:mcpInfo', async (): Promise<McpInfo> => {
+    await refreshMcpServer()
+    return mcpInfo
   })
 }
 

@@ -101,6 +101,10 @@ export const settings = {
   'settings.mcp.copySnippet': 'Copy snippet',
   'settings.mcp.snippetCopied': 'Snippet copied',
   'settings.mcp.loading': 'Loading…',
+  'settings.mcp.storeNote':
+    'Each Microsoft Store update installs Tiger in a new folder. After an update, copy the snippet again.',
+  'settings.mcp.nodeNote':
+    'The portable Tiger runs from a temporary folder, so this snippet uses Node.js, which must be installed. The installer and zip versions of Tiger run the server without it.',
 
   'settings.analytics.label': 'Anonymous usage analytics',
   'settings.analytics.desc':

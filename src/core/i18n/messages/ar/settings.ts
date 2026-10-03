@@ -100,6 +100,10 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.mcp.copySnippet': 'نسخ المقتطف',
   'settings.mcp.snippetCopied': 'تم نسخ المقتطف',
   'settings.mcp.loading': 'جارٍ التحميل…',
+  'settings.mcp.storeNote':
+    'كل تحديث من Microsoft Store يثبّت Tiger في مجلد جديد. بعد التحديث، انسخ المقتطف مرة أخرى.',
+  'settings.mcp.nodeNote':
+    'يعمل Tiger المحمول من مجلد مؤقت، لذا يستخدم هذا المقتطف Node.js الذي يجب أن يكون مثبّتًا. أما نسخة المثبّت ونسخة zip من Tiger فتشغّلان الخادم دونه.',
 
   'settings.analytics.label': 'تحليلات الاستخدام المجهولة',
   'settings.analytics.desc':

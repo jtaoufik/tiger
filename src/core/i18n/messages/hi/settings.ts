@@ -103,6 +103,10 @@ export const settings: NamespaceCatalog<typeof en> = {
   'settings.mcp.copySnippet': 'स्निपेट कॉपी करें',
   'settings.mcp.snippetCopied': 'स्निपेट कॉपी हो गया',
   'settings.mcp.loading': 'लोड हो रहा है…',
+  'settings.mcp.storeNote':
+    'Microsoft Store का हर अपडेट Tiger को एक नए फ़ोल्डर में इंस्टॉल करता है। अपडेट के बाद स्निपेट फिर से कॉपी करें।',
+  'settings.mcp.nodeNote':
+    'पोर्टेबल Tiger एक अस्थायी फ़ोल्डर से चलता है, इसलिए यह स्निपेट Node.js का उपयोग करता है, जो इंस्टॉल होना चाहिए। Tiger के इंस्टॉलर और zip संस्करण इसके बिना सर्वर चलाते हैं।',
 
   'settings.analytics.label': 'गुमनाम उपयोग विश्लेषण',
   'settings.analytics.desc':
