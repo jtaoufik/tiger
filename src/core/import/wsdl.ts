@@ -3,8 +3,9 @@
  * (SOAP 1.1 preferred, falling back to 1.2) becomes a POST request: a SOAP
  * envelope whose body carries the operation's input element with its parameters
  * expanded from the WSDL's <types> schema (one level), plus the right
- * Content-Type and, for SOAP 1.1, the mandatory SOAPAction header. Non-SOAP
- * (HTTP GET/POST) bindings are ignored.
+ * Content-Type and, for SOAP 1.1, the mandatory SOAPAction header. An rpc
+ * style operation wraps its message parts in an element named after it.
+ * Non-SOAP (HTTP GET/POST) bindings are ignored.
  */
 
 import { XMLParser } from 'fast-xml-parser'
@@ -143,21 +144,27 @@ function buildSoapRequest(opts: {
   targetNs: string
   soapAction: string
   soap12: boolean
+  /** rpc style: the parts are unqualified accessors inside the operation element. */
+  rpc?: boolean
+  /** rpc/encoded: the soap:body encodingStyle, set on the operation element. */
+  encodingStyle?: string
 }): TigerRequest {
-  const { opName, requestElement, params, endpoint, targetNs, soapAction, soap12 } = opts
+  const { opName, requestElement, params, endpoint, targetNs, soapAction, soap12, rpc, encodingStyle } = opts
   const envelopeNs = soap12
     ? 'http://www.w3.org/2003/05/soap-envelope'
     : 'http://schemas.xmlsoap.org/soap/envelope/'
 
+  const prefix = rpc ? '' : 'tns:'
   const inner = params.length
-    ? params.map((p) => `      <tns:${p}></tns:${p}>`).join('\n')
+    ? params.map((p) => `      <${prefix}${p}></${prefix}${p}>`).join('\n')
     : '      <!-- fill in fields -->'
+  const encoding = encodingStyle ? ` soap:encodingStyle="${encodingStyle}"` : ''
 
   const content =
     `<soap:Envelope xmlns:soap="${envelopeNs}"\n` +
     `               xmlns:tns="${targetNs}">\n` +
     `  <soap:Body>\n` +
-    `    <tns:${requestElement}>\n` +
+    `    <tns:${requestElement}${encoding}>\n` +
     `${inner}\n` +
     `    </tns:${requestElement}>\n` +
     `  </soap:Body>\n` +
@@ -199,13 +206,16 @@ export function importWsdl(xml: string): ImportResult {
 
   const elementParams = buildElementParams(definitions)
 
-  // message name -> request element local name (document/literal style)
+  // message name -> request element local name (document/literal style), and
+  // -> its part names (rpc style, where each part is a child of the operation)
   const messageElement = new Map<string, string>()
+  const messageParts = new Map<string, string[]>()
   for (const msg of children(definitions, 'message')) {
     const name = attr(msg, 'name')
-    const part = children(msg, 'part')[0]
-    const element = part && (attr(part, 'element') ?? attr(part, 'name'))
+    const parts = children(msg, 'part')
+    const element = parts[0] && (attr(parts[0], 'element') ?? attr(parts[0], 'name'))
     if (name && element) messageElement.set(name, localPart(element))
+    if (name) messageParts.set(name, parts.map((p) => attr(p, 'name')).filter((n): n is string => !!n))
   }
 
   // operation name -> input message local name
@@ -235,12 +245,36 @@ export function importWsdl(xml: string): ImportResult {
     const address = findEndpoint(services, attr(chosen.binding, 'name'))
     needsHost = address === undefined
     const endpoint = address ?? '{{baseUrl}}'
+    // document (the default) or rpc, which an operation can override.
+    const bindingStyle = attr(children(chosen.binding, 'binding')[0], 'style') ?? 'document'
     for (const op of children(chosen.binding, 'operation')) {
       const opName = attr(op, 'name')
       if (!opName) continue
       const soapOp = children(op, 'operation').find((o) => attr(o, 'soapAction') !== undefined)
       const soapAction = soapOp ? (attr(soapOp, 'soapAction') ?? '') : ''
-      const requestElement = messageElement.get(inputMessage.get(opName) ?? '') ?? opName
+      const message = inputMessage.get(opName) ?? ''
+      if ((attr(children(op, 'operation')[0], 'style') ?? bindingStyle) === 'rpc') {
+        // WSDL 1.1 section 3.5: an rpc body is an element named after the
+        // operation, in the soap:body namespace, with one child per part.
+        const body = children(children(op, 'input')[0], 'body')[0]
+        const encoded = attr(body, 'use') === 'encoded'
+        requests.push({
+          path: [serviceName],
+          request: buildSoapRequest({
+            opName,
+            requestElement: opName,
+            params: messageParts.get(message) ?? [],
+            endpoint,
+            targetNs: attr(body, 'namespace') || targetNs,
+            soapAction,
+            soap12,
+            rpc: true,
+            encodingStyle: encoded ? attr(body, 'encodingStyle') : undefined
+          })
+        })
+        continue
+      }
+      const requestElement = messageElement.get(message) ?? opName
       const params = elementParams.get(requestElement) ?? []
       requests.push({
         path: [serviceName],
