@@ -84,7 +84,7 @@ meta {
 
 get {
   url: {{baseUrl}}/users/1
-  body: none
+  body: json
   auth: none
 }
 
@@ -98,7 +98,7 @@ body:json {
 }
 `
 
-  it('maps meta, method and url, ignoring body/auth selectors', () => {
+  it('maps meta, method and url', () => {
     const { request } = importBrunoRequest(bru)
     expect(request.name).toBe('Get user')
     expect(request.seq).toBe(3)

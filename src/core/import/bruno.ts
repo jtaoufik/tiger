@@ -218,20 +218,88 @@ export function assertionsToScript(content: string): { script?: string; skipped:
   return { script: lines.length ? `// Converted from Bruno assertions\n${lines.join('\n')}` : undefined, skipped }
 }
 
-/** Bruno file rows are `@file(path)` (or `@file(a|b)`); Tiger uses `@file:path`. */
-function multipartLine(kv: KeyValue): { line: string; file?: string; extra: boolean } {
+/**
+ * Bruno file rows are `@file(path)` (or `@file(a|b)`); Tiger uses `@file:path`.
+ * `resolveFile` turns a path relative to the collection into one Tiger can open.
+ */
+function multipartLine(
+  kv: KeyValue,
+  resolveFile: (path: string) => string
+): { line: string; file?: string; extra: boolean } {
   const m = kv.value.match(/^@file\((.*)\)$/)
   const prefix = kv.enabled ? '' : '~'
   if (!m) return { line: `${prefix}${kv.name}: ${kv.value}`, extra: false }
   const files = m[1].split('|').map((f) => f.trim()).filter(Boolean)
-  return { line: `${prefix}${kv.name}: @file:${files[0] ?? ''}`, file: files[0] ?? '', extra: files.length > 1 }
+  const file = files[0] ? resolveFile(files[0]) : ''
+  return { line: `${prefix}${kv.name}: @file:${file}`, file, extra: files.length > 1 }
 }
 
-/** Parse a single `.bru` file into a Tiger request. */
+/**
+ * The block each `body:` mode of the method block sends. Bruno keeps the
+ * content of every mode used so far, so the mode decides, not the last block.
+ */
+const BODY_BLOCKS = new Map([
+  ['json', 'json'],
+  ['text', 'text'],
+  ['xml', 'xml'],
+  ['sparql', 'sparql'],
+  ['formUrlEncoded', 'form-urlencoded'],
+  ['multipartForm', 'multipart-form'],
+  ['graphql', 'graphql'],
+  ['file', 'file']
+])
+
+/** One `body:*` block as a Tiger body (GraphQL picks up its `body:graphql:vars`). */
+function brunoBody(
+  block: RawBlock,
+  blocks: RawBlock[],
+  warn: (w: WarningText) => void,
+  resolveFile: (path: string) => string
+): TigerBody {
+  if (block.subtype === 'graphql') {
+    const vars = blocks.find((b) => b.name === 'body' && b.subtype === 'graphql:vars')
+    return vars
+      ? { type: 'graphql', content: dedent(block.content), variables: dedent(vars.content) }
+      : { type: 'graphql', content: dedent(block.content) }
+  }
+  if (block.subtype === 'file') {
+    warn(warning('imports.binaryBody'))
+    return emptyBody()
+  }
+  const type = brunoBodyType(block.subtype)
+  if (type === 'form') {
+    const content = keyValues(block.content)
+      .map((kv) => `${kv.enabled ? '' : '~'}${kv.name}: ${kv.value}`)
+      .join('\n')
+    return { type, content }
+  }
+  if (type === 'multipart') {
+    const rows = keyValues(block.content).map((kv) => ({ kv, ...multipartLine(kv, resolveFile) }))
+    for (const r of rows) {
+      if (r.file === undefined) continue
+      warn(
+        r.file
+          ? warning(r.extra ? 'imports.formFileUploadFirstOnly' : 'imports.formFileUpload', {
+              field: r.kv.name,
+              files: r.file
+            })
+          : warning('imports.formFileNone', { field: r.kv.name })
+      )
+    }
+    return { type, content: rows.map((r) => r.line).join('\n') }
+  }
+  return { type, content: dedent(block.content) } as TigerBody
+}
+
+/**
+ * Parse a single `.bru` file into a Tiger request. `resolveFile` maps the
+ * `@file()` paths of a multipart body (relative to the collection in Bruno).
+ */
 export function importBrunoRequest(
   text: string,
   path: string[] = [],
-  warnings: ImportWarning[] = []
+  warnings: ImportWarning[] = [],
+  resolveFile: (path: string) => string = (p) => p
 ): ImportedRequest {
   const blocks = tokenizeBrunoBlocks(text)
 
@@ -245,6 +313,7 @@ export function importBrunoRequest(
   }
   const warn = (w: WarningText) => warnings.push({ request: request.name || 'Request', path, ...w })
   let authMode: string | undefined
+  let bodyMode: string | undefined
   let pathVars: KeyValue[] = []
   let pre: string | undefined
   let post: string | undefined
@@ -262,6 +331,7 @@ export function importBrunoRequest(
       for (const kv of keyValues(block.content)) {
         if (kv.name === 'url') request.url = kv.value
         else if (kv.name === 'auth') authMode = kv.value
+        else if (kv.name === 'body') bodyMode = kv.value
       }
     } else if (block.name === 'headers') {
       request.headers = keyValues(block.content)
@@ -269,42 +339,6 @@ export function importBrunoRequest(
       request.query = keyValues(block.content)
     } else if (block.name === 'params' && block.subtype === 'path') {
       pathVars = keyValues(block.content)
-    } else if (block.name === 'body' && block.subtype === 'graphql') {
-      // Bruno keeps the GraphQL query in `body:graphql` and (optionally) the
-      // variables JSON in a following `body:graphql:vars` block.
-      request.body = { type: 'graphql', content: dedent(block.content) }
-    } else if (block.name === 'body' && block.subtype === 'graphql:vars') {
-      const vars = dedent(block.content)
-      // Attach to the query body if we have one, else stash for ordering safety.
-      request.body =
-        request.body.type === 'graphql'
-          ? { ...request.body, variables: vars }
-          : { type: 'graphql', content: '', variables: vars }
-    } else if (block.name === 'body') {
-      const type = brunoBodyType(block.subtype)
-      let content: string
-      if (type === 'form') {
-        content = keyValues(block.content)
-          .map((kv) => `${kv.enabled ? '' : '~'}${kv.name}: ${kv.value}`)
-          .join('\n')
-      } else if (type === 'multipart') {
-        const rows = keyValues(block.content).map((kv) => ({ kv, ...multipartLine(kv) }))
-        for (const r of rows) {
-          if (r.file === undefined) continue
-          warn(
-            r.file
-              ? warning(r.extra ? 'imports.formFileUploadFirstOnly' : 'imports.formFileUpload', {
-                  field: r.kv.name,
-                  files: r.file
-                })
-              : warning('imports.formFileNone', { field: r.kv.name })
-          )
-        }
-        content = rows.map((r) => r.line).join('\n')
-      } else {
-        content = dedent(block.content)
-      }
-      request.body = { type, content } as TigerBody
     } else if (block.name === 'script' && block.subtype === 'pre-request') {
       pre = dedent(block.content)
     } else if (block.name === 'script' && block.subtype === 'post-response') {
@@ -323,6 +357,17 @@ export function importBrunoRequest(
       }
     }
   }
+
+  // Files written without a mode (older Bruno) send their last body block.
+  const bodies = blocks.filter((b) => b.name === 'body' && b.subtype && b.subtype !== 'graphql:vars')
+  const wanted = bodyMode === undefined ? undefined : BODY_BLOCKS.get(bodyMode)
+  const selected =
+    bodyMode === 'none' ? undefined : wanted ? bodies.find((b) => b.subtype === wanted) : bodies[bodies.length - 1]
+  if (selected) request.body = brunoBody(selected, blocks, warn, resolveFile)
+
+  // Bruno writes the enabled params both in the url and in params:query. The
+  // block also holds the disabled ones, so it is the one kept.
+  if (request.query.length) request.url = request.url.replace(/\?[^#]*/, '')
 
   const auth = resolveAuth(blocks, authMode, warn)
   if (auth) request.auth = auth
@@ -448,8 +493,14 @@ export interface BrunoFile {
  * `folder.bru` meta when present. Collection and folder headers and scripts
  * are copied into each request below them (Tiger has no folder headers or
  * folder scripts); auth and docs map to Tiger's collection / folder settings.
+ * `resolveFile` maps `@file()` paths, which Bruno reads relative to the
+ * collection folder (only the caller knows where that is on disk).
  */
-export function importBrunoCollection(files: BrunoFile[], fallbackName: string): ImportResult {
+export function importBrunoCollection(
+  files: BrunoFile[],
+  fallbackName: string,
+  resolveFile?: (path: string) => string
+): ImportResult {
   const warnings: ImportWarning[] = []
   let name = fallbackName
   const settings = new Map<string, BrunoFolderSettings>() // key: dir segments joined by '/'
@@ -470,7 +521,8 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
         hasDotenv = true
       } else if (!fileName.endsWith('.bru')) {
         continue
-      } else if (dir.includes('environments')) {
+      } else if (dir.length === 1 && dir[0] === 'environments') {
+        // Only the root's environments folder: a deeper one holds requests.
         const envName = fileName.replace(/\.bru$/, '')
         envs.push(importBrunoEnvironment(file.text, envName))
         const secrets = brunoSecretNames(file.text)
@@ -514,7 +566,7 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
     const dir = file.segments.slice(0, -1)
     const path = displayPath(dir)
     try {
-      const imported = importBrunoRequest(file.text, path, warnings)
+      const imported = importBrunoRequest(file.text, path, warnings, resolveFile)
       const req = imported.request
       if (!req.name) req.name = file.segments[file.segments.length - 1].replace(/\.bru$/, '')
       const chain = chainOf(dir)

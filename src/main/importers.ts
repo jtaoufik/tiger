@@ -1,7 +1,7 @@
 import { BrowserWindow, dialog } from 'electron'
 import { readdir } from 'node:fs/promises'
 import { readTextFile } from './textFile'
-import { basename, extname, join, relative, sep } from 'node:path'
+import { basename, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { stat } from 'node:fs/promises'
 import {
@@ -149,7 +149,8 @@ export async function readBrunoFolder(root: string): Promise<ImportResult> {
     }
   }
   await collect(root)
-  return importBrunoCollection(files, basename(root))
+  // Bruno reads a relative @file() path from the collection folder.
+  return importBrunoCollection(files, basename(root), (p) => (isAbsolute(p) ? p : resolve(root, p)))
 }
 
 async function isBrunoFolder(dir: string): Promise<boolean> {
