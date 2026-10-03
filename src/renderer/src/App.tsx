@@ -560,6 +560,16 @@ export default function App() {
   const activeCollection = activeId
     ? collections.find((c) => c.entries.some((e) => e.id === activeId))
     : undefined
+  const activeColId = activeCollection?.id
+  /** The active request's collection, for callbacks that must not re-create on every switch. */
+  const activeColIdRef = useRef<string | undefined>(activeColId)
+  activeColIdRef.current = activeColId
+  /**
+   * The environment last chosen while working in each collection (env key, or
+   * '' for "No environment"), so moving between collections brings each one's
+   * own choice back.
+   */
+  const envChoiceRef = useRef<Record<string, string>>({})
   const activeEntry = activeCollection?.entries.find((e) => e.id === activeId)
   /**
    * The request with auth inheritance applied: its own auth, else its folder's
@@ -1347,6 +1357,11 @@ export default function App() {
               c.id === target.id ? { ...c, environments: [...c.environments, ...added] } : c
             )
           )
+          // Select it: an imported environment is the one the user means to send with.
+          const firstKey = `${target.id}${SEP}${added[0].name}`
+          envChoiceRef.current[target.id] = firstKey
+          setActiveEnvKey(firstKey)
+          setActiveEnv(added[0].data)
           setImportReport({ summary, environmentsTarget: target.name })
           announce(importReportSentence(summary))
           trackEvent(events.collectionImported(result.source, 0))
@@ -1398,6 +1413,7 @@ export default function App() {
       // Select the first imported environment so {{variables}} resolve at once.
       const firstEnv = envRefs[0]
       if (firstEnv?.data) {
+        envChoiceRef.current[colId] = `${colId}${SEP}${firstEnv.name}`
         setActiveEnvKey(`${colId}${SEP}${firstEnv.name}`)
         setActiveEnv(firstEnv.data)
       }
@@ -1871,6 +1887,7 @@ export default function App() {
   const changeEnv = useCallback(
     async (key: string) => {
       const token = ++envSeq.current
+      if (activeColIdRef.current) envChoiceRef.current[activeColIdRef.current] = key
       setActiveEnvKey(key || null)
       if (!key) return setActiveEnv(null)
       const sep = key.indexOf(SEP)
@@ -1895,6 +1912,30 @@ export default function App() {
     },
     [collections, toast]
   )
+
+  /**
+   * The environment follows the active request's collection: the choice last
+   * made there, else its first environment, else none. Keeping another
+   * collection's environment would leave this one's {{variables}} unresolved,
+   * or send them to the other collection's host. Also picks an environment
+   * after a restart, when none is active yet.
+   */
+  useEffect(() => {
+    if (!activeColId) return
+    const col = collections.find((c) => c.id === activeColId)
+    if (!col) return
+    const own = `${activeColId}${SEP}`
+    const exists = (key: string) =>
+      key === '' || collections.some((c) => c.environments.some((e) => `${c.id}${SEP}${e.name}` === key))
+    const remembered = envChoiceRef.current[activeColId]
+    let target: string
+    if (remembered !== undefined && exists(remembered)) target = remembered
+    else if (activeEnvKey?.startsWith(own)) return
+    else target = col.environments[0] ? `${own}${col.environments[0].name}` : ''
+    if (target !== (activeEnvKey ?? '')) void changeEnv(target)
+    // Only moving to another collection decides; edits inside one keep the user's pick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeColId])
 
   /**
    * The environments modal edited an env that happens to be the active one.
