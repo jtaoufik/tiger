@@ -199,7 +199,7 @@ export function SettingsView({ settings, onChange }: Props) {
     if (tab === 'mcp') {
       // Main answers with a whole McpInfo (src/mcp/launch.ts); the preload
       // bridge still types it by its serverPath alone.
-      window.tiger?.mcpInfo?.().then((info) => setMcpInfo(info as McpInfo))
+      window.tiger?.mcpInfo?.().then(setMcpInfo)
     }
   }, [tab])
 

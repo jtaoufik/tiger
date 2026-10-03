@@ -7,6 +7,7 @@ import type { HistoryEntry } from '../main/history'
 import type { ImportKind } from '../main/importers'
 import type { ImportResult } from '../core/import'
 import type { CollectionFile } from '../core/collectionFiles'
+import type { McpInfo } from '../mcp/launch'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { UpdateInfo } from '../core/version'
 import type { UpdateModeInfo } from '../core/updateMode'
@@ -186,7 +187,7 @@ const api = {
   pickFile: (filters: { name: string; extensions: string[] }[]): Promise<string | null> =>
     invoke('tiger:pickFile', filters),
   clearCookies: (): Promise<void> => invoke('tiger:cookies:clear'),
-  mcpInfo: (): Promise<{ serverPath: string }> => invoke('tiger:mcpInfo')
+  mcpInfo: (): Promise<McpInfo> => invoke('tiger:mcpInfo')
 }
 
 contextBridge.exposeInMainWorld('tiger', api)

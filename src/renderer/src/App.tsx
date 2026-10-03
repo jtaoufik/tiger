@@ -4,6 +4,7 @@ import { collectionFiles, safeFileName, uniqueName, type CollectionSnapshot } fr
 import { looksLikeProduction, parseEnvironment, serializeEnvironment } from '@core/environment'
 import { warning } from '@core/import/common'
 import { buildRequest } from '@core/request'
+import { withResolvedFiles } from '@core/multipart'
 import { envToVars, findMissingVars } from '@core/interpolate'
 import {
   parseCollectionSettings,
@@ -1044,7 +1045,7 @@ export default function App() {
       const effective = headerChanges
         ? { ...base, headers: applyHeaderChanges(base.headers, headerChanges) }
         : base
-      const data = await runRequest(effective, envForSend, settings.timeoutMs, id)
+      const data = await runRequest(effective, envForSend, settings.timeoutMs, id, activeCollection?.root)
       if (!deletedIds.current.has(id)) {
         let tests: ScriptTestResult[] | undefined
         let logs: string[] | undefined
@@ -1910,7 +1911,7 @@ export default function App() {
         } else if (format === 'curl' && activeEffective) {
           const vars = envToVars(activeEnv)
           const sent = await withOAuthToken(activeEffective, vars)
-          await navigator.clipboard.writeText(toCurl(buildRequest(sent, vars)))
+          await navigator.clipboard.writeText(toCurl(withResolvedFiles(buildRequest(sent, vars), activeCollection?.root)))
           toast(t('app.toast.curlCopied'))
         }
         setModal('none')
@@ -2421,7 +2422,7 @@ export default function App() {
         return
       }
       try {
-        await navigator.clipboard.writeText(toCurl(buildRequest(sent, vars)))
+        await navigator.clipboard.writeText(toCurl(withResolvedFiles(buildRequest(sent, vars), col?.root)))
         toast(t('app.toast.curlCopied'))
       } catch {
         toast(t('app.toast.copyFailed'), { error: true })
@@ -3163,13 +3164,17 @@ export default function App() {
                     getBuilt={() => {
                       if (!activeEffective) return null
                       const vars = envToVars(activeEnv)
-                      return buildRequest(withKnownOAuthToken(activeEffective, vars), vars)
+                      return withResolvedFiles(
+                        buildRequest(withKnownOAuthToken(activeEffective, vars), vars),
+                        activeCollection?.root
+                      )
                     }}
                     showSection={showSection?.requestId === activeId ? showSection : null}
                     perf={{
                       collectionAuth: inheritedAuth,
                       env: activeEnv,
-                      timeoutMs: settings.timeoutMs
+                      timeoutMs: settings.timeoutMs,
+                      baseDir: activeCollection?.root
                     }}
                   />
                 ) : (
@@ -3291,6 +3296,7 @@ export default function App() {
               title={title}
               loadItems={loadRunnerItems}
               environment={runnerEnv.env}
+              baseDir={col?.root}
               onVariablesChanged={(changed) =>
                 applyCaptures(changed, runnerEnv.key || null)
               }

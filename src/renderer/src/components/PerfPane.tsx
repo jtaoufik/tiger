@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import { buildRequest } from '@core/request'
+import { withResolvedFiles } from '@core/multipart'
 import { envToVars } from '@core/interpolate'
 import { computeStats, runPool, type PerfStats } from '@core/perf'
 import { resolveAuth } from '@core/collectionSettings'
@@ -15,13 +16,15 @@ interface Props {
   collectionAuth: TigerAuth | undefined
   env: TigerEnvironment | null
   timeoutMs: number
+  /** The collection folder: relative file rows are read from it. */
+  baseDir?: string
 }
 
 /**
  * Load test tab: fire the request many times with bounded concurrency and
  * report latency percentiles. A lightweight load check on the live request.
  */
-export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
+export function PerfPane({ request, collectionAuth, env, timeoutMs, baseDir }: Props) {
   const t = useT()
   const [total, setTotal] = useState(50)
   const [concurrency, setConcurrency] = useState(10)
@@ -64,7 +67,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs }: Props) {
         try {
           // Built per request: {{$guid}}, {{$timestamp}} and the like get a
           // fresh value each time, as they do on Send.
-          const built = buildRequest(effective, vars)
+          const built = withResolvedFiles(buildRequest(effective, vars), baseDir)
           const res = await window.tiger!.send(built, timeoutMs, undefined, { record: false })
           times.push(res.timeMs)
           const bucket = `${Math.floor(res.status / 100)}xx`

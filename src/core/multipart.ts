@@ -96,3 +96,30 @@ export function assembleMultipart(
   }
   return { bytes, contentType: `multipart/form-data; boundary=${boundary}` }
 }
+
+/** `/x`, `\\server\x`, `C:\x` or `C:/x`: a path that does not depend on a folder. */
+export function isAbsolutePath(path: string): boolean {
+  return /^([/\\~]|[A-Za-z]:[/\\])/.test(path)
+}
+
+/**
+ * A file row's path as sent: a relative one (`files/cat.png`, the portable
+ * way to share a collection) is read from the collection folder, not from
+ * wherever Tiger was started.
+ */
+export function resolveFilePath(path: string, root: string | undefined): string {
+  if (!root || !path || isAbsolutePath(path)) return path
+  return `${root.replace(/[/\\]+$/, '')}/${path.replace(/^\.[/\\]/, '')}`
+}
+
+/** The built request with its file rows resolved against the collection folder. */
+export function withResolvedFiles<T extends { multipart?: Array<{ value: string; isFile: boolean }> }>(
+  built: T,
+  root: string | undefined
+): T {
+  if (!root || !built.multipart?.some((p) => p.isFile)) return built
+  return {
+    ...built,
+    multipart: built.multipart.map((p) => (p.isFile ? { ...p, value: resolveFilePath(p.value, root) } : p))
+  }
+}

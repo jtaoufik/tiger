@@ -15,6 +15,8 @@ interface Props {
   /** Loads every request in scope, auth inheritance already applied. */
   loadItems: () => Promise<RunnerItem[]>
   environment: TigerEnvironment | null
+  /** The collection folder: relative file rows are read from it. */
+  baseDir?: string
   /**
    * Variables the run's scripts and captures changed, saved to the
    * environment when the run ends (Postman keeps them too).
@@ -33,6 +35,7 @@ export function RunnerModal({
   title,
   loadItems,
   environment,
+  baseDir,
   onVariablesChanged,
   timeoutMs,
   onClose
@@ -77,7 +80,7 @@ export function RunnerModal({
         }
         // Scripts/captures are applied by the runner itself; send the bare request.
         const bare = { ...request, preScript: undefined, postScript: undefined, captures: undefined }
-        const data = await runRequest(bare, env, timeoutMs, RUNNER_KEY)
+        const data = await runRequest(bare, env, timeoutMs, RUNNER_KEY, baseDir)
         return { status: data.status, headers: data.headers, body: data.raw, timeMs: data.timeMs }
       },
       runScript: runScriptIsolated,
@@ -92,7 +95,7 @@ export function RunnerModal({
 
     setSummary({ passed: outcome.passed, failed: outcome.failed, stopped: outcome.stopped })
     setPhase('done')
-  }, [items, environment, timeoutMs, onVariablesChanged])
+  }, [items, environment, timeoutMs, baseDir, onVariablesChanged])
 
   const stop = useCallback(() => {
     stopRef.current = true

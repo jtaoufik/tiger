@@ -1,5 +1,5 @@
 import { buildRequest } from '@core/request'
-import { assembleMultipart, generateBoundary } from '@core/multipart'
+import { assembleMultipart, generateBoundary, withResolvedFiles } from '@core/multipart'
 import { envToVars, interpolate, type VarMap } from '@core/interpolate'
 import { formatResponse, type FormattedResponse, type RawResponse } from '@core/response'
 import { t } from './i18n'
@@ -61,14 +61,16 @@ export async function runRequest(
   req: TigerRequest,
   env: TigerEnvironment | null,
   timeoutMs: number,
-  cancelKey?: string
+  cancelKey?: string,
+  /** The collection folder: relative file rows are read from it. */
+  baseDir?: string
 ): Promise<FormattedResponse> {
   const vars = envToVars(env)
 
   // OAuth2 client-credentials needs a token exchange first (done in main).
   const effective = await withOAuthToken(req, vars)
 
-  const built = buildRequest(effective, vars)
+  const built = withResolvedFiles(buildRequest(effective, vars), baseDir)
 
   let raw: RawResponse
   try {

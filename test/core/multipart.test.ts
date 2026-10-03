@@ -97,3 +97,23 @@ describe('multipart through buildRequest and the .tiger format', () => {
     expect(FILE_PREFIX).toBe('@file:')
   })
 })
+
+describe('file rows relative to the collection folder', () => {
+  it('reads a relative path from the collection folder and leaves absolute ones alone', async () => {
+    const { resolveFilePath, withResolvedFiles } = await import('../../src/core/multipart')
+    expect(resolveFilePath('files/cat.png', '/Users/ada/Shop')).toBe('/Users/ada/Shop/files/cat.png')
+    expect(resolveFilePath('./cat.png', 'C:/Users/ada/Shop')).toBe('C:/Users/ada/Shop/cat.png')
+    for (const absolute of ['/tmp/cat.png', 'C:\\Users\\ada\\cat.png', 'C:/x.png', '\\\\server\\share\\x.png', '~/cat.png']) {
+      expect(resolveFilePath(absolute, '/Users/ada/Shop')).toBe(absolute)
+    }
+    expect(resolveFilePath('cat.png', undefined)).toBe('cat.png')
+    const built = withResolvedFiles(
+      { multipart: [{ name: 'f', value: 'cat.png', isFile: true }, { name: 'n', value: 'cat.png', isFile: false }] },
+      '/col'
+    )
+    expect(built.multipart).toEqual([
+      { name: 'f', value: '/col/cat.png', isFile: true },
+      { name: 'n', value: 'cat.png', isFile: false }
+    ])
+  })
+})

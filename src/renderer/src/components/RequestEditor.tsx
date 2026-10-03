@@ -37,7 +37,13 @@ interface Props {
   /** Build the request with current env vars, for the Code tab. */
   getBuilt: () => BuiltRequest | null
   /** Inputs the Perf tab needs to fire the live request repeatedly. */
-  perf: { collectionAuth: TigerAuth | undefined; env: TigerEnvironment | null; timeoutMs: number }
+  perf: {
+    collectionAuth: TigerAuth | undefined
+    env: TigerEnvironment | null
+    timeoutMs: number
+    /** The collection folder: relative file rows are read from it. */
+    baseDir?: string
+  }
   /** Switch to a section from outside (menu "Load test"); nonce re-triggers. */
   showSection?: { id: RequestSectionId; nonce: number } | null
 }
@@ -489,6 +495,7 @@ export function RequestEditor({
             collectionAuth={perf.collectionAuth}
             env={perf.env}
             timeoutMs={perf.timeoutMs}
+            baseDir={perf.baseDir}
           />
         )}
       </div>
