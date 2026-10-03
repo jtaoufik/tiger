@@ -190,3 +190,33 @@ describe('buildRequest: URL without a scheme', () => {
     }
   )
 })
+
+describe('buildRequest: rows without a name', () => {
+  it('skips a header or query row that has a value but no name', () => {
+    const built = buildRequest(
+      req({
+        headers: [
+          { name: '', value: 'typed first', enabled: true },
+          { name: '{{unset}}', value: 'x', enabled: true },
+          { name: 'X-Ok', value: '1', enabled: true }
+        ],
+        query: [
+          { name: '', value: 'orphan', enabled: true },
+          { name: ' ', value: 'blank', enabled: true },
+          { name: 'page', value: '2', enabled: true }
+        ]
+      }),
+      { unset: '' }
+    )
+    expect(built.headers).toEqual({ 'X-Ok': '1' })
+    expect(built.url).toBe('https://api.test/things?page=2')
+  })
+
+  it('skips an API key auth whose key name is empty, in a header or in the query', () => {
+    for (const where of ['header', 'query'] as const) {
+      const built = buildRequest(req({ auth: { type: 'apikey', key: '', value: 'secret', in: where } }))
+      expect(built.headers).toEqual({})
+      expect(built.url).toBe('https://api.test/things')
+    }
+  })
+})

@@ -73,19 +73,23 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
   const method = req.method.toUpperCase()
   const auth = applyAuth(req.auth, vars)
 
+  // A row with a value but no name (the editor lets you type the value first)
+  // is skipped: an empty header name fails the whole send.
   const resolvedQuery = [
     ...req.query
       .filter((q) => q.enabled !== false)
       .map((q) => ({ name: interpolate(q.name, vars), value: interpolate(q.value, vars) })),
     ...auth.query.map((q) => ({ name: q.name, value: q.value }))
-  ]
+  ].filter((q) => q.name.trim())
   const url = applyQuery(withDefaultScheme(interpolate(req.url, vars)), resolvedQuery)
 
   // Auth headers go first so an explicit request header can still override them.
-  const headers: Record<string, string> = { ...auth.headers }
+  const headers: Record<string, string> = {}
+  for (const [name, value] of Object.entries(auth.headers)) if (name.trim()) headers[name] = value
   for (const h of req.headers) {
     if (h.enabled === false) continue
     const name = interpolate(h.name, vars)
+    if (!name.trim()) continue
     // Drop any existing header with the same name (case-insensitively) first, so
     // a request header like 'authorization' overrides an auth-block
     // 'Authorization' and only a single value is sent.
