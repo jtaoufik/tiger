@@ -21,6 +21,7 @@ import {
   type ImportSource,
   type ImportWarning
 } from '../core/import'
+import { safeFileName } from '../core/collectionFiles'
 import { expandPaths, mergeImports, rootNameFor, scanDroppedFolder } from './importHelpers'
 import { mainT } from './i18n'
 import { targetAppWindow } from './windows'
@@ -273,13 +274,18 @@ export async function importFromDisk(kind: ImportKind): Promise<ImportResult | n
   )
 }
 
+/** The end of an export's file name, kept as is: `.postman_collection.json`, `.openapi.json`, `.tiger`... */
+const EXPORT_SUFFIX = /(?:\.(?:postman_collection|postman_environment|openapi))?\.[a-z]+$/i
+
 /** Save exported content to a user-chosen file. Returns the path, or null. */
 export async function saveExport(
   defaultName: string,
   content: string
 ): Promise<string | null> {
-  // Request names can contain characters Windows filenames forbid.
-  const safeName = defaultName.replace(/[\\/:*?"<>|]/g, '-')
+  // The name comes from a collection, environment or request name, which can
+  // hold what Windows refuses: "a/b?", CON (even as CON.json), a trailing dot.
+  const suffix = EXPORT_SUFFIX.exec(defaultName)?.[0] ?? ''
+  const safeName = `${safeFileName(defaultName.slice(0, defaultName.length - suffix.length), 'export')}${suffix}`
   const result = await dialog.showSaveDialog(parentWindow()!, {
     title: mainT('main.export.title'),
     defaultPath: safeName

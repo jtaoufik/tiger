@@ -3,12 +3,18 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
+const savedAs: string[] = []
 vi.mock('electron', () => ({
   BrowserWindow: { getFocusedWindow: () => null, getAllWindows: () => [] },
-  dialog: {}
+  dialog: {
+    showSaveDialog: async (_window: unknown, options: { defaultPath: string }) => {
+      savedAs.push(options.defaultPath)
+      return { canceled: true }
+    }
+  }
 }))
 
-import { importPaths } from '../../src/main/importers'
+import { importPaths, saveExport } from '../../src/main/importers'
 
 /** Write files (path -> content) under a fresh temp folder; returns the folder. */
 async function tree(files: Record<string, string>): Promise<string> {
@@ -96,5 +102,20 @@ describe('dropped files the detection missed', () => {
     })
     const result = (await importPaths([join(root, 'swagger.yaml')]))!
     expect(result.requests.map((r) => r.request.name)).toEqual(['Ping'])
+  })
+})
+
+describe('export file names', () => {
+  it('gives the save dialog a name Windows accepts, keeping the export suffix', async () => {
+    savedAs.length = 0
+    for (const name of ['CON.postman_collection.json', 'Users: v2. .openapi.json', 'a/b?.tiger', 'Shop API.postman_collection.json']) {
+      await saveExport(name, '{}')
+    }
+    expect(savedAs).toEqual([
+      'CON_.postman_collection.json',
+      'Users- v2.openapi.json',
+      'a-b-.tiger',
+      'Shop API.postman_collection.json'
+    ])
   })
 })
