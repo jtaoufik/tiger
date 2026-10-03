@@ -145,11 +145,14 @@ describe('importPaths (drag and drop)', () => {
     expect(result?.name).toBe('Shop API')
     expect(result?.auth?.type).toBe('bearer')
     expect(req(result!, 'List products').path).toEqual(['Products'])
-    expect(result?.environments?.map((e) => e.name)).toEqual(['Staging', 'Globals'])
-    // The collection variables ride along and are layered into both.
+    // Globals are not a second environment: with only one active at a time,
+    // they would never resolve together with Staging.
+    expect(result?.environments?.map((e) => e.name)).toEqual(['Staging'])
+    // Collection variables and globals are both layered into Staging.
     const layered = layerCollectionVariables(result!)
-    expect(layered.environments?.[0].variables.find((v) => v.name === 'pageSize')?.value).toBe('20')
-    expect(layered.environments?.[1].variables.find((v) => v.name === 'tenant')?.value).toBe('acme')
+    const staging = layered.environments![0]
+    expect(staging.variables.find((v) => v.name === 'pageSize')?.value).toBe('20')
+    expect(staging.variables.find((v) => v.name === 'tenant')?.value).toBe('acme')
   })
 
   it('detects Insomnia JSON and YAML exports in a dropped folder, nesting each file', async () => {

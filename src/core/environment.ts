@@ -45,3 +45,12 @@ export function serializeEnvironment(env: TigerEnvironment): string {
   if (secret.length) parts.push(`vars:secret {\n${secret.map(line).join('\n')}\n}`)
   return `${parts.join('\n\n')}\n`
 }
+
+/**
+ * Whether an environment's name says production ("Prod", "production",
+ * "live-eu"; not "preprod" or "products"). Tiger never selects one of these
+ * by itself, so an import cannot send to production by surprise.
+ */
+export function looksLikeProduction(name: string): boolean {
+  return /\b(prod|production|live)\b/i.test(name)
+}

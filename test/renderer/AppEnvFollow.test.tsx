@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../../src/renderer/src/App'
+import type { ImportResult } from '../../src/core/import/types'
 import {
   bridge,
   collection,
@@ -47,12 +48,12 @@ describe('the environment follows the request’s collection', () => {
   })
 
   it('selects an environment imported on its own, so the open collection resolves at once', async () => {
-    const b = bridge([collection('Alpha', 'Get alpha'), environmentOnly('Alpha prod', 'https://alpha.test')])
+    const b = bridge([collection('Alpha', 'Get alpha'), environmentOnly('Alpha dev', 'https://alpha.test')])
     ;(window as { tiger?: unknown }).tiger = b
     render(<App />)
     await importVia('Postman')
     await importVia('Postman')
-    expect(pickedEnv()).toBe('Alpha prod')
+    expect(pickedEnv()).toBe('Alpha dev')
 
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(b.send).toHaveBeenCalled())
@@ -78,6 +79,56 @@ describe('the environment follows the request’s collection', () => {
     await waitFor(() => expect(pickedEnv()).toBe('Beta env'))
     fireEvent.click(within(sidebar()).getByText('Get alpha'))
     await waitFor(() => expect(pickedEnv()).toBe('No environment'))
+  })
+})
+
+describe('which environment an import selects', () => {
+  const withEnvs = (...names: string[]): ImportResult => ({
+    ...collection('Alpha', 'Get alpha'),
+    environments: names.map((name) => ({
+      name,
+      variables: [{ name: 'host', value: `https://${name.toLowerCase()}.test`, enabled: true }]
+    }))
+  })
+
+  it('never selects a production environment by itself', async () => {
+    ;(window as { tiger?: unknown }).tiger = bridge([withEnvs('Production', 'Local')])
+    render(<App />)
+    await importVia('Postman')
+    expect(pickedEnv()).toBe('Local')
+  })
+
+  it('selects none, and says why, when every imported environment is production', async () => {
+    ;(window as { tiger?: unknown }).tiger = bridge([withEnvs('Prod')])
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
+    fireEvent.click([...document.querySelectorAll<HTMLButtonElement>('.modal button.choice')][0])
+    expect(await screen.findByText(/did not select "Prod"/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(pickedEnv()).toBe('No environment')
+  })
+
+  it('layers the collection’s own variables into an environment imported afterwards', async () => {
+    const withVars: ImportResult = {
+      ...collection('Alpha', 'Get alpha'),
+      collectionVariables: [{ name: 'host', value: 'https://alpha.test', enabled: true }]
+    }
+    const dev: ImportResult = {
+      name: 'Alpha dev',
+      source: 'postman',
+      requests: [],
+      environments: [{ name: 'Alpha dev', variables: [{ name: 'token', value: 'abc', enabled: true }] }]
+    }
+    const b = bridge([withVars, dev])
+    ;(window as { tiger?: unknown }).tiger = b
+    render(<App />)
+    await importVia('Postman')
+    expect(pickedEnv()).toBe('Alpha variables')
+    await importVia('Postman')
+    expect(pickedEnv()).toBe('Alpha dev')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(b.send).toHaveBeenCalled())
+    expect(lastSentUrl(b)).toBe('https://alpha.test/get-alpha')
   })
 })
 

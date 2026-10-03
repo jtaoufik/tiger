@@ -55,6 +55,12 @@ export interface ImportResult {
    * dropped or picked file has been read.
    */
   collectionVariables?: KeyValue[]
+  /**
+   * Postman globals. Postman resolves environment > collection > globals, so
+   * `layerCollectionVariables` folds them under every environment rather than
+   * making a second environment that could never be active alongside the first.
+   */
+  globals?: KeyValue[]
   /** Everything that was partially mapped and deserves a look. */
   warnings?: ImportWarning[]
 }

@@ -58,7 +58,9 @@ export const imports: NamespaceCatalog<typeof en> = {
       '{owner} يحتوي على برامج نصية سابقة للطلب وللاختبار. يشغّل Tiger البرامج النصية لكل طلب، فنُسخت إلى طلباته الـ {count}. عدّلها هناك.'
   },
   'imports.postmanGlobals':
-    'لا يملك Tiger متغيرات عامة، لذلك أصبحت المتغيرات العامة في Postman بيئة باسم "Globals". انسخ ما تحتاجه منها إلى بيئتك.',
+    'أُضيفت متغيرات Postman العامة إلى كل بيئة مستوردة. إذا عيّنت بيئة المتغير نفسه، تبقى قيمتها هي المستخدمة.',
+  'imports.globalsEnv':
+    'أصبحت متغيرات Postman العامة البيئة "{name}". وقد تم تحديدها لك.',
   'imports.secretsNotExported': 'لا يصدّر Postman القيم السرية: {names}. أدخلها بنفسك.',
   'imports.postmanV1':
     'هذه مجموعة Postman بالإصدار v1. صدّرها من جديد من Postman بصيغة Collection v2.1 ثم استورد ذلك الملف.',
@@ -69,6 +71,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'تم إعداد المصادقة من مخطط أمان واجهة API مع متغيرات نائبة مثل {token}. عيّنها في بيئة.',
   'imports.baseUrlUnknown':
     'لا تحدد واجهة API أي مضيف للخادم. عيّن baseUrl في البيئة "{name}" إلى مضيف مثل https://api.example.com قبل الإرسال.',
+  'imports.prodNotSelected':
+    'لم يحدد Tiger البيئة "{name}" تلقائيًا، حتى لا يذهب أي طلب إلى بيئة الإنتاج دون قصد. اخترها من قائمة البيئات عندما تريد ذلك.',
   'imports.apiKeyCookie':
     'في Insomnia يُرسل مفتاح API في ملف تعريف ارتباط؛ أما Tiger فيرسله في ترويسة. تحقق من أن الخادم يقبل ذلك.',
   'imports.bearerPrefix':

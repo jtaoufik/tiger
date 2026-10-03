@@ -10,6 +10,7 @@ import {
 import { nearestFolderAuth } from '../../src/core/collectionSettings'
 import { runScript } from '../../src/core/script'
 import { buildRequest } from '../../src/core/request'
+import { envToVars } from '../../src/core/interpolate'
 
 const dir = join(__dirname, 'fixtures/switcher/postman')
 const load = (name: string): unknown => JSON.parse(readFileSync(join(dir, name), 'utf8'))
@@ -298,13 +299,43 @@ describe('Postman environment and globals exports', () => {
     expect(result.warnings?.[0].message).toMatch(/Secret values are not exported by Postman: accessToken/)
   })
 
-  it('imports globals as an environment named Globals and says so', () => {
+  it('keeps Postman globals apart, to be layered under every environment', () => {
     const result = importPostman(load('workspace.postman_globals.json'))
-    expect(result.environments?.[0]).toEqual({
-      name: 'Globals',
-      variables: [{ name: 'tenant', value: 'acme', enabled: true }]
+    expect(result.environments).toBeUndefined()
+    expect(result.globals).toEqual([{ name: 'tenant', value: 'acme', enabled: true }])
+  })
+
+  it('layers globals under collection variables and each environment, as Postman resolves them', () => {
+    const layered = layerCollectionVariables({
+      name: 'Shop',
+      source: 'postman',
+      requests: [],
+      environments: [{ name: 'dev', variables: [{ name: 'host', value: 'dev.test', enabled: true }] }],
+      collectionVariables: [
+        { name: 'host', value: 'collection.test', enabled: true },
+        { name: 'page', value: '20', enabled: true }
+      ],
+      globals: [
+        { name: 'host', value: 'global.test', enabled: true },
+        { name: 'page', value: '5', enabled: true },
+        { name: 'tenant', value: 'acme', enabled: true }
+      ]
     })
-    expect(result.warnings?.[0].message).toMatch(/no global variables/)
+    expect(envToVars(layered.environments![0])).toEqual({ host: 'dev.test', page: '20', tenant: 'acme' })
+    expect(layered.warnings?.some((w) => w.i18n?.key === 'imports.postmanGlobals')).toBe(true)
+  })
+
+  it('makes globals the environment "Globals" when nothing else defines one', () => {
+    const layered = layerCollectionVariables({
+      name: 'Workspace',
+      source: 'postman',
+      requests: [],
+      globals: [{ name: 'tenant', value: 'acme', enabled: true }]
+    })
+    expect(layered.environments).toEqual([
+      { name: 'Globals', variables: [{ name: 'tenant', value: 'acme', enabled: true }] }
+    ])
+    expect(layered.warnings?.some((w) => w.i18n?.key === 'imports.globalsEnv')).toBe(true)
   })
 
   it('points a v1 collection at the v2.1 export', () => {

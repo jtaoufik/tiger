@@ -30,7 +30,9 @@ export const imports: NamespaceCatalog<typeof en> = {
     other: '{owner} 含有预请求脚本和测试脚本。Tiger 按请求运行脚本，因此已将它们复制到其 {count} 个请求中。请在那里编辑。'
   },
   'imports.postmanGlobals':
-    'Tiger 没有全局变量，因此 Postman 的全局变量已变为名为“Globals”的环境。请把需要的复制到你的环境中。',
+    'Postman 全局变量已加入每个导入的环境。若某个环境也设置了同名变量，则以该环境的值为准。',
+  'imports.globalsEnv':
+    'Postman 全局变量已变为环境“{name}”，并已为你选中。',
   'imports.secretsNotExported': 'Postman 不会导出机密值：{names}。请自行填写。',
   'imports.postmanV1': '这是 Postman v1 集合。请在 Postman 中重新导出为 Collection v2.1，再导入该文件。',
   'imports.securityUnmapped': 'API 使用了 Tiger 无法映射的安全方案（Cookie API 密钥或类似方式）。请手动设置认证。',
@@ -38,6 +40,8 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.securityPlaceholders': '认证已根据 API 的安全方案设置，使用了 {token} 之类的占位变量。请在环境中设置它们。',
   'imports.baseUrlUnknown':
     'API 未指定服务器主机。发送前，请在环境“{name}”中把 baseUrl 设为主机地址，例如 https://api.example.com 。',
+  'imports.prodNotSelected':
+    'Tiger 没有自动选择“{name}”，以免请求意外发往生产环境。需要时请在环境菜单中选择它。',
   'imports.apiKeyCookie': '在 Insomnia 中 API 密钥通过 Cookie 发送；Tiger 则通过标头发送。请确认服务器接受这种方式。',
   'imports.bearerPrefix':
     'Bearer 认证使用了前缀“{prefix}”。Tiger 始终发送“Bearer”；如果服务器需要“{prefix}”，请改为添加 Authorization 标头。',

@@ -60,29 +60,37 @@ export function summarizeImport(result: ImportResult): ImportSummary {
  * Idempotent: the `collectionVariables` field is consumed.
  */
 export function layerCollectionVariables(result: ImportResult): ImportResult {
-  const vars: KeyValue[] = result.collectionVariables ?? []
-  if (!('collectionVariables' in result)) return result
-  const { collectionVariables: _consumed, ...rest } = result
+  if (!('collectionVariables' in result) && !('globals' in result)) return result
+  const { collectionVariables: collection = [], globals = [], ...rest } = result
+  // Postman resolves environment > collection > globals.
+  const fromCollection = new Set(collection.map((v) => v.name))
+  const vars: KeyValue[] = [...globals.filter((v) => !fromCollection.has(v.name)), ...collection]
   if (vars.length === 0) return rest
   const envs = rest.environments ?? []
   const warnings = [...(rest.warnings ?? [])]
   let environments: TigerEnvironment[]
   if (envs.length === 0) {
-    const name = `${rest.name} variables`
+    const name = collection.length ? `${rest.name} variables` : 'Globals'
     environments = [{ name, variables: vars }]
     warnings.push({
       request: name,
-      ...warning('imports.collectionVarsEnv', { name })
+      ...warning(collection.length ? 'imports.collectionVarsEnv' : 'imports.globalsEnv', { name })
     })
+    if (collection.length && globals.length) {
+      warnings.push({ request: 'Globals', ...warning('imports.postmanGlobals') })
+    }
   } else {
     environments = envs.map((env) => {
       const own = new Set(env.variables.map((v) => v.name))
       return { ...env, variables: [...vars.filter((v) => !own.has(v.name)), ...env.variables] }
     })
-    warnings.push({
-      request: 'Collection variables',
-      ...warning('imports.collectionVarsLayered', { names: vars.map((v) => v.name).join(', ') })
-    })
+    if (collection.length) {
+      warnings.push({
+        request: 'Collection variables',
+        ...warning('imports.collectionVarsLayered', { names: collection.map((v) => v.name).join(', ') })
+      })
+    }
+    if (globals.length) warnings.push({ request: 'Globals', ...warning('imports.postmanGlobals') })
   }
   return { ...rest, environments, warnings }
 }

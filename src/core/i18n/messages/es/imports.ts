@@ -47,7 +47,9 @@ export const imports: NamespaceCatalog<typeof en> = {
       '{owner} tiene scripts previos a la solicitud y de prueba. Tiger ejecuta los scripts por solicitud, así que se copiaron en sus {count} solicitudes. Edítalos allí.'
   },
   'imports.postmanGlobals':
-    'Tiger no tiene variables globales, así que las globales de Postman pasaron a ser un entorno llamado "Globals". Copia las que necesites a tu entorno.',
+    'Las variables globales de Postman se añadieron a cada entorno importado. Si un entorno define la misma variable, se usa su propio valor.',
+  'imports.globalsEnv':
+    'Las variables globales de Postman se convirtieron en el entorno "{name}". Ya está seleccionado.',
   'imports.secretsNotExported': 'Postman no exporta los valores secretos: {names}. Rellénalos.',
   'imports.postmanV1':
     'Esta es una colección de Postman v1. Vuelve a exportarla desde Postman como Collection v2.1 e importa ese archivo.',
@@ -59,6 +61,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'La autenticación se configuró a partir del esquema de seguridad de la API, con variables de marcador como {token}. Defínelas en un entorno.',
   'imports.baseUrlUnknown':
     'La API no indica ningún host de servidor. Define baseUrl en el entorno "{name}" con un host como https://api.example.com antes de enviar.',
+  'imports.prodNotSelected':
+    'Tiger no seleccionó "{name}" por ti, para que nada vaya a producción por sorpresa. Elígelo en el menú de entornos cuando lo quieras usar.',
   'imports.apiKeyCookie':
     'En Insomnia la clave de API se envía en una cookie; Tiger la envía en un encabezado. Comprueba que el servidor lo acepta.',
   'imports.bearerPrefix':

@@ -433,12 +433,6 @@ export function importPostman(raw: unknown): ImportResult {
     const globals = scope === 'globals'
     const name = globals ? 'Globals' : str(root.name, 'Postman environment')
     const env = toEnvironment(name, root.values)
-    if (globals) {
-      warnings.push({
-        request: name,
-        ...warning('imports.postmanGlobals')
-      })
-    }
     const secrets = env.variables.filter((v) => v.secret && !v.value).map((v) => v.name)
     if (secrets.length) {
       warnings.push({
@@ -446,6 +440,7 @@ export function importPostman(raw: unknown): ImportResult {
         ...warning('imports.secretsNotExported', { names: secrets.join(', ') })
       })
     }
+    if (globals) return { name, source: 'postman', requests: [], globals: env.variables, warnings }
     return { name, source: 'postman', requests: [], environments: [env], warnings }
   }
 

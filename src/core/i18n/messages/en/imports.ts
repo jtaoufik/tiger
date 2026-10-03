@@ -43,7 +43,9 @@ export const imports = {
       '{owner} has pre-request and test scripts. Tiger runs scripts per request, so they were copied into its {count} requests. Edit them there.'
   },
   'imports.postmanGlobals':
-    'Tiger has no global variables, so Postman globals became an environment named "Globals". Copy the ones you need into your environment.',
+    'Postman globals were added to every imported environment. Where an environment sets the same variable, its own value wins.',
+  'imports.globalsEnv':
+    'Postman globals became the environment "{name}". It is selected for you.',
   'imports.secretsNotExported': 'Secret values are not exported by Postman: {names}. Fill them in.',
   'imports.postmanV1':
     'This is a Postman v1 collection. Export it again from Postman as Collection v2.1 and import that file.',
@@ -54,6 +56,8 @@ export const imports = {
     'Auth was set up from the API security scheme with placeholder variables such as {token}. Set them in an environment.',
   'imports.baseUrlUnknown':
     'The API names no server host. Set baseUrl in the environment "{name}" to a host such as https://api.example.com before sending.',
+  'imports.prodNotSelected':
+    'Tiger did not select "{name}" for you, so nothing goes to production by surprise. Pick it in the environment menu when you mean to.',
   'imports.apiKeyCookie':
     'API key is sent as a cookie in Insomnia; Tiger sends it as a header. Check the server accepts that.',
   'imports.bearerPrefix':

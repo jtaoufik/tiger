@@ -9,7 +9,7 @@
 
 import { readdir, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
-import type { TigerEnvironment } from '../core/types'
+import type { KeyValue, TigerEnvironment } from '../core/types'
 import type {
   ImportedFolder,
   ImportResult,
@@ -77,12 +77,16 @@ export function mergeImports(
   const environments: TigerEnvironment[] = []
   const folders: ImportedFolder[] = []
   const warnings: ImportWarning[] = []
+  const globals: KeyValue[] = []
   for (const item of items) {
     const { name: prefix } = item
     const nest = item !== single
+    // Globals apply to everything: they are layered under every environment afterwards.
+    const { globals: own, ...rest } = item.result
+    globals.push(...(own ?? []))
     // Each nested collection keeps its own variables as its own environment;
     // the root collection's are layered over every environment afterwards.
-    const result = nest ? layerCollectionVariables(item.result) : item.result
+    const result = nest ? layerCollectionVariables(rest) : rest
     const under = (path: string[] | undefined): string[] => (nest ? [prefix, ...(path ?? [])] : (path ?? []))
     for (const req of result.requests) {
       requests.push({ path: under(req.path), request: req.request })
@@ -105,6 +109,7 @@ export function mergeImports(
     source: single ? single.result.source : source,
     requests,
     ...(environments.length > 0 ? { environments } : {}),
+    ...(globals.length > 0 ? { globals } : {}),
     ...(single?.result.collectionVariables
       ? { collectionVariables: single.result.collectionVariables }
       : {}),

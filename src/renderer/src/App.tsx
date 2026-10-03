@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseRequest, serializeRequest } from '@core/tigerFormat'
-import { parseEnvironment, serializeEnvironment } from '@core/environment'
+import { looksLikeProduction, parseEnvironment, serializeEnvironment } from '@core/environment'
+import { warning } from '@core/import/common'
 import { buildRequest } from '@core/request'
 import { envToVars, findMissingVars } from '@core/interpolate'
 import {
@@ -582,7 +583,8 @@ export default function App() {
   /**
    * The environment key requests of `colId` go out with ('' = none): the
    * choice last made there (while it still exists), else the active one when
-   * it belongs to that collection, else the collection's first environment.
+   * it belongs to that collection, else the collection's first environment
+   * that is not production.
    */
   const envKeyFor = useCallback(
     (colId: string): string => {
@@ -593,7 +595,10 @@ export default function App() {
       const own = `${colId}${SEP}`
       const current = activeEnvRef.current.key
       if (current?.startsWith(own) && exists(current)) return current
-      const first = collections.find((c) => c.id === colId)?.environments[0]
+      // Never production by itself: the user picks that one deliberately.
+      const first = collections
+        .find((c) => c.id === colId)
+        ?.environments.find((e) => !looksLikeProduction(e.name))
       return first ? `${own}${first.name}` : ''
     },
     [collections]
@@ -1394,7 +1399,21 @@ export default function App() {
   const applyImport = useCallback(
     (raw: ImportResult | null) => {
       if (!raw) return
-      const result = layerCollectionVariables(raw)
+      const layered = layerCollectionVariables(raw)
+      // Select the first environment that is not production; with only
+      // production ones, select none and say why.
+      const imported = layered.environments ?? []
+      const pick = imported.findIndex((e) => !looksLikeProduction(e.name))
+      const result =
+        imported.length && pick === -1
+          ? {
+              ...layered,
+              warnings: [
+                ...(layered.warnings ?? []),
+                { request: imported[0].name, ...warning('imports.prodNotSelected', { name: imported[0].name }) }
+              ]
+            }
+          : layered
       const summary = summarizeImport(result)
       const envRefs: EnvRef[] = (result.environments ?? []).map((e) => ({ name: e.name, data: e }))
       setModal('none')
@@ -1404,11 +1423,18 @@ export default function App() {
           activeCollection ?? collectionsRef.current[collectionsRef.current.length - 1]
         if (envRefs.length && target) {
           const taken = new Set(target.environments.map((e) => e.name))
+          // A collection imported without an environment keeps its variables as
+          // "<name> variables": layer them under what is imported now, as if
+          // both had been imported together.
+          const own =
+            target.environments.find((e) => e.name === `${target.name} variables`)?.data?.variables ?? []
           const added = envRefs.map((e) => {
             let name = e.name
             for (let n = 2; taken.has(name); n++) name = `${e.name} ${n}`
             taken.add(name)
-            return { name, data: { ...e.data!, name } }
+            const mine = new Set(e.data!.variables.map((v) => v.name))
+            const variables = [...own.filter((v) => !mine.has(v.name)), ...e.data!.variables]
+            return { name, data: { ...e.data!, name, variables } }
           })
           setCollections((prev) =>
             prev.map((c) =>
@@ -1416,10 +1442,13 @@ export default function App() {
             )
           )
           // Select it: an imported environment is the one the user means to send with.
-          const firstKey = `${target.id}${SEP}${added[0].name}`
-          envChoiceRef.current[target.id] = firstKey
-          setActiveEnvKey(firstKey)
-          setActiveEnv(added[0].data)
+          const chosen = added.find((e) => !looksLikeProduction(e.name))
+          if (chosen) {
+            const key = `${target.id}${SEP}${chosen.name}`
+            envChoiceRef.current[target.id] = key
+            setActiveEnvKey(key)
+            setActiveEnv(chosen.data)
+          }
           setImportReport({ summary, environmentsTarget: target.name })
           announce(importReportSentence(summary))
           trackEvent(events.collectionImported(result.source, 0))
@@ -1473,7 +1502,7 @@ export default function App() {
       }
       setView('workspace')
       // Select the first imported environment so {{variables}} resolve at once.
-      const firstEnv = envRefs[0]
+      const firstEnv = pick >= 0 ? envRefs[pick] : undefined
       if (firstEnv?.data) {
         envChoiceRef.current[colId] = `${colId}${SEP}${firstEnv.name}`
         setActiveEnvKey(`${colId}${SEP}${firstEnv.name}`)
