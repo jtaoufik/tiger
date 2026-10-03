@@ -84,6 +84,45 @@ function tlsConfigured(s: ReturnType<typeof loadSettings>): boolean {
   return !!(s.caFile || s.clientPfxFile || (s.clientCertFile && s.clientKeyFile))
 }
 
+/**
+ * Request headers Chromium keeps for itself: its net module fails the whole
+ * request (net::ERR_INVALID_ARGUMENT) when one is set, or silently replaces
+ * it (Sec-Fetch-Site). Node's http client sends them as written.
+ */
+const CHROMIUM_OWNED = new Set([
+  'host',
+  'content-length',
+  'keep-alive',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+  'cookie2',
+  'set-cookie'
+])
+
+/** True when a header of the request needs the Node send path (a Chrome "Copy as cURL" sets several). */
+function chromiumRefuses(headers: Record<string, string>): boolean {
+  return Object.keys(headers).some((name) => {
+    const lower = name.toLowerCase()
+    return CHROMIUM_OWNED.has(lower) || lower.startsWith('proxy-') || lower.startsWith('sec-fetch-')
+  })
+}
+
+/**
+ * Node writes the Content-Length it is given. One the request sets is kept
+ * when it matches the body and corrected when it does not (a wrong length
+ * hangs the server or cuts the body); next to Transfer-Encoding it is left out.
+ */
+function withBodyLength(headers: Record<string, string>, body: string | Buffer | undefined): Record<string, string> {
+  const lengthName = Object.keys(headers).find((name) => name.toLowerCase() === 'content-length')
+  if (!lengthName) return headers
+  const out = { ...headers }
+  if (Object.keys(headers).some((name) => name.toLowerCase() === 'transfer-encoding')) delete out[lengthName]
+  else out[lengthName] = String(body === undefined ? 0 : Buffer.byteLength(body))
+  return out
+}
+
 function hostExcepted(s: ReturnType<typeof loadSettings>, hostname: string): boolean {
   return s.certExceptions
     .split(',')
@@ -106,7 +145,8 @@ export function sameOrigin(a: string, b: string): boolean {
 /**
  * Compute the headers to send on a redirect hop. When the target is a different
  * origin, drop Authorization and Cookie so credentials never leak across hosts
- * (matches fetch/curl behaviour). Header name casing is preserved otherwise.
+ * (matches fetch/curl behaviour), and a Host the request set, which names the
+ * first server. Header name casing is preserved otherwise.
  */
 export function redirectHeaders(
   headers: Record<string, string>,
@@ -117,7 +157,7 @@ export function redirectHeaders(
   const out: Record<string, string> = {}
   for (const [name, value] of Object.entries(headers)) {
     const lower = name.toLowerCase()
-    if (lower === 'authorization' || lower === 'cookie') continue
+    if (lower === 'authorization' || lower === 'cookie' || lower === 'host') continue
     out[name] = value
   }
   return out
@@ -202,6 +242,9 @@ function chromiumHop(
       url,
       session: requestSession().session,
       redirect: 'manual',
+      // A Referer the request sets goes out as written; under Chromium's
+      // default policy a cross-origin one cancels the request.
+      referrerPolicy: 'unsafe-url',
       useSessionCookies: jarCookies
     })
     const onAbort = (): void => {
@@ -293,12 +336,14 @@ function nodeHop(
   s: ReturnType<typeof loadSettings>
 ): Promise<Hop> {
   return new Promise((resolve, reject) => {
+    // Same hermetic rule as Chromium's sessions in end-to-end runs.
+    if (isE2E() && !isLoopbackOrLocal(url)) return reject(new Error('net::ERR_BLOCKED_BY_CLIENT'))
     const parsed = new URL(url)
     const isHttps = parsed.protocol === 'https:'
     const requester = isHttps ? httpsRequest : httpRequest
     const options: RequestOptions = {
       method,
-      headers,
+      headers: withBodyLength(headers, body),
       signal: signal as never,
       ...(isHttps ? { ...tls, rejectUnauthorized: s.sslVerify && !hostExcepted(s, parsed.hostname) } : {})
     }
@@ -340,8 +385,8 @@ function nodeHop(
       })
     })
     req.on('error', (e) => reject(signal.aborted ? abortError() : e))
-    if (body) req.write(body)
-    req.end()
+    // In one piece, so Node sends a Content-Length rather than chunks.
+    req.end(body)
   })
 }
 
@@ -474,8 +519,9 @@ export async function sendHttp(
   }
 
   try {
-    // Imported certificate files need Node's TLS.
-    return await exchange(built, bodyPayload, s, controller.signal, tlsConfigured(s))
+    // Imported certificate files need Node's TLS; so do headers Chromium keeps for itself.
+    const viaNode = tlsConfigured(s) || chromiumRefuses(built.headers)
+    return await exchange(built, bodyPayload, s, controller.signal, viaNode)
   } finally {
     clearTimeout(timer)
     // Only remove our own entry: a newer send may have reused the key.

@@ -48,6 +48,12 @@ describe('redirectHeaders', () => {
     expect(out).toEqual({ 'X-Trace': 'keep' })
   })
 
+  it('drops a Host the request set when the redirect leaves its origin', () => {
+    const own = { Host: 'virtual.test', 'X-Trace': 'keep' }
+    expect(redirectHeaders(own, 'http://a.test/1', 'http://b.test/2')).toEqual({ 'X-Trace': 'keep' })
+    expect(redirectHeaders(own, 'http://a.test/1', 'http://a.test/2')).toEqual(own)
+  })
+
   it('is case-insensitive about the stripped header names', () => {
     const out = redirectHeaders(
       { authorization: 'x', cookie: 'y', 'content-type': 'json' },

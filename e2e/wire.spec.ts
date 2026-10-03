@@ -23,6 +23,100 @@ async function send(page: import('@playwright/test').Page): Promise<string> {
   return (await responsePanel(page).innerText()).replace(/\s+/g, ' ').slice(0, 160)
 }
 
+wire('headers that Chromium keeps for itself are sent as written', async ({ tiger, srv }) => {
+  test.setTimeout(120_000)
+  const headers: Array<[string, string]> = [
+    // Chromium refuses these from the net module (the whole send used to fail).
+    ['Host', 'virtual.test'],
+    ['Content-Length', '0'],
+    ['Keep-Alive', 'timeout=5'],
+    ['Transfer-Encoding', 'chunked'],
+    ['TE', 'trailers'],
+    ['Upgrade', 'h2c'],
+    ['Proxy-Authorization', 'Basic eDp5'],
+    ['Sec-Fetch-Mode', 'cors'],
+    ['Sec-Fetch-Site', 'same-site'],
+    ['Sec-Fetch-Dest', 'empty'],
+    ['Referer', 'https://app.test/page'],
+    // These always went out; they must keep doing so.
+    ['Referer', `${srv.url}/page`],
+    ['Connection', 'keep-alive'],
+    ['Cookie', 'a=b'],
+    ['User-Agent', 'wire-check/1.0'],
+    ['Origin', 'https://app.test'],
+    ['Accept-Encoding', 'gzip, deflate, br'],
+    ['sec-ch-ua', '"Chromium";v="128"'],
+    ['Priority', 'u=1, i'],
+    ['Via', '1.1 proxy'],
+    ['DNT', '1'],
+    ['Access-Control-Request-Method', 'POST']
+  ]
+  const files: Record<string, string> = { 'environments/dev.tiger': envFile(srv.url) }
+  headers.forEach(([name, value], i) => {
+    files[`h${String(i).padStart(2, '0')}.tiger`] = requestFile(`H${i}`, 'get', `{{baseUrl}}/h${i}`, `headers {\n  ${name}: ${value}\n}\n`)
+  })
+  const dir = writeCollection(files)
+  try {
+    const { page } = tiger
+    await openCollection(tiger, dir)
+    const expected: Record<string, string> = {}
+    const got: Record<string, string> = {}
+    for (const [i, [name, value]] of headers.entries()) {
+      await openRequest(page, 'GET', `H${i}`)
+      const panel = await send(page)
+      const seen = srv.requests.find((r) => r.url === `/h${i}`)
+      const label = `${name}: ${value}`
+      expected[label] = value
+      got[label] = seen ? String(seen.headers[name.toLowerCase()] ?? '(absent)') : `NOT SENT (${panel})`
+    }
+    expect(got).toEqual(expected)
+  } finally {
+    rm(resolve(dir, '..'))
+  }
+})
+
+wire('a request pasted from Chrome "Copy as cURL" is sent with its headers', async ({ tiger, srv }) => {
+  const dir = writeCollection({
+    'environments/dev.tiger': envFile(srv.url),
+    'a.tiger': requestFile('Alpha', 'get', '{{baseUrl}}/a')
+  })
+  try {
+    const { page } = tiger
+    await openCollection(tiger, dir)
+    const curl = [
+      `curl '${srv.url}/v1/items?page=2' \\`,
+      `  -H 'accept: application/json, text/plain, */*' \\`,
+      `  -H 'authorization: Bearer abc' \\`,
+      `  -H 'origin: https://app.test' \\`,
+      `  -H 'priority: u=1, i' \\`,
+      `  -H 'referer: https://app.test/' \\`,
+      `  -H 'sec-ch-ua: "Chromium";v="128", "Not;A=Brand";v="24"' \\`,
+      `  -H 'sec-ch-ua-mobile: ?0' \\`,
+      `  -H 'sec-fetch-dest: empty' \\`,
+      `  -H 'sec-fetch-mode: cors' \\`,
+      `  -H 'sec-fetch-site: same-site' \\`,
+      `  -H 'user-agent: Mozilla/5.0 (Macintosh) Chrome/128.0.0.0 Safari/537.36'`
+    ].join('\n')
+    await page.getByRole('navigation', { name: 'Collections' }).getByRole('button', { name: 'Import', exact: true }).click()
+    await page.getByRole('button', { name: 'Paste a curl command' }).click()
+    await page.getByLabel('curl command').fill(curl)
+    await page.getByRole('button', { name: 'Import request' }).click()
+    await expect(page.getByRole('textbox', { name: 'Request name' })).toHaveValue('Imported from curl')
+    const panel = await send(page)
+    const seen = srv.requests.find((r) => r.url === '/v1/items?page=2')
+    expect(seen, panel).toBeDefined()
+    expect(seen!.headers).toMatchObject({
+      authorization: 'Bearer abc',
+      referer: 'https://app.test/',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'same-site',
+      'user-agent': 'Mozilla/5.0 (Macintosh) Chrome/128.0.0.0 Safari/537.36'
+    })
+  } finally {
+    rm(resolve(dir, '..'))
+  }
+})
+
 wire('a URL typed without a scheme is sent over http://', async ({ tiger, srv }) => {
   const dir = writeCollection({
     'ip.tiger': requestFile('By address', 'get', `127.0.0.1:${srv.port}/by-address`),
