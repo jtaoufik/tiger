@@ -278,3 +278,20 @@ describe('importWsdl (robustness)', () => {
     expect(result.requests).toEqual([])
   })
 })
+
+describe('importWsdl without an endpoint address', () => {
+  const noAddress = soap11.replace(/\s*<soap:address[^>]*\/>/, '')
+
+  it('puts {{baseUrl}} in an environment that asks for the host', () => {
+    const result = importWsdl(noAddress)
+    expect(result.requests[0].request.url).toBe('{{baseUrl}}')
+    expect(result.environments).toEqual([
+      { name: 'Default', variables: [{ name: 'baseUrl', value: '', enabled: true }] }
+    ])
+    expect(result.warnings?.some((w) => w.i18n?.key === 'imports.baseUrlUnknown')).toBe(true)
+  })
+
+  it('needs no environment when the WSDL names its endpoint', () => {
+    expect(importWsdl(soap11).environments).toBeUndefined()
+  })
+})

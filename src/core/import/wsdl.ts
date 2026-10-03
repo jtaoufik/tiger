@@ -9,6 +9,7 @@
 
 import { XMLParser } from 'fast-xml-parser'
 import type { KeyValue, TigerRequest } from '../types'
+import { warning } from './common'
 import type { ImportedRequest, ImportResult } from './types'
 
 // WSDL is namespaced XML with varying prefixes (wsdl:, soap:, or none). We keep
@@ -227,9 +228,13 @@ export function importWsdl(xml: string): ImportResult {
   const chosen = soapBindings.find((b) => b.kind === 'soap11') ?? soapBindings[0]
 
   const requests: ImportedRequest[] = []
+  /** No soap:address: requests post to {{baseUrl}}, which the user fills in. */
+  let needsHost = false
   if (chosen) {
     const soap12 = chosen.kind === 'soap12'
-    const endpoint = findEndpoint(services, attr(chosen.binding, 'name')) ?? '{{baseUrl}}'
+    const address = findEndpoint(services, attr(chosen.binding, 'name'))
+    needsHost = address === undefined
+    const endpoint = address ?? '{{baseUrl}}'
     for (const op of children(chosen.binding, 'operation')) {
       const opName = attr(op, 'name')
       if (!opName) continue
@@ -252,5 +257,14 @@ export function importWsdl(xml: string): ImportResult {
     }
   }
 
+  if (needsHost && requests.length) {
+    return {
+      name: serviceName,
+      source: 'wsdl',
+      requests,
+      environments: [{ name: 'Default', variables: [{ name: 'baseUrl', value: '', enabled: true }] }],
+      warnings: [{ request: 'Default', ...warning('imports.baseUrlUnknown', { name: 'Default' }) }]
+    }
+  }
   return { name: serviceName, source: 'wsdl', requests }
 }
