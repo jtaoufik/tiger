@@ -110,6 +110,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.report.descSelectedEnvironment':
     '{name} está abierto en la barra lateral, con el entorno "{environment}" seleccionado.',
   'imports.report.descOpen': '{name} está abierto en la barra lateral.',
+  'imports.report.savedTo': 'Guardada en {path}, para que esté ahí la próxima vez.',
   'imports.report.clean': 'Todo se convirtió sin problemas. Nada que revisar.',
   'imports.report.checkOne': 'Revisa este',
   'imports.report.checkMany': 'Revisa estos {count}',

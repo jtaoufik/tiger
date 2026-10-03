@@ -107,6 +107,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.report.descSelectedEnvironment':
     '{name} साइडबार में खुला है, और "{environment}" परिवेश चुना गया है।',
   'imports.report.descOpen': '{name} साइडबार में खुला है।',
+  'imports.report.savedTo': '{path} में सहेजा गया, ताकि यह अगली बार भी मिले।',
   'imports.report.clean': 'सब कुछ ठीक से बदल गया। जाँचने को कुछ नहीं।',
   'imports.report.checkOne': 'इसे जाँचें',
   'imports.report.checkMany': 'इन {count} को जाँचें',

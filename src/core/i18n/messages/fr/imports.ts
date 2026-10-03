@@ -111,6 +111,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.report.descSelectedEnvironment':
     '{name} est ouvert dans la barre latérale, avec l’environnement « {environment} » sélectionné.',
   'imports.report.descOpen': '{name} est ouvert dans la barre latérale.',
+  'imports.report.savedTo': 'Enregistrée dans {path}, elle sera là au prochain lancement.',
   'imports.report.clean': 'Tout a été converti sans problème. Rien à vérifier.',
   'imports.report.checkOne': 'À vérifier',
   'imports.report.checkMany': '{count} éléments à vérifier',

@@ -135,6 +135,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.report.descEnvironmentsTarget': 'أُضيفت البيئات إلى {target}. اختر واحدة من قائمة البيئات.',
   'imports.report.descSelectedEnvironment': '{name} مفتوحة في الشريط الجانبي، مع تحديد البيئة "{environment}".',
   'imports.report.descOpen': '{name} مفتوحة في الشريط الجانبي.',
+  'imports.report.savedTo': 'حُفظت في {path}، فستجدها في المرة القادمة.',
   'imports.report.clean': 'تم تحويل كل شيء دون مشاكل. لا شيء لمراجعته.',
   'imports.report.checkOne': 'راجع هذا العنصر',
   'imports.report.checkMany': 'راجع هذه العناصر ({count})',

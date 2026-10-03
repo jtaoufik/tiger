@@ -6,6 +6,7 @@ import type { Settings } from '../main/settings'
 import type { HistoryEntry } from '../main/history'
 import type { ImportKind } from '../main/importers'
 import type { ImportResult } from '../core/import'
+import type { CollectionFile } from '../core/collectionFiles'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { UpdateInfo } from '../core/version'
 import type { UpdateModeInfo } from '../core/updateMode'
@@ -51,6 +52,9 @@ const api = {
   newCollection: (name: string): Promise<OpenedCollection | null> =>
     ipcRenderer.invoke('tiger:newCollection', name),
   openPath: (root: string): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openPath', root),
+  /** Save a collection that lives in memory (an import) as a folder in Documents/Tiger. */
+  saveCollection: (name: string, files: CollectionFile[]): Promise<OpenedCollection> =>
+    ipcRenderer.invoke('tiger:saveCollection', name, files),
   reload: (root: string): Promise<RequestEntry[]> => ipcRenderer.invoke('tiger:reload', root),
   readFile: (path: string): Promise<string> => ipcRenderer.invoke('tiger:readFile', path),
   writeFile: (path: string, content: string): Promise<boolean> =>

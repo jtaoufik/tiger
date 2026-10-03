@@ -77,6 +77,7 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.report.descEnvironmentsTarget': '环境已添加到 {target}。请从环境菜单中选择一个。',
   'imports.report.descSelectedEnvironment': '{name} 已在侧边栏中打开，并选中了“{environment}”环境。',
   'imports.report.descOpen': '{name} 已在侧边栏中打开。',
+  'imports.report.savedTo': '已保存到 {path}，下次打开时仍在。',
   'imports.report.clean': '全部转换顺利，无需检查。',
   'imports.report.checkOne': '请检查此项',
   'imports.report.checkMany': '请检查这 {count} 项',

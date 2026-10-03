@@ -90,3 +90,57 @@ export const pickedEnv = () => envPicker().selectedOptions[0]?.textContent
 
 /** The URL the last send put on the wire. */
 export const lastSentUrl = (b: ReturnType<typeof bridge>) => b.send.mock.calls.at(-1)?.[0].url
+
+/**
+ * A disk the bridge can save collections to, the way main does: files land
+ * under /Docs/Tiger/<name> and come back as an opened-collection payload.
+ */
+export async function fakeDisk() {
+  const { parseRequest } = await import('../../src/core/tigerFormat')
+  const { parseEnvironment } = await import('../../src/core/environment')
+  const { parseCollectionSettings } = await import('../../src/core/collectionSettings')
+  const files = new Map<string, string>()
+  const saveCollection = vi.fn(async (name: string, written: Array<{ path: string; content: string }>) => {
+    let root = `/Docs/Tiger/${name}`
+    for (let n = 2; [...files.keys()].some((k) => k.startsWith(`${root}/`)); n++) root = `/Docs/Tiger/${name} ${n}`
+    for (const f of written) files.set(`${root}/${f.path}`, f.content)
+    const under = [...files.entries()].filter(([k]) => k.startsWith(`${root}/`))
+    const rel = (k: string) => k.slice(root.length + 1)
+    const requests = under
+      .filter(([k]) => k.endsWith('.tiger') && !k.startsWith(`${root}/environments/`))
+      .filter(([k]) => !/(^|\/)(folder|collection)\.tiger$/.test(rel(k)))
+      .map(([k, v]) => {
+        const r = parseRequest(v)
+        return { name: r.name, method: r.method, seq: r.seq, path: k, folder: rel(k).split('/').slice(0, -1) }
+      })
+      .sort(
+        (a, b) =>
+          a.folder.join('/').localeCompare(b.folder.join('/')) || (a.seq ?? 1e9) - (b.seq ?? 1e9)
+      )
+    return {
+      root,
+      name,
+      requests,
+      environments: under
+        .filter(([k]) => k.startsWith(`${root}/environments/`))
+        .map(([k, v]) => ({ name: parseEnvironment(v).name, path: k })),
+      settings: parseCollectionSettings(files.get(`${root}/collection.tiger`) ?? ''),
+      folders: under
+        .filter(([k]) => rel(k).endsWith('/folder.tiger'))
+        .map(([k, v]) => ({ folder: rel(k).split('/').slice(0, -1), ...parseCollectionSettings(v) }))
+    }
+  })
+  return {
+    files,
+    saveCollection,
+    readFile: vi.fn(async (path: string) => {
+      const text = files.get(path)
+      if (text === undefined) throw new Error(`ENOENT: ${path}`)
+      return text
+    }),
+    writeFile: vi.fn(async (path: string, content: string) => {
+      files.set(path, content)
+      return true
+    })
+  }
+}

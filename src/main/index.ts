@@ -16,6 +16,8 @@ import {
   track
 } from './http'
 import { importFromDisk, importPaths, saveExport, type ImportKind } from './importers'
+import { saveCollectionFiles } from './saveCollection'
+import type { CollectionFile } from '../core/collectionFiles'
 import { appendHistory, clearHistory, readHistory } from './history'
 import { clearCookies } from './cookieJar'
 import {
@@ -257,6 +259,14 @@ function createWindow(): BrowserWindow {
   return win
 }
 
+/**
+ * Where imported collections are saved: Documents/Tiger, a place users find
+ * and back up. End-to-end runs keep them inside their throwaway profile.
+ */
+function collectionsHome(): string {
+  return isE2E() ? join(app.getPath('userData'), 'Collections') : join(app.getPath('documents'), 'Tiger')
+}
+
 function registerIpc(): void {
   ipcMain.handle('tiger:openCollection', async () => {
     const result = await dialog.showOpenDialog(parentWindow()!, {
@@ -366,6 +376,12 @@ function registerIpc(): void {
     'tiger:oauthForget',
     (_e, auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap) => forgetOAuthToken(auth, vars)
   )
+
+  // An import (or the sample) saved as a real collection folder.
+  ipcMain.handle('tiger:saveCollection', async (_e, name: string, files: CollectionFile[]) => {
+    const root = await saveCollectionFiles(collectionsHome(), String(name), Array.isArray(files) ? files : [])
+    return readOpenedCollection(root)
+  })
 
   ipcMain.handle('tiger:import', async (_e, kind: ImportKind) => importFromDisk(kind))
   // Drag and drop: the renderer resolves dropped File objects to paths.

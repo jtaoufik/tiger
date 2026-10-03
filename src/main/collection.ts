@@ -3,14 +3,23 @@ import { basename, join, relative, sep } from 'node:path'
 import { parseRequest } from '../core/tigerFormat'
 import { parseCollectionSettings, type CollectionSettings } from '../core/collectionSettings'
 import { parseEnvironment } from '../core/environment'
-import type { HttpMethod } from '../core/types'
+import type { HttpMethod, TigerAuth } from '../core/types'
 
 export interface RequestEntry {
   name: string
   method: HttpMethod
+  /** Position within its folder (`meta { seq }`), when the file has one. */
+  seq?: number
   path: string
   /** Folder names from the collection root down to (but not including) the file. */
   folder: string[]
+}
+
+/** A folder's own settings, from its `folder.tiger`. */
+export interface FolderSettingsEntry {
+  folder: string[]
+  auth?: TigerAuth
+  docs?: string
 }
 
 const ENVIRONMENTS_DIR = 'environments'
@@ -24,22 +33,27 @@ const ENVIRONMENTS_DIR = 'environments'
  */
 const norm = (p: string): string => (sep === '\\' ? p.split(sep).join('/') : p)
 
-async function readMeta(path: string): Promise<{ name: string; method: HttpMethod }> {
+async function readMeta(path: string): Promise<{ name: string; method: HttpMethod; seq?: number }> {
   try {
     const r = parseRequest(await readFile(path, 'utf8'))
-    return { name: r.name || basename(path, '.tiger'), method: r.method }
+    const seq = Number.isFinite(r.seq) ? r.seq : undefined
+    return { name: r.name || basename(path, '.tiger'), method: r.method, ...(seq !== undefined ? { seq } : {}) }
   } catch {
     return { name: basename(path, '.tiger'), method: 'get' }
   }
 }
 
-/** Every request file under `dir`, with its folder path relative to `root`. */
-async function listRequestFiles(
-  root: string,
-  dir: string
-): Promise<Array<{ full: string; folder: string[] }>> {
+interface ListedFile {
+  full: string
+  folder: string[]
+  /** A request, or a folder's own `folder.tiger` settings. */
+  kind: 'request' | 'folder'
+}
+
+/** Every request file and folder.tiger under `dir`, with its folder path relative to `root`. */
+async function listRequestFiles(root: string, dir: string): Promise<ListedFile[]> {
   const entries = await readdir(dir, { withFileTypes: true })
-  const files: Array<{ full: string; folder: string[] }> = []
+  const files: ListedFile[] = []
   const subdirs: string[] = []
   const rel = relative(root, dir)
   const folder = rel ? rel.split(sep) : []
@@ -48,13 +62,10 @@ async function listRequestFiles(
     if (entry.isDirectory()) {
       if (entry.name === ENVIRONMENTS_DIR || entry.name.startsWith('.')) continue
       subdirs.push(full)
-    } else if (
-      entry.isFile() &&
-      entry.name.endsWith('.tiger') &&
-      entry.name !== 'collection.tiger' &&
-      entry.name !== 'folder.tiger'
-    ) {
-      files.push({ full, folder })
+    } else if (entry.isFile() && entry.name === 'folder.tiger') {
+      if (folder.length) files.push({ full, folder, kind: 'folder' })
+    } else if (entry.isFile() && entry.name.endsWith('.tiger') && entry.name !== 'collection.tiger') {
+      files.push({ full, folder, kind: 'request' })
     }
   }
   // Sibling folders are listed concurrently rather than one after another.
@@ -78,21 +89,47 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return out
 }
 
-export async function readCollection(root: string): Promise<RequestEntry[]> {
+/**
+ * Requests in folder order, then in their `seq` order (the order the source
+ * tool showed, kept when an import is saved), then by name.
+ */
+function byFolderSeqName(a: RequestEntry, b: RequestEntry): number {
+  return (
+    a.folder.join('/').localeCompare(b.folder.join('/')) ||
+    (a.seq ?? Number.MAX_SAFE_INTEGER) - (b.seq ?? Number.MAX_SAFE_INTEGER) ||
+    a.name.localeCompare(b.name) ||
+    a.path.localeCompare(b.path)
+  )
+}
+
+async function readRequests(files: ListedFile[]): Promise<RequestEntry[]> {
   // Reads used to be awaited one file at a time; a 2,000-request collection
   // spent most of its open time waiting on the disk serially.
-  const files = await listRequestFiles(root, root)
-  const acc = await mapLimit(files, READ_CONCURRENCY, async ({ full, folder }) => ({
+  const requests = files.filter((f) => f.kind === 'request')
+  const acc = await mapLimit(requests, READ_CONCURRENCY, async ({ full, folder }) => ({
     ...(await readMeta(full)),
     path: norm(full),
     folder
   }))
-  return acc.sort(
-    (a, b) =>
-      a.folder.join('/').localeCompare(b.folder.join('/')) ||
-      a.name.localeCompare(b.name) ||
-      a.path.localeCompare(b.path)
-  )
+  return acc.sort(byFolderSeqName)
+}
+
+export async function readCollection(root: string): Promise<RequestEntry[]> {
+  return readRequests(await listRequestFiles(root, root))
+}
+
+/** Every folder's auth and docs, so a request inherits its folder's auth from the first send. */
+async function readFolderSettings(files: ListedFile[]): Promise<FolderSettingsEntry[]> {
+  const folders = files.filter((f) => f.kind === 'folder')
+  const parsed = await mapLimit(folders, READ_CONCURRENCY, async ({ full, folder }) => {
+    try {
+      const settings = parseCollectionSettings(await readFile(full, 'utf8'))
+      return { folder, ...(settings.auth ? { auth: settings.auth } : {}), ...(settings.docs ? { docs: settings.docs } : {}) }
+    } catch {
+      return { folder }
+    }
+  })
+  return parsed.filter((f) => f.auth || f.docs)
 }
 
 export interface EnvironmentRef {
@@ -123,6 +160,8 @@ export interface OpenedCollectionPayload {
   requests: RequestEntry[]
   environments: EnvironmentRef[]
   settings: CollectionSettings
+  /** Folders with a folder.tiger (auth and docs). */
+  folders: FolderSettingsEntry[]
 }
 
 /**
@@ -136,11 +175,13 @@ export async function readOpenedCollection(root: string): Promise<OpenedCollecti
   } catch {
     /* optional file */
   }
+  const files = await listRequestFiles(root, root)
   return {
     root: norm(root),
     name: basename(root),
-    requests: await readCollection(root),
+    requests: await readRequests(files),
     environments: await readEnvironments(root),
-    settings
+    settings,
+    folders: await readFolderSettings(files)
   }
 }

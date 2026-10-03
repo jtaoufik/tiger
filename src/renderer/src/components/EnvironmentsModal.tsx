@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { parseEnvironment, serializeEnvironment } from '@core/environment'
+import { safeFileName, uniqueName } from '@core/collectionFiles'
 import type { KeyValue, TigerEnvironment } from '@core/types'
 import { Modal } from './Modal'
 import { useT } from '../i18n'
@@ -107,8 +108,21 @@ export function EnvironmentsModal({
     [col, activeEnvKey, envKeySep, onActiveEnvMaybeChanged, onCollectionsChanged]
   )
 
-  const envFilePath = (name: string) =>
-    col?.root ? `${col.root}/environments/${name.replace(/[^\w.-]+/g, '-').toLowerCase()}.tiger` : undefined
+  /**
+   * A file for an environment called `name` that no other environment of the
+   * collection uses, compared without case like Windows and macOS do. The old
+   * slug turned "Dev" and "dev", or any two names in Chinese, Hindi or Arabic,
+   * into the same file, so one environment overwrote the other.
+   */
+  const envFilePath = (name: string, ownPath?: string) => {
+    if (!col?.root) return undefined
+    const taken = new Set(
+      col.environments
+        .filter((e) => e.path && e.path !== ownPath)
+        .map((e) => e.path!.slice(e.path!.lastIndexOf('/') + 1).replace(/\.tiger$/i, '').toLowerCase())
+    )
+    return `${col.root}/environments/${uniqueName(safeFileName(name, 'environment'), taken)}.tiger`
+  }
 
   const createEnv = useCallback(
     async (from?: TigerEnvironment) => {
@@ -148,12 +162,15 @@ export function EnvironmentsModal({
       const current = env && env.name === oldName ? env : null
       const data: TigerEnvironment = { name: newName, variables: current?.variables ?? [] }
       if (ref.path && window.tiger) {
-        const newPath = envFilePath(newName)!
         const text = current
           ? serializeEnvironment(data)
           : serializeEnvironment({ ...parseEnvironment(await window.tiger.readFile(ref.path)), name: newName })
+        // Renaming "staging" to "Staging" is the same file on Windows and
+        // macOS: rewrite it in place, never write it and then delete it.
+        let newPath = envFilePath(newName, ref.path)!
+        if (newPath.toLowerCase() === ref.path.toLowerCase()) newPath = ref.path
         await window.tiger.writeFile(newPath, text)
-        await window.tiger.deleteFile(ref.path)
+        if (newPath !== ref.path) await window.tiger.deleteFile(ref.path)
         onCollectionsChanged(
           col.id,
           col.environments.map((e) => (e.name === oldName ? { name: newName, path: newPath } : e))

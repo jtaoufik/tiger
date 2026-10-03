@@ -100,6 +100,7 @@ export const imports = {
   'imports.report.descSelectedEnvironment':
     '{name} is open in the sidebar, with the "{environment}" environment selected.',
   'imports.report.descOpen': '{name} is open in the sidebar.',
+  'imports.report.savedTo': 'Saved in {path}, so it is there next time.',
   'imports.report.clean': 'Everything mapped cleanly. Nothing to check.',
   'imports.report.checkOne': 'Check this',
   'imports.report.checkMany': 'Check these {count}',

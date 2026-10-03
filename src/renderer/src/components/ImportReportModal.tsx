@@ -4,6 +4,7 @@ import type { MessageKey, Vars } from '@core/i18n'
 import { t as translate, useT } from '../i18n'
 import { Modal } from './Modal'
 import { CircleCheckIcon, FileIcon, FolderIcon, GlobeIcon, WarningIcon } from './Icons'
+import { REVEAL_LABEL_KEY } from '../platform'
 import './ImportReportModal.css'
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
   environmentsTarget?: string
   /** The imported environment Tiger selected, if any. */
   selectedEnvironment?: string
+  /** The folder the import was saved in. */
+  savedTo?: string
   onClose: () => void
 }
 
@@ -32,7 +35,7 @@ export function importReportSentence(summary: ImportSummary, tr: (key: MessageKe
 }
 
 /** What an import brought in, and what only came in partly. */
-export function ImportReportModal({ summary, environmentsTarget, selectedEnvironment, onClose }: Props) {
+export function ImportReportModal({ summary, environmentsTarget, selectedEnvironment, savedTo, onClose }: Props) {
   const uid = useId()
   const t = useT()
   const stats = [
@@ -75,6 +78,20 @@ export function ImportReportModal({ summary, environmentsTarget, selectedEnviron
           </div>
         ))}
       </dl>
+
+      {savedTo && (
+        <p className="import-report-saved">
+          <FolderIcon size={15} aria-hidden="true" />
+          <span className="import-report-saved-text">
+            {t('imports.report.savedTo', { path: savedTo })}
+          </span>
+          {window.tiger?.reveal && (
+            <button type="button" className="btn" onClick={() => void window.tiger?.reveal(savedTo)}>
+              {t(REVEAL_LABEL_KEY)}
+            </button>
+          )}
+        </p>
+      )}
 
       {summary.items.length === 0 ? (
         <p className="import-report-clean">

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseRequest, serializeRequest } from '@core/tigerFormat'
+import { collectionFiles, safeFileName, uniqueName, type CollectionSnapshot } from '@core/collectionFiles'
 import { looksLikeProduction, parseEnvironment, serializeEnvironment } from '@core/environment'
 import { warning } from '@core/import/common'
 import { buildRequest } from '@core/request'
@@ -73,6 +74,7 @@ import {
   LocateIcon,
   PencilIcon,
   PlusIcon,
+  SaveIcon,
   SidebarIcon,
   TrashIcon,
   XCircleIcon
@@ -251,6 +253,8 @@ export default function App() {
     summary: ImportSummary
     environmentsTarget?: string
     selectedEnvironment?: string
+    /** The folder the import was saved in. */
+    savedTo?: string
   } | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
 
@@ -378,6 +382,8 @@ export default function App() {
   const deletedIds = useRef(new Set<string>())
   /** Requests edited since last save, for cheap dirty tracking on large bodies. */
   const editedIds = useRef(new Set<string>())
+  /** Saves an in-memory collection as a folder (defined further down, used by Save). */
+  const saveCollectionToDiskRef = useRef<(colId: string) => Promise<void>>(async () => {})
   /** Monotonic token so a stale environment file read can't win a race. */
   const envSeq = useRef(0)
 
@@ -1054,8 +1060,11 @@ export default function App() {
       savedText.current[activeId] = text
       editedIds.current.delete(activeId)
       toast(t('app.toast.saved'))
+    } else if (activeCollection && !activeCollection.root) {
+      // It only lives in memory: Save used to do nothing at all.
+      await saveCollectionToDiskRef.current(activeCollection.id)
     }
-  }, [activeId, active, pathById, toast])
+  }, [activeId, active, activeCollection, pathById, toast])
 
   const cancelActive = useCallback(() => {
     if (activeId) cancelRequest(activeId)
@@ -1314,10 +1323,110 @@ export default function App() {
         ...prev,
         ...Object.fromEntries(opened.requests.map((r) => [`${opened.root}${SEP}${r.path}`, r.path]))
       }))
+      // Folder auth applies from the first send, not only once the folder page was opened.
+      if (opened.folders?.length) {
+        setFolderSettings((prev) => {
+          const next = { ...prev }
+          for (const f of opened.folders) {
+            next[`${opened.root}${SEP}${f.folder.join('/')}`] = { auth: f.auth, docs: f.docs }
+          }
+          return next
+        })
+      }
       return entries
     },
     [reviveIds]
   )
+
+  /**
+   * Save a collection that only lives in memory (an import, the sample) as a
+   * folder in Documents/Tiger and open that folder in its place: it then
+   * survives a restart and Ctrl+S writes to it. Returns the opened folder,
+   * or null when it could not be saved (the reason is in the error).
+   */
+  const writeCollectionToDisk = useCallback(
+    async (snapshot: CollectionSnapshot): Promise<{ opened: OpenedCollection; ids: string[] } | null> => {
+      if (!window.tiger?.saveCollection) return null
+      const layout = collectionFiles(snapshot)
+      const opened = await window.tiger.saveCollection(snapshot.name, layout.files)
+      applyOpenedCollection(opened)
+      // The editor gets the requests as written, so nothing reads the files
+      // again and nothing looks unsaved.
+      const byPath = new Map(layout.files.map((f) => [f.path, f.content]))
+      const ids = layout.requestPaths.map((rel) => `${opened.root}${SEP}${opened.root}/${rel}`)
+      const parsed = Object.fromEntries(
+        ids.map((id, i) => [id, parseRequest(byPath.get(layout.requestPaths[i])!)])
+      )
+      for (const id of ids) {
+        savedText.current[id] = serializeRequest(parsed[id])
+        editedIds.current.delete(id)
+      }
+      setRequestsById((prev) => ({ ...prev, ...parsed }))
+      return { opened, ids }
+    },
+    [applyOpenedCollection]
+  )
+
+  /**
+   * Ctrl+S or "Save to disk" on a collection that only lives in memory: save
+   * it as a folder, which then replaces it with the same tabs, the same
+   * active request and the same environment. Unsaved edits are saved too.
+   */
+  const saveCollectionToDisk = useCallback(
+    async (colId: string) => {
+      const col = collectionsRef.current.find((c) => c.id === colId)
+      if (!col || col.root || !window.tiger?.saveCollection) return
+      const requests: Array<{ oldId: string; path: string[]; request: TigerRequest }> = []
+      for (const e of col.entries) {
+        const request = requestsById[e.id] ?? (await loadRequest(e.id))
+        if (request) requests.push({ oldId: e.id, path: e.folderPath, request })
+      }
+      const own = `${col.id}${SEP}`
+      const folders = Object.entries(folderSettingsRef.current)
+        .filter(([key]) => key.startsWith(own))
+        .map(([key, value]) => ({ path: key.slice(own.length).split('/').filter(Boolean), ...value }))
+      try {
+        const saved = await writeCollectionToDisk({
+          name: col.name,
+          requests: requests.map(({ path, request }) => ({ path, request })),
+          folders,
+          environments: col.environments.flatMap((e) => (e.data ? [e.data] : [])),
+          auth: col.auth,
+          docs: col.docs
+        })
+        if (!saved) return
+        const { opened, ids } = saved
+        const newId = new Map(requests.map((r, i) => [r.oldId, ids[i]]))
+        setCollections((prev) => prev.filter((c) => c.id !== col.id))
+        setOpenTabs((prev) =>
+          prev.map((tab) =>
+            tab.kind === 'request'
+              ? { ...tab, id: newId.get(tab.id) ?? tab.id }
+              : tab.colId === col.id
+                ? { ...tab, colId: opened.root }
+                : tab
+          )
+        )
+        setActiveId((cur) => (cur ? (newId.get(cur) ?? cur) : cur))
+        setInspect((cur) => (cur && cur.colId === col.id ? { ...cur, colId: opened.root } : cur))
+        const activeKey = activeEnvRef.current.key
+        if (activeKey?.startsWith(own)) {
+          const key = `${opened.root}${SEP}${activeKey.slice(own.length)}`
+          envChoiceRef.current[opened.root] = key
+          setActiveEnvKey(key)
+        }
+        toast(t('app.toast.savedToDisk', { name: col.name, path: opened.root }))
+      } catch (e) {
+        toast(t('app.toast.saveToDiskFailed', { name: col.name, message: (e as Error).message }), {
+          error: true
+        })
+      }
+    },
+    // folderSettingsRef and activeEnvRef are read at call time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [requestsById, loadRequest, writeCollectionToDisk, toast]
+  )
+  saveCollectionToDiskRef.current = saveCollectionToDisk
 
   const openCollection = useCallback(async () => {
     const opened = await window.tiger?.openCollection()
@@ -1350,7 +1459,9 @@ export default function App() {
         toast(t('app.toast.curlParseFailed'), { error: true })
         return
       }
-      const target = collections[0]
+      // Into the collection being worked on, not whichever was opened first.
+      const target =
+        activeCollection ?? collections.find((c) => c.id === inspect?.colId) ?? collections[0]
       if (!target) {
         toast(t('app.toast.openCollectionFirstImport'))
         return
@@ -1385,7 +1496,7 @@ export default function App() {
       setView('workspace')
       toast(t('app.toast.curlImported'))
     },
-    [collections, openTab, reviveIds, toast]
+    [activeCollection, collections, inspect, openTab, reviveIds, toast]
   )
 
   const cloneCollection = useCallback(() => setCloneOpen(true), [])
@@ -1407,7 +1518,7 @@ export default function App() {
    * added to the collection in front of the user. Then show the report.
    */
   const applyImport = useCallback(
-    (raw: ImportResult | null) => {
+    async (raw: ImportResult | null) => {
       if (!raw) return
       const layered = layerCollectionVariables(raw)
       // Select the first environment that is not production; with only
@@ -1446,9 +1557,30 @@ export default function App() {
             const variables = [...own.filter((v) => !mine.has(v.name)), ...e.data!.variables]
             return { name, data: { ...e.data!, name, variables } }
           })
+          // A collection on disk gets them as files in its environments
+          // folder, so they are still there after a restart.
+          let refs: EnvRef[] = added
+          if (target.root && window.tiger) {
+            const files = new Set(
+              target.environments
+                .filter((e) => e.path)
+                .map((e) => e.path!.slice(e.path!.lastIndexOf('/') + 1).replace(/\.tiger$/i, '').toLowerCase())
+            )
+            try {
+              const written: EnvRef[] = []
+              for (const e of added) {
+                const path = `${target.root}/environments/${uniqueName(safeFileName(e.name, 'environment'), files)}.tiger`
+                await window.tiger.writeFile(path, serializeEnvironment(e.data))
+                written.push({ name: e.name, path })
+              }
+              refs = written
+            } catch (err) {
+              toast(t('app.toast.importNotSaved', { message: (err as Error).message }), { error: true })
+            }
+          }
           setCollections((prev) =>
             prev.map((c) =>
-              c.id === target.id ? { ...c, environments: [...c.environments, ...added] } : c
+              c.id === target.id ? { ...c, environments: [...c.environments, ...refs] } : c
             )
           )
           // Select it: an imported environment is the one the user means to send with.
@@ -1467,6 +1599,44 @@ export default function App() {
         if (envRefs.length === 0 && summary.items.length === 0) {
           toast(t('app.toast.noImportable', { name: result.name }))
           return
+        }
+      }
+
+      // Saved as a folder in Documents/Tiger, so it is there after a restart
+      // and Ctrl+S works on it. Kept in memory only when that fails.
+      if (window.tiger?.saveCollection) {
+        try {
+          const saved = await writeCollectionToDisk({
+            name: result.name,
+            requests: result.requests,
+            folders: result.folders,
+            environments: result.environments,
+            auth: result.auth,
+            docs: result.docs
+          })
+          if (saved) {
+            const { opened, ids } = saved
+            if (ids[0]) {
+              openTab({ kind: 'request', id: ids[0] })
+              setActiveId(ids[0])
+              // Show it: a collection or folder page left open would hide the new tab.
+              setInspect(null)
+            }
+            setView('workspace')
+            const firstEnv = pick >= 0 ? imported[pick] : undefined
+            if (firstEnv) {
+              const key = `${opened.root}${SEP}${firstEnv.name}`
+              envChoiceRef.current[opened.root] = key
+              setActiveEnvKey(key)
+              setActiveEnv(firstEnv)
+            }
+            setImportReport({ summary, selectedEnvironment: firstEnv?.name, savedTo: opened.root })
+            announce(importReportSentence(summary))
+            trackEvent(events.collectionImported(result.source, result.requests.length))
+            return
+          }
+        } catch (e) {
+          toast(t('app.toast.importNotSaved', { message: (e as Error).message }), { error: true })
         }
       }
 
@@ -1522,7 +1692,7 @@ export default function App() {
       announce(importReportSentence(summary))
       trackEvent(events.collectionImported(result.source, result.requests.length))
     },
-    [activeCollection, openTab, reviveIds, toast]
+    [activeCollection, openTab, reviveIds, toast, writeCollectionToDisk]
   )
 
   const importFailed = useCallback(
@@ -2206,6 +2376,13 @@ export default function App() {
         actionItem('environments', () => openEnvironmentsRef.current(colId)),
         actionItem('export', () => openIo('export', colId))
       ]
+      if (!col.root && window.tiger?.saveCollection) {
+        items.push({
+          label: t('app.menu.saveToDisk'),
+          icon: <SaveIcon size={14} />,
+          onClick: () => void saveCollectionToDiskRef.current(colId)
+        })
+      }
       if (col.root) {
         items.push(
           actionItem('team-sync', () => setGitColId(colId)),
@@ -2955,6 +3132,7 @@ export default function App() {
           summary={importReport.summary}
           environmentsTarget={importReport.environmentsTarget}
           selectedEnvironment={importReport.selectedEnvironment}
+          savedTo={importReport.savedTo}
           onClose={() => setImportReport(null)}
         />
       )}

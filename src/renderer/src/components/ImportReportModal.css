@@ -91,3 +91,21 @@
     grid-template-columns: 1fr;
   }
 }
+/* Where the import was saved, with a way to open that folder. */
+.import-report-saved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.import-report-saved-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.import-report-saved .btn {
+  flex-shrink: 0;
+  padding: 5px 10px;
+}
