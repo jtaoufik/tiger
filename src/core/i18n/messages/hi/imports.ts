@@ -60,6 +60,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'प्रमाणीकरण API की सुरक्षा योजना से सेट किया गया, जिसमें {token} जैसे प्लेसहोल्डर वेरिएबल हैं। उन्हें परिवेश में सेट करें।',
   'imports.baseUrlUnknown':
     'API किसी सर्वर होस्ट का नाम नहीं देता। भेजने से पहले परिवेश "{name}" में baseUrl को https://api.example.com जैसे होस्ट पर सेट करें।',
+  'imports.brunoDotenvMissing':
+    'Bruno {names} को संग्रह की .env फ़ाइल से पढ़ता है, जो नहीं मिली या उसमें ये मान नहीं हैं। इन्हें परिवेश में भरें।',
   'imports.prodNotSelected':
     'Tiger ने "{name}" को अपने आप नहीं चुना, ताकि अनजाने में कुछ भी प्रोडक्शन पर न जाए। जब आप चाहें, इसे परिवेश मेनू में चुनें।',
   'imports.apiKeyCookie':

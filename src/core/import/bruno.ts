@@ -14,6 +14,7 @@
  * `importBrunoCollection` classifies them; the main process only reads disk.
  */
 
+import { findMissingVars } from '../interpolate'
 import { dedent, parseKeyValues, type RawBlock } from '../tigerFormat'
 import {
   emptyBody,
@@ -350,6 +351,25 @@ export function importBrunoRequest(
  * declares secrets without values — we don't surface them, since Bruno itself
  * never serializes their values to disk (see `brunoSecretNames`).
  */
+/** An environment file (vars blocks, no meta block), as opposed to a request. */
+export function isBrunoEnvironment(text: string): boolean {
+  return !/^\s*meta\s*\{/m.test(text) && /^\s*vars(:secret)?\s*[[{]/m.test(text)
+}
+
+/** KEY=value lines of a .env file: comments, `export` and quotes handled. */
+function parseDotenv(text: string): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const m = line.match(/^(?:export\s+)?([\w.-]+)\s*=\s*(.*)$/)
+    if (!m) continue
+    const quoted = m[2].match(/^(['"])([\s\S]*)\1$/)
+    out.set(m[1], quoted ? quoted[2] : m[2].replace(/\s+#.*$/, ''))
+  }
+  return out
+}
+
 export function importBrunoEnvironment(text: string, name: string): TigerEnvironment {
   const blocks = tokenizeBrunoBlocks(text)
   const variables = blocks
@@ -434,6 +454,8 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
   const settings = new Map<string, BrunoFolderSettings>() // key: dir segments joined by '/'
   const envs: TigerEnvironment[] = []
   const requestFiles: BrunoFile[] = []
+  let dotenv = new Map<string, string>()
+  let hasDotenv = false
 
   for (const file of files) {
     const fileName = file.segments[file.segments.length - 1]
@@ -442,6 +464,9 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
       if (fileName === 'bruno.json' && dir.length === 0) {
         const parsed = JSON.parse(file.text) as { name?: unknown }
         if (typeof parsed.name === 'string' && parsed.name) name = parsed.name
+      } else if (fileName === '.env' && dir.length === 0) {
+        dotenv = parseDotenv(file.text)
+        hasDotenv = true
       } else if (!fileName.endsWith('.bru')) {
         continue
       } else if (dir.includes('environments')) {
@@ -560,6 +585,27 @@ export function importBrunoCollection(files: BrunoFile[], fallbackName: string):
       }
     }
   }
+
+  // Bruno reads {{process.env.NAME}} from the collection's .env file. Define
+  // exactly the names the collection uses, with their .env values, as secrets.
+  const used = new Set<string>()
+  const scan = (text: string) => {
+    for (const ref of findMissingVars(text, {})) if (ref.startsWith('process.env.')) used.add(ref)
+  }
+  for (const { request } of requests) scan(JSON.stringify(request))
+  for (const v of [...collectionVariables, ...envs.flatMap((e) => e.variables)]) scan(v.value)
+  const processEnv = [...used].sort().map((ref) => {
+    const key = ref.slice('process.env.'.length)
+    return { name: ref, value: dotenv.get(key) ?? '', enabled: true, secret: true }
+  })
+  const unset = [...used].filter((ref) => !dotenv.has(ref.slice('process.env.'.length)))
+  if (unset.length) {
+    warnings.push({
+      request: hasDotenv ? '.env' : 'process.env',
+      ...warning('imports.brunoDotenvMissing', { names: unset.join(', ') })
+    })
+  }
+  collectionVariables = [...collectionVariables, ...processEnv]
 
   return {
     name,

@@ -56,6 +56,8 @@ export const imports = {
     'Auth was set up from the API security scheme with placeholder variables such as {token}. Set them in an environment.',
   'imports.baseUrlUnknown':
     'The API names no server host. Set baseUrl in the environment "{name}" to a host such as https://api.example.com before sending.',
+  'imports.brunoDotenvMissing':
+    'Bruno reads {names} from the collection\'s .env file, which was not found or does not set them. Fill them in the environment.',
   'imports.prodNotSelected':
     'Tiger did not select "{name}" for you, so nothing goes to production by surprise. Pick it in the environment menu when you mean to.',
   'imports.apiKeyCookie':

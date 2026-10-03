@@ -71,6 +71,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'تم إعداد المصادقة من مخطط أمان واجهة API مع متغيرات نائبة مثل {token}. عيّنها في بيئة.',
   'imports.baseUrlUnknown':
     'لا تحدد واجهة API أي مضيف للخادم. عيّن baseUrl في البيئة "{name}" إلى مضيف مثل https://api.example.com قبل الإرسال.',
+  'imports.brunoDotenvMissing':
+    'يقرأ Bruno القيم {names} من ملف .env الخاص بالمجموعة، وهو غير موجود أو لا يحددها. املأها في البيئة.',
   'imports.prodNotSelected':
     'لم يحدد Tiger البيئة "{name}" تلقائيًا، حتى لا يذهب أي طلب إلى بيئة الإنتاج دون قصد. اخترها من قائمة البيئات عندما تريد ذلك.',
   'imports.apiKeyCookie':

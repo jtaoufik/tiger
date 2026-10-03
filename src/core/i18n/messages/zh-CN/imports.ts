@@ -40,6 +40,8 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.securityPlaceholders': '认证已根据 API 的安全方案设置，使用了 {token} 之类的占位变量。请在环境中设置它们。',
   'imports.baseUrlUnknown':
     'API 未指定服务器主机。发送前，请在环境“{name}”中把 baseUrl 设为主机地址，例如 https://api.example.com 。',
+  'imports.brunoDotenvMissing':
+    'Bruno 从集合的 .env 文件读取 {names}，但该文件不存在或未设置它们。请在环境中填写。',
   'imports.prodNotSelected':
     'Tiger 没有自动选择“{name}”，以免请求意外发往生产环境。需要时请在环境菜单中选择它。',
   'imports.apiKeyCookie': '在 Insomnia 中 API 密钥通过 Cookie 发送；Tiger 则通过标头发送。请确认服务器接受这种方式。',

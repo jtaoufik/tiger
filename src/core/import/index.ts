@@ -4,6 +4,7 @@ export {
   importBrunoEnvironment,
   importBrunoFolderSettings,
   importBrunoCollection,
+  isBrunoEnvironment,
   type BrunoFile
 } from './bruno'
 export { importOpenApi } from './openapi'

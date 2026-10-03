@@ -6,7 +6,9 @@ import { stat } from 'node:fs/promises'
 import {
   detectFormat,
   importBrunoCollection,
+  importBrunoEnvironment,
   importBrunoRequest,
+  isBrunoEnvironment,
   importInsomnia,
   importOpenApi,
   importPostman,
@@ -139,7 +141,9 @@ export async function readBrunoFolder(root: string): Promise<ImportResult> {
       }
       if (!entry.isFile()) continue
       const isRootConfig = dir === root && entry.name === 'bruno.json'
-      if (!entry.name.endsWith('.bru') && !isRootConfig) continue
+      // Bruno reads {{process.env.NAME}} from the root .env file.
+      const isRootDotenv = dir === root && entry.name === '.env'
+      if (!entry.name.endsWith('.bru') && !isRootConfig && !isRootDotenv) continue
       files.push({ segments: relative(root, full).split(sep), text: await readFile(full, 'utf8') })
     }
   }
@@ -158,8 +162,14 @@ const DETECTABLE = ['json', 'yaml', 'yml', 'wsdl', 'xml']
 
 async function importDetected(file: string): Promise<ImportResult> {
   if (file.endsWith('.bru')) {
-    const imported = importBrunoRequest(await readFile(file, 'utf8'))
-    return { name: imported.request.name || basename(file, '.bru'), source: 'bruno', requests: [imported] }
+    const text = await readFile(file, 'utf8')
+    const name = basename(file, '.bru')
+    // An environment file dropped on its own, not a request.
+    if (isBrunoEnvironment(text)) {
+      return { name, source: 'bruno', requests: [], environments: [importBrunoEnvironment(text, name)] }
+    }
+    const imported = importBrunoRequest(text)
+    return { name: imported.request.name || name, source: 'bruno', requests: [imported] }
   }
   const text = await readFile(file, 'utf8')
   const isXml = /\.(wsdl|xml)$/i.test(file)

@@ -12,6 +12,7 @@ import { importPaths, readBrunoFolder } from '../../src/main/importers'
 import { runScript } from '../../src/core/script'
 import { nearestFolderAuth } from '../../src/core/collectionSettings'
 import { layerCollectionVariables, type ImportResult } from '../../src/core/import'
+import { envToVars, interpolate } from '../../src/core/interpolate'
 
 const fixtures = join(__dirname, '../core/fixtures/switcher')
 const req = (result: ImportResult, name: string) => {
@@ -177,5 +178,41 @@ describe('importPaths (drag and drop)', () => {
     ])
     expect(mixed?.name).toBe('Legacy v2.0')
     expect(mixed?.warnings?.some((w) => w.request === 'broken.json')).toBe(true)
+  })
+})
+
+describe('Bruno process.env values and lone environment files', () => {
+  async function brunoCollection(dotenv?: string): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), 'tiger-bruno-'))
+    await writeFile(join(dir, 'bruno.json'), JSON.stringify({ version: '1', name: 'Keys', type: 'collection' }))
+    await writeFile(
+      join(dir, 'list.bru'),
+      'meta {\n  name: List\n  type: http\n  seq: 1\n}\n\nget {\n  url: https://api.test/items\n  body: none\n  auth: none\n}\n\nheaders {\n  x-api-key: {{process.env.API_KEY}}\n}\n'
+    )
+    if (dotenv !== undefined) await writeFile(join(dir, '.env'), dotenv)
+    return dir
+  }
+
+  it('reads process.env values from the collection .env file, as Bruno does', async () => {
+    const result = layerCollectionVariables((await importPaths([await brunoCollection('# keys\nAPI_KEY="s3cret"\nUNUSED=1\n')]))!)
+    const env = result.environments![0]
+    expect(env.variables.find((v) => v.name === 'process.env.API_KEY')).toMatchObject({ value: 's3cret', secret: true })
+    // Only what the collection uses comes across.
+    expect(env.variables.some((v) => v.name === 'process.env.UNUSED')).toBe(false)
+    expect(interpolate(req(result, 'List').request.headers[0].value, envToVars(env))).toBe('s3cret')
+  })
+
+  it('defines process.env names to fill in, and says so, when there is no .env file', async () => {
+    const result = layerCollectionVariables((await importPaths([await brunoCollection()]))!)
+    expect(result.environments![0].variables).toContainEqual(
+      expect.objectContaining({ name: 'process.env.API_KEY', value: '' })
+    )
+    expect(result.warnings?.some((w) => w.i18n?.key === 'imports.brunoDotenvMissing')).toBe(true)
+  })
+
+  it('imports an environment .bru dropped on its own as an environment, not a request', async () => {
+    const result = await importPaths([join(fixtures, 'bruno-shop', 'environments', 'Local.bru')])
+    expect(result?.requests).toEqual([])
+    expect(result?.environments?.map((e) => e.name)).toEqual(['Local'])
   })
 })

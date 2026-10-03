@@ -62,6 +62,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'L’authentification a été configurée à partir du schéma de sécurité de l’API, avec des variables de substitution comme {token}. Définissez-les dans un environnement.',
   'imports.baseUrlUnknown':
     'L’API n’indique aucun hôte de serveur. Renseignez baseUrl dans l’environnement « {name} » avec un hôte comme https://api.example.com avant d’envoyer.',
+  'imports.brunoDotenvMissing':
+    'Bruno lit {names} dans le fichier .env de la collection, introuvable ou qui ne les définit pas. Renseignez-les dans l’environnement.',
   'imports.prodNotSelected':
     'Tiger n’a pas sélectionné « {name} » pour vous, pour que rien ne parte en production par surprise. Choisissez-le dans le menu des environnements quand vous le voulez.',
   'imports.apiKeyCookie':
