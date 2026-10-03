@@ -13,6 +13,8 @@
  *     other template tags are kept as text and flagged.
  *   - Folder auth maps to Tiger folder auth; folder scripts (Insomnia 9+) are
  *     copied into each request. `insomnia.*` scripts run through the pm shim.
+ *   - Requests keep Insomnia's order (metaSortKey); sibling folders with the
+ *     same name stay apart ("Admin", "Admin 2").
  */
 
 import {
@@ -33,6 +35,7 @@ import {
   scalar,
   str,
   type Json,
+  uniqueSiblingNames,
   type WarningText,
   warning
 } from './common'
@@ -254,6 +257,7 @@ function v5ToResources(doc: Json): Json[] {
       const common = {
         _id: id,
         parentId,
+        metaSortKey: (node.meta as Json | undefined)?.sortKey,
         name: node.name,
         authentication: node.authentication,
         preRequestScript: scripts.preRequest,
@@ -291,17 +295,43 @@ function v5ToResources(doc: Json): Json[] {
 
 // ---- mapping ---------------------------------------------------------------
 
+/** Insomnia lists a folder's children by metaSortKey: the user's drag order. */
+function sortKey(resource: Json): number {
+  const key = resource.metaSortKey
+  return typeof key === 'number' && Number.isFinite(key) ? key : Number.POSITIVE_INFINITY
+}
+
 export function importInsomnia(raw: unknown): ImportResult {
   const doc = (raw ?? {}) as Json
   const v5 = isV5(doc)
   const resources = (v5 ? v5ToResources(doc) : asArray(doc.resources)).map((r) => (r ?? {}) as Json)
   const warnings: ImportWarning[] = []
+  // Sort keys first, then the export's own order (creation order).
+  const position = new Map(resources.map((r, i) => [r, i]))
+  const bySortKey = (a: Json, b: Json) => sortKey(a) - sortKey(b) || position.get(a)! - position.get(b)!
 
   const workspaces = resources.filter((r) => r._type === 'workspace')
   const multiWorkspace = workspaces.length > 1
+  const workspaceNames = uniqueSiblingNames(workspaces.map((w) => str(w.name, 'Workspace')))
+  const workspaceName = new Map(workspaces.map((w, i) => [w, workspaceNames[i]]))
 
   const groups = new Map<string, Json>()
   for (const r of resources) if (r._type === 'request_group') groups.set(str(r._id), r)
+
+  // Sibling folders that share a name stay apart ("Admin", "Admin 2"), the
+  // first one shown keeping the name.
+  const siblings = new Map<string, Json[]>()
+  for (const group of groups.values()) {
+    const parent = str(group.parentId)
+    const key =
+      groups.has(parent) || (multiWorkspace && workspaces.some((w) => str(w._id) === parent)) ? parent : ''
+    siblings.set(key, [...(siblings.get(key) ?? []), group])
+  }
+  const folderName = new Map<Json, string>()
+  for (const list of siblings.values()) {
+    const shown = [...list].sort(bySortKey)
+    uniqueSiblingNames(shown.map((g) => str(g.name, 'Folder'))).forEach((name, i) => folderName.set(shown[i], name))
+  }
 
   /** Folder chain from the root down, including the workspace name when several. */
   const chainOf = (parentId: string): Json[] => {
@@ -322,9 +352,16 @@ export function importInsomnia(raw: unknown): ImportResult {
     return workspaces.find((w) => str(w._id) === top)
   }
   const pathOf = (parentId: string): string[] => {
-    const names = chainOf(parentId).map((g) => str(g.name, 'Folder'))
+    const names = chainOf(parentId).map((g) => folderName.get(g) ?? str(g.name, 'Folder'))
     const ws = multiWorkspace ? workspaceOf(parentId) : undefined
-    return ws ? [str(ws.name, 'Workspace'), ...names] : names
+    return ws ? [workspaceName.get(ws) ?? str(ws.name, 'Workspace'), ...names] : names
+  }
+  if (multiWorkspace) {
+    workspaces.forEach((w, i) => {
+      const name = str(w.name, 'Workspace')
+      const renamed = workspaceNames[i]
+      if (renamed !== name) warnings.push({ request: renamed, path: [], ...warning('imports.folderRenamed', { name, renamed }) })
+    })
   }
 
   // Folders: auth, docs, scripts, and folder-level environment variables.
@@ -332,7 +369,10 @@ export function importInsomnia(raw: unknown): ImportResult {
   for (const group of groups.values()) {
     const tags = new Set<string>()
     const path = pathOf(str(group._id))
-    const warn = (w: WarningText) => warnings.push({ request: str(group.name), path: path.slice(0, -1), ...w })
+    const warn = (w: WarningText) => warnings.push({ request: path[path.length - 1], path: path.slice(0, -1), ...w })
+    if (folderName.get(group) !== str(group.name, 'Folder')) {
+      warn(warning('imports.folderRenamed', { name: str(group.name, 'Folder'), renamed: path[path.length - 1] }))
+    }
     const auth = toAuth(group.authentication, tags, warn)
     const docs = str(group.description).trim() ? str(group.description) : undefined
     if (auth || docs) folders.push({ path, ...(auth ? { auth } : {}), ...(docs ? { docs } : {}) })
@@ -347,6 +387,8 @@ export function importInsomnia(raw: unknown): ImportResult {
   }
 
   const requests: ImportedRequest[] = []
+  /** Each request's resources from the root down (workspace, folders, itself), to sort by. */
+  const sortPath = new Map<ImportedRequest, Json[]>()
   const skipped: Record<string, number> = {}
   for (const r of resources) {
     if (r._type === 'grpc_request' || r._type === 'websocket_request') {
@@ -393,11 +435,21 @@ export function importInsomnia(raw: unknown): ImportResult {
     if (post) request.postScript = post
     templateWarnings(tags, 'imports.templateTagsKept').forEach(warn)
     checkRequest(request, path, warnings)
-    requests.push({ path, request })
+    const imported = { path, request }
+    const ws = multiWorkspace ? workspaceOf(parentId) : undefined
+    sortPath.set(imported, [...(ws ? [ws] : []), ...chain, r])
+    requests.push(imported)
   }
   for (const [kind, count] of Object.entries(skipped)) {
     warnings.push(warning('imports.skippedRequests', { count, kind }))
   }
+  // In the order Insomnia shows them: compare where the two paths part.
+  requests.sort((a, b) => {
+    const x = sortPath.get(a)!
+    const y = sortPath.get(b)!
+    const at = x.findIndex((node, i) => node !== y[i])
+    return at === -1 || at >= y.length ? x.length - y.length : bySortKey(x[at], y[at])
+  })
 
   // Environments: base (parent is a workspace) merged under each sub env.
   const environments: TigerEnvironment[] = []
@@ -409,7 +461,8 @@ export function importInsomnia(raw: unknown): ImportResult {
   for (const base of envs.filter((e) => !envIds.has(str(e.parentId)))) {
     const baseVars = envVars(base)
     const subs = envs.filter((e) => str(e.parentId) === str(base._id))
-    const prefix = multiWorkspace ? `${str(workspaceOf(str(base.parentId))?.name, 'Workspace')} / ` : ''
+    const ws = multiWorkspace ? workspaceOf(str(base.parentId)) : undefined
+    const prefix = multiWorkspace ? `${(ws && workspaceName.get(ws)) || 'Workspace'} / ` : ''
     if (subs.length === 0) {
       if (baseVars.length) environments.push({ name: `${prefix}${str(base.name, 'Base Environment')}`, variables: baseVars })
       continue

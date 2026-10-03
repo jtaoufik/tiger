@@ -97,6 +97,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'संग्रह के वेरिएबल "{name}" परिवेश बन गए। वह आपके लिए चुना गया है।',
   'imports.collectionVarsLayered':
     'Tiger में वेरिएबल का एक ही दायरा है, इसलिए संग्रह के वेरिएबल ({names}) हर परिवेश में जोड़े गए। परिवेश में सेट किए गए मान प्राथमिकता पाते हैं।',
+  'imports.folderRenamed':
+    'यहाँ दो फ़ोल्डरों का नाम "{name}" है। Tiger फ़ोल्डरों को नाम से पहचानता है, इसलिए इस फ़ोल्डर का नाम अब "{renamed}" है, और इसके अपने अनुरोध और सेटिंग्स बने रहते हैं।',
 
   'imports.report.title': '{name} आयात हुआ',
   'imports.report.statsLabel': 'आयात किया गया',

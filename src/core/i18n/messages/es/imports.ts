@@ -100,6 +100,8 @@ export const imports: NamespaceCatalog<typeof en> = {
     'Las variables de la colección pasaron a ser el entorno "{name}". Ya está seleccionado.',
   'imports.collectionVarsLayered':
     'Tiger tiene un único ámbito de variables, así que las variables de la colección ({names}) se añadieron a cada entorno. Los valores definidos en un entorno tienen prioridad.',
+  'imports.folderRenamed':
+    'Aquí hay dos carpetas con el nombre "{name}". Tiger distingue las carpetas por su nombre, así que esta ahora se llama "{renamed}", con sus propias solicitudes y ajustes.',
 
   'imports.report.title': '{name} importado',
   'imports.report.statsLabel': 'Importado',

@@ -89,6 +89,8 @@ export const imports = {
   'imports.collectionVarsEnv': 'Collection variables became the environment "{name}". It is selected for you.',
   'imports.collectionVarsLayered':
     'Tiger has one variable scope, so the collection variables ({names}) were added to each environment. Values set in an environment win.',
+  'imports.folderRenamed':
+    'Two folders here are named "{name}". Tiger tells folders apart by name, so this one is now "{renamed}", with its own requests and settings.',
 
   // Import report modal
   'imports.report.title': 'Imported {name}',

@@ -125,6 +125,27 @@ export function checkRequest(req: TigerRequest, path: string[], warnings: Import
   }
 }
 
+/**
+ * Names for sibling folders, given in display order. Tiger knows a folder by
+ * its name path, so two siblings named "Admin" would share one folder (and
+ * one folder auth): the second becomes "Admin 2", or the next number no
+ * sibling already uses.
+ */
+export function uniqueSiblingNames(names: string[]): string[] {
+  const taken = new Set(names)
+  const used = new Set<string>()
+  return names.map((name) => {
+    let out = name
+    if (used.has(out)) {
+      let n = 2
+      while (taken.has(`${name} ${n}`) || used.has(`${name} ${n}`)) n++
+      out = `${name} ${n}`
+    }
+    used.add(out)
+    return out
+  })
+}
+
 /** Distinct folder paths (every ancestor included) used by the requests. */
 export function folderPaths(requests: Array<{ path: string[] }>): string[][] {
   const seen = new Map<string, string[]>()

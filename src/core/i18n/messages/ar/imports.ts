@@ -106,6 +106,8 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.collectionVarsEnv': 'أصبحت متغيرات المجموعة البيئة "{name}". وقد تم تحديدها لك.',
   'imports.collectionVarsLayered':
     'لدى Tiger نطاق واحد للمتغيرات، لذلك أُضيفت متغيرات المجموعة ({names}) إلى كل بيئة. والقيم المعيّنة في البيئة لها الأولوية.',
+  'imports.folderRenamed':
+    'يوجد هنا مجلدان باسم "{name}". يميّز Tiger المجلدات بأسمائها، لذلك أصبح اسم هذا المجلد "{renamed}"، مع طلباته وإعداداته الخاصة.',
 
   'imports.report.title': 'تم استيراد {name}',
   'imports.report.statsLabel': 'تم الاستيراد',

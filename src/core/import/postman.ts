@@ -12,6 +12,8 @@
  *     Tiger runs scripts per request, so they are copied into each request
  *     (outermost first). The `pm.*` shim in `script.ts` runs them.
  *   - `:id` path variables are resolved into the URL.
+ *   - Sibling folders with the same name stay apart ("Admin", "Admin 2"),
+ *     each with its own requests and auth.
  *   - Collection variables are returned as `collectionVariables` and folded
  *     into the environments by `layerCollectionVariables`.
  */
@@ -34,6 +36,7 @@ import {
   scalar,
   str,
   type Json,
+  uniqueSiblingNames,
   warning
 } from './common'
 import type { ImportedFolder, ImportResult, ImportedRequest, ImportWarning } from './types'
@@ -343,11 +346,18 @@ interface WalkState {
 
 function walk(items: unknown[], path: string[], inherited: Scripts, state: WalkState): void {
   let seq = 1
-  for (const item of items) {
-    const node = (item ?? {}) as Json
-    const name = str(node.name, 'Untitled')
+  const nodes = items.map((item) => (item ?? {}) as Json)
+  const folderNodes = nodes.filter((node) => Array.isArray(node.item))
+  const names = uniqueSiblingNames(folderNodes.map((node) => str(node.name, 'Untitled')))
+  const folderName = new Map(folderNodes.map((node, i) => [node, names[i]]))
+  for (const node of nodes) {
+    const original = str(node.name, 'Untitled')
     const scripts = scriptsOf(node.event)
     if (Array.isArray(node.item)) {
+      const name = folderName.get(node) ?? original
+      if (name !== original) {
+        state.warnings.push({ request: name, path, ...warning('imports.folderRenamed', { name: original, renamed: name }) })
+      }
       const folderPath = [...path, name]
       const auth = toAuth(node.auth, { request: name, path }, state.warnings)
       const docs = description(node.description)
@@ -362,7 +372,7 @@ function walk(items: unknown[], path: string[], inherited: Scripts, state: WalkS
         state
       )
     } else if (node.request !== undefined) {
-      const request = toRequest(name, node.request, path, state.warnings)
+      const request = toRequest(original, node.request, path, state.warnings)
       if (request) {
         request.seq = seq++
         const pre = joinScripts(inherited.pre, scripts.pre)
