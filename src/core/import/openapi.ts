@@ -152,8 +152,16 @@ function paramsOf(doc: Json, params: Json[], where: string): KeyValue[] {
     })
 }
 
+/**
+ * Properties one generated example may hold. Big specs link schema to schema
+ * (Kubernetes, Stripe, GitHub): expanding every link four levels deep made
+ * 150 KB bodies, 180 MB for 2,000 operations. Past the budget a nested
+ * object stays empty ({}) to fill in; the body's own fields are always there.
+ */
+const SAMPLE_PROPERTIES = 300
+
 /** A JSON example built from a schema when the spec gives none. */
-function sampleFromSchema(doc: Json, raw: unknown, depth = 0): unknown {
+function sampleFromSchema(doc: Json, raw: unknown, depth = 0, budget = { left: SAMPLE_PROPERTIES }): unknown {
   const schema = deref(doc, raw)
   if (schema.example !== undefined) return schema.example
   if (schema.default !== undefined) return schema.default
@@ -161,21 +169,22 @@ function sampleFromSchema(doc: Json, raw: unknown, depth = 0): unknown {
   if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0]
   const all = asArray(schema.allOf)
   if (all.length) {
-    return Object.assign({}, ...all.map((s) => sampleFromSchema(doc, s, depth + 1) as object))
+    return Object.assign({}, ...all.map((s) => sampleFromSchema(doc, s, depth + 1, budget) as object))
   }
   const one = asArray(schema.oneOf ?? schema.anyOf)
-  if (one.length) return sampleFromSchema(doc, one[0], depth + 1)
+  if (one.length) return sampleFromSchema(doc, one[0], depth + 1, budget)
   switch (schema.type) {
     case 'object':
     case undefined: {
       const props = (schema.properties ?? {}) as Json
-      if (!Object.keys(props).length) return schema.type === 'object' ? {} : null
-      return Object.fromEntries(
-        Object.entries(props).map(([k, v]) => [k, sampleFromSchema(doc, v, depth + 1)])
-      )
+      const keys = Object.keys(props)
+      if (!keys.length) return schema.type === 'object' ? {} : null
+      if (depth > 0 && keys.length > budget.left) return {}
+      budget.left -= keys.length
+      return Object.fromEntries(keys.map((k) => [k, sampleFromSchema(doc, props[k], depth + 1, budget)]))
     }
     case 'array':
-      return [sampleFromSchema(doc, schema.items, depth + 1)]
+      return [sampleFromSchema(doc, schema.items, depth + 1, budget)]
     case 'integer':
     case 'number':
       return 0
