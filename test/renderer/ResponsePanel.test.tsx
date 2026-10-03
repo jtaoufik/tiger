@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ResponsePanel } from '../../src/renderer/src/components/ResponsePanel'
 import { formatResponse } from '../../src/core/response'
 
@@ -61,6 +61,45 @@ describe('ResponsePanel power tools', () => {
     render(<ResponsePanel state={{ loading: false, data }} />)
     expect(document.querySelector('.resp-truncated')).toBeTruthy()
     expect(document.body.textContent).not.toContain('TAIL_MARKER_ZZZ')
+  })
+
+  it('Save to file writes a binary body as the exact bytes received, named after its type', async () => {
+    const bytes = Buffer.from([0x25, 0x50, 0x44, 0x46, 0xe2, 0xff, 0x00, 0x80]).toString('base64')
+    const saveResponse = vi.fn(async () => '/tmp/response.pdf')
+    const exportCollection = vi.fn(async () => '/tmp/out')
+    window.tiger = { saveResponse, exportCollection } as unknown as typeof window.tiger
+    try {
+      const data = formatResponse({
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'application/pdf' },
+        body: Buffer.from(bytes, 'base64').toString('utf8'),
+        bodyBase64: bytes,
+        size: 8,
+        timeMs: 3
+      })
+      render(<ResponsePanel state={{ loading: false, data }} />)
+      expect(screen.getByText('8 B')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Save to file: response body' }))
+      await waitFor(() => expect(saveResponse).toHaveBeenCalledWith('response.pdf', bytes))
+      expect(exportCollection).not.toHaveBeenCalled()
+    } finally {
+      delete window.tiger
+    }
+  })
+
+  it('Save to file writes a text body as text', async () => {
+    const saveResponse = vi.fn(async () => '/tmp/x')
+    const exportCollection = vi.fn(async () => '/tmp/response.json')
+    window.tiger = { saveResponse, exportCollection } as unknown as typeof window.tiger
+    try {
+      render(<ResponsePanel state={{ loading: false, data: json('{"a":"é"}') }} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Save to file: response body' }))
+      await waitFor(() => expect(exportCollection).toHaveBeenCalledWith('response.json', '{"a":"é"}'))
+      expect(saveResponse).not.toHaveBeenCalled()
+    } finally {
+      delete window.tiger
+    }
   })
 
   it('renders an image preview from the base64 body', () => {

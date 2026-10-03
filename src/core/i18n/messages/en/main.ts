@@ -11,6 +11,7 @@ export const main = {
   'main.dialog.updateUnsavedDetail': 'Restarting to update discards edits that are not saved yet.',
   'main.dialog.restartAnyway': 'Restart Anyway',
   'main.dialog.keepEditing': 'Keep Editing',
+  'main.dialog.saveResponse': 'Save the response body',
   'main.import.postman': 'Postman collection',
   'main.import.insomnia': 'Insomnia export',
   'main.import.wsdl': 'WSDL document',

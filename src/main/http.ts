@@ -1,5 +1,6 @@
 import { net, session, type Session } from 'electron'
 import { mainT } from './i18n'
+import { isUtf8 } from 'node:buffer'
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { request as httpsRequest, type RequestOptions } from 'node:https'
@@ -456,7 +457,10 @@ function toRawResponse(hop: Hop, started: number): RawResponse {
     statusText: hop.statusText,
     headers: hop.headers,
     body: hop.body.toString('utf8'),
-    ...(isImage ? { bodyBase64: hop.body.toString('base64') } : {}),
+    // The text cannot stand for every body: images (preview) and bytes that are
+    // not UTF-8 (a PDF, a zip) also travel as base64, so Save writes them exactly.
+    ...(isImage || !isUtf8(hop.body) ? { bodyBase64: hop.body.toString('base64') } : {}),
+    size: hop.body.length,
     timeMs: endAt - started,
     timings: {
       total: endAt - started,

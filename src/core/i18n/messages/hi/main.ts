@@ -13,6 +13,7 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.updateUnsavedDetail': 'अपडेट के लिए अभी रीस्टार्ट करने पर वे बदलाव हट जाएँगे जो अब तक सहेजे नहीं गए हैं।',
   'main.dialog.restartAnyway': 'फिर भी रीस्टार्ट करें',
   'main.dialog.keepEditing': 'संपादन जारी रखें',
+  'main.dialog.saveResponse': 'प्रतिसाद की बॉडी सहेजें',
   'main.import.postman': 'Postman संग्रह',
   'main.import.insomnia': 'Insomnia निर्यात',
   'main.import.wsdl': 'WSDL दस्तावेज़',

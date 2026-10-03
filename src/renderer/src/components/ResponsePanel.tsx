@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Translator } from '@core/i18n'
-import { humanSize, type FormattedResponse } from '@core/response'
+import { humanSize, responseFileName, type FormattedResponse } from '@core/response'
 import { parseSetCookie } from '@core/cookies'
 import { findMatches } from '@core/textSearch'
 import { Logo } from '../Logo'
@@ -50,14 +50,18 @@ interface Props {
 }
 
 /** Browser-preview fallback when the Electron save dialog is unavailable. */
-function downloadText(filename: string, text: string): boolean {
+function download(filename: string, content: string | Uint8Array): boolean {
   if (typeof URL.createObjectURL !== 'function') return false
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([text], { type: 'application/octet-stream' }))
+  a.href = URL.createObjectURL(new Blob([content as BlobPart], { type: 'application/octet-stream' }))
   a.download = filename
   a.click()
   URL.revokeObjectURL(a.href)
   return true
+}
+
+function base64Bytes(base64: string): Uint8Array {
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
 }
 
 export function ResponsePanel({ state }: Props) {
@@ -197,12 +201,15 @@ export function ResponsePanel({ state }: Props) {
   const testsPassed = tests.filter((x) => x.passed).length
 
   const saveToFile = async () => {
-    const filename = res.isJson ? 'response.json' : 'response.txt'
+    const filename = responseFileName(res)
     try {
-      if (window.tiger?.exportCollection) {
+      if (res.bodyBase64 && window.tiger?.saveResponse) {
+        // A body the text cannot hold (a PDF, an image) is saved byte for byte.
+        await window.tiger.saveResponse(filename, res.bodyBase64)
+      } else if (window.tiger?.exportCollection) {
         await window.tiger.exportCollection(filename, res.raw)
       } else {
-        downloadText(filename, res.raw)
+        download(filename, res.bodyBase64 ? base64Bytes(res.bodyBase64) : res.raw)
       }
     } catch {
       /* save dialog unavailable or canceled */

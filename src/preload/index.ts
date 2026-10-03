@@ -101,6 +101,9 @@ const api = {
   pathForFile: (file: File): string => webUtils.getPathForFile(file),
   exportCollection: (defaultName: string, content: string): Promise<string | null> =>
     invoke('tiger:export', defaultName, content),
+  /** Save a response body's exact bytes (base64) where the user picks. */
+  saveResponse: (defaultName: string, base64: string): Promise<string | null> =>
+    invoke('tiger:saveResponse', defaultName, base64),
   historyRead: (): Promise<HistoryEntry[]> => invoke('tiger:history:read'),
   historyClear: (): Promise<void> => invoke('tiger:history:clear'),
   getSettings: (): Promise<Settings> => invoke('tiger:getSettings'),

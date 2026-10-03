@@ -23,8 +23,14 @@ export interface RawResponse {
   statusText: string
   headers: Record<string, string>
   body: string
-  /** Base64 body bytes, included by the transport for image responses only. */
+  /**
+   * Base64 body bytes, included by the transport when the text cannot stand
+   * for them: images (for the preview) and bodies that are not valid UTF-8 (a
+   * PDF, a zip), so Save to file writes them exactly.
+   */
   bodyBase64?: string
+  /** Body size in bytes as received; when absent, the UTF-8 size of `body`. */
+  size?: number
   timeMs: number
   timings?: ResponseTimings
 }
@@ -43,6 +49,8 @@ export interface FormattedResponse {
   tooLargeToPretty: boolean
   /** data: URL for image responses, ready for an <img> preview. */
   imageDataUrl?: string
+  /** The exact body bytes (base64) when `raw` cannot hold them; Save to file writes these. */
+  bodyBase64?: string
   body: string
   raw: string
   headers: Array<{ name: string; value: string }>
@@ -77,7 +85,8 @@ function headerValue(headers: Record<string, string>, name: string): string {
 
 export function formatResponse(res: RawResponse): FormattedResponse {
   const contentType = headerValue(res.headers, 'content-type')
-  const size = byteLength(res.body)
+  // Bytes as received: a binary body's text (U+FFFD for every invalid byte) is longer.
+  const size = res.size ?? byteLength(res.body)
 
   let isJson = false
   let body = res.body
@@ -114,8 +123,60 @@ export function formatResponse(res: RawResponse): FormattedResponse {
     isJson,
     tooLargeToPretty,
     ...(imageDataUrl ? { imageDataUrl } : {}),
+    ...(res.bodyBase64 ? { bodyBase64: res.bodyBase64 } : {}),
     body,
     raw: res.body,
     headers: Object.entries(res.headers).map(([name, value]) => ({ name, value }))
   }
+}
+
+/** File extensions by media type, for the name Save to file suggests. */
+const EXTENSIONS: Record<string, string> = {
+  'application/json': 'json',
+  'application/xml': 'xml',
+  'text/xml': 'xml',
+  'text/html': 'html',
+  'text/csv': 'csv',
+  'text/css': 'css',
+  'text/javascript': 'js',
+  'application/javascript': 'js',
+  'application/pdf': 'pdf',
+  'application/zip': 'zip',
+  'application/gzip': 'gz',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/svg+xml': 'svg',
+  'application/octet-stream': 'bin'
+}
+
+/** The file name a server gives in Content-Disposition, without any folder part. */
+function dispositionName(disposition: string): string {
+  const encoded = /filename\*\s*=\s*[^']*'[^']*'([^;]+)/i.exec(disposition)?.[1]
+  let name = /filename\s*=\s*"([^"]*)"/i.exec(disposition)?.[1] ?? /filename\s*=\s*([^;]+)/i.exec(disposition)?.[1] ?? ''
+  if (encoded) {
+    try {
+      name = decodeURIComponent(encoded.trim())
+    } catch {
+      /* keep the plain filename */
+    }
+  }
+  return name.trim().split(/[\\/]/).pop() ?? ''
+}
+
+/**
+ * The name Save to file suggests: the one the server gives, else "response"
+ * with the extension of the body's type (.json, .pdf, .png...).
+ */
+export function responseFileName(res: FormattedResponse): string {
+  const headers = Object.fromEntries(res.headers.map((h) => [h.name, h.value]))
+  const given = dispositionName(headerValue(headers, 'content-disposition'))
+  if (given && given !== '.' && given !== '..') return given
+  const type = res.contentType.split(';')[0].trim().toLowerCase()
+  const extension = res.isJson
+    ? 'json'
+    : (EXTENSIONS[type] ??
+      (/\+json$/.test(type) ? 'json' : /\+xml$/.test(type) ? 'xml' : !type || type.startsWith('text/') ? 'txt' : 'bin'))
+  return `response.${extension}`
 }

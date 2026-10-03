@@ -13,6 +13,7 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.updateUnsavedDetail': '现在重启更新会丢弃尚未保存的编辑。',
   'main.dialog.restartAnyway': '仍然重启',
   'main.dialog.keepEditing': '继续编辑',
+  'main.dialog.saveResponse': '保存响应正文',
   'main.import.postman': 'Postman 集合',
   'main.import.insomnia': 'Insomnia 导出文件',
   'main.import.wsdl': 'WSDL 文档',

@@ -125,6 +125,39 @@ describe('compressed responses on the Node send path (certificate files configur
   })
 })
 
+describe('response bytes', () => {
+  const pdf = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a, 0xff, 0x00, 0x80])
+
+  beforeEach(() => {
+    route = (req, res) => {
+      if (req.url === '/pdf') {
+        res.writeHead(200, { 'Content-Type': 'application/pdf' })
+        res.end(pdf)
+        return true
+      }
+      if (req.url === '/text') {
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
+        res.end('crème brûlée')
+        return true
+      }
+      return false
+    }
+  })
+
+  it('a body that is not text keeps its exact bytes (base64) and its size in bytes', async () => {
+    const res = await sendHttp({ method: 'GET', url: `${base}/pdf`, headers: { Host: 'files.test' } })
+    expect(Buffer.from(res.bodyBase64 ?? '', 'base64').toString('hex')).toBe(pdf.toString('hex'))
+    expect(res.size).toBe(13)
+  })
+
+  it('a UTF-8 text body travels as text only, measured in bytes', async () => {
+    const res = await sendHttp({ method: 'GET', url: `${base}/text`, headers: { Host: 'files.test' } })
+    expect(res.body).toBe('crème brûlée')
+    expect(res.bodyBase64).toBeUndefined()
+    expect(res.size).toBe(Buffer.byteLength('crème brûlée'))
+  })
+})
+
 describe('a GET (or DELETE) with a body', () => {
   it.each(['GET', 'DELETE'])('%s goes out with its body and length on the Node path too', async (method) => {
     await sendHttp({

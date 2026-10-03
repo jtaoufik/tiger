@@ -13,6 +13,7 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.updateUnsavedDetail': 'ستؤدي إعادة التشغيل للتحديث الآن إلى تجاهل التعديلات التي لم تُحفظ بعد.',
   'main.dialog.restartAnyway': 'إعادة التشغيل على أي حال',
   'main.dialog.keepEditing': 'متابعة التحرير',
+  'main.dialog.saveResponse': 'حفظ محتوى الاستجابة',
   'main.import.postman': 'مجموعة Postman',
   'main.import.insomnia': 'ملف تصدير Insomnia',
   'main.import.wsdl': 'مستند WSDL',

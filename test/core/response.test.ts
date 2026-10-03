@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byteLength, formatResponse, humanSize } from '../../src/core/response'
+import { byteLength, formatResponse, humanSize, responseFileName } from '../../src/core/response'
 
 describe('humanSize', () => {
   it('formats bytes, KB and MB', () => {
@@ -87,5 +87,62 @@ describe('formatResponse timings + large bodies', () => {
     })
     expect(r.tooLargeToPretty).toBe(false)
     expect(r.body).toBe('{\n  "a": 1\n}')
+  })
+})
+
+describe('binary bodies', () => {
+  const ff = Buffer.alloc(1000, 0xff)
+
+  it('reports the size the transport measured in bytes, not the length of the text', () => {
+    const out = formatResponse({
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'application/octet-stream' },
+      // What the bytes look like as UTF-8 text: 1000 replacement characters.
+      body: ff.toString('utf8'),
+      bodyBase64: ff.toString('base64'),
+      size: 1000,
+      timeMs: 1
+    })
+    expect(out.size).toBe(1000)
+    expect(out.sizeLabel).toBe('1000 B')
+    expect(out.bodyBase64).toBe(ff.toString('base64'))
+  })
+
+  it('still measures the text when the transport gives no size (browser preview, MCP)', () => {
+    const out = formatResponse({ status: 200, statusText: 'OK', headers: {}, body: 'é', timeMs: 1 })
+    expect(out.size).toBe(2)
+    expect(out.bodyBase64).toBeUndefined()
+  })
+})
+
+describe('responseFileName', () => {
+  const named = (headers: Record<string, string>, body = 'x') =>
+    responseFileName(formatResponse({ status: 200, statusText: 'OK', headers, body, timeMs: 1 }))
+
+  it.each([
+    [{ 'content-type': 'application/json' }, '{"a":1}', 'response.json'],
+    [{ 'content-type': 'application/vnd.api+json' }, '{"a":1}', 'response.json'],
+    [{ 'content-type': 'application/pdf' }, '%PDF', 'response.pdf'],
+    [{ 'content-type': 'image/png' }, 'x', 'response.png'],
+    [{ 'content-type': 'image/svg+xml' }, '<svg/>', 'response.svg'],
+    [{ 'content-type': 'text/html; charset=utf-8' }, '<p>', 'response.html'],
+    [{ 'content-type': 'application/soap+xml' }, '<a/>', 'response.xml'],
+    [{ 'content-type': 'text/csv' }, 'a,b', 'response.csv'],
+    [{ 'content-type': 'application/zip' }, 'PK', 'response.zip'],
+    [{ 'content-type': 'application/octet-stream' }, 'x', 'response.bin'],
+    [{ 'content-type': 'text/plain' }, 'x', 'response.txt'],
+    [{}, 'x', 'response.txt']
+  ])('%j names the file after its type', (headers, body, name) => {
+    expect(named(headers, body)).toBe(name)
+  })
+
+  it('takes the name the server gives in Content-Disposition, without any folder part', () => {
+    expect(named({ 'Content-Disposition': 'attachment; filename="invoice 42.pdf"' })).toBe('invoice 42.pdf')
+    expect(named({ 'content-disposition': "attachment; filename*=UTF-8''na%C3%AFve%20r%C3%A9sum%C3%A9.pdf" })).toBe(
+      'naïve résumé.pdf'
+    )
+    expect(named({ 'content-disposition': 'attachment; filename=../../etc/passwd' })).toBe('passwd')
+    expect(named({ 'content-disposition': 'inline' })).toBe('response.txt')
   })
 })

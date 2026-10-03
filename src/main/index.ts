@@ -417,6 +417,19 @@ function registerIpc(): void {
     }
   )
 
+  // A response body saved as the bytes received: sent as text, a PDF or an
+  // image would be re-encoded and corrupted.
+  ipcMain.handle('tiger:saveResponse', async (_e, defaultName: string, base64: string) => {
+    const result = await dialog.showSaveDialog(parentWindow()!, {
+      title: mainT('main.dialog.saveResponse'),
+      defaultPath: String(defaultName).replace(/[\\/:*?"<>|]/g, '-')
+    })
+    if (result.canceled || !result.filePath) return null
+    const { writeFile } = await import('node:fs/promises')
+    await writeFile(result.filePath, Buffer.from(String(base64), 'base64'))
+    return result.filePath
+  })
+
   ipcMain.handle(
     'tiger:oauthToken',
     async (_e, auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap) =>
