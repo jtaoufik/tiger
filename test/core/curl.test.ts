@@ -34,7 +34,8 @@ describe('importCurl', () => {
     const req = importCurl(`curl https://api.test/x --data-urlencode 'name=Ada Lovelace'`)!
     expect(req.method).toBe('post')
     expect(req.url).toBe('https://api.test/x')
-    expect(req.body).toEqual({ type: 'text', content: 'name=Ada Lovelace' })
+    // A form, sent application/x-www-form-urlencoded and encoded as curl does.
+    expect(req.body).toEqual({ type: 'form', content: 'name: Ada Lovelace' })
   })
 
   it('never lets a value-taking flag value become the URL', () => {
@@ -48,7 +49,7 @@ describe('importCurl', () => {
   it('does not consume the URL after --data-urlencode when --url is explicit', () => {
     const req = importCurl(`curl --data-urlencode 'q=1' --url https://api.test/u`)!
     expect(req.url).toBe('https://api.test/u')
-    expect(req.body?.content).toBe('q=1')
+    expect(req.body?.content).toBe('q: 1')
   })
 
   it('rejects text that is not a curl command', () => {
