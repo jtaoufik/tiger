@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateCode, toCurl, toFetch, toPython } from '../../src/core/codegen'
+import { generateCode, toCurl, toCurlCmd, toFetch, toPython } from '../../src/core/codegen'
 import type { BuiltRequest } from '../../src/core/request'
 
 const built: BuiltRequest = {
@@ -98,9 +98,134 @@ describe('Code tab: multipart bodies', () => {
   })
 })
 
+describe('curl for Windows cmd.exe', () => {
+  it('uses curl.exe, ^" quoting and ^ line continuations', () => {
+    expect(toCurlCmd(built)).toBe(
+      [
+        'curl.exe -X POST ^"https://api.test/users^"',
+        '-H ^"Content-Type: application/json^"',
+        `-H ^"Authorization: Bearer it's-a-secret^"`,
+        '--data-raw ^"^{^\\^"name^\\^":^\\^"Ada^\\^"^}^"'
+      ].join(' ^\n  ')
+    )
+  })
+
+  it('escapes what cmd.exe would act on: & | < > ^ and %VAR%', () => {
+    const code = toCurlCmd({ method: 'GET', url: 'https://api.test/s?a=1&b=<2>|3^4&q=a%20b%PATH%', headers: {} })
+    expect(code).toBe('curl.exe -X GET ^"https://api.test/s?a=1^&b=^<2^>^|3^^4^&q=a^%^20b^%^PATH^%^"')
+  })
+
+  it('doubles backslashes only where the C runtime needs it: before a quote', () => {
+    const code = toCurlCmd({
+      method: 'POST',
+      url: 'https://api.test/up',
+      headers: { 'X-Dir': 'C:\\dir\\', 'X-Q': 'a\\"b' },
+      multipart: [{ name: 'f', value: 'C:\\pics\\cat.png', isFile: true }]
+    })
+    // C:\dir\ -> "C:\dir\\" for the runtime; a\"b -> "a\\\"b".
+    expect(code).toContain('-H ^"X-Dir: C:^\\dir^\\^\\^"')
+    expect(code).toContain('-H ^"X-Q: a^\\^\\^\\^"b^"')
+    expect(code).toContain('-F ^"f=^@C:^\\pics^\\cat.png^"')
+  })
+
+  it('keeps the line breaks of a body (a caret, then two newlines)', () => {
+    expect(toCurlCmd({ method: 'POST', url: 'https://a.test', headers: {}, body: 'one\ntwo' })).toContain(
+      '--data-raw ^"one^\n\ntwo^"'
+    )
+  })
+
+  it('sends form text fields literally there too', () => {
+    expect(toCurlCmd(upload)).toContain('--form-string ^"note=^@not-a-file^"')
+  })
+
+  /**
+   * What cmd.exe does to a typed command line: %VAR% expands when VAR is
+   * defined, then outside quotes ^ makes the next character literal (^ before
+   * a line break joins the next line) and & | < > would end the command.
+   */
+  function cmdReads(line: string, env: Record<string, string>): string {
+    let expanded = ''
+    for (let i = 0; i < line.length; i++) {
+      const end = line[i] === '%' ? line.indexOf('%', i + 1) : -1
+      const name = end === -1 ? '' : line.slice(i + 1, end)
+      if (name && name in env) {
+        expanded += env[name]
+        i = end
+      } else {
+        expanded += line[i]
+      }
+    }
+    let out = ''
+    let quoted = false
+    for (let i = 0; i < expanded.length; i++) {
+      const c = expanded[i]
+      if (c === '"') quoted = !quoted
+      if (!quoted && c === '^') {
+        if (expanded[i + 1] === '\n') i++
+        if (i + 1 < expanded.length) out += expanded[++i]
+        continue
+      }
+      if (!quoted && /[&|<>]/.test(c)) throw new Error(`cmd.exe would act on "${c}"`)
+      out += c
+    }
+    return out
+  }
+
+  /** How the C runtime splits a Windows command line into argv (backslash and quote rules). */
+  function runtimeArgs(line: string): string[] {
+    const args: string[] = []
+    let cur: string | null = null
+    let quoted = false
+    let i = 0
+    while (i < line.length) {
+      let slashes = 0
+      while (line[i] === '\\') {
+        slashes++
+        i++
+      }
+      if (line[i] === '"') {
+        cur = (cur ?? '') + '\\'.repeat(slashes >> 1)
+        if (slashes % 2) cur += '"'
+        else quoted = !quoted
+        i++
+        continue
+      }
+      if (slashes) cur = (cur ?? '') + '\\'.repeat(slashes)
+      if (i >= line.length) break
+      const c = line[i++]
+      if (!quoted && (c === ' ' || c === '\t')) {
+        if (cur !== null) args.push(cur)
+        cur = null
+      } else {
+        cur = (cur ?? '') + c
+      }
+    }
+    if (cur !== null) args.push(cur)
+    return args
+  }
+
+  it.each([
+    '{"name":"Ada & Co","tags":["a|b","<c>"]}',
+    'C:\\temp\\',
+    'a\\"b',
+    '"',
+    '\\\\server\\share\\\\',
+    '100% %PATH% %% %1 %~dp0',
+    '^caret^ !bang! (paren)',
+    '<tag attr="x">&amp;</tag>',
+    'two\nlines',
+    'naïve 中文 tab\there'
+  ])('cmd.exe and curl.exe read %j back exactly', (text) => {
+    const line = toCurlCmd({ method: 'POST', url: 'https://a.test/?q=1&r=%41', headers: { 'X-Text': text }, body: text })
+    const argv = runtimeArgs(cmdReads(line, { PATH: 'C:\\Windows', 1: 'one' }))
+    expect(argv).toEqual(['curl.exe', '-X', 'POST', 'https://a.test/?q=1&r=%41', '-H', `X-Text: ${text}`, '--data-raw', text])
+  })
+})
+
 describe('generateCode', () => {
   it('dispatches by target', () => {
     expect(generateCode(built, 'curl').startsWith('curl')).toBe(true)
+    expect(generateCode(built, 'curl-cmd').startsWith('curl.exe ')).toBe(true)
     expect(generateCode(built, 'fetch').startsWith('await fetch')).toBe(true)
   })
 })

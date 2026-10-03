@@ -6,16 +6,17 @@ import { CheckIcon, CopyIcon } from './Icons'
 import './a11y.css'
 import './CodePane.css'
 
-const TARGETS: CodegenTarget[] = ['curl', 'fetch', 'python']
+const TARGETS: CodegenTarget[] = ['curl', 'curl-cmd', 'fetch', 'python']
 
-// Language and library names, not translated.
+// Language, tool and library names, not translated.
 const TARGET_LABELS: Record<CodegenTarget, string> = {
   curl: 'curl',
+  'curl-cmd': 'curl (Windows cmd)',
   fetch: 'JavaScript fetch',
   python: 'Python requests'
 }
 
-/** Generated-code tab: the request as curl / fetch / python, ready to copy. */
+/** Generated-code tab: the request as curl (shell or Windows cmd) / fetch / python, ready to copy. */
 export function CodePane({ getBuilt }: { getBuilt: () => BuiltRequest | null }) {
   const t = useT()
   const [target, setTarget] = useState<CodegenTarget>('curl')

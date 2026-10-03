@@ -31,6 +31,34 @@ export function toCurl(built: BuiltRequest): string {
   return parts.join(' \\\n  ')
 }
 
+/**
+ * Quote one argument of curl.exe typed in Windows cmd.exe, which two parsers
+ * read. First the C runtime that splits curl's arguments: a quote is written
+ * \" and the backslashes before it (or before the closing quote) double.
+ * Then cmd.exe, which must never see a bare special character: the quotes go
+ * as ^" so cmd never enters quoted mode, everything outside a safe set gets a
+ * ^, %VAR% is broken up as %^VAR, and a line break is ^ and two newlines.
+ * This is the escaping Chromium's "Copy as cURL (cmd)" uses.
+ */
+function cmdQuote(value: string): string {
+  const runtime = value.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')
+  const cmd = runtime
+    .replace(/[^A-Za-z0-9\s_\-:=+~'/.,?;()*`]/g, '^$&')
+    .replace(/%(?=[A-Za-z0-9_])/g, '%^')
+    .replace(/\r?\n|\r/g, '^\n\n')
+  return `^"${cmd}^"`
+}
+
+/** curl for Windows cmd.exe: curl.exe (PowerShell's curl is another command), ^ continuations. */
+export function toCurlCmd(built: BuiltRequest): string {
+  const parts = [`curl.exe -X ${built.method} ${cmdQuote(built.url)}`]
+  for (const [name, value] of Object.entries(built.headers)) {
+    parts.push(`-H ${cmdQuote(`${name}: ${value}`)}`)
+  }
+  parts.push(...curlBodyArgs(built, cmdQuote))
+  return parts.join(' ^\n  ')
+}
+
 /** The file name of a path, with / or \ separators. */
 function baseName(path: string): string {
   return path.split(/[\\/]/).pop() ?? path
@@ -97,10 +125,11 @@ export function toPython(built: BuiltRequest): string {
   return lines.join('\n')
 }
 
-export type CodegenTarget = 'curl' | 'fetch' | 'python'
+export type CodegenTarget = 'curl' | 'curl-cmd' | 'fetch' | 'python'
 
 export function generateCode(built: BuiltRequest, target: CodegenTarget): string {
   if (target === 'curl') return toCurl(built)
+  if (target === 'curl-cmd') return toCurlCmd(built)
   if (target === 'python') return toPython(built)
   return toFetch(built)
 }
