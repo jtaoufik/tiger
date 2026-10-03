@@ -1,10 +1,11 @@
 {
-  "version": "0.8.0",
+  "version": "0.8.1",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Tiger speaks six languages: English, 中文, हिन्दी, Español, Français and العربية",
-    "Follows your system language by default; switch live in Settings > General > Language",
-    "Arabic uses a full right-to-left layout",
-    "Test and script windows never pop up or steal focus"
+    "Imported collections are saved to disk: they survive a restart and Ctrl+S saves them",
+    "{{variables}} resolve on Send, even right after launch or a switch of collection",
+    "Windows: line endings, Notepad and PowerShell files, Ctrl+W and the title bar fixed",
+    "More faithful imports from Postman, Insomnia, Bruno, OpenAPI, WSDL and curl",
+    "Readable everywhere in light and dark, and right to left in Arabic"
   ]
 }
