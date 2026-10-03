@@ -17,7 +17,8 @@
 
 import type { TigerEnvironment } from './types'
 
-const TOKEN = /\{\{\s*([\w.$-]+)\s*\}\}/g
+/** `{{name}}`; a name may hold single spaces ("base url", as Postman allows), never quotes or colons. */
+const TOKEN = /\{\{\s*([\w.$-]+(?:[ \t]+[\w.$-]+)*)\s*\}\}/g
 
 export type VarMap = Record<string, string>
 

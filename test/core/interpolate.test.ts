@@ -116,3 +116,18 @@ describe('dynamic runtime variables', () => {
     expect(result).toMatch(/^val=\d+$/)
   })
 })
+
+describe('variable names with spaces (Postman allows them)', () => {
+  it('resolves {{base url}}', () => {
+    expect(interpolate('{{base url}}/users', { 'base url': 'https://api.test' })).toBe('https://api.test/users')
+  })
+
+  it('reports {{base url}} as missing when no environment defines it', () => {
+    expect(findMissingVars('{{base url}}/users', {})).toEqual(['base url'])
+  })
+
+  it('leaves double-braced JSON alone', () => {
+    expect(interpolate('{{ "a": 1 }}', {})).toBe('{{ "a": 1 }}')
+    expect(findMissingVars('{{ "a": 1 }}', {})).toEqual([])
+  })
+})
