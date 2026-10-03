@@ -339,6 +339,8 @@ export default function App() {
   const [sidebarHidden, setSidebarHidden] = useState(() => readStored('tiger.sidebarHidden') === '1')
   /** Which half of the Import and export dialog the entry point asked for. */
   const [ioFocus, setIoFocus] = useState<'import' | 'export'>('import')
+  /** The collection an export was opened for (its menu or page); else the active request's. */
+  const [ioColId, setIoColId] = useState<string | null>(null)
   /** Environments dialog opened by "New environment": create one right away. */
   const [envStartNew, setEnvStartNew] = useState(false)
   /** "New folder" prompt target: the collection and the parent folder. */
@@ -571,6 +573,56 @@ export default function App() {
    */
   const envChoiceRef = useRef<Record<string, string>>({})
   const activeEntry = activeCollection?.entries.find((e) => e.id === activeId)
+
+  /**
+   * The environment key requests of `colId` go out with ('' = none): the
+   * choice last made there (while it still exists), else the active one when
+   * it belongs to that collection, else the collection's first environment.
+   */
+  const envKeyFor = useCallback(
+    (colId: string): string => {
+      const remembered = envChoiceRef.current[colId]
+      const exists = (key: string) =>
+        key === '' || collections.some((c) => c.environments.some((e) => `${c.id}${SEP}${e.name}` === key))
+      if (remembered !== undefined && exists(remembered)) return remembered
+      const own = `${colId}${SEP}`
+      const current = activeEnvRef.current.key
+      if (current?.startsWith(own) && exists(current)) return current
+      const first = collections.find((c) => c.id === colId)?.environments[0]
+      return first ? `${own}${first.name}` : ''
+    },
+    [collections]
+  )
+
+  /** That environment's variables, read from disk when it is not loaded. */
+  const environmentFor = useCallback(
+    async (colId: string): Promise<TigerEnvironment | null> => {
+      const key = envKeyFor(colId)
+      if (!key) return null
+      if (key === activeEnvRef.current.key) return activeEnvRef.current.env
+      const sep = key.indexOf(SEP)
+      const ref = collections
+        .find((c) => c.id === key.slice(0, sep))
+        ?.environments.find((e) => e.name === key.slice(sep + SEP.length))
+      if (ref?.data) return ref.data
+      if (ref?.path && window.tiger) {
+        try {
+          return parseEnvironment(await window.tiger.readFile(ref.path))
+        } catch {
+          return null
+        }
+      }
+      return null
+    },
+    [collections, envKeyFor]
+  )
+
+
+  /** What an export works on: the collection it was opened for, else the active request's. */
+  const exportCollection = collections.find((c) => c.id === ioColId) ?? activeCollection
+  const exportEnvKey = exportCollection ? envKeyFor(exportCollection.id) : (activeEnvKey ?? '')
+  const exportEnvName = exportEnvKey ? exportEnvKey.slice(exportEnvKey.indexOf(SEP) + SEP.length) : null
+
   /**
    * The request with auth inheritance applied: its own auth, else its folder's
    * default auth, else the collection default (Postman/Bruno semantics).
@@ -1460,7 +1512,7 @@ export default function App() {
     async (format: ExportFormat) => {
       try {
         if (format === 'postman') {
-          const col = activeCollection
+          const col = exportCollection
           if (!col) return
           const loaded = await Promise.all(
             col.entries.map(async (e) => ({ entry: e, request: await loadRequest(e.id) }))
@@ -1468,7 +1520,7 @@ export default function App() {
           const imported: ImportedRequest[] = loaded
             .filter((x): x is { entry: SidebarEntry; request: TigerRequest } => !!x.request)
             .map((x) => ({ path: x.entry.folderPath, request: x.request }))
-          const json = JSON.stringify(exportPostman(col.name, imported, activeEnv), null, 2)
+          const json = JSON.stringify(exportPostman(col.name, imported, await environmentFor(col.id)), null, 2)
           const filename = `${col.name}.postman_collection.json`
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)
@@ -1479,7 +1531,7 @@ export default function App() {
               : toast(t('app.toast.exportNeedsDesktop'))
           }
         } else if (format === 'openapi') {
-          const col = activeCollection
+          const col = exportCollection
           if (!col) return
           const loaded = await Promise.all(
             col.entries.map(async (e) => ({ entry: e, request: await loadRequest(e.id) }))
@@ -1498,9 +1550,10 @@ export default function App() {
               : toast(t('app.toast.exportNeedsDesktop'))
           }
         } else if (format === 'environment') {
-          if (!activeEnv) return
-          const filename = `${activeEnv.name || 'environment'}.postman_environment.json`
-          const json = JSON.stringify(exportPostmanEnvironment(activeEnv), null, 2)
+          const env = exportCollection ? await environmentFor(exportCollection.id) : activeEnv
+          if (!env) return
+          const filename = `${env.name || 'environment'}.postman_environment.json`
+          const json = JSON.stringify(exportPostmanEnvironment(env), null, 2)
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)
             if (path) toast(t('app.toast.exportedTo', { path }))
@@ -1520,8 +1573,8 @@ export default function App() {
               ? toast(t('app.toast.downloaded', { filename }))
               : toast(t('app.toast.exportNeedsDesktop'))
           }
-        } else if (format === 'curl' && active) {
-          await navigator.clipboard.writeText(toCurl(buildRequest(active, envToVars(activeEnv))))
+        } else if (format === 'curl' && activeEffective) {
+          await navigator.clipboard.writeText(toCurl(buildRequest(activeEffective, envToVars(activeEnv))))
           toast(t('app.toast.curlCopied'))
         }
         setModal('none')
@@ -1529,7 +1582,7 @@ export default function App() {
         toast(t('app.toast.exportFailed', { message: (e as Error).message }), { error: true })
       }
     },
-    [activeCollection, active, activeEnv, loadRequest, toast]
+    [exportCollection, active, activeEffective, activeEnv, environmentFor, loadRequest, toast]
   )
 
   const newRequest = useCallback(
@@ -1920,18 +1973,27 @@ export default function App() {
    * or send them to the other collection's host. Also picks an environment
    * after a restart, when none is active yet.
    */
+  /**
+   * The runner sends with the environment of the collection it runs, not the
+   * active one. It opens once that environment is known, so Run never starts
+   * with another collection's.
+   */
+  const [runnerEnv, setRunnerEnv] = useState<{ colId: string; env: TigerEnvironment | null } | null>(null)
   useEffect(() => {
-    if (!activeColId) return
-    const col = collections.find((c) => c.id === activeColId)
-    if (!col) return
-    const own = `${activeColId}${SEP}`
-    const exists = (key: string) =>
-      key === '' || collections.some((c) => c.environments.some((e) => `${c.id}${SEP}${e.name}` === key))
-    const remembered = envChoiceRef.current[activeColId]
-    let target: string
-    if (remembered !== undefined && exists(remembered)) target = remembered
-    else if (activeEnvKey?.startsWith(own)) return
-    else target = col.environments[0] ? `${own}${col.environments[0].name}` : ''
+    if (!runnerScope) return
+    let live = true
+    void environmentFor(runnerScope.colId).then((env) => {
+      if (live) setRunnerEnv({ colId: runnerScope.colId, env })
+    })
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runnerScope])
+
+  useEffect(() => {
+    if (!activeColId || !collections.some((c) => c.id === activeColId)) return
+    const target = envKeyFor(activeColId)
     if (target !== (activeEnvKey ?? '')) void changeEnv(target)
     // Only moving to another collection decides; edits inside one keep the user's pick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1991,18 +2053,32 @@ export default function App() {
     setHistory([])
   }, [])
 
+  /**
+   * Copy any request (not only the active one) as it would be sent: its
+   * folder's or collection's auth applied, and its own collection's
+   * environment, not whichever one is active.
+   */
   const copyAsCurl = useCallback(
     async (entryId: string) => {
       const req = requestsById[entryId] ?? (await loadRequest(entryId))
       if (!req) return
+      const col = collections.find((c) => c.entries.some((e) => e.id === entryId))
+      const entry = col?.entries.find((e) => e.id === entryId)
+      const inherited =
+        (col && entry ? nearestFolderAuth(entry.folderPath, (p) => folderAuth(col.id, p)) : undefined) ??
+        col?.auth
+      const env = col ? await environmentFor(col.id) : activeEnv
       try {
-        await navigator.clipboard.writeText(toCurl(buildRequest(req, envToVars(activeEnv))))
+        const sent = { ...req, auth: resolveAuth(req, inherited) }
+        await navigator.clipboard.writeText(toCurl(buildRequest(sent, envToVars(env))))
         toast(t('app.toast.curlCopied'))
       } catch {
         toast(t('app.toast.copyFailed'), { error: true })
       }
     },
-    [requestsById, loadRequest, activeEnv, toast]
+    // folderAuth reads folderSettings.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [requestsById, loadRequest, collections, folderSettings, environmentFor, activeEnv, toast]
   )
 
   const openRequestMenu = useCallback(
@@ -2037,8 +2113,9 @@ export default function App() {
 
   const inspectCollectionRef = useRef<(colId: string) => void>(() => {})
   /** Import and export share one dialog; each entry point says which half. */
-  const openIo = useCallback((focus: 'import' | 'export') => {
+  const openIo = useCallback((focus: 'import' | 'export', colId?: string) => {
     setIoFocus(focus)
+    setIoColId(colId ?? null)
     setModal('io')
   }, [])
 
@@ -2061,7 +2138,7 @@ export default function App() {
           icon: <PencilIcon size={14} />,
           onClick: () => setAuthColId(colId)
         },
-        actionItem('export', () => openIo('export'))
+        actionItem('export', () => openIo('export', colId))
       ]
       if (col.root) {
         items.push(
@@ -2685,7 +2762,7 @@ export default function App() {
                     onSaveDocs={(docs) => saveCollectionDocs(col.id, docs)}
                     onRun={() => setRunnerScope({ colId: col.id })}
                     onNewRequest={() => newRequest(col.id)}
-                    onImportExport={() => openIo('export')}
+                    onImportExport={() => openIo('export', col.id)}
                     onClose={() => requestCloseCollection(col.id)}
                     onOpenGitDetails={() => setGitColId(col.id)}
                     onWorkingTreeChanged={() => invalidateCollectionCache(col.id)}
@@ -2810,9 +2887,9 @@ export default function App() {
       {modal === 'io' && (
         <ImportExportModal
           focus={ioFocus}
-          collectionName={activeCollection?.name ?? null}
+          collectionName={exportCollection?.name ?? null}
           requestName={active?.name ?? null}
-          environmentName={activeEnv?.name ?? null}
+          environmentName={exportEnvName}
           onImport={loadImport}
           onImportCurl={importFromCurl}
           onExport={doExport}
@@ -2832,6 +2909,7 @@ export default function App() {
       )}
       {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal('none')} />}
       {runnerScope &&
+        runnerEnv?.colId === runnerScope.colId &&
         (() => {
           const col = collections.find((c) => c.id === runnerScope.colId)
           const title = runnerScope.path?.length
@@ -2841,9 +2919,12 @@ export default function App() {
             <RunnerModal
               title={title}
               loadItems={loadRunnerItems}
-              environment={activeEnv}
+              environment={runnerEnv.env}
               timeoutMs={settings.timeoutMs}
-              onClose={() => setRunnerScope(null)}
+              onClose={() => {
+                setRunnerScope(null)
+                setRunnerEnv(null)
+              }}
             />
           )
         })()}

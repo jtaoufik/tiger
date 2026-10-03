@@ -152,3 +152,56 @@ describe('the environment follows the request’s collection', () => {
     await waitFor(() => expect(pickedEnv()).toBe('No environment'))
   })
 })
+
+describe('actions on a request or collection that is not the active one', () => {
+  async function twoCollectionsAlphaActive() {
+    const b = bridge([
+      collection('Alpha', 'Get alpha', 'https://alpha.test'),
+      collection('Beta', 'Get beta', 'https://beta.test')
+    ])
+    ;(window as { tiger?: unknown }).tiger = b
+    render(<App />)
+    await importVia('Postman')
+    await importVia('Postman')
+    fireEvent.click(within(sidebar()).getByText('Get alpha'))
+    await waitFor(() => expect(pickedEnv()).toBe('Alpha env'))
+    return b
+  }
+
+  it('runs a collection with that collection’s environment', async () => {
+    const b = await twoCollectionsAlphaActive()
+    fireEvent.contextMenu(within(sidebar()).getByText('Beta').closest('.col-head')!)
+    fireEvent.click(screen.getByText(/^Run collection/))
+    fireEvent.click(await screen.findByRole('button', { name: 'Run 1 request' }))
+    await waitFor(() => expect(b.send).toHaveBeenCalled())
+    expect(lastSentUrl(b)).toBe('https://beta.test/get-beta')
+  })
+
+  it('exports the collection whose menu was used, with that collection’s variables', async () => {
+    const b = await twoCollectionsAlphaActive()
+    const exportCollection = vi.fn(async (_filename: string, _text: string) => '/tmp/out.json')
+    ;(window as { tiger?: Record<string, unknown> }).tiger!.exportCollection = exportCollection
+    fireEvent.contextMenu(within(sidebar()).getByText('Beta').closest('.col-head')!)
+    fireEvent.click(screen.getByText(/^Export/))
+    const choice = [...document.querySelectorAll<HTMLButtonElement>('.modal button.choice')].find((el) =>
+      el.textContent?.startsWith('Postman collection')
+    )
+    fireEvent.click(choice!)
+    await waitFor(() => expect(exportCollection).toHaveBeenCalled())
+    const [filename, json] = exportCollection.mock.calls[0]
+    expect(filename).toBe('Beta.postman_collection.json')
+    expect(json).toContain('https://beta.test')
+    expect(json).not.toContain('https://alpha.test')
+    expect(b.send).not.toHaveBeenCalled()
+  })
+
+  it('copies a request as curl with its own collection’s environment', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    await twoCollectionsAlphaActive()
+    fireEvent.contextMenu(within(sidebar()).getByText('Get beta'))
+    fireEvent.click(screen.getByText('Copy as curl'))
+    await waitFor(() => expect(writeText).toHaveBeenCalled())
+    expect(writeText.mock.calls[0][0]).toContain('https://beta.test/get-beta')
+  })
+})
