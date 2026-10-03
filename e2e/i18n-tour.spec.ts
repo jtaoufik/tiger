@@ -87,7 +87,13 @@ function conflictedCollection(serverUrl: string): string {
  */
 async function checkScreen(page: Page): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText)
-  const keys = text.match(/\b(app|sidebar|views|request|response|team|settings|modals|imports|actions|common)\.[a-z][\w-]*\.[\w.-]+\b/g)
+  // A catalog key on screen, not a segment of a file path (the AI assistants
+  // snippet shows ".../app.asar.unpacked/out/mcp/server.mjs").
+  const keyPattern = /\b(app|sidebar|views|request|response|team|settings|modals|imports|actions|common)\.[a-z][\w-]*\.[\w.-]+\b/g
+  const found = [...text.matchAll(keyPattern)]
+    .filter((m) => !/[\\/]$/.test(text.slice(0, m.index)) && !/^[\\/]/.test(text.slice(m.index! + m[0].length)))
+    .map((m) => m[0])
+  const keys = found.length ? found : null
   expect(keys, 'no raw catalog keys').toBeNull()
   const wrong = await page.evaluate(() => {
     const bad: string[] = []
