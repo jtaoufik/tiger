@@ -31,21 +31,65 @@ export function toCurl(built: BuiltRequest): string {
   return parts.join(' \\\n  ')
 }
 
+/** The file name of a path, with / or \ separators. */
+function baseName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path
+}
+
+/**
+ * Headers for a snippet whose client builds the multipart body itself: the
+ * Content-Type it writes carries the boundary, so the request's own is left out.
+ */
+function snippetHeaders(built: BuiltRequest): Record<string, string> {
+  if (!built.multipart?.length) return built.headers
+  return Object.fromEntries(Object.entries(built.headers).filter(([name]) => name.toLowerCase() !== 'content-type'))
+}
+
 export function toFetch(built: BuiltRequest): string {
   const init: Record<string, unknown> = { method: built.method }
-  if (Object.keys(built.headers).length) init.headers = built.headers
+  const headers = snippetHeaders(built)
+  if (Object.keys(headers).length) init.headers = headers
+  if (built.multipart?.length) {
+    // A FormData body: text fields as they are, file rows read from disk (Node).
+    const lines = built.multipart.some((p) => p.isFile) ? ["import { readFile } from 'node:fs/promises'", ''] : []
+    lines.push('const form = new FormData()')
+    for (const part of built.multipart) {
+      const name = JSON.stringify(part.name)
+      const value = JSON.stringify(part.value)
+      lines.push(
+        part.isFile
+          ? `form.append(${name}, new Blob([await readFile(${value})]), ${JSON.stringify(baseName(part.value))})`
+          : `form.append(${name}, ${value})`
+      )
+    }
+    const initText = JSON.stringify(init, null, 2).replace(/\n}$/, ',\n  "body": form\n}')
+    lines.push('', `await fetch(${JSON.stringify(built.url)}, ${initText})`)
+    return lines.join('\n')
+  }
   if (built.body) init.body = built.body
   return `await fetch(${JSON.stringify(built.url)}, ${JSON.stringify(init, null, 2)})`
 }
 
 export function toPython(built: BuiltRequest): string {
   const lines = ['import requests', '']
-  if (Object.keys(built.headers).length) {
-    lines.push(`headers = ${JSON.stringify(built.headers, null, 4)}`)
+  const headers = snippetHeaders(built)
+  if (Object.keys(headers).length) {
+    lines.push(`headers = ${JSON.stringify(headers, null, 4)}`)
   }
   const args = [`"${built.url}"`]
-  if (Object.keys(built.headers).length) args.push('headers=headers')
-  if (built.body) {
+  if (Object.keys(headers).length) args.push('headers=headers')
+  if (built.multipart?.length) {
+    // files= makes requests send multipart/form-data; (None, value) is a text field.
+    lines.push('files = [')
+    for (const part of built.multipart) {
+      const value = part.isFile
+        ? `(${JSON.stringify(baseName(part.value))}, open(${JSON.stringify(part.value)}, "rb"))`
+        : `(None, ${JSON.stringify(part.value)})`
+      lines.push(`    (${JSON.stringify(part.name)}, ${value}),`)
+    }
+    lines.push(']')
+    args.push('files=files')
+  } else if (built.body) {
     lines.push(`data = ${JSON.stringify(built.body)}`)
     args.push('data=data')
   }
