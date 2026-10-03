@@ -67,7 +67,7 @@ import { sanitizeCollectionName } from '../core/newCollection'
 import { resolveMcpLaunch, type McpInfo } from '../mcp/launch'
 import { disposeScriptHost, runIsolatedScript } from './scriptHost'
 import { appWindows, targetAppWindow } from './windows'
-import type { BuiltRequest } from '../core/request'
+import { redactedUrl, type BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
@@ -407,7 +407,8 @@ function registerIpc(): void {
         id: randomUUID(),
         at: Date.now(),
         method: built.method,
-        url: built.url,
+        // An API key sent in the query string never lands in history.json.
+        url: redactedUrl(built),
         status: res.status,
         ok: res.status >= 200 && res.status < 300,
         timeMs: res.timeMs,

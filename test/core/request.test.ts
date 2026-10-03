@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRequest } from '../../src/core/request'
+import { buildRequest, redactedUrl } from '../../src/core/request'
 import { importPostman } from '../../src/core/import'
 import type { TigerAuth, TigerRequest } from '../../src/core/types'
 
@@ -229,5 +229,32 @@ describe('buildRequest: rows without a name', () => {
       expect(built.headers).toEqual({})
       expect(built.url).toBe('https://api.test/things')
     }
+  })
+})
+
+describe('redactedUrl', () => {
+  it('hides the value of an API key sent in the query string, for the history', () => {
+    const built = buildRequest(
+      req({
+        query: [{ name: 'city', value: 'Paris', enabled: true }],
+        auth: { type: 'apikey', key: 'api_key', value: '{{key}}', in: 'query' }
+      }),
+      { key: 's3cr3t' }
+    )
+    expect(built.url).toBe('https://api.test/things?city=Paris&api_key=s3cr3t')
+    expect(redactedUrl(built)).toBe('https://api.test/things?city=Paris&api_key=***')
+  })
+
+  it('matches the encoded name and keeps the fragment', () => {
+    const built = buildRequest(
+      req({ url: 'https://api.test/x#top', auth: { type: 'apikey', key: 'api key', value: 'v', in: 'query' } })
+    )
+    expect(redactedUrl(built)).toBe('https://api.test/x?api%20key=***#top')
+  })
+
+  it('leaves a URL without auth query parameters as it is', () => {
+    const built = buildRequest(req({ query: [{ name: 'api_key', value: 'typed', enabled: true }] }))
+    expect(redactedUrl(built)).toBe(built.url)
+    expect(redactedUrl({ method: 'GET', url: 'https://x.test/?a=1', headers: {} })).toBe('https://x.test/?a=1')
   })
 })

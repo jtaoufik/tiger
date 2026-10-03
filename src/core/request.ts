@@ -20,6 +20,11 @@ export interface BuiltRequest {
    * the bytes and assembles the body with a boundary at send time).
    */
   multipart?: Array<{ name: string; value: string; isFile: boolean }>
+  /**
+   * Names of the query parameters the auth added (an API key sent in the
+   * query string): their values are credentials, kept out of the history.
+   */
+  authQuery?: string[]
 }
 
 /** Methods that usually carry no body: theirs is sent only when it holds something. */
@@ -61,6 +66,28 @@ function applyQuery(url: string, resolved: Array<{ name: string; value: string }
   const base = hashIdx === -1 ? url : url.slice(0, hashIdx)
   const fragment = hashIdx === -1 ? '' : url.slice(hashIdx)
   return base + (base.includes('?') ? '&' : '?') + qs + fragment
+}
+
+/**
+ * The URL to keep where URLs are stored or shown later, like the history:
+ * the values of query parameters the auth added (an API key) become ***.
+ */
+export function redactedUrl(built: BuiltRequest): string {
+  if (!built.authQuery?.length) return built.url
+  const secret = new Set(built.authQuery.map(encodeQueryPart))
+  const hashIdx = built.url.indexOf('#')
+  const base = hashIdx === -1 ? built.url : built.url.slice(0, hashIdx)
+  const fragment = hashIdx === -1 ? '' : built.url.slice(hashIdx)
+  const queryIdx = base.indexOf('?')
+  if (queryIdx === -1) return built.url
+  const params = base
+    .slice(queryIdx + 1)
+    .split('&')
+    .map((pair) => {
+      const name = pair.split('=')[0]
+      return secret.has(name) ? `${name}=***` : pair
+    })
+  return `${base.slice(0, queryIdx + 1)}${params.join('&')}${fragment}`
 }
 
 const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i
@@ -162,5 +189,13 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
     }
   }
 
-  return multipart ? { method, url, headers, body, multipart } : { method, url, headers, body }
+  const authQuery = auth.query.map((q) => q.name).filter((name) => name.trim())
+  return {
+    method,
+    url,
+    headers,
+    body,
+    ...(multipart ? { multipart } : {}),
+    ...(authQuery.length ? { authQuery } : {})
+  }
 }

@@ -2,7 +2,8 @@
  * What Send puts on the wire, checked on the real network stack (a loopback
  * server records every request).
  */
-import { resolve } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { expect, openCollection, openRequest, responsePanel, rm, test } from './fixtures'
 import { envFile, pathOf, requestFile, startLoopback, writeCollection, type Loopback } from './loopback'
 
@@ -177,6 +178,34 @@ wire('every Send reaches the server, even when the response says it may be cache
     expect(hits).toBe(2)
   } finally {
     await srv.close()
+    rm(resolve(dir, '..'))
+  }
+})
+
+wire('the history keeps the URL but not an API key sent in the query string', async ({ tiger, srv, userDataDir }) => {
+  const dir = writeCollection({
+    'environments/dev.tiger': envFile(srv.url),
+    'weather.tiger': requestFile(
+      'Weather',
+      'get',
+      '{{baseUrl}}/weather',
+      'query {\n  city: Paris\n}\n\nauth:apikey {\n  key: api_key\n  value: s3cr3t-key\n  in: query\n}\n'
+    )
+  })
+  try {
+    const { page } = tiger
+    await openCollection(tiger, dir)
+    await openRequest(page, 'GET', 'Weather')
+    await send(page)
+    // The key still goes to the server...
+    expect(srv.requests.at(-1)!.url).toBe('/weather?city=Paris&api_key=s3cr3t-key')
+    // ...but the history file never holds it.
+    const historyFile = join(userDataDir, 'history.json')
+    await expect.poll(() => existsSync(historyFile)).toBe(true)
+    const history = readFileSync(historyFile, 'utf8')
+    expect(history).not.toContain('s3cr3t-key')
+    expect(JSON.parse(history)[0].url).toBe(`${srv.url}/weather?city=Paris&api_key=***`)
+  } finally {
     rm(resolve(dir, '..'))
   }
 })
