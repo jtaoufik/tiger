@@ -80,21 +80,33 @@ describe('Sidebar folding for collections that arrive later', () => {
     expect(shown('GET Get admin')).toBe(true)
   })
 
-  it('scrolls the request that becomes active into view (an import lands at the bottom)', () => {
-    const scrolled: string[] = []
-    const original = Element.prototype.scrollIntoView
-    Element.prototype.scrollIntoView = function (this: HTMLElement) {
-      scrolled.push(this.dataset.entryId ?? '')
+  it('scrolls the tree so the request that becomes active is in view, without moving the Tab start', () => {
+    const calls: string[] = []
+    const scrollIntoView = Element.prototype.scrollIntoView
+    const rect = Element.prototype.getBoundingClientRect
+    // scrollIntoView would move Chromium's sequential focus navigation starting
+    // point into the tree: the first Tab after a restart then skips the skip link.
+    Element.prototype.scrollIntoView = function () {
+      calls.push('scrollIntoView')
+    }
+    // The tree shows 0-400px; the active row sits at 900-920px.
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      const box = (top: number, bottom: number) => ({ top, bottom, left: 0, right: 0, width: 0, height: bottom - top, x: 0, y: top, toJSON: () => ({}) })
+      if ((this as HTMLElement).getAttribute('role') === 'tree') return box(0, 400) as DOMRect
+      if ((this as HTMLElement).dataset?.entryId === 'i2') return box(900, 920) as DOMRect
+      return box(0, 0) as DOMRect
     }
     vi.useFakeTimers()
     try {
       const { rerender } = render(<Sidebar {...props([shop], 'r1')} />)
       rerender(<Sidebar {...props([shop, imported], 'i2')} />)
       vi.runAllTimers()
-      expect(scrolled).toContain('i2')
+      expect(screen.getByRole('tree').scrollTop).toBe(520)
+      expect(calls).toEqual([])
     } finally {
       vi.useRealTimers()
-      Element.prototype.scrollIntoView = original
+      Element.prototype.scrollIntoView = scrollIntoView
+      Element.prototype.getBoundingClientRect = rect
     }
   })
 

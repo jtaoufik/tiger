@@ -806,11 +806,19 @@ export function Sidebar({
     )
     // The active row is always rendered (pinned when the tree is windowed).
     // Ids contain U+001F, so locate it by dataset rather than a CSS selector.
+    // Scroll the tree itself: scrollIntoView would move the browser's Tab
+    // starting point into the tree, and the first Tab after a restart would
+    // skip the "Skip to request URL" link.
     const id = activeId
     const timer = setTimeout(() => {
-      for (const row of document.querySelectorAll<HTMLElement>('.tree-row[data-entry-id]')) {
+      const tree = treeRef.current
+      if (!tree) return
+      for (const row of tree.querySelectorAll<HTMLElement>('.tree-row[data-entry-id]')) {
         if (row.dataset.entryId === id) {
-          row.scrollIntoView?.({ block: 'nearest' })
+          const r = row.getBoundingClientRect()
+          const t = tree.getBoundingClientRect()
+          if (r.top < t.top) tree.scrollTop -= t.top - r.top
+          else if (r.bottom > t.bottom) tree.scrollTop += r.bottom - t.bottom
           break
         }
       }
