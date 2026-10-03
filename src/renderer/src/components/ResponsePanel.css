@@ -35,8 +35,8 @@
   border-radius: 3px;
 }
 .response-body mark.hit.active {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--accent-solid);
+  color: var(--accent-solid-ink);
 }
 .html-preview {
   flex: 1;
@@ -192,16 +192,11 @@
   min-width: 34px;
   text-align: end;
 }
-/* Active match: white on the accent is 2.5:1 on light, so darken it there. */
+/* Active match: white on the deep orange in both themes (never dark text on orange). */
 .panel.response .response-body mark.hit.active {
-  background: #b4500a;
-  color: #fff;
-  outline: 1px solid #b4500a;
-}
-[data-theme='dark'] .panel.response .response-body mark.hit.active {
-  background: var(--accent);
-  color: var(--accent-ink);
-  outline-color: var(--accent);
+  background: var(--accent-solid);
+  color: var(--accent-solid-ink);
+  outline: 1px solid var(--accent-solid);
 }
 
 /* ---------- Headers / cookies as definition lists ---------- */

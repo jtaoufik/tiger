@@ -346,9 +346,9 @@
   background: var(--glass-strong);
 }
 .ts-step.current .ts-step-num {
-  border-color: var(--accent-fill);
-  background: var(--accent-fill);
-  color: var(--accent-fill-ink);
+  border-color: var(--accent-solid);
+  background: var(--accent-solid);
+  color: var(--accent-solid-ink);
 }
 .ts-step.done .ts-step-num {
   border-color: var(--m-get);

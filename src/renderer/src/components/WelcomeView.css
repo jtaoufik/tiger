@@ -41,11 +41,11 @@
   font-size: 12px;
 }
 .welcome-step.done .welcome-step-num {
-  background: var(--accent-fill);
-  color: var(--accent-fill-ink);
+  background: var(--accent-solid);
+  color: var(--accent-solid-ink);
 }
 .welcome-step.done .welcome-step-num svg {
-  color: var(--accent-fill-ink);
+  color: var(--accent-solid-ink);
 }
 .welcome-step-text {
   display: flex;
