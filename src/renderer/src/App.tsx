@@ -186,6 +186,23 @@ function readStored(key: string): string | null {
   }
 }
 
+/** The environment picked in each collection, so a restart keeps "staging". */
+const ENV_CHOICE_KEY = 'tiger.session.envChoice'
+
+function parseEnvChoices(raw: string | null): Record<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? '{}')
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        (e): e is [string, string] => typeof e[1] === 'string'
+      )
+    )
+  } catch {
+    return {}
+  }
+}
+
 function writeStored(key: string, value: string): void {
   try {
     window.localStorage?.setItem(key, value)
@@ -596,7 +613,12 @@ export default function App() {
    * '' for "No environment"), so moving between collections brings each one's
    * own choice back.
    */
-  const envChoiceRef = useRef<Record<string, string>>({})
+  const envChoiceRef = useRef<Record<string, string>>(parseEnvChoices(readStored(ENV_CHOICE_KEY)))
+  /** Remember the environment picked for a collection, also across restarts. */
+  const rememberEnv = (colId: string, key: string): void => {
+    envChoiceRef.current[colId] = key
+    writeStored(ENV_CHOICE_KEY, JSON.stringify(envChoiceRef.current))
+  }
   const activeEntry = activeCollection?.entries.find((e) => e.id === activeId)
 
   /**
@@ -628,7 +650,10 @@ export default function App() {
     async (colId: string): Promise<TigerEnvironment | null> => {
       const key = envKeyFor(colId)
       if (!key) return null
-      if (key === activeEnvRef.current.key) return activeEnvRef.current.env
+      // The active environment, once loaded. Right after a launch or a switch
+      // its file may still be loading: read it here rather than send with
+      // nothing, which left every {{variable}} unresolved.
+      if (key === activeEnvRef.current.key && activeEnvRef.current.env) return activeEnvRef.current.env
       const sep = key.indexOf(SEP)
       const ref = collections
         .find((c) => c.id === key.slice(0, sep))
@@ -905,14 +930,18 @@ export default function App() {
    * else its in-memory data or its file), so nothing changed meanwhile is lost.
    */
   const applyCaptures = useCallback(
-    (captured: Array<{ name: string; value: string }>, envKey: string | null = activeEnvRef.current.key) => {
-      if (!captured.length) return
+    (
+      captured: Array<{ name: string; value: string }>,
+      envKey: string | null = activeEnvRef.current.key,
+      removed: string[] = []
+    ) => {
+      if (!captured.length && !removed.length) return
       if (!envKey) {
-        toast(t('app.toast.capturedNeedsEnv'))
+        if (captured.length) toast(t('app.toast.capturedNeedsEnv'))
         return
       }
       const merge = (base: TigerEnvironment): TigerEnvironment => {
-        const variables = [...base.variables]
+        const variables = base.variables.filter((v) => !removed.includes(v.name))
         for (const { name, value } of captured) {
           const idx = variables.findIndex((v) => v.name === name)
           if (idx !== -1) variables[idx] = { ...variables[idx], value }
@@ -950,7 +979,7 @@ export default function App() {
             col.environments.map((e) => (e.name === envName ? { ...e, data: next } : e))
           )
         }
-        toast(t('app.toast.captured', { names: captured.map((c) => c.name).join(', ') }))
+        if (captured.length) toast(t('app.toast.captured', { names: captured.map((c) => c.name).join(', ') }))
       }
       captureQueue.current = captureQueue.current.then(write).catch(() => undefined)
     },
@@ -969,13 +998,17 @@ export default function App() {
     if (sendingIds.has(id)) return
     setSendingIds((prev) => new Set(prev).add(id))
     setResponses((prev) => ({ ...prev, [id]: { loading: true } }))
-    // Captures and script variables go to the environment this send uses,
-    // even if another collection is active by the time the response arrives.
-    const envKey = activeEnvRef.current.key
+    // The environment of this request's collection, even when the switch to
+    // it (an async file read) has not landed yet; captures and script
+    // variables go back to that same environment, even if another collection
+    // is active by the time the response arrives.
+    const colId = activeColIdRef.current
+    const envKey = colId ? envKeyFor(colId) || null : activeEnvRef.current.key
     try {
+      const sendEnv = colId ? await environmentFor(colId) : activeEnv
       // Pre-request script: may set variables used for interpolation this send.
-      let envForSend = activeEnv
-      const baseVars = envToVars(activeEnv)
+      let envForSend = sendEnv
+      const baseVars = envToVars(sendEnv)
       const scriptRequest = {
         name: active.name,
         method: active.method,
@@ -992,16 +1025,17 @@ export default function App() {
         headerChanges = pre.headerChanges
         if (pre.error) toast(t('app.toast.preScriptError', { message: pre.error }), { error: true })
         const delta = scriptVarDelta(baseVars, pre.vars)
-        if (delta.length) {
+        const removed = Object.keys(baseVars).filter((k) => !(k in pre.vars))
+        if (delta.length || removed.length) {
           envForSend = {
-            name: activeEnv?.name ?? 'env',
+            name: sendEnv?.name ?? 'env',
             variables: Object.entries(pre.vars).map(([name, value]) => ({
               name,
               value,
               enabled: true
             }))
           }
-          applyCaptures(delta, envKey)
+          applyCaptures(delta, envKey, removed)
         }
       }
 
@@ -1037,8 +1071,11 @@ export default function App() {
             }
           })
           if (post.error) toast(t('app.toast.postScriptError', { message: post.error }), { error: true })
-          const delta = scriptVarDelta(envToVars(envForSend), post.vars)
-          if (delta.length) applyCaptures(delta, envKey)
+          const before = envToVars(envForSend)
+          const delta = scriptVarDelta(before, post.vars)
+          // pm.environment.unset() removes the variable for good, as in Postman.
+          const removed = Object.keys(before).filter((k) => !(k in post.vars))
+          if (delta.length || removed.length) applyCaptures(delta, envKey, removed)
           tests = post.tests.length ? post.tests : undefined
           logs = post.logs.length ? post.logs : undefined
           if (post.tests.length) {
@@ -1077,7 +1114,18 @@ export default function App() {
         return next
       })
     }
-  }, [activeId, active, activeEffective, activeEnv, settings.timeoutMs, sendingIds, applyCaptures, toast])
+  }, [
+    activeId,
+    active,
+    activeEffective,
+    activeEnv,
+    settings.timeoutMs,
+    sendingIds,
+    applyCaptures,
+    envKeyFor,
+    environmentFor,
+    toast
+  ])
 
   const save = useCallback(async () => {
     if (!activeId || !active) return
@@ -1439,7 +1487,7 @@ export default function App() {
         const activeKey = activeEnvRef.current.key
         if (activeKey?.startsWith(own)) {
           const key = `${opened.root}${SEP}${activeKey.slice(own.length)}`
-          envChoiceRef.current[opened.root] = key
+          rememberEnv(opened.root, key)
           setActiveEnvKey(key)
         }
         toast(t('app.toast.savedToDisk', { name: col.name, path: opened.root }))
@@ -1654,7 +1702,7 @@ export default function App() {
           const chosen = added.find((e) => !looksLikeProduction(e.name))
           if (chosen) {
             const key = `${target.id}${SEP}${chosen.name}`
-            envChoiceRef.current[target.id] = key
+            rememberEnv(target.id, key)
             setActiveEnvKey(key)
             setActiveEnv(chosen.data)
           }
@@ -1693,7 +1741,7 @@ export default function App() {
             const firstEnv = pick >= 0 ? imported[pick] : undefined
             if (firstEnv) {
               const key = `${opened.root}${SEP}${firstEnv.name}`
-              envChoiceRef.current[opened.root] = key
+              rememberEnv(opened.root, key)
               setActiveEnvKey(key)
               setActiveEnv(firstEnv)
             }
@@ -1751,7 +1799,7 @@ export default function App() {
       // Select the first imported environment so {{variables}} resolve at once.
       const firstEnv = pick >= 0 ? envRefs[pick] : undefined
       if (firstEnv?.data) {
-        envChoiceRef.current[colId] = `${colId}${SEP}${firstEnv.name}`
+        rememberEnv(colId, `${colId}${SEP}${firstEnv.name}`)
         setActiveEnvKey(`${colId}${SEP}${firstEnv.name}`)
         setActiveEnv(firstEnv.data)
       }
@@ -2230,7 +2278,7 @@ export default function App() {
   const changeEnv = useCallback(
     async (key: string) => {
       const token = ++envSeq.current
-      if (activeColIdRef.current) envChoiceRef.current[activeColIdRef.current] = key
+      if (activeColIdRef.current) rememberEnv(activeColIdRef.current, key)
       setActiveEnvKey(key || null)
       if (!key) return setActiveEnv(null)
       const sep = key.indexOf(SEP)
