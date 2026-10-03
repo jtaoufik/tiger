@@ -12,6 +12,7 @@
  * the disk), so boundary handling is fully unit-testable.
  */
 
+import { splitKeyValue } from './tigerFormat'
 import type { KeyValue } from './types'
 
 export const FILE_PREFIX = '@file:'
@@ -30,9 +31,9 @@ export function parseMultipartContent(content: string): MultipartRow[] {
     .map((line) => {
       const enabled = !line.startsWith('~')
       const body = enabled ? line : line.slice(1)
-      const idx = body.indexOf(':')
-      const name = idx === -1 ? body.trim() : body.slice(0, idx).trim()
-      const rawValue = idx === -1 ? '' : body.slice(idx + 1).trim()
+      const kv = splitKeyValue(body)
+      const name = kv ? kv.name : body.trim()
+      const rawValue = kv ? kv.value : ''
       const isFile = rawValue.startsWith(FILE_PREFIX)
       return {
         name,

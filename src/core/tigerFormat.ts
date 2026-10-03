@@ -82,6 +82,17 @@ export function tokenizeBlocks(text: string): RawBlock[] {
 
     i++ // consume '{'
     const contentStart = i
+    // Tiger writes block content indented and closes the block with a "}"
+    // alone at the start of a line: end there, so a brace or quote inside a
+    // value, a body or a script never matters ("Pa$$w0rd}", a JSON body cut
+    // in half, a script with an unbalanced string).
+    const lineEnd = indentedBlockEnd(input, contentStart)
+    if (lineEnd !== -1) {
+      blocks.push({ name, subtype, content: input.slice(contentStart, lineEnd) })
+      i = lineEnd + 1
+      continue
+    }
+    // Written by hand with unindented content: count braces instead.
     let depth = 1
     let inString = false // inside a "..." JSON string literal
     while (i < n) {
@@ -108,6 +119,61 @@ export function tokenizeBlocks(text: string): RawBlock[] {
   return blocks
 }
 
+/**
+ * Where a block written the Tiger way ends: the index of a "}" alone at the
+ * start of a line, when the header line ends at its "{" and every line in
+ * between is blank or indented. -1 otherwise (single-line or hand-written
+ * blocks, which the brace counter handles).
+ */
+function indentedBlockEnd(input: string, start: number): number {
+  const firstBreak = input.indexOf('\n', start)
+  if (firstBreak === -1 || input.slice(start, firstBreak).trim() !== '') return -1
+  let lineStart = firstBreak + 1
+  while (lineStart < input.length) {
+    const next = input.indexOf('\n', lineStart)
+    const line = input.slice(lineStart, next === -1 ? input.length : next)
+    if (/^\}[ \t]*$/.test(line)) return lineStart
+    if (line.trim() !== '' && !/^[ \t]/.test(line)) return -1
+    if (next === -1) return -1
+    lineStart = next + 1
+  }
+  return -1
+}
+
+/**
+ * One `name: value` line. A value one line cannot hold (several lines, or
+ * spaces at either end, which parsing trims) is written as a JSON string
+ * after `name::` instead: a captured, pretty-printed JSON body used to break
+ * the whole environment file.
+ */
+export function keyValueLine(kv: { name: string; value: string; enabled?: boolean }): string {
+  const prefix = `${kv.enabled === false ? '~' : ''}${kv.name}`
+  const plain = !/[\r\n]/.test(kv.value) && kv.value === kv.value.trim()
+  return plain ? `${prefix}: ${kv.value}` : `${prefix}:: ${JSON.stringify(kv.value)}`
+}
+
+/**
+ * Split a `name: value` (or `name:: "json"`) line, already trimmed and
+ * without its `~`. Null when there is no colon.
+ */
+export function splitKeyValue(line: string): { name: string; value: string } | null {
+  const idx = line.indexOf(':')
+  if (idx === -1) return null
+  const name = line.slice(0, idx).trim()
+  if (line[idx + 1] === ':') {
+    const quoted = line.slice(idx + 2).trim()
+    if (quoted.startsWith('"')) {
+      try {
+        const value: unknown = JSON.parse(quoted)
+        if (typeof value === 'string') return { name, value }
+      } catch {
+        /* not the quoted form: a value that starts with ":" */
+      }
+    }
+  }
+  return { name, value: line.slice(idx + 1).trim() }
+}
+
 /** Parse `key: value` lines (with optional leading `~` to disable). */
 export function parseKeyValues(content: string): KeyValue[] {
   const out: KeyValue[] = []
@@ -122,15 +188,11 @@ export function parseKeyValues(content: string): KeyValue[] {
       l = l.slice(1).trim()
     }
 
-    const idx = l.indexOf(':')
-    if (idx === -1) {
+    const kv = splitKeyValue(l)
+    if (!kv) {
       throw new TigerParseError(`Expected "key: value" but got "${line}"`)
     }
-    out.push({
-      name: l.slice(0, idx).trim(),
-      value: l.slice(idx + 1).trim(),
-      enabled
-    })
+    out.push({ ...kv, enabled })
   }
   return out
 }
@@ -239,9 +301,7 @@ export function parseRequest(input: string): TigerRequest {
 }
 
 function renderKeyValues(blockName: string, items: KeyValue[]): string {
-  const lines = items.map(
-    (kv) => `  ${kv.enabled === false ? '~' : ''}${kv.name}: ${kv.value}`
-  )
+  const lines = items.map((kv) => `  ${keyValueLine(kv)}`)
   return `${blockName} {\n${lines.join('\n')}\n}`
 }
 

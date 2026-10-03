@@ -864,38 +864,43 @@ export default function App() {
   const setCollectionEnvironments = useCallback(
     (colId: string, environments: EnvRef[]) => {
       setCollections((prev) => prev.map((c) => (c.id === colId ? { ...c, environments } : c)))
-      // Keep the active environment fresh if it was edited.
-      if (activeEnvKey?.startsWith(`${colId}${SEP}`)) {
-        const name = activeEnvKey.slice(activeEnvKey.indexOf(SEP) + SEP.length)
+      // Keep the active environment fresh if it was edited. Read the key that
+      // is active now: a capture finishing after a switch to another
+      // collection used to put this collection's values under that one's name.
+      const activeKey = activeEnvRef.current.key
+      if (activeKey?.startsWith(`${colId}${SEP}`)) {
+        const name = activeKey.slice(activeKey.indexOf(SEP) + SEP.length)
         const ref = environments.find((e) => e.name === name)
-        if (ref?.data) setActiveEnv(ref.data)
-        else if (!ref) {
+        if (ref?.data) {
+          activeEnvRef.current = { key: activeKey, env: ref.data }
+          setActiveEnv(ref.data)
+        } else if (!ref) {
           setActiveEnvKey(null)
           setActiveEnv(null)
         }
       }
     },
-    [activeEnvKey]
+    []
   )
 
+  /** Capture writes, one after another, so two in a row never lose either. */
+  const captureQueue = useRef<Promise<void>>(Promise.resolve())
+
   /**
-   * Merge captured variables into the active environment (update by name or
-   * append enabled) and persist: write the env file when disk-backed, else
-   * update the in-memory ref via setCollectionEnvironments.
+   * Merge captured variables into an environment (update by name or append
+   * enabled) and persist: write the env file when disk-backed, else update the
+   * in-memory ref via setCollectionEnvironments.
    *
-   * Reads the latest env from activeEnvRef and updates state functionally, so
-   * captures from a slow send never clobber an env the user (or a second send)
-   * changed in the meantime; the disk write uses that same merged result so
-   * state and file stay consistent.
+   * `envKey` is the environment the request went out with, decided when it
+   * was sent: a slow response used to land in whichever environment was
+   * active when it arrived, another collection's after a switch. The merge
+   * reads that environment's latest copy (the active one from activeEnvRef,
+   * else its in-memory data or its file), so nothing changed meanwhile is lost.
    */
   const applyCaptures = useCallback(
-    (captured: Array<{ name: string; value: string }>, target?: { key: string; env: TigerEnvironment | null }) => {
+    (captured: Array<{ name: string; value: string }>, envKey: string | null = activeEnvRef.current.key) => {
       if (!captured.length) return
-      // Captures and scripts write to the active environment, except for a
-      // run of another collection, which writes to that collection's own.
-      const active = activeEnvRef.current
-      const { key, env } = target && target.key !== active.key ? target : active
-      if (!env || !key) {
+      if (!envKey) {
         toast(t('app.toast.capturedNeedsEnv'))
         return
       }
@@ -908,29 +913,41 @@ export default function App() {
         }
         return { ...base, variables }
       }
-      // Compute the persisted value off the latest snapshot, then commit the
-      // same merge to state functionally so nothing in between is lost.
-      const next = merge(env)
-      if (key === active.key) {
-        activeEnvRef.current = { key, env: next }
-        setActiveEnv((cur) => (cur ? merge(cur) : next))
+      const write = async (): Promise<void> => {
+        const sep = envKey.indexOf(SEP)
+        const colId = envKey.slice(0, sep)
+        const envName = envKey.slice(sep + SEP.length)
+        const col = collectionsRef.current.find((c) => c.id === colId)
+        const ref = col?.environments.find((e) => e.name === envName)
+        if (!col || !ref) return
+        const isActive = () => activeEnvRef.current.key === envKey
+        let base: TigerEnvironment | null = isActive() ? activeEnvRef.current.env : (ref.data ?? null)
+        if (!base && ref.path && window.tiger) {
+          try {
+            base = parseEnvironment(await window.tiger.readFile(ref.path))
+          } catch {
+            base = null
+          }
+        }
+        if (!base) return
+        const next = merge(base)
+        if (isActive()) {
+          activeEnvRef.current = { key: envKey, env: next }
+          setActiveEnv((cur) => (cur ? merge(cur) : next))
+        }
+        if (ref.path && window.tiger) {
+          await window.tiger.writeFile(ref.path, serializeEnvironment(next))
+        } else {
+          setCollectionEnvironments(
+            colId,
+            col.environments.map((e) => (e.name === envName ? { ...e, data: next } : e))
+          )
+        }
+        toast(t('app.toast.captured', { names: captured.map((c) => c.name).join(', ') }))
       }
-      const sep = key.indexOf(SEP)
-      const colId = key.slice(0, sep)
-      const envName = key.slice(sep + SEP.length)
-      const col = collections.find((c) => c.id === colId)
-      const ref = col?.environments.find((e) => e.name === envName)
-      if (ref?.path && window.tiger) {
-        window.tiger.writeFile(ref.path, serializeEnvironment(next))
-      } else if (col && ref) {
-        setCollectionEnvironments(
-          colId,
-          col.environments.map((e) => (e.name === envName ? { ...e, data: next } : e))
-        )
-      }
-      toast(t('app.toast.captured', { names: captured.map((c) => c.name).join(', ') }))
+      captureQueue.current = captureQueue.current.then(write).catch(() => undefined)
     },
-    [collections, setCollectionEnvironments, toast]
+    [setCollectionEnvironments, toast]
   )
 
   /** Variables the script changed vs the env it started from, for persistence. */
@@ -945,6 +962,9 @@ export default function App() {
     if (sendingIds.has(id)) return
     setSendingIds((prev) => new Set(prev).add(id))
     setResponses((prev) => ({ ...prev, [id]: { loading: true } }))
+    // Captures and script variables go to the environment this send uses,
+    // even if another collection is active by the time the response arrives.
+    const envKey = activeEnvRef.current.key
     try {
       // Pre-request script: may set variables used for interpolation this send.
       let envForSend = activeEnv
@@ -974,7 +994,7 @@ export default function App() {
               enabled: true
             }))
           }
-          applyCaptures(delta)
+          applyCaptures(delta, envKey)
         }
       }
 
@@ -994,7 +1014,8 @@ export default function App() {
               status: data.status,
               headers: data.headers,
               body: data.raw
-            })
+            }),
+            envKey
           )
         }
         if (active.postScript?.trim()) {
@@ -1010,7 +1031,7 @@ export default function App() {
           })
           if (post.error) toast(t('app.toast.postScriptError', { message: post.error }), { error: true })
           const delta = scriptVarDelta(envToVars(envForSend), post.vars)
-          if (delta.length) applyCaptures(delta)
+          if (delta.length) applyCaptures(delta, envKey)
           tests = post.tests.length ? post.tests : undefined
           logs = post.logs.length ? post.logs : undefined
           if (post.tests.length) {
@@ -3175,7 +3196,7 @@ export default function App() {
               loadItems={loadRunnerItems}
               environment={runnerEnv.env}
               onVariablesChanged={(changed) =>
-                applyCaptures(changed, { key: runnerEnv.key, env: runnerEnv.env })
+                applyCaptures(changed, runnerEnv.key || null)
               }
               timeoutMs={settings.timeoutMs}
               onClose={() => {

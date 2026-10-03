@@ -10,7 +10,7 @@
  *   }
  */
 
-import { parseKeyValues, tokenizeBlocks } from './tigerFormat'
+import { keyValueLine, parseKeyValues, tokenizeBlocks } from './tigerFormat'
 import type { TigerEnvironment } from './types'
 
 export function parseEnvironment(text: string): TigerEnvironment {
@@ -36,8 +36,7 @@ export function parseEnvironment(text: string): TigerEnvironment {
 }
 
 export function serializeEnvironment(env: TigerEnvironment): string {
-  const line = (v: { enabled: boolean; name: string; value: string }) =>
-    `  ${v.enabled === false ? '~' : ''}${v.name}: ${v.value}`
+  const line = (v: { enabled: boolean; name: string; value: string }) => `  ${keyValueLine(v)}`
   const plain = env.variables.filter((v) => !v.secret)
   const secret = env.variables.filter((v) => v.secret)
   const parts = [`meta {\n  name: ${env.name}\n}`]

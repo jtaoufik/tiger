@@ -10,6 +10,7 @@ import {
 import type { BuiltRequest } from '@core/request'
 import type { MessageKey } from '@core/i18n'
 import { formatJsonText, isValidJson, minifyJsonText } from '@core/jsonHighlight'
+import { keyValueLine, splitKeyValue } from '@core/tigerFormat'
 import { KeyValueEditor } from './KeyValueEditor'
 import { REQUEST_SECTIONS, sectionDescription, sectionLabel, type RequestSectionId } from '@core/actions'
 import { useT } from '../i18n'
@@ -501,20 +502,17 @@ function formToKv(content: string): KeyValue[] {
     .filter((l) => l.trim())
     .map((line) => {
       const disabled = line.trimStart().startsWith('~')
-      const l = disabled ? line.trim().slice(1) : line
-      const idx = l.indexOf(':')
-      return {
-        name: idx === -1 ? l.trim() : l.slice(0, idx).trim(),
-        value: idx === -1 ? '' : l.slice(idx + 1).trim(),
-        enabled: !disabled
-      }
+      const l = (disabled ? line.trim().slice(1) : line).trim()
+      const kv = splitKeyValue(l)
+      return { name: kv ? kv.name : l, value: kv ? kv.value : '', enabled: !disabled }
     })
 }
 
 function kvToForm(items: KeyValue[]): string {
-  // Value-only rows serialize as ": value" so nothing typed is ever dropped.
+  // Value-only rows serialize as ": value" so nothing typed is ever dropped;
+  // a value with line breaks is quoted, so it stays one field.
   return items
     .filter((kv) => kv.name || kv.value)
-    .map((kv) => `${kv.enabled === false ? '~' : ''}${kv.name}: ${kv.value}`)
+    .map((kv) => keyValueLine(kv))
     .join('\n')
 }
