@@ -210,9 +210,24 @@ export async function useEnvironment(page: Page, name: string): Promise<void> {
   await expect(select.locator('option:checked')).toHaveText(name)
 }
 
+/**
+ * Unfold every folded folder of the sidebar tree, as a keyboard user would
+ * (ArrowRight on a folded folder). Opened collections start folded except the
+ * folders leading to the open request.
+ */
+export async function unfoldAll(page: Page): Promise<void> {
+  const folded = collectionTree(page).locator('[role="treeitem"][aria-expanded="false"]')
+  for (let guard = 0; guard < 50 && (await folded.count()) > 0; guard++) {
+    await folded.first().focus()
+    await page.keyboard.press('ArrowRight')
+  }
+}
+
 /** Open a request of the temp collection from the sidebar tree. */
 export async function openRequest(page: Page, method: string, name: string): Promise<void> {
-  await collectionTree(page).getByRole('treeitem', { name: `${method} ${name}`, exact: true }).click()
+  const row = collectionTree(page).getByRole('treeitem', { name: `${method} ${name}`, exact: true })
+  if ((await row.count()) === 0) await unfoldAll(page)
+  await row.click()
   await expect(page.getByRole('tab', { name: `${method} ${name}`, selected: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Request name' })).toHaveValue(name)
 }
