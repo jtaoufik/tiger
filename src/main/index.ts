@@ -151,6 +151,7 @@ function createWindow(): BrowserWindow {
   // an off-screen position (e.g. an external monitor that's no longer attached).
   const saved = settings.window
   const placeable = saved && isOnScreen(saved)
+  const workArea = screen.getPrimaryDisplay().workAreaSize
 
   // macOS picks up the app icon from the bundle (.icns); on Windows and Linux
   // the running window's taskbar icon comes from BrowserWindow.icon, so point
@@ -160,12 +161,14 @@ function createWindow(): BrowserWindow {
     process.platform !== 'darwin' ? join(__dirname, '../../build/icon.png') : undefined
 
   const win = new BrowserWindow({
-    width: saved?.width ?? 1180,
-    height: saved?.height ?? 760,
+    width: saved?.width ?? Math.min(1180, workArea.width),
+    height: saved?.height ?? Math.min(760, workArea.height),
     x: placeable ? saved!.x : undefined,
     y: placeable ? saved!.y : undefined,
-    minWidth: 880,
-    minHeight: 560,
+    // Never larger than the screen: 1366x768 at 150% scaling leaves about
+    // 910x480, and a taller minimum pushed the bottom of Tiger off-screen.
+    minWidth: Math.min(880, workArea.width),
+    minHeight: Math.min(560, workArea.height),
     show: false,
     icon: winIcon,
     backgroundColor: dark ? '#0f1117' : '#eef1f7',
@@ -187,13 +190,13 @@ function createWindow(): BrowserWindow {
     ...headlessWindowOptions(headless)
   })
 
-  // maximize() would show a hidden window on Windows.
-  if (saved?.maximized && mayShowWindow(headless)) win.maximize()
-
   win.once('ready-to-show', () => {
     perfMark('main:ready-to-show')
     // Automated runs (e2e, startup benchmarks) never show the window: nothing
     // flashes on screen or steals focus on the machine running them.
+    // maximize() shows a hidden window on Windows, so it waits for the first
+    // paint too: called earlier, the window appeared empty, before its content.
+    if (saved?.maximized && mayShowWindow(headless)) win.maximize()
     if (mayShowWindow(headless)) win.show()
   })
   perfMark('main:window-created')
