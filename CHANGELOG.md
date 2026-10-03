@@ -3,6 +3,15 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## Unreleased
+
+- Imported requests send with their own variables. Each collection now uses its own environment: opening a request switches to that collection's environment (the one you last picked there), so a second import no longer leaves the first collection's {{variables}} unresolved or pointed at the other collection's host. The collection runner, Copy as curl and export use the right collection's environment too.
+- Imports bring what their requests need. OpenAPI and Swagger servers become environments with {{baseUrl}}, server variables such as {env} and the auth placeholders. A WSDL without an address asks for the host. Postman globals are added to every environment, as in Postman. An environment imported after its collection gets the collection's variables. Bruno's {{process.env.NAME}} values are read from the collection's .env file. Variable names with spaces resolve.
+- Tiger never selects an environment named like production (prod, production, live) by itself; the import report says so.
+- Imported and opened collections start with their folders folded, except the one holding the request that opens, which scrolls into view. The folder page and Run folder include subfolders.
+- No more dark text on orange: buttons, selected tabs, chips and the active search match are white on a deep orange in light and dark (the Send button was near-black on orange), danger buttons are white on red, checkboxes draw white checkmarks and the dark switch knob is easier to see.
+- After an import, Tiger shows the imported request on its first section, not a page that was open or the Load test section, with its own history.
+
 ## 0.8.0
 
 - Tiger speaks six languages: English, Simplified Chinese (中文), Hindi (हिन्दी), Spanish (Español), French (Français) and Arabic (العربية). It starts in your system language (Mexican Spanish opens in Spanish, Canadian French in French, Simplified Chinese in Chinese) and falls back to English otherwise.
