@@ -91,6 +91,12 @@ describe('text on the orange accent', () => {
     }
   })
 
+  it('gives the section tabs a background, so dark mode shows no grey browser button face', () => {
+    // Without one, Chromium paints ButtonFace (#6b6b6b in dark) behind the
+    // dim tab text: about 2.9:1.
+    expect(styles).toMatch(/\n\.tab \{[^}]*background:\s*transparent/)
+  })
+
   it('draws the switch knob on the deep orange, at least 3:1 for a control', () => {
     expect(styles).toMatch(/\.switch\.on\s*\{\s*background:\s*var\(--accent-solid\)/)
     for (const css of Object.values(themes)) {

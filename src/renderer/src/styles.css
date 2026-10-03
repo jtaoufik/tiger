@@ -512,6 +512,8 @@ button {
   font-size: 0.7812rem;
   font-weight: 550;
   color: var(--text-dim);
+  /* Over the panel: without it, dark mode showed the grey browser button face. */
+  background: transparent;
   border: 1px solid transparent;
   border-bottom: none;
 }
