@@ -15,6 +15,11 @@ interface Props {
   /** Loads every request in scope, auth inheritance already applied. */
   loadItems: () => Promise<RunnerItem[]>
   environment: TigerEnvironment | null
+  /**
+   * Variables the run's scripts and captures changed, saved to the
+   * environment when the run ends (Postman keeps them too).
+   */
+  onVariablesChanged?: (changed: Array<{ name: string; value: string }>) => void
   timeoutMs: number
   onClose: () => void
 }
@@ -24,7 +29,14 @@ type Phase = 'loading' | 'ready' | 'running' | 'done'
 /** Cancel key shared by all runner sends so Stop also aborts the in-flight one. */
 const RUNNER_KEY = 'collection-runner'
 
-export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose }: Props) {
+export function RunnerModal({
+  title,
+  loadItems,
+  environment,
+  onVariablesChanged,
+  timeoutMs,
+  onClose
+}: Props) {
   const t = useT()
   const [phase, setPhase] = useState<Phase>('loading')
   const [items, setItems] = useState<RunnerItem[]>([])
@@ -55,8 +67,9 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
     setSummary(null)
     setPhase('running')
 
+    const initial = envToVars(environment)
     const outcome = await runCollection(items, {
-      vars: envToVars(environment),
+      vars: initial,
       execute: async (request, vars) => {
         const env: TigerEnvironment = {
           name: 'runner',
@@ -72,9 +85,14 @@ export function RunnerModal({ title, loadItems, environment, timeoutMs, onClose 
       shouldStop: () => stopRef.current
     })
 
+    const changed = Object.entries(outcome.vars)
+      .filter(([name, value]) => initial[name] !== value)
+      .map(([name, value]) => ({ name, value }))
+    if (changed.length) onVariablesChanged?.(changed)
+
     setSummary({ passed: outcome.passed, failed: outcome.failed, stopped: outcome.stopped })
     setPhase('done')
-  }, [items, environment, timeoutMs])
+  }, [items, environment, timeoutMs, onVariablesChanged])
 
   const stop = useCallback(() => {
     stopRef.current = true

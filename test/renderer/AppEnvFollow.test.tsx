@@ -156,6 +156,36 @@ describe('actions on a request or collection that is not the active one', () => 
     expect(lastSentUrl(b)).toBe('https://beta.test/get-beta')
   })
 
+  it('saves what a run’s scripts set into the environment of the collection that ran', async () => {
+    const { runScript } = await import('../../src/core/script')
+    const beta = collection('Beta', 'Get beta', 'https://beta.test')
+    beta.requests[0].request.url = '{{host}}/get-beta?token={{token}}'
+    beta.requests[0].request.postScript = "pm.environment.set('token', 'from-run')"
+    const b = Object.assign(bridge([collection('Alpha', 'Get alpha', 'https://alpha.test'), beta]), {
+      runScript: vi.fn(async (job: { source: string }) => runScript(job.source, job as never))
+    })
+    ;(window as { tiger?: unknown }).tiger = b
+    render(<App />)
+    await importVia('Postman')
+    await importVia('Postman')
+    fireEvent.click(within(sidebar()).getByText('Get alpha'))
+    await waitFor(() => expect(pickedEnv()).toBe('Alpha env'))
+
+    fireEvent.contextMenu(within(sidebar()).getByText('Beta').closest('.col-head')!)
+    fireEvent.click(screen.getByText(/^Run collection/))
+    fireEvent.click(await screen.findByRole('button', { name: 'Run 1 request' }))
+    await screen.findByText('1 passed · 0 failed')
+    fireEvent.click(within(document.querySelector('.modal-foot') as HTMLElement).getByRole('button', { name: 'Close' }))
+    // Alpha's environment, the active one during the run, did not get it.
+    expect(pickedEnv()).toBe('Alpha env')
+
+    fireEvent.click(within(sidebar()).getByText('Get beta'))
+    await waitFor(() => expect(pickedEnv()).toBe('Beta env'))
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(b.send).toHaveBeenCalledTimes(2))
+    expect(lastSentUrl(b)).toBe('https://beta.test/get-beta?token=from-run')
+  })
+
   it('exports the collection whose menu was used, with that collection’s variables', async () => {
     const b = await twoCollectionsAlphaActive()
     const exportCollection = b.exportCollection

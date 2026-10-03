@@ -881,9 +881,12 @@ export default function App() {
    * state and file stay consistent.
    */
   const applyCaptures = useCallback(
-    (captured: Array<{ name: string; value: string }>) => {
+    (captured: Array<{ name: string; value: string }>, target?: { key: string; env: TigerEnvironment | null }) => {
       if (!captured.length) return
-      const { key, env } = activeEnvRef.current
+      // Captures and scripts write to the active environment, except for a
+      // run of another collection, which writes to that collection's own.
+      const active = activeEnvRef.current
+      const { key, env } = target && target.key !== active.key ? target : active
       if (!env || !key) {
         toast(t('app.toast.capturedNeedsEnv'))
         return
@@ -900,8 +903,10 @@ export default function App() {
       // Compute the persisted value off the latest snapshot, then commit the
       // same merge to state functionally so nothing in between is lost.
       const next = merge(env)
-      activeEnvRef.current = { key, env: next }
-      setActiveEnv((cur) => (cur ? merge(cur) : next))
+      if (key === active.key) {
+        activeEnvRef.current = { key, env: next }
+        setActiveEnv((cur) => (cur ? merge(cur) : next))
+      }
       const sep = key.indexOf(SEP)
       const colId = key.slice(0, sep)
       const envName = key.slice(sep + SEP.length)
@@ -2022,12 +2027,17 @@ export default function App() {
    * active one. It opens once that environment is known, so Run never starts
    * with another collection's.
    */
-  const [runnerEnv, setRunnerEnv] = useState<{ colId: string; env: TigerEnvironment | null } | null>(null)
+  const [runnerEnv, setRunnerEnv] = useState<{
+    colId: string
+    key: string
+    env: TigerEnvironment | null
+  } | null>(null)
   useEffect(() => {
     if (!runnerScope) return
     let live = true
+    const key = envKeyFor(runnerScope.colId)
     void environmentFor(runnerScope.colId).then((env) => {
-      if (live) setRunnerEnv({ colId: runnerScope.colId, env })
+      if (live) setRunnerEnv({ colId: runnerScope.colId, key, env })
     })
     return () => {
       live = false
@@ -2973,6 +2983,9 @@ export default function App() {
               title={title}
               loadItems={loadRunnerItems}
               environment={runnerEnv.env}
+              onVariablesChanged={(changed) =>
+                applyCaptures(changed, { key: runnerEnv.key, env: runnerEnv.env })
+              }
               timeoutMs={settings.timeoutMs}
               onClose={() => {
                 setRunnerScope(null)

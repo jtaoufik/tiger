@@ -65,3 +65,47 @@ describe('RunnerModal', () => {
     expect(screen.getByRole('columnheader', { name: 'الحالة' })).toBeInTheDocument()
   })
 })
+
+describe('RunnerModal variables', () => {
+  afterEach(() => {
+    delete (window as unknown as { tiger?: unknown }).tiger
+  })
+
+  it('hands back the variables the run set, so they are saved to the environment', async () => {
+    const { runScript } = await import('../../src/core/script')
+    ;(window as unknown as { tiger: unknown }).tiger = {
+      runScript: async (job: { source: string; vars: Record<string, string>; response?: unknown }) =>
+        runScript(job.source, job as never),
+      send: async () => ({ status: 200, statusText: 'OK', headers: {}, body: '{"token":"t-9"}', timeMs: 2 }),
+      cancelSend: async () => true
+    }
+    const login: RunnerItem = {
+      id: 'login',
+      name: 'Login',
+      request: {
+        name: 'Login',
+        method: 'post',
+        url: 'https://x.test/login',
+        headers: [],
+        query: [],
+        body: { type: 'none', content: '' },
+        postScript: "pm.environment.set('token', pm.response.json().token)"
+      }
+    }
+    const changed: Array<{ name: string; value: string }>[] = []
+    render(
+      <RunnerModal
+        title="Auth"
+        loadItems={async () => [login]}
+        environment={{ name: 'dev', variables: [{ name: 'token', value: 'old', enabled: true }] }}
+        onVariablesChanged={(c) => changed.push(c)}
+        timeoutMs={1000}
+        onClose={() => {}}
+      />
+    )
+    const run = await screen.findByRole('button', { name: 'Run 1 request' })
+    await act(async () => run.click())
+    await screen.findByText('1 passed · 0 failed')
+    expect(changed).toEqual([[{ name: 'token', value: 't-9' }]])
+  })
+})
