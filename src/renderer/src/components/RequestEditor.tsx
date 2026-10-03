@@ -30,6 +30,8 @@ interface Props {
   dirty: boolean
   missingVars: string[]
   onChange: (request: TigerRequest) => void
+  /** A curl command was pasted into the URL bar; parse and fill in the request. */
+  onImportCurl: (command: string) => void
   onSend: () => void
   onCancel: () => void
   onSave: () => void
@@ -63,6 +65,7 @@ export function RequestEditor({
   dirty,
   missingVars,
   onChange,
+  onImportCurl,
   onSend,
   onCancel,
   onSave,
@@ -207,6 +210,13 @@ export function RequestEditor({
           aria-describedby={missingVars.length > 0 ? `${uid}-missing` : undefined}
           title={request.url.length > 60 ? request.url : undefined}
           onChange={(e) => set({ url: e.target.value })}
+          onPaste={(e) => {
+            const text = e.clipboardData.getData('text')
+            if (/^\s*curl(\s|$)/i.test(text)) {
+              e.preventDefault()
+              onImportCurl(text)
+            }
+          }}
           onKeyDown={(e) => {
             // Plain Enter only: Cmd/Ctrl+Enter is handled by the global
             // shortcut, and matching it here too would double-send.
