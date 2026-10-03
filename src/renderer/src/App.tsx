@@ -203,6 +203,11 @@ function resolveDark(theme: Settings['theme']): boolean {
  * request name, body only for methods that send one. Used for the unresolved
  * variable warning so disabled rows don't false-positive.
  */
+/** Whether a request sits in `path` or any of its subfolders. */
+function inFolder(entry: SidebarEntry, path: string[]): boolean {
+  return path.every((segment, i) => entry.folderPath[i] === segment)
+}
+
 function sentSurface(req: TigerRequest): string {
   const parts = [req.url]
   for (const h of req.headers) if (h.enabled !== false) parts.push(h.name, h.value)
@@ -1059,10 +1064,8 @@ export default function App() {
     if (!runnerScope) return []
     const col = collectionsRef.current.find((c) => c.id === runnerScope.colId)
     if (!col) return []
-    const scopeKey = runnerScope.path?.join('/')
-    const entries = col.entries.filter(
-      (e) => scopeKey === undefined || e.folderPath.join('/') === scopeKey
-    )
+    // A folder runs with its subfolders: imports often nest every request.
+    const entries = col.entries.filter((e) => !runnerScope.path || inFolder(e, runnerScope.path))
     const items: RunnerItem[] = []
     for (const e of entries) {
       const request = await loadRequest(e.id)
@@ -2762,13 +2765,12 @@ export default function App() {
                 const col = collections.find((c) => c.id === inspect.colId)
                 if (!col) return null
                 if (inspect.type === 'folder') {
-                  const key = inspect.path.join('/')
                   return (
                     <FolderView
                       collectionName={col.name}
                       root={col.root}
                       path={inspect.path}
-                      entries={col.entries.filter((e) => e.folderPath.join('/') === key)}
+                      entries={col.entries.filter((e) => inFolder(e, inspect.path))}
                       auth={folderAuth(col.id, inspect.path)}
                       docs={folderDocs(col.id, inspect.path)}
                       onSelect={selectRequest}

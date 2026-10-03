@@ -177,6 +177,9 @@ export function FolderView({
               <li key={e.id}>
                 <button type="button" className="cv-req-row" onClick={() => onSelect(e.id)} title={e.name}>
                   <span className={`method-pill m-${e.method}`}>{e.method.toUpperCase()}</span>
+                  {e.folderPath.length > path.length && (
+                    <span className="cv-dim">{e.folderPath.slice(path.length).join(' / ')} /</span>
+                  )}
                   <span className="row-label">{e.name}</span>
                 </button>
               </li>
