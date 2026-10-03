@@ -49,7 +49,9 @@
 .envs-modal .env-activate {
   width: 26px;
   height: 26px;
-  opacity: 0.55;
+  /* An icon-only control: full strength (it was 2.4:1, its focus ring faded). */
+  opacity: 1;
+  color: var(--text-dim);
 }
 .envs-modal .env-activate.on {
   opacity: 1;

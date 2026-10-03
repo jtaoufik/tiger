@@ -8,6 +8,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  /* Its own width: a fixed box centred with left: 50% is otherwise capped at
+     half the window, which cut the message and wrapped the buttons. */
+  width: max-content;
   max-width: calc(100vw - 32px);
   padding-block: 10px;
   padding-inline: 16px 12px;
@@ -48,7 +51,8 @@
 /* Downloading: a slim, quiet pill in the bottom-right corner. */
 .update-ready.update-progress {
   left: auto;
-  right: 18px;
+  right: auto;
+  inset-inline-end: 18px;
   transform: none;
   gap: 8px;
   padding-block: 6px;
@@ -88,4 +92,9 @@
   height: 6px;
   margin-top: 4px;
   accent-color: var(--accent-solid);
+}
+
+/* Toasts go above the banner instead of under it. */
+.update-ready ~ .toasts {
+  bottom: 96px;
 }

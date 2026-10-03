@@ -291,3 +291,28 @@
   font-size: 0.75rem;
   font-weight: 600;
 }
+
+/* A narrow response panel (minimum window size, longer French or Spanish
+   labels): the head and the tab row stay on one line each, so the body keeps
+   its height instead of shrinking to a line or two. Copy and Save keep their
+   accessible names and tooltips; only their visible words go. */
+.panel.response {
+  container-type: inline-size;
+}
+@container (max-width: 720px) {
+  .response-head .resp-action > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .response-subhead {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .panel.response .resp-tabs button {
+    padding-inline: 8px;
+  }
+}

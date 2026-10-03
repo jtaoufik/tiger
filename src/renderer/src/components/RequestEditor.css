@@ -93,6 +93,10 @@
   outline: 2px solid var(--tg-focus);
   outline-offset: 2px;
 }
+/* Inside the tab strip, so the strip never cuts the ring. */
+.panel.editor .tabs .tab:focus-visible {
+  outline-offset: -2px;
+}
 .panel.editor .tab-body:focus-visible {
   outline: 2px solid var(--tg-focus);
   outline-offset: -2px;

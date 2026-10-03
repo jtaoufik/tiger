@@ -3,4 +3,9 @@
    and searchable. */
 .resp-chunk {
   content-visibility: auto;
+  /* content-visibility clips each block to its own box: as wide as its
+     longest line instead, so long lines scroll sideways rather than being
+     cut off (only Wrap used to show them). */
+  width: max-content;
+  min-width: 100%;
 }

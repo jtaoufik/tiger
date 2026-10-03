@@ -35,11 +35,23 @@ function initialLocale(): string | undefined {
 
 export type OpenedCollection = OpenedCollectionPayload
 
+/**
+ * ipcRenderer.invoke, minus the wrapper Electron puts around errors from main
+ * ("Error invoking remote method 'tiger:send': Error: ..."), which the
+ * response panel, the runner and toasts used to show as is.
+ */
+function invoke<T = never>(channel: string, ...args: unknown[]): Promise<T> {
+  return ipcRenderer.invoke(channel, ...args).catch((e: unknown) => {
+    const message = e instanceof Error ? e.message : String(e)
+    throw new Error(message.replace(/^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/, ''))
+  })
+}
+
 const api = {
   /** Language to render the first frame in; validated by the renderer. */
   initialLocale: initialLocale(),
   /** The app's current language, resolved by main (settings or system). */
-  locale: (): Promise<Locale> => ipcRenderer.invoke('tiger:locale'),
+  locale: (): Promise<Locale> => invoke('tiger:locale'),
   /** Language changes (Settings > Language); returns an unsubscribe function. */
   onLocale: (cb: (locale: Locale) => void): (() => void) => {
     const listener = (_e: unknown, locale: Locale): void => cb(locale)
@@ -48,71 +60,71 @@ const api = {
       ipcRenderer.removeListener('tiger:locale', listener)
     }
   },
-  openCollection: (): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openCollection'),
+  openCollection: (): Promise<OpenedCollection | null> => invoke('tiger:openCollection'),
   newCollection: (name: string): Promise<OpenedCollection | null> =>
-    ipcRenderer.invoke('tiger:newCollection', name),
-  openPath: (root: string): Promise<OpenedCollection | null> => ipcRenderer.invoke('tiger:openPath', root),
+    invoke('tiger:newCollection', name),
+  openPath: (root: string): Promise<OpenedCollection | null> => invoke('tiger:openPath', root),
   /** Save a collection that lives in memory (an import) as a folder in Documents/Tiger. */
   saveCollection: (name: string, files: CollectionFile[]): Promise<OpenedCollection> =>
-    ipcRenderer.invoke('tiger:saveCollection', name, files),
-  reload: (root: string): Promise<RequestEntry[]> => ipcRenderer.invoke('tiger:reload', root),
-  readFile: (path: string): Promise<string> => ipcRenderer.invoke('tiger:readFile', path),
+    invoke('tiger:saveCollection', name, files),
+  reload: (root: string): Promise<RequestEntry[]> => invoke('tiger:reload', root),
+  readFile: (path: string): Promise<string> => invoke('tiger:readFile', path),
   writeFile: (path: string, content: string): Promise<boolean> =>
-    ipcRenderer.invoke('tiger:writeFile', path, content),
-  deleteFile: (path: string): Promise<boolean> => ipcRenderer.invoke('tiger:deleteFile', path),
+    invoke('tiger:writeFile', path, content),
+  deleteFile: (path: string): Promise<boolean> => invoke('tiger:deleteFile', path),
   moveFile: (from: string, to: string): Promise<boolean> =>
-    ipcRenderer.invoke('tiger:moveFile', from, to),
+    invoke('tiger:moveFile', from, to),
   listEnvironments: (root: string): Promise<EnvironmentRef[]> =>
-    ipcRenderer.invoke('tiger:listEnvironments', root),
+    invoke('tiger:listEnvironments', root),
   /** `record: false` keeps the send out of the history (load tests). */
   send: (
     built: BuiltRequest,
     timeoutMs: number,
     cancelKey?: string,
     options?: { record?: boolean }
-  ): Promise<RawResponse> => ipcRenderer.invoke('tiger:send', built, timeoutMs, cancelKey, options),
+  ): Promise<RawResponse> => invoke('tiger:send', built, timeoutMs, cancelKey, options),
   /** Run a collection script in the isolated script host (never in this window). */
-  runScript: (job: ScriptJob): Promise<ScriptRunResult> => ipcRenderer.invoke('tiger:script:run', job),
-  cancelSend: (key: string): Promise<boolean> => ipcRenderer.invoke('tiger:cancelSend', key),
+  runScript: (job: ScriptJob): Promise<ScriptRunResult> => invoke('tiger:script:run', job),
+  cancelSend: (key: string): Promise<boolean> => invoke('tiger:cancelSend', key),
   oauthToken: (auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap): Promise<string> =>
-    ipcRenderer.invoke('tiger:oauthToken', auth, vars),
+    invoke('tiger:oauthToken', auth, vars),
   /** Forget a cached OAuth2 token so the next send asks for a fresh one. */
   oauthForget: (auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap): Promise<void> =>
-    ipcRenderer.invoke('tiger:oauthForget', auth, vars),
+    invoke('tiger:oauthForget', auth, vars),
   importCollection: (kind: ImportKind): Promise<ImportResult | null> =>
-    ipcRenderer.invoke('tiger:import', kind),
+    invoke('tiger:import', kind),
   /** Import dropped files or folders; the format is detected per file. */
   importPaths: (paths: string[]): Promise<ImportResult | null> =>
-    ipcRenderer.invoke('tiger:importPaths', paths),
+    invoke('tiger:importPaths', paths),
   /** The disk path of a dropped File (File.path was removed in Electron 32). */
   pathForFile: (file: File): string => webUtils.getPathForFile(file),
   exportCollection: (defaultName: string, content: string): Promise<string | null> =>
-    ipcRenderer.invoke('tiger:export', defaultName, content),
-  historyRead: (): Promise<HistoryEntry[]> => ipcRenderer.invoke('tiger:history:read'),
-  historyClear: (): Promise<void> => ipcRenderer.invoke('tiger:history:clear'),
-  getSettings: (): Promise<Settings> => ipcRenderer.invoke('tiger:getSettings'),
+    invoke('tiger:export', defaultName, content),
+  historyRead: (): Promise<HistoryEntry[]> => invoke('tiger:history:read'),
+  historyClear: (): Promise<void> => invoke('tiger:history:clear'),
+  getSettings: (): Promise<Settings> => invoke('tiger:getSettings'),
   setSettings: (patch: Partial<Settings>): Promise<Settings> =>
-    ipcRenderer.invoke('tiger:setSettings', patch),
-  track: (event: AnalyticsEvent): Promise<void> => ipcRenderer.invoke('tiger:track', event),
-  version: (): Promise<string> => ipcRenderer.invoke('tiger:version'),
+    invoke('tiger:setSettings', patch),
+  track: (event: AnalyticsEvent): Promise<void> => invoke('tiger:track', event),
+  version: (): Promise<string> => invoke('tiger:version'),
   git: {
-    check: (): Promise<GitAvailability> => ipcRenderer.invoke('tiger:git:check'),
-    status: (root: string): Promise<GitStatus> => ipcRenderer.invoke('tiger:git:status', root),
-    diff: (root: string): Promise<string> => ipcRenderer.invoke('tiger:git:diff', root),
+    check: (): Promise<GitAvailability> => invoke('tiger:git:check'),
+    status: (root: string): Promise<GitStatus> => invoke('tiger:git:status', root),
+    diff: (root: string): Promise<string> => invoke('tiger:git:diff', root),
     commit: (root: string, message: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:commit', root, message),
-    pull: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:pull', root),
-    push: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:push', root),
-    init: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:init', root),
+      invoke('tiger:git:commit', root, message),
+    pull: (root: string): Promise<GitActionResult> => invoke('tiger:git:pull', root),
+    push: (root: string): Promise<GitActionResult> => invoke('tiger:git:push', root),
+    init: (root: string): Promise<GitActionResult> => invoke('tiger:git:init', root),
     sync: (root: string, message: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:sync', root, message),
+      invoke('tiger:git:sync', root, message),
     syncResolve: (
       root: string,
       prefer: 'mine' | 'theirs',
       message: string,
       choices?: Record<string, 'mine' | 'theirs'>
     ): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:syncResolve', root, prefer, message, choices),
+      invoke('tiger:git:syncResolve', root, prefer, message, choices),
     /** Sync phases as they happen; returns an unsubscribe function. */
     onProgress: (cb: (event: { root: string; phase: SyncPhase }) => void): (() => void) => {
       const listener = (_e: unknown, event: { root: string; phase: SyncPhase }): void => cb(event)
@@ -121,34 +133,34 @@ const api = {
         ipcRenderer.removeListener('tiger:git:progress', listener)
       }
     },
-    fetch: (root: string): Promise<GitActionResult> => ipcRenderer.invoke('tiger:git:fetch', root),
+    fetch: (root: string): Promise<GitActionResult> => invoke('tiger:git:fetch', root),
     diffFile: (root: string, path: string): Promise<string> =>
-      ipcRenderer.invoke('tiger:git:diffFile', root, path),
+      invoke('tiger:git:diffFile', root, path),
     requestNames: (root: string, paths: string[]): Promise<Record<string, string>> =>
-      ipcRenderer.invoke('tiger:git:requestNames', root, paths),
-    conflicts: (root: string): Promise<GitConflict[]> => ipcRenderer.invoke('tiger:git:conflicts', root),
+      invoke('tiger:git:requestNames', root, paths),
+    conflicts: (root: string): Promise<GitConflict[]> => invoke('tiger:git:conflicts', root),
     setIdentity: (root: string, name: string, email: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:setIdentity', root, name, email),
+      invoke('tiger:git:setIdentity', root, name, email),
     undoDiscard: (root: string, token: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:undoDiscard', root, token),
+      invoke('tiger:git:undoDiscard', root, token),
     setRemote: (root: string, url: string): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:setRemote', root, url),
-    branches: (root: string): Promise<GitBranches> => ipcRenderer.invoke('tiger:git:branches', root),
+      invoke('tiger:git:setRemote', root, url),
+    branches: (root: string): Promise<GitBranches> => invoke('tiger:git:branches', root),
     checkout: (root: string, branch: string, create: boolean): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:checkout', root, branch, create),
-    log: (root: string): Promise<GitCommit[]> => ipcRenderer.invoke('tiger:git:log', root),
+      invoke('tiger:git:checkout', root, branch, create),
+    log: (root: string): Promise<GitCommit[]> => invoke('tiger:git:log', root),
     discard: (root: string, paths?: string[]): Promise<GitActionResult> =>
-      ipcRenderer.invoke('tiger:git:discard', root, paths),
+      invoke('tiger:git:discard', root, paths),
     clone: (url: string): Promise<OpenedCollection | { error: string; code?: GitErrorCode } | null> =>
-      ipcRenderer.invoke('tiger:git:clone', url)
+      invoke('tiger:git:clone', url)
   },
-  checkUpdate: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('tiger:checkUpdate'),
-  installUpdate: (): Promise<void> => ipcRenderer.invoke('tiger:installUpdate'),
+  checkUpdate: (): Promise<UpdateInfo | null> => invoke('tiger:checkUpdate'),
+  installUpdate: (): Promise<void> => invoke('tiger:installUpdate'),
   /** 'auto' when electron-updater installs updates in place for this install. */
-  updateMode: (): Promise<UpdateModeInfo> => ipcRenderer.invoke('tiger:update:mode'),
-  updateState: (): Promise<UpdateState> => ipcRenderer.invoke('tiger:update:getState'),
-  checkForUpdatesNow: (): Promise<UpdateState> => ipcRenderer.invoke('tiger:update:check'),
-  downloadUpdate: (): Promise<void> => ipcRenderer.invoke('tiger:update:download'),
+  updateMode: (): Promise<UpdateModeInfo> => invoke('tiger:update:mode'),
+  updateState: (): Promise<UpdateState> => invoke('tiger:update:getState'),
+  checkForUpdatesNow: (): Promise<UpdateState> => invoke('tiger:update:check'),
+  downloadUpdate: (): Promise<void> => invoke('tiger:update:download'),
   onUpdateState: (cb: (state: UpdateState) => void): (() => void) => {
     const listener = (_e: unknown, next: UpdateState) => cb(next)
     ipcRenderer.on('tiger:update:state', listener)
@@ -169,12 +181,12 @@ const api = {
   setDirty: (dirty: boolean): void => {
     ipcRenderer.send('tiger:dirtyState', dirty)
   },
-  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('tiger:openExternal', url),
-  reveal: (path: string): Promise<void> => ipcRenderer.invoke('tiger:reveal', path),
+  openExternal: (url: string): Promise<void> => invoke('tiger:openExternal', url),
+  reveal: (path: string): Promise<void> => invoke('tiger:reveal', path),
   pickFile: (filters: { name: string; extensions: string[] }[]): Promise<string | null> =>
-    ipcRenderer.invoke('tiger:pickFile', filters),
-  clearCookies: (): Promise<void> => ipcRenderer.invoke('tiger:cookies:clear'),
-  mcpInfo: (): Promise<{ serverPath: string }> => ipcRenderer.invoke('tiger:mcpInfo')
+    invoke('tiger:pickFile', filters),
+  clearCookies: (): Promise<void> => invoke('tiger:cookies:clear'),
+  mcpInfo: (): Promise<{ serverPath: string }> => invoke('tiger:mcpInfo')
 }
 
 contextBridge.exposeInMainWorld('tiger', api)

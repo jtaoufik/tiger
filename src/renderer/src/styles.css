@@ -273,6 +273,15 @@ button {
   opacity: 0.55;
   transform: none;
 }
+/* Faded orange made the label unreadable (1.6:1): a plain disabled button
+   instead, still clearly unavailable. */
+.btn.accent:disabled {
+  opacity: 1;
+  background: var(--glass-strong);
+  color: var(--text-dim);
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
 
 /* ---------- Sidebar ---------- */
 .sidebar {
@@ -394,8 +403,10 @@ button {
 }
 .tree-row:hover .row-actions,
 .col-head:hover .row-actions,
+.folder-row:hover .row-actions,
 .tree-row:focus-within .row-actions,
-.col-head:focus-within .row-actions {
+.col-head:focus-within .row-actions,
+.folder-row:focus-within .row-actions {
   display: inline-flex;
 }
 /* Keyboard focus: the treeitem wraps its row and its child group, so the
@@ -759,7 +770,10 @@ button {
 .env-combo {
   display: inline-flex;
   align-items: stretch;
-  height: 30px;
+  /* As tall as the buttons beside it, on whole pixels (a 30 px box between
+     31 px buttons sat on a half pixel and blurred its border). */
+  height: auto;
+  align-self: stretch;
   border: 1px solid var(--control-border);
   border-radius: 8px;
   overflow: hidden;
@@ -1602,6 +1616,16 @@ button {
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); background-clip: padding-box; }
+/* Where a horizontal and a vertical bar meet: was a white square in dark. */
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Drop-down lists are drawn by Windows from these: never light text on a
+   light list (or the reverse) whatever the theme. */
+option,
+optgroup {
+  background-color: Canvas;
+  color: CanvasText;
+}
 
 /* ---------- history modal toolbar ---------- */
 .hist-toolbar {
@@ -1794,8 +1818,10 @@ button {
   margin-block: -4px;
   margin-inline: -6px -4px;
 }
+/* 24 px buttons in a 16 px line: -4 px keeps the row 28 px tall when they
+   appear on hover (-3 px grew it to 30 px and shifted every row below). */
 .row-actions .icon-btn {
-  margin-block: -3px;
+  margin-block: -4px;
 }
 .seg.mini button {
   min-height: 24px;
@@ -2142,18 +2168,19 @@ button {
 }
 :lang(hi) .env-combo,
 :lang(ar) .env-combo {
-  height: 34px;
+  height: auto;
 }
 :lang(zh-CN) body {
   line-height: normal;
 }
 
-/* Longer labels (Spanish, French, Hindi): section tabs stay on one line and
-   scroll sideways instead of wrapping into two-line tabs. */
+/* Longer labels (Spanish, Arabic, French, Hindi) and narrow windows: the
+   section tabs wrap onto a second row, each tab still on one line. Scrolling
+   sideways hid "Load test" and showed a grey Windows scrollbar. */
 .panel.editor .tabs {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: 2px;
 }
 .panel.editor .tabs .tab {
   flex: none;
@@ -2166,4 +2193,30 @@ button {
 :lang(es) .panel.editor .tabs .tab,
 :lang(fr) .panel.editor .tabs .tab {
   padding-inline: 7px;
+}
+
+/* Focus rings inside clipping boxes are drawn inside, so they show whole. */
+.env-combo .env-edit:focus-visible {
+  outline-offset: -3px;
+  border-radius: 6px;
+}
+.envs-modal .env-main {
+  padding-inline: 3px;
+}
+
+/* Method pills on rows that are already orange-tinted (active tab, hovered
+   or selected rows): a second translucent orange took them under 4.5:1. */
+.request-tab.active .method-pill,
+.request-tab:hover .method-pill,
+.palette-row.sel .method-pill,
+.cv-req-row:hover .method-pill,
+.tree-row:hover .method-pill,
+.tree-row.active .method-pill {
+  background: var(--glass-strong);
+}
+
+/* Send and Cancel share one width, so the URL field does not jump while sending. */
+.urlbar > .btn {
+  min-width: 84px;
+  justify-content: center;
 }

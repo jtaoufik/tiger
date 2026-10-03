@@ -12,7 +12,7 @@ import type { HttpMethod } from '@core/types'
 import { BoxIcon, CloseIcon, FolderIcon } from './Icons'
 import './RequestTabs.css'
 import { MOD } from '../platform'
-import { isContextMenuKey, menuAnchor, rovingIndex } from '../a11y'
+import { isContextMenuKey, isRtlDocument, menuAnchor, rovingIndex } from '../a11y'
 import { t as tr, useT } from '../i18n'
 import type { MessageKey, Vars } from '@core/i18n'
 
@@ -162,7 +162,9 @@ export function RequestTabs({
               if (!e.dataTransfer.types.includes('application/x-tiger-tab')) return
               e.preventDefault()
               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-              const side = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+              // "Before" is the reading start: the right half in Arabic.
+              const startHalf = (e.clientX < rect.left + rect.width / 2) !== isRtlDocument()
+              const side = startHalf ? 'before' : 'after'
               setDrop({ key: tab.key, side })
             }}
             onDragLeave={() => setDrop((d) => (d?.key === tab.key ? null : d))}

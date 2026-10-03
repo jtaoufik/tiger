@@ -83,6 +83,9 @@ describe('text on the orange accent', () => {
       for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
         if (!/\.btn\.accent|\.seg button(\.on|\[aria-(selected|pressed)='true'\])/.test(selector)) continue
         const color = body.match(/(?:^|[;\s])color:\s*([^;]+)/)?.[1].trim()
+        const background = body.match(/(?:^|[;\s])background:\s*([^;]+)/)?.[1].trim()
+        // A disabled primary button drops the orange altogether (its own, readable pair).
+        if (/:disabled/.test(selector) && background && !/accent/.test(background)) continue
         // Windows High Contrast (forced-colors) rules use system colors, which are right there.
         if (color && !/^(HighlightText|ButtonText|CanvasText|LinkText|GrayText)$/.test(color)) {
           expect(color, `${file}: ${selector.trim()}`).toBe('var(--accent-solid-ink)')

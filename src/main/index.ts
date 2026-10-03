@@ -167,8 +167,11 @@ function createWindow(): BrowserWindow {
     y: placeable ? saved!.y : undefined,
     // Never larger than the screen: 1366x768 at 150% scaling leaves about
     // 910x480, and a taller minimum pushed the bottom of Tiger off-screen.
-    minWidth: Math.min(880, workArea.width),
-    minHeight: Math.min(560, workArea.height),
+    // Outer sizes: on Windows the title bar, the menu bar and the borders take
+    // about 16x75 px of them, so the minimum is larger there to leave the
+    // same room for the request and the response.
+    minWidth: Math.min(process.platform === 'win32' ? 896 : 880, workArea.width),
+    minHeight: Math.min(process.platform === 'win32' ? 620 : 560, workArea.height),
     show: false,
     icon: winIcon,
     backgroundColor: dark ? '#0f1117' : '#eef1f7',

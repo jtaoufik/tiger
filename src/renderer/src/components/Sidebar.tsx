@@ -358,7 +358,7 @@ const RequestRow = memo(function RequestRow({
     >
       <div
         className={`tree-row ${active ? 'active' : ''} ${flash ? 'flash' : ''}`}
-        style={{ paddingLeft: 8 + depth * 16 }}
+        style={{ paddingInlineStart: 8 + depth * 16 }}
         data-entry-id={entry.id}
         draggable={!renaming}
         onDragStart={(e) => {
@@ -446,7 +446,7 @@ const FolderRow = memo(function FolderRow({
   return (
     <div
       className={`folder-row ${selected ? 'active' : ''} ${dropTarget ? 'drop-target' : ''}`}
-      style={{ paddingLeft: 8 + depth * 16 }}
+      style={{ paddingInlineStart: 8 + depth * 16 }}
       onClick={() => api.inspectFolder(colId, path)}
       onContextMenu={(e) => {
         if (!hasMenu) return

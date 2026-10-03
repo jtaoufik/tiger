@@ -63,7 +63,8 @@ const Chunk = memo(function Chunk({
       className="resp-chunk"
       // Off-screen blocks skip layout and paint; this is their placeholder
       // height until they have been rendered once (then the real one is kept).
-      style={{ containIntrinsicSize: `auto ${(lines * 1.55).toFixed(2)}em` }}
+      // Height only: an intrinsic width would widen the scroll area.
+      style={{ containIntrinsicHeight: `auto ${(lines * 1.55).toFixed(2)}em` }}
     >
       {ranges && ranges.length
         ? splitByRanges(text, ranges).map((seg, i) => {

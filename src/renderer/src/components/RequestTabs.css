@@ -12,14 +12,20 @@
   overflow-y: hidden;
   padding: 0 0 8px;
   scrollbar-width: thin;
+  /* A standard scrollbar-width turns off the app's ::-webkit-scrollbar
+     styling, so give the thin bar the app's colors (no grey Windows bar). */
+  scrollbar-color: var(--border-strong) transparent;
 }
 .request-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   flex: 0 1 auto;
-  min-width: 0;
+  /* Room for the method, a few letters of the name and the close button: past
+     that the strip scrolls instead of crushing every tab to "GET x". */
+  min-width: 132px;
   max-width: 220px;
+  overflow: hidden;
   padding-block: 6px;
   padding-inline: 9px 6px;
   border: 1px solid var(--border);
@@ -89,8 +95,8 @@
   flex-shrink: 0;
 }
 .request-tab.drop-before {
-  box-shadow: -2px 0 0 var(--accent-fill);
+  box-shadow: calc(-2px * var(--dir-sign)) 0 0 var(--accent-fill);
 }
 .request-tab.drop-after {
-  box-shadow: 2px 0 0 var(--accent-fill);
+  box-shadow: calc(2px * var(--dir-sign)) 0 0 var(--accent-fill);
 }
