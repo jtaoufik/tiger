@@ -213,3 +213,47 @@ describe('actions on a request or collection that is not the active one', () => 
     expect(writeText.mock.calls[0][0]).toContain('https://beta.test/get-beta')
   })
 })
+
+describe('the environment manager', () => {
+  async function betaActiveWithoutEnvironment() {
+    const b = bridge([collection('Alpha', 'Get alpha', 'https://alpha.test'), collection('Beta', 'Get beta')])
+    ;(window as { tiger?: unknown }).tiger = b
+    render(<App />)
+    await importVia('Postman')
+    await importVia('Postman')
+    fireEvent.click(within(sidebar()).getByText('Get beta'))
+    await waitFor(() => expect(pickedEnv()).toBe('No environment'))
+    return b
+  }
+  const managerCollection = () =>
+    (within(document.querySelector('.modal') as HTMLElement).getByTitle('Collection') as HTMLSelectElement)
+      .selectedOptions[0]?.textContent
+
+  it('opens on the active request’s collection, even when it has no environment yet', async () => {
+    await betaActiveWithoutEnvironment()
+    fireEvent.click(screen.getByRole('button', { name: 'Manage environments' }))
+    await waitFor(() => expect(managerCollection()).toBe('Beta'))
+  })
+
+  it('creates a new environment in the collection being worked on, not the first one', async () => {
+    await betaActiveWithoutEnvironment()
+    fireEvent.click(screen.getByRole('button', { name: 'Manage environments' }))
+    await waitFor(() => expect(managerCollection()).toBe('Beta'))
+    fireEvent.click(
+      within(document.querySelector('.modal') as HTMLElement).getAllByRole('button', { name: /New environment/ })[0]
+    )
+    await waitFor(() => expect(screen.getByDisplayValue('new-environment')).toBeInTheDocument())
+    fireEvent.click(document.querySelector('.modal-head button') as HTMLElement)
+    // Beta's picker now offers it.
+    await waitFor(() =>
+      expect([...envPicker().options].map((o) => o.textContent)).toContain('new-environment')
+    )
+  })
+
+  it('opens on the collection whose menu was used', async () => {
+    await betaActiveWithoutEnvironment()
+    fireEvent.contextMenu(within(sidebar()).getByText('Alpha').closest('.col-head')!)
+    fireEvent.click(screen.getByText(/^Manage environments/))
+    await waitFor(() => expect(managerCollection()).toBe('Alpha'))
+  })
+})

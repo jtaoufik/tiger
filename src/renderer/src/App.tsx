@@ -349,6 +349,8 @@ export default function App() {
   const [ioColId, setIoColId] = useState<string | null>(null)
   /** Environments dialog opened by "New environment": create one right away. */
   const [envStartNew, setEnvStartNew] = useState(false)
+  /** The collection the environment manager opens on. */
+  const [envModalColId, setEnvModalColId] = useState<string | null>(null)
   /** "New folder" prompt target: the collection and the parent folder. */
   const [newFolderIn, setNewFolderIn] = useState<{ colId: string; path: string[] } | null>(null)
   const renameSeq = useRef(0)
@@ -2174,6 +2176,7 @@ export default function App() {
   )
 
   const inspectCollectionRef = useRef<(colId: string) => void>(() => {})
+  const openEnvironmentsRef = useRef<(colId?: string) => void>(() => {})
   /** Import and export share one dialog; each entry point says which half. */
   const openIo = useCallback((focus: 'import' | 'export', colId?: string) => {
     setIoFocus(focus)
@@ -2200,6 +2203,7 @@ export default function App() {
           icon: <PencilIcon size={14} />,
           onClick: () => setAuthColId(colId)
         },
+        actionItem('environments', () => openEnvironmentsRef.current(colId)),
         actionItem('export', () => openIo('export', colId))
       ]
       if (col.root) {
@@ -2445,6 +2449,17 @@ export default function App() {
     return collections[0] ? { colId: collections[0].id, path: [] } : null
   }
   const needCollection = () => toast(t('app.toast.openCollectionFirst'))
+  /**
+   * The environment manager opens on the collection being worked on (the
+   * active request's, else the page on screen), never just the first one, so
+   * "New environment" lands where the user is.
+   */
+  const openEnvironments = (colId?: string, startNew = false) => {
+    setEnvModalColId(colId ?? currentTarget()?.colId ?? null)
+    setEnvStartNew(startNew)
+    setModal('env')
+  }
+  openEnvironmentsRef.current = openEnvironments
   const needRequest = () => toast(t('app.toast.openRequestFirst'))
   /** Team sync for the current collection; `sync` also starts a sync once it is ready. */
   const openTeamSync = (sync = false) => {
@@ -2475,8 +2490,7 @@ export default function App() {
     'new-collection': newCollection,
     'new-environment': () => {
       if (!collections.length) return needCollection()
-      setEnvStartNew(true)
-      setModal('env')
+      openEnvironments(undefined, true)
     },
     'open-collection': openCollection,
     import: () => openIo('import'),
@@ -2507,10 +2521,7 @@ export default function App() {
     'search-response': () => {},
     rename: () => (activeId ? setRenameTarget({ id: activeId, nonce: ++renameSeq.current }) : needRequest()),
     'command-palette': () => setPaletteOpen(true),
-    environments: () => {
-      setEnvStartNew(false)
-      setModal('env')
-    },
+    environments: () => openEnvironments(),
     history: openHistory,
     'toggle-sidebar': toggleSidebar,
     'theme-system': () => updateSettings({ theme: 'system' }),
@@ -2750,7 +2761,7 @@ export default function App() {
             }}
             onPalette={() => setPaletteOpen(true)}
             onHistory={openHistory}
-            onEnvironments={() => setModal('env')}
+            onEnvironments={() => openEnvironments()}
             onSettings={() => setView('settings')}
             onGit={() => {
               const diskCol = collections.find((c) => c.root)
@@ -3002,10 +3013,11 @@ export default function App() {
             root: c.root,
             environments: c.environments
           }))}
-          initialColId={activeEnvKey ? activeEnvKey.slice(0, activeEnvKey.indexOf(SEP)) : undefined}
-          initialEnvName={
-            activeEnvKey ? activeEnvKey.slice(activeEnvKey.indexOf(SEP) + SEP.length) : undefined
-          }
+          initialColId={envModalColId ?? undefined}
+          initialEnvName={(() => {
+            const key = envModalColId ? envKeyFor(envModalColId) : ''
+            return key ? key.slice(key.indexOf(SEP) + SEP.length) : undefined
+          })()}
           activeEnvKey={activeEnvKey}
           envKeySep={SEP}
           onActivate={(key) => changeEnv(key)}
