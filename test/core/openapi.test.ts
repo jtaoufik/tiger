@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { exportOpenApi } from '../../src/core/export'
 import { importOpenApi } from '../../src/core/import/openapi'
 import { envToVars, findMissingVars, interpolate } from '../../src/core/interpolate'
 import type { TigerAuth, TigerRequest } from '../../src/core/types'
@@ -137,6 +138,33 @@ describe('importOpenApi environments', () => {
     expect(result.requests[0].request.url).toBe('{{baseUrl}}/v1/pets')
     expect(result.environments?.[0].variables).toEqual([{ name: 'baseUrl', value: '', enabled: true }])
     expect(result.warnings?.some((w) => w.i18n?.key === 'imports.baseUrlUnknown')).toBe(true)
+  })
+
+  it('re-imports its own OpenAPI export: {{baseUrl}} stays a variable the user sets', () => {
+    const exported = exportOpenApi('Shop', [
+      {
+        path: [],
+        request: {
+          name: 'List items',
+          method: 'get',
+          url: '{{baseUrl}}/items',
+          headers: [],
+          query: [],
+          body: { type: 'none', content: '' }
+        }
+      }
+    ])
+    const result = importOpenApi(exported)
+    expect(result.requests[0].request.url).toBe('{{baseUrl}}/items')
+    expect(result.environments?.[0].variables).toContainEqual({ name: 'baseUrl', value: '', enabled: true })
+    expect(result.warnings?.some((w) => w.i18n?.key === 'imports.baseUrlUnknown')).toBe(true)
+  })
+
+  it('keeps {{variables}} already in a server URL and defines them', () => {
+    const result = importOpenApi({ paths: { '/x': { get: {} } }, servers: [{ url: 'https://{{host}}/v1' }] })
+    const [env] = result.environments!
+    expect(env.variables).toContainEqual({ name: 'baseUrl', value: 'https://{{host}}/v1', enabled: true })
+    expect(env.variables).toContainEqual({ name: 'host', value: '', enabled: true })
   })
 
   it('maps a Swagger 2 host and base path to an environment', () => {

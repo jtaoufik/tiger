@@ -36,6 +36,11 @@ function deref(doc: Json, value: unknown, depth = 0): Json {
   return deref(doc, cur, depth + 1)
 }
 
+/** `{name}` but not `{{name}}`: OpenAPI server variables. */
+const SINGLE_BRACE = /(?<!\{)\{([^{}]+)\}(?!\})/g
+/** A server URL that starts from the user's own `{{baseUrl}}`. */
+const TEMPLATE_BASE = /^\{\{\s*baseUrl\s*\}\}/
+
 interface Servers {
   /** What every request URL starts with: `{{baseUrl}}`, plus a relative server's path. */
   prefix: string
@@ -61,7 +66,8 @@ function serversOf(doc: Json): Servers {
   const servers = asArray(doc.servers).filter(
     (s): s is Json => !!s && typeof s === 'object' && typeof (s as Json).url === 'string'
   )
-  const absolute = servers.filter((s) => !str(s.url).startsWith('/'))
+  // "{{baseUrl}}/v1" (Tiger's own OpenAPI export) names no host either.
+  const absolute = servers.filter((s) => !str(s.url).startsWith('/') && !TEMPLATE_BASE.test(str(s.url)))
   if (absolute.length) {
     const taken = new Set<string>()
     const environments = absolute.map((server, i) => {
@@ -70,7 +76,7 @@ function serversOf(doc: Json): Servers {
       const fallback =
         host && !host.includes('{') ? host : absolute.length === 1 ? 'Default' : `Server ${i + 1}`
       const variables: KeyValue[] = [
-        { name: 'baseUrl', value: url.replace(/\{([^{}]+)\}/g, '{{$1}}').replace(/\/$/, ''), enabled: true }
+        { name: 'baseUrl', value: url.replace(SINGLE_BRACE, '{{$1}}').replace(/\/$/, ''), enabled: true }
       ]
       for (const [name, raw] of Object.entries((server.variables ?? {}) as Json)) {
         const spec = (raw ?? {}) as Json
@@ -94,7 +100,7 @@ function serversOf(doc: Json): Servers {
     }
   }
   // No host anywhere ("/v1" or nothing): requests keep the path, the user supplies the host.
-  const relative = servers[0] ? str(servers[0].url).replace(/\/$/, '') : basePath
+  const relative = servers[0] ? str(servers[0].url).replace(TEMPLATE_BASE, '').replace(/\/$/, '') : basePath
   return {
     prefix: `{{baseUrl}}${relative}`,
     environments: [{ name: 'Default', variables: [{ name: 'baseUrl', value: '', enabled: true }] }],
@@ -369,7 +375,9 @@ export function importOpenApi(raw: unknown): ImportResult {
   const used = new Set(requests.flatMap(({ request }) => placeholdersOf(request, auth)))
   for (const env of environments) {
     const defined = new Set(env.variables.map((v) => v.name))
-    for (const name of used) {
+    // Also what the environment's own values use, such as https://{{host}}/v1.
+    const needed = new Set([...used, ...env.variables.flatMap((v) => findMissingVars(v.value, {}))])
+    for (const name of needed) {
       if (!defined.has(name) && !pathPlaceholders.has(name)) {
         env.variables.push({ name, value: '', enabled: true })
       }
