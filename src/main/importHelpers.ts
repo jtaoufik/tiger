@@ -21,8 +21,9 @@ import { layerCollectionVariables } from '../core/import/report'
 
 /**
  * Resolve a list of user-picked paths (mix of files and directories) into a
- * flat list of matching files. Directories are walked recursively; dotfiles
- * and dotdirs are skipped. Extensions are matched case-insensitively.
+ * flat list of matching files. Directories are walked recursively; dotfiles,
+ * dotdirs and node_modules are skipped. Extensions are matched
+ * case-insensitively.
  */
 export async function expandPaths(paths: string[], exts: string[]): Promise<string[]> {
   const allowed = new Set(exts.map((e) => '.' + e.toLowerCase()))
@@ -36,11 +37,30 @@ export async function expandPaths(paths: string[], exts: string[]): Promise<stri
   return out
 }
 
-async function walkDir(dir: string, allowed: Set<string>, out: string[]): Promise<void> {
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    if (entry.name.startsWith('.')) continue
+/**
+ * The files of a dropped folder, like `expandPaths`, except that a folder
+ * holding a `bruno.json` is a Bruno collection: it is returned as a root to
+ * read whole (its collection.bru, folder.bru and environments are not
+ * requests), not walked file by file.
+ */
+export async function scanDroppedFolder(dir: string, exts: string[]): Promise<{ files: string[]; brunoRoots: string[] }> {
+  const files: string[] = []
+  const brunoRoots: string[] = []
+  await walkDir(dir, new Set(exts.map((e) => '.' + e.toLowerCase())), files, brunoRoots)
+  return { files, brunoRoots }
+}
+
+async function walkDir(dir: string, allowed: Set<string>, out: string[], brunoRoots?: string[]): Promise<void> {
+  const entries = await readdir(dir, { withFileTypes: true })
+  if (brunoRoots && entries.some((e) => e.isFile() && e.name === 'bruno.json')) {
+    brunoRoots.push(dir)
+    return
+  }
+  for (const entry of entries) {
+    // A project folder's dependencies hold thousands of files that are not the user's.
+    if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
     const full = join(dir, entry.name)
-    if (entry.isDirectory()) await walkDir(full, allowed, out)
+    if (entry.isDirectory()) await walkDir(full, allowed, out, brunoRoots)
     else if (entry.isFile() && allowed.has(extname(entry.name).toLowerCase())) out.push(full)
   }
 }

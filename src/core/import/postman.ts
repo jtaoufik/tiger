@@ -460,6 +460,12 @@ export function isPostmanEnvironment(raw: unknown): boolean {
   return Array.isArray(root.values) && !Array.isArray(root.item)
 }
 
+/** True for a Postman v1 collection (`requests`, no `item`), which Tiger asks to export again as v2.1. */
+export function isPostmanV1(raw: unknown): boolean {
+  const root = (raw ?? {}) as Json
+  return !Array.isArray(root.item) && Array.isArray(root.requests)
+}
+
 export function importPostman(raw: unknown): ImportResult {
   const root = (raw ?? {}) as Json
   const warnings: ImportWarning[] = []
@@ -482,7 +488,7 @@ export function importPostman(raw: unknown): ImportResult {
 
   const info = (root.info ?? {}) as Json
   const name = str(info.name, str(root.name, 'Imported collection'))
-  if (!Array.isArray(root.item) && Array.isArray(root.requests)) {
+  if (isPostmanV1(root)) {
     warnings.push({
       ...warning('imports.postmanV1')
     })

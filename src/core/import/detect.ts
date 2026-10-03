@@ -17,7 +17,9 @@ export function detectFormat(fileName: string, parsed: unknown, text = ''): Dete
   if (!parsed || typeof parsed !== 'object') return null
   const doc = parsed as Json
   const info = (doc.info ?? {}) as Json
-  if (typeof doc.openapi === 'string' || typeof doc.swagger === 'string') return 'openapi'
+  // An unquoted `swagger: 2.0` or `openapi: 3.1` is a number in YAML.
+  const version = (v: unknown) => typeof v === 'string' || typeof v === 'number'
+  if (version(doc.openapi) || version(doc.swagger)) return 'openapi'
   if (
     doc._type === 'export' ||
     Array.isArray(doc.resources) ||
@@ -30,7 +32,9 @@ export function detectFormat(fileName: string, parsed: unknown, text = ''): Dete
     typeof info._postman_id === 'string' ||
     Array.isArray(doc.item) ||
     typeof doc._postman_variable_scope === 'string' ||
-    (Array.isArray(doc.values) && typeof doc.name === 'string')
+    (Array.isArray(doc.values) && typeof doc.name === 'string') ||
+    // Postman v1, which the importer explains how to export again.
+    (Array.isArray(doc.requests) && Array.isArray(doc.order))
   ) {
     return 'postman'
   }

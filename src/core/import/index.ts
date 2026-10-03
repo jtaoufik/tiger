@@ -1,4 +1,4 @@
-export { importPostman, isPostmanEnvironment } from './postman'
+export { importPostman, isPostmanEnvironment, isPostmanV1 } from './postman'
 export {
   importBrunoRequest,
   importBrunoEnvironment,

@@ -14,13 +14,14 @@ import {
   importOpenApi,
   importPostman,
   importWsdl,
+  isPostmanV1,
   type BrunoFile,
   type DetectedFormat,
   type ImportResult,
   type ImportSource,
   type ImportWarning
 } from '../core/import'
-import { expandPaths, mergeImports, rootNameFor } from './importHelpers'
+import { expandPaths, mergeImports, rootNameFor, scanDroppedFolder } from './importHelpers'
 import { mainT } from './i18n'
 import { targetAppWindow } from './windows'
 
@@ -162,7 +163,14 @@ async function isBrunoFolder(dir: string): Promise<boolean> {
 
 const DETECTABLE = ['json', 'yaml', 'yml', 'wsdl', 'xml']
 
-async function importDetected(file: string): Promise<ImportResult> {
+/** A Postman file. A v1 collection is refused with how to export it as v2.1. */
+function importPostmanFile(doc: unknown): ImportResult {
+  if (isPostmanV1(doc)) throw new Error(mainT('imports.postmanV1'))
+  return importPostman(doc)
+}
+
+/** Import one file by its content; null when it is not an export Tiger knows. */
+async function importDetected(file: string): Promise<ImportResult | null> {
   if (file.endsWith('.bru')) {
     const text = await readTextFile(file)
     const name = basename(file, '.bru')
@@ -177,18 +185,20 @@ async function importDetected(file: string): Promise<ImportResult> {
   const isXml = /\.(wsdl|xml)$/i.test(file)
   const parsed = isXml ? undefined : /\.ya?ml$/i.test(file) ? parseYaml(text) : JSON.parse(text)
   const format: DetectedFormat | null = detectFormat(basename(file), parsed, text)
-  if (format === 'postman') return importPostman(parsed)
+  if (format === 'postman') return importPostmanFile(parsed)
   if (format === 'insomnia') return importInsomnia(parsed)
   if (format === 'openapi') return importOpenApi(parsed)
   if (format === 'wsdl') return importWsdl(text)
-  throw new Error('not a Postman, Insomnia, Bruno, OpenAPI or WSDL export')
+  return null
 }
 
 /**
  * Import whatever was dropped on the window: export files of any supported
  * tool, a Bruno collection folder, or a folder of exports. The format is
  * detected per file, so a Postman collection dropped with its environment
- * files lands as one collection with those environments.
+ * files lands as one collection with those environments. A dropped project
+ * folder works too: a Bruno collection inside it is read whole, and its own
+ * files that are not exports (package.json) are skipped without a word.
  */
 export async function importPaths(paths: string[]): Promise<ImportResult | null> {
   const results: { name: string; result: ImportResult }[] = []
@@ -200,12 +210,30 @@ export async function importPaths(paths: string[]): Promise<ImportResult | null>
       results.push({ name: basename(p), result: await readBrunoFolder(p) })
       continue
     }
-    const files = st.isDirectory() ? await expandPaths([p], [...DETECTABLE, 'bru']) : [p]
-    const settled = await Promise.allSettled(files.map((f) => importDetected(f)))
-    settled.forEach((r, i) => {
-      if (r.status === 'fulfilled') results.push({ name: basename(files[i], extname(files[i])), result: r.value })
+    const inFolder = st.isDirectory()
+    const { files, brunoRoots } = inFolder
+      ? await scanDroppedFolder(p, [...DETECTABLE, 'bru'])
+      : { files: [p], brunoRoots: [] }
+    const collections = await Promise.allSettled(brunoRoots.map((root) => readBrunoFolder(root)))
+    collections.forEach((r, i) => {
+      if (r.status === 'fulfilled') results.push({ name: basename(brunoRoots[i]), result: r.value })
     })
-    warnings.push(...failureWarnings(files, settled))
+    warnings.push(...failureWarnings(brunoRoots, collections))
+    // Outside a collection, collection.bru and folder.bru are settings, not requests.
+    const candidates = inFolder ? files.filter((f) => !/^(collection|folder)\.bru$/i.test(basename(f))) : files
+    const settled = await Promise.allSettled(
+      candidates.map(async (f) => {
+        const result = await importDetected(f)
+        if (!result && !inFolder) throw new Error('not a Postman, Insomnia, Bruno, OpenAPI or WSDL export')
+        return result
+      })
+    )
+    settled.forEach((r, i) => {
+      if (r.status === 'fulfilled' && r.value) {
+        results.push({ name: basename(candidates[i], extname(candidates[i])), result: r.value })
+      }
+    })
+    warnings.push(...failureWarnings(candidates, settled))
   }
   if (results.length === 0) {
     if (warnings.length === 0) return null
@@ -221,7 +249,7 @@ export async function importFromDisk(kind: ImportKind): Promise<ImportResult | n
 
   if (kind === 'postman') {
     return importManyFiles(mainT('main.import.postman'), ['json'], 'postman', async (f) =>
-      importPostman(await readStructured(f))
+      importPostmanFile(await readStructured(f))
     )
   }
   if (kind === 'insomnia') {
