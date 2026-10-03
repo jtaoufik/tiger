@@ -76,4 +76,25 @@ describe('text on the orange accent', () => {
     expect(styles).toMatch(/\.btn\.accent:hover\s*\{[^}]*color-mix\(in srgb, var\(--accent-solid\) 88%, #000\)/)
     expect(styles).toMatch(/\.btn\.danger:hover\s*\{[^}]*color-mix\(in srgb, var\(--danger-fill\) 88%, #000\)/)
   })
+
+  it('lets no rule override the white text on orange buttons or selected segments (Send included)', () => {
+    for (const file of cssFiles(SRC)) {
+      const css = readFileSync(file, 'utf8')
+      for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        if (!/\.btn\.accent|\.seg button(\.on|\[aria-(selected|pressed)='true'\])/.test(selector)) continue
+        const color = body.match(/(?:^|[;\s])color:\s*([^;]+)/)?.[1].trim()
+        // Windows High Contrast (forced-colors) rules use system colors, which are right there.
+        if (color && !/^(HighlightText|ButtonText|CanvasText|LinkText|GrayText)$/.test(color)) {
+          expect(color, `${file}: ${selector.trim()}`).toBe('var(--accent-solid-ink)')
+        }
+      }
+    }
+  })
+
+  it('draws the switch knob on the deep orange, at least 3:1 for a control', () => {
+    expect(styles).toMatch(/\.switch\.on\s*\{\s*background:\s*var\(--accent-solid\)/)
+    for (const css of Object.values(themes)) {
+      expect(contrast('#ffffff', token(css, '--accent-solid'))).toBeGreaterThanOrEqual(3)
+    }
+  })
 })

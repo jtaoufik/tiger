@@ -715,8 +715,8 @@ button {
   transition: background 0.16s ease;
 }
 .switch.on {
-  background: var(--accent-fill);
-  border-color: var(--accent-fill);
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
 }
 .switch .knob {
   position: absolute;
