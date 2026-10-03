@@ -24,10 +24,12 @@ import { loadSettings } from './settings'
 export function applyNetworkSettings(): void {
   const s = loadSettings()
   const ses = session.defaultSession
+  // Without a proxy of its own, Tiger uses the system's (Windows or macOS
+  // settings, PAC, WPAD), as a browser does on a corporate network.
   ses.setProxy(
     s.proxyEnabled && s.proxyUrl
       ? { mode: 'fixed_servers', proxyRules: s.proxyUrl }
-      : { mode: 'direct' }
+      : { mode: 'system' }
   )
   // cb(0) = trust, cb(-3) = use Chromium's default verification. Scoped
   // exceptions beat the all-or-nothing switch for internal CAs.
