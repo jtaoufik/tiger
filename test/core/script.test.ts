@@ -58,3 +58,50 @@ describe('runScript', () => {
     expect(runScript('   ', { vars: { a: '1' } })).toEqual({ vars: { a: '1' }, logs: [], tests: [] })
   })
 })
+
+describe('runScript with scripts written for Postman and Bruno (sloppy mode)', () => {
+  const response = { status: 200, headers: [], body: '{"token":"abc"}', timeMs: 1 }
+
+  it('runs a script that assigns a variable it never declared', () => {
+    const r = runScript('data = JSON.parse(responseBody);\npm.environment.set("token", data.token);', {
+      vars: {},
+      response
+    })
+    expect(r.error).toBeUndefined()
+    expect(r.vars.token).toBe('abc')
+  })
+
+  it('lets a script declare names Tiger provides or hides, like module and document', () => {
+    const r = runScript(
+      `const module = 'users'
+       const document = { id: 7 }
+       let fetch = '!'
+       const require = (x) => x + '?'
+       class window {}
+       const console = { log() {} }
+       const pm = { tag: 'own' }
+       tiger.setVar('m', module + document.id + fetch + require('r') + typeof window + pm.tag)`,
+      { vars: {} }
+    )
+    expect(r.error).toBeUndefined()
+    expect(r.vars.m).toBe('users7!r?functionown')
+  })
+
+  it('does not let a variable created by one script show up in the next', () => {
+    const first = runScript('leakedToken = "secret"\nthis.alsoLeaked = 1\ntiger.setVar("t", leakedToken)', {
+      vars: {}
+    })
+    expect(first.vars.t).toBe('secret')
+    expect((globalThis as Record<string, unknown>).leakedToken).toBeUndefined()
+    expect((globalThis as Record<string, unknown>).alsoLeaked).toBeUndefined()
+
+    const next = runScript('tiger.setVar("seen", typeof leakedToken)', { vars: {} })
+    expect(next.vars.seen).toBe('undefined')
+  })
+
+  it('reports a script that tries to close the wrapper as a syntax error, without running it', () => {
+    const r = runScript('}; tiger.setVar("escaped", "1"); (function () {', { vars: {} })
+    expect(r.error).toBeTruthy()
+    expect(r.vars.escaped).toBeUndefined()
+  })
+})

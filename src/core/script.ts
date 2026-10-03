@@ -72,9 +72,21 @@ function unsupported(api: string): () => never {
   }
 }
 
-/** Names a script may declare itself; only inject a shim when it does not. */
-function declares(source: string, name: string): boolean {
-  return new RegExp(`\\b(?:let|const|class|function)\\s+${name}\\b`).test(source)
+/**
+ * Delete the globals a script created by assigning names it never declared
+ * (`data = ...`, fine in sloppy mode). One realm runs every job in the script
+ * host, so a value left there would show up in the next request's script.
+ */
+function dropNewGlobals(before: Set<string>): void {
+  const g = globalThis as Record<string, unknown>
+  for (const name of Object.getOwnPropertyNames(g)) {
+    if (before.has(name)) continue
+    try {
+      delete g[name]
+    } catch {
+      /* not deletable: not one a script created */
+    }
+  }
 }
 
 /**
@@ -155,7 +167,7 @@ export function runScript(
     test,
     expect
   }
-  const names = Object.keys(injected).filter((n) => !declares(source, n))
+  const names = Object.keys(injected)
 
   // Shadow ambient globals so scripts stick to the supported `tiger` API. This is
   // not the security boundary: isolation comes from the process the script host
@@ -173,18 +185,31 @@ export function runScript(
     'XMLHttpRequest'
   ]
 
+  // Postman and Bruno run scripts in sloppy mode, where `data = ...` without a
+  // declaration is fine, and many imported scripts rely on it. The script is the
+  // body of an inner sloppy function; every name Tiger provides or shadows is a
+  // parameter of the outer one, so a script may still declare its own
+  // `const module` or `let pm` without a clash.
   let error: string | undefined
+  const globalsBefore = new Set(Object.getOwnPropertyNames(globalThis))
   try {
-    const fn = new Function(
+    // Parsed on its own first, so the source is one whole function body and
+    // cannot close the wrapper below to run outside it.
+    new Function(source)
+    const outer = new Function(
       'tiger',
       'console',
       ...names,
       ...shadowed,
-      `"use strict";\n${source}`
-    ) as (...a: unknown[]) => void
-    fn(api, { log, info: log, warn: log, error: log, debug: log }, ...names.map((n) => injected[n]))
+      `return function () {\n${source}\n}`
+    ) as (...a: unknown[]) => () => void
+    const script = outer(api, { log, info: log, warn: log, error: log, debug: log }, ...names.map((n) => injected[n]))
+    // `this` is a throwaway object, not the global object sloppy mode would pass.
+    script.call({})
   } catch (e) {
     error = (e as Error).message
+  } finally {
+    dropNewGlobals(globalsBefore)
   }
 
   for (const [name, value] of Object.entries(legacyTests)) {
