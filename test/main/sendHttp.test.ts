@@ -125,6 +125,19 @@ describe('compressed responses on the Node send path (certificate files configur
   })
 })
 
+describe('a GET (or DELETE) with a body', () => {
+  it.each(['GET', 'DELETE'])('%s goes out with its body and length on the Node path too', async (method) => {
+    await sendHttp({
+      method,
+      url: `${base}/_search`,
+      headers: { Host: 'search.test', 'Content-Type': 'application/json' },
+      body: '{"query":{}}'
+    })
+    expect(seen[0]).toMatchObject({ method, body: '{"query":{}}' })
+    expect(seen[0].headers['content-length']).toBe('12')
+  })
+})
+
 describe('headers Chromium keeps for itself', () => {
   it.each([
     ['Host', 'virtual.test'],

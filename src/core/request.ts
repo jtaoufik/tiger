@@ -8,7 +8,7 @@ import { applyAuth } from './auth'
 import { interpolate, type VarMap } from './interpolate'
 import { parseMultipartContent } from './multipart'
 import { parseKeyValues } from './tigerFormat'
-import type { TigerRequest } from './types'
+import type { TigerBody, TigerRequest } from './types'
 
 export interface BuiltRequest {
   method: string
@@ -22,7 +22,17 @@ export interface BuiltRequest {
   multipart?: Array<{ name: string; value: string; isFile: boolean }>
 }
 
+/** Methods that usually carry no body: theirs is sent only when it holds something. */
 const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD'])
+
+/** True when a body holds something to send (a field, or non-blank text). */
+function hasContent(body: TigerBody): boolean {
+  if (body.type === 'form') return parseKeyValues(body.content).some((kv) => kv.enabled !== false)
+  if (body.type === 'multipart') {
+    return parseMultipartContent(body.content).some((row) => row.enabled !== false && row.name)
+  }
+  return body.content.trim() !== ''
+}
 
 function hasHeader(headers: Record<string, string>, name: string): boolean {
   const lower = name.toLowerCase()
@@ -102,7 +112,9 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
 
   let body: string | undefined
   let multipart: BuiltRequest['multipart']
-  if (req.body.type !== 'none' && !METHODS_WITHOUT_BODY.has(method)) {
+  // A body set on a GET or HEAD goes out too (an Elasticsearch search, say), as
+  // in Postman, Insomnia and curl; an empty one there adds nothing at all.
+  if (req.body.type !== 'none' && (!METHODS_WITHOUT_BODY.has(method) || hasContent(req.body))) {
     if (req.body.type === 'json') {
       body = interpolate(req.body.content, vars)
       if (!hasHeader(headers, 'content-type')) headers['Content-Type'] = 'application/json'

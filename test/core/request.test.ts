@@ -70,8 +70,19 @@ describe('buildRequest', () => {
     expect(built.headers['Content-Type']).toBe('application/vnd.api+json')
   })
 
-  it('drops the body on GET/HEAD', () => {
-    expect(buildRequest(req({ method: 'get', body: { type: 'json', content: '{}' } })).body).toBeUndefined()
+  it('sends a body set on a GET or HEAD (Elasticsearch-style search), never dropping it', () => {
+    for (const method of ['get', 'head'] as const) {
+      const built = buildRequest(req({ method, body: { type: 'json', content: '{"query":{"match_all":{}}}' } }))
+      expect(built.body).toBe('{"query":{"match_all":{}}}')
+      expect(built.headers['Content-Type']).toBe('application/json')
+    }
+  })
+
+  it('adds nothing to a GET whose body type is set but holds nothing', () => {
+    const built = buildRequest(req({ method: 'get', body: { type: 'json', content: '  \n' } }))
+    expect(built.body).toBeUndefined()
+    expect(built.headers['Content-Type']).toBeUndefined()
+    expect(buildRequest(req({ method: 'get', body: { type: 'multipart', content: '~off: 1' } })).multipart).toBeUndefined()
   })
 
   it('sends xml bodies with a text/xml content type (SOAP)', () => {

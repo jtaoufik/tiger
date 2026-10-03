@@ -112,16 +112,23 @@ function chromiumRefuses(headers: Record<string, string>): boolean {
 }
 
 /**
- * Node writes the Content-Length it is given. One the request sets is kept
- * when it matches the body and corrected when it does not (a wrong length
- * hangs the server or cuts the body); next to Transfer-Encoding it is left out.
+ * The Content-Length Node must send. Node writes the one it is given, and
+ * adds none for a GET, HEAD or DELETE body (the server then never reads it),
+ * so every body gets its length. One the request sets is kept when it matches
+ * and corrected when it does not (a wrong length hangs the server or cuts the
+ * body); next to Transfer-Encoding it is left out, the body going chunked.
  */
 function withBodyLength(headers: Record<string, string>, body: string | Buffer | undefined): Record<string, string> {
-  const lengthName = Object.keys(headers).find((name) => name.toLowerCase() === 'content-length')
-  if (!lengthName) return headers
+  const names = Object.keys(headers)
+  const lengthName = names.find((name) => name.toLowerCase() === 'content-length')
   const out = { ...headers }
-  if (Object.keys(headers).some((name) => name.toLowerCase() === 'transfer-encoding')) delete out[lengthName]
-  else out[lengthName] = String(body === undefined ? 0 : Buffer.byteLength(body))
+  if (names.some((name) => name.toLowerCase() === 'transfer-encoding')) {
+    if (lengthName) delete out[lengthName]
+    return out
+  }
+  const length = body === undefined ? 0 : Buffer.byteLength(body)
+  if (lengthName) out[lengthName] = String(length)
+  else if (length) out['Content-Length'] = String(length)
   return out
 }
 

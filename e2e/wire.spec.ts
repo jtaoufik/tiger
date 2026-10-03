@@ -117,6 +117,28 @@ wire('a request pasted from Chrome "Copy as cURL" is sent with its headers', asy
   }
 })
 
+wire('a GET with a body sends the body (Elasticsearch-style search)', async ({ tiger, srv }) => {
+  const dir = writeCollection({
+    'environments/dev.tiger': envFile(srv.url),
+    'search.tiger': requestFile('Search', 'get', '{{baseUrl}}/_search', 'body:json {\n  {"query":{"match_all":{}}}\n}\n')
+  })
+  try {
+    const { page } = tiger
+    await openCollection(tiger, dir)
+    await openRequest(page, 'GET', 'Search')
+    const panel = await send(page)
+    const seen = srv.requests.find((r) => r.url === '/_search')
+    expect(seen, panel).toBeDefined()
+    expect({ method: seen!.method, body: seen!.body, type: seen!.headers['content-type'] }).toEqual({
+      method: 'GET',
+      body: '{"query":{"match_all":{}}}',
+      type: 'application/json'
+    })
+  } finally {
+    rm(resolve(dir, '..'))
+  }
+})
+
 wire('a URL typed without a scheme is sent over http://', async ({ tiger, srv }) => {
   const dir = writeCollection({
     'ip.tiger': requestFile('By address', 'get', `127.0.0.1:${srv.port}/by-address`),
