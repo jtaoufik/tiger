@@ -11,6 +11,7 @@
  * API keys required together with the auth are sent as well.
  */
 
+import { keyValueLine } from '../tigerFormat'
 import { findMissingVars } from '../interpolate'
 import {
   emptyBody,
@@ -228,7 +229,7 @@ function formFromSchema(doc: Json, schema: unknown, multipart: boolean): string 
     .map(([k, v]) => {
       const s = deref(doc, v)
       const isFile = multipart && s.type === 'string' && (s.format === 'binary' || s.format === 'base64')
-      return isFile ? `${k}: @file:` : `${k}: ${scalar(s.example ?? '')}`
+      return isFile ? `${k}: @file:` : keyValueLine({ name: k, value: scalar(s.example ?? '') })
     })
     .join('\n')
 }
@@ -264,7 +265,11 @@ function bodyOf(doc: Json, op: Json, params: Json[]): { body: TigerBody; content
       body: {
         type: multipart ? 'multipart' : 'form',
         content: formParams
-          .map((p) => (p.type === 'file' ? `${str(p.name)}: @file:` : `${str(p.name)}: ${scalar(p.default ?? '')}`))
+          .map((p) =>
+            p.type === 'file'
+              ? `${str(p.name)}: @file:`
+              : keyValueLine({ name: str(p.name), value: scalar(p.default ?? '') })
+          )
           .join('\n')
       }
     }

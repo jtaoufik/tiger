@@ -6,6 +6,7 @@
  * $'...' quoting) and Windows cmd ("Copy as cURL (cmd)", with ^ escapes).
  */
 
+import { keyValueLine } from '../tigerFormat'
 import { emptyBody, isHttpMethod, type KeyValue, type TigerBody, type TigerRequest } from '../types'
 
 /** Short options that take a value, which may be attached: `-XPUT` is `-X PUT`. */
@@ -291,7 +292,7 @@ export function importCurl(command: string): TigerRequest | null {
         const value = raw.slice(idx + 1)
         // `name=@path;type=...` uploads a file; `<path` reads a file as text.
         const file = arg !== '--form-string' && value.startsWith('@')
-        form.push(file ? `${name}: @file:${value.slice(1).split(';')[0]}` : `${name}: ${value}`)
+        form.push(file ? `${name}: @file:${value.slice(1).split(';')[0]}` : keyValueLine({ name, value }))
       }
     }
     else if (arg.startsWith('-')) {

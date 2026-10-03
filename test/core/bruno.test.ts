@@ -155,3 +155,27 @@ describe('importBrunoCollection – order', () => {
     ])
   })
 })
+
+describe('importBrunoCollection – folders shown under the same name', () => {
+  it('keeps two sibling folders named alike by folder.bru apart, each with its own auth', async () => {
+    const { importBrunoCollection } = await import('../../src/core/import/bruno')
+    const folder = (name: string, user: string) =>
+      `meta {\n  name: ${name}\n}\n\nauth {\n  mode: basic\n}\n\nauth:basic {\n  username: ${user}\n  password: x\n}\n`
+    const bru = (name: string) => `meta {\n  name: ${name}\n  type: http\n  seq: 1\n}\n\nget {\n  url: https://a.test/${name}\n  auth: inherit\n}\n`
+    const result = importBrunoCollection(
+      [
+        { segments: ['a', 'folder.bru'], text: folder('Admin', 'alpha') },
+        { segments: ['a', 'one.bru'], text: bru('One') },
+        { segments: ['b', 'folder.bru'], text: folder('Admin', 'beta') },
+        { segments: ['b', 'two.bru'], text: bru('Two') }
+      ],
+      'Shop'
+    )
+    const pathOf = (name: string) => result.requests.find((r) => r.request.name === name)?.path
+    expect(pathOf('One')).toEqual(['Admin'])
+    expect(pathOf('Two')).toEqual(['Admin 2'])
+    const authOf = (path: string[]) => result.folders?.find((f) => f.path.join('/') === path.join('/'))?.auth
+    expect(authOf(['Admin'])).toMatchObject({ type: 'basic', username: 'alpha' })
+    expect(authOf(['Admin 2'])).toMatchObject({ type: 'basic', username: 'beta' })
+  })
+})

@@ -284,3 +284,34 @@ describe('Postman globals imported on their own', () => {
     expect(lastSentUrl(b)).toBe('https://alpha.test/v2/get-alpha')
   })
 })
+
+describe('Postman export', () => {
+  it('carries the collection and folder auth, so a re-import loses nothing', async () => {
+    const shop: ImportResult = {
+      name: 'Shop',
+      source: 'postman',
+      auth: { type: 'bearer', token: '{{token}}' },
+      folders: [{ path: ['Admin'], auth: { type: 'basic', username: 'ops', password: '{{opsPassword}}' } }],
+      requests: [
+        { path: ['Admin'], request: { name: 'Stats', method: 'get', url: 'https://shop.test/stats', headers: [], query: [], body: { type: 'none', content: '' } } }
+      ]
+    }
+    const b = bridge([shop])
+    ;(window as { tiger?: unknown }).tiger = b
+    render(<App />)
+    await importVia('Postman')
+    fireEvent.contextMenu(within(sidebar()).getByText('Shop').closest('.col-head')!)
+    fireEvent.click(screen.getByText(/^Export/))
+    const choice = [...document.querySelectorAll<HTMLButtonElement>('.modal button.choice')].find((el) =>
+      el.textContent?.startsWith('Postman collection')
+    )
+    fireEvent.click(choice!)
+    await waitFor(() => expect(b.exportCollection).toHaveBeenCalled())
+    const exported = JSON.parse(b.exportCollection.mock.calls[0][1]) as {
+      auth?: { type: string }
+      item: Array<{ name: string; auth?: { type: string } }>
+    }
+    expect(exported.auth?.type).toBe('bearer')
+    expect(exported.item.find((i) => i.name === 'Admin')?.auth?.type).toBe('basic')
+  })
+})

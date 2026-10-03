@@ -18,6 +18,7 @@
  *     into the environments by `layerCollectionVariables`.
  */
 
+import { keyValueLine } from '../tigerFormat'
 import {
   emptyBody,
   isHttpMethod,
@@ -155,8 +156,9 @@ function toBody(raw: unknown, name: string, path: string[], warnings: ImportWarn
     return { type: 'text', content }
   }
   if (mode === 'urlencoded') {
+    // A value with line breaks stays one field (written as name:: "...").
     const content = toKeyValues(body.urlencoded)
-      .map((kv) => `${kv.enabled ? '' : '~'}${kv.name}: ${kv.value}`)
+      .map((kv) => keyValueLine(kv))
       .join('\n')
     return { type: 'form', content }
   }
@@ -186,7 +188,7 @@ function toBody(raw: unknown, name: string, path: string[], warnings: ImportWarn
         }
         lines.push(`${prefix}${e.key}: @file:${sources[0] ?? ''}`)
       } else {
-        lines.push(`${prefix}${e.key}: ${scalar(e.value)}`)
+        lines.push(keyValueLine({ name: e.key, value: scalar(e.value), enabled: e.disabled !== true }))
       }
     }
     return { type: 'multipart', content: lines.join('\n') }

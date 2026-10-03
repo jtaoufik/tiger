@@ -14,6 +14,7 @@
  * `importBrunoCollection` classifies them; the main process only reads disk.
  */
 
+import { keyValueLine } from '../tigerFormat'
 import { normalizeText } from '../text'
 import { findMissingVars } from '../interpolate'
 import { dedent, parseKeyValues, type RawBlock } from '../tigerFormat'
@@ -228,7 +229,7 @@ function multipartLine(
 ): { line: string; file?: string; extra: boolean } {
   const m = kv.value.match(/^@file\((.*)\)$/)
   const prefix = kv.enabled ? '' : '~'
-  if (!m) return { line: `${prefix}${kv.name}: ${kv.value}`, extra: false }
+  if (!m) return { line: keyValueLine(kv), extra: false }
   const files = m[1].split('|').map((f) => f.trim()).filter(Boolean)
   const file = files[0] ? resolveFile(files[0]) : ''
   return { line: `${prefix}${kv.name}: @file:${file}`, file, extra: files.length > 1 }
@@ -269,7 +270,7 @@ function brunoBody(
   const type = brunoBodyType(block.subtype)
   if (type === 'form') {
     const content = keyValues(block.content)
-      .map((kv) => `${kv.enabled ? '' : '~'}${kv.name}: ${kv.value}`)
+      .map((kv) => keyValueLine(kv))
       .join('\n')
     return { type, content }
   }
@@ -550,8 +551,25 @@ export function importBrunoCollection(
   }
 
   // Display path: each folder segment renamed by its folder.bru meta name.
-  const displayPath = (dir: string[]): string[] =>
-    dir.map((seg, i) => settings.get(dir.slice(0, i + 1).join('/'))?.name || seg)
+  // Two sibling folders shown under the same name stay two folders ("Admin",
+  // "Admin 2"), or one's requests would inherit the other's auth.
+  const shownAs = new Map<string, string>()
+  const takenUnder = new Map<string, Set<string>>()
+  const displayName = (dir: string[]): string => {
+    const key = dir.join('/')
+    const known = shownAs.get(key)
+    if (known !== undefined) return known
+    const parent = displayPath(dir.slice(0, -1)).join('/')
+    const taken = takenUnder.get(parent) ?? new Set<string>()
+    takenUnder.set(parent, taken)
+    const base = settings.get(key)?.name || dir[dir.length - 1]
+    let name = base
+    for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
+    taken.add(name)
+    shownAs.set(key, name)
+    return name
+  }
+  const displayPath = (dir: string[]): string[] => dir.map((_, i) => displayName(dir.slice(0, i + 1)))
   const chainOf = (dir: string[]): BrunoFolderSettings[] => {
     const chain: BrunoFolderSettings[] = []
     for (let i = 0; i <= dir.length; i++) {

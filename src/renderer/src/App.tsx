@@ -600,6 +600,13 @@ export default function App() {
     folderSettings[fKey(colId, path)]?.auth
   const folderDocs = (colId: string, path: string[]): string | undefined =>
     folderSettings[fKey(colId, path)]?.docs
+  /** Every folder of a collection that has its own auth or docs. */
+  const foldersOf = (colId: string): Array<{ path: string[]; auth?: TigerAuth; docs?: string }> => {
+    const own = `${colId}${SEP}`
+    return Object.entries(folderSettingsRef.current)
+      .filter(([key]) => key.startsWith(own))
+      .map(([key, value]) => ({ path: key.slice(own.length).split('/').filter(Boolean), ...value }))
+  }
 
   const active = activeId ? requestsById[activeId] : undefined
   const activeCollection = activeId
@@ -1458,9 +1465,7 @@ export default function App() {
         if (request) requests.push({ oldId: e.id, path: e.folderPath, request })
       }
       const own = `${col.id}${SEP}`
-      const folders = Object.entries(folderSettingsRef.current)
-        .filter(([key]) => key.startsWith(own))
-        .map(([key, value]) => ({ path: key.slice(own.length).split('/').filter(Boolean), ...value }))
+      const folders = foldersOf(col.id)
       try {
         const saved = await writeCollectionToDisk({
           name: col.name,
@@ -1639,7 +1644,8 @@ export default function App() {
               layered.push(ref)
               continue
             }
-            const own = new Set(env.variables.map((v) => v.name))
+            // A disabled variable hides nothing, as in Postman.
+            const own = new Set(env.variables.filter((v) => v.enabled !== false).map((v) => v.name))
             const next = { ...env, variables: [...globals.filter((v) => !own.has(v.name)), ...env.variables] }
             if (ref.path && window.tiger) {
               await window.tiger.writeFile(ref.path, serializeEnvironment(next))
@@ -1855,7 +1861,16 @@ export default function App() {
           const imported: ImportedRequest[] = loaded
             .filter((x): x is { entry: SidebarEntry; request: TigerRequest } => !!x.request)
             .map((x) => ({ path: x.entry.folderPath, request: x.request }))
-          const json = JSON.stringify(exportPostman(col.name, imported, await environmentFor(col.id)), null, 2)
+          // Collection and folder auth and docs go along, so a re-import loses nothing.
+          const json = JSON.stringify(
+            exportPostman(col.name, imported, await environmentFor(col.id), {
+              auth: col.auth,
+              docs: col.docs,
+              folders: foldersOf(col.id)
+            }),
+            null,
+            2
+          )
           const filename = `${col.name}.postman_collection.json`
           if (window.tiger) {
             const path = await window.tiger.exportCollection(filename, json)

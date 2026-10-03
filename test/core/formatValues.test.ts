@@ -72,3 +72,40 @@ describe('values the .tiger format used to lose', () => {
     expect(parseRequest('meta { name: One line }\nget { url: https://a.test }').url).toBe('https://a.test')
   })
 })
+
+describe('imported form values with line breaks', () => {
+  it('stay one field from Postman (urlencoded and form-data) and Insomnia', async () => {
+    const { importPostman } = await import('../../src/core/import/postman')
+    const { importInsomnia } = await import('../../src/core/import/insomnia')
+    const note = 'line one\nline two'
+    const pm = importPostman({
+      info: { name: 'P', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' },
+      item: [
+        { name: 'Url', request: { method: 'POST', url: 'https://a.test/u', body: { mode: 'urlencoded', urlencoded: [{ key: 'note', value: note }, { key: 'n', value: '1' }] } } },
+        { name: 'Multi', request: { method: 'POST', url: 'https://a.test/m', body: { mode: 'formdata', formdata: [{ key: 'note', value: note, type: 'text' }] } } }
+      ]
+    })
+    const url = buildRequest(pm.requests[0].request, {})
+    expect(new URLSearchParams(url.body).get('note')).toBe(note)
+    expect(new URLSearchParams(url.body).get('n')).toBe('1')
+    expect(buildRequest(pm.requests[1].request, {}).multipart).toEqual([{ name: 'note', value: note, isFile: false }])
+
+    const ins = importInsomnia({
+      _type: 'export',
+      __export_format: 4,
+      resources: [
+        { _id: 'wrk', _type: 'workspace', name: 'W' },
+        {
+          _id: 'req',
+          _type: 'request',
+          parentId: 'wrk',
+          name: 'Form',
+          method: 'POST',
+          url: 'https://a.test/f',
+          body: { mimeType: 'application/x-www-form-urlencoded', params: [{ name: 'note', value: note }] }
+        }
+      ]
+    })
+    expect(new URLSearchParams(buildRequest(ins.requests[0].request, {}).body).get('note')).toBe(note)
+  })
+})

@@ -17,6 +17,7 @@
  *     same name stay apart ("Admin", "Admin 2").
  */
 
+import { keyValueLine } from '../tigerFormat'
 import {
   emptyBody,
   isHttpMethod,
@@ -109,7 +110,8 @@ function formLines(params: unknown, tags: Set<string>, onFile: (name: string, fi
         onFile(name, file)
         return `${prefix}${name}: @file:${file}`
       }
-      return `${prefix}${name}: ${convertTemplates(scalar(p.value), tags)}`
+      // A value with line breaks stays one field (written as name:: "...").
+      return keyValueLine({ name, value: convertTemplates(scalar(p.value), tags), enabled: p.disabled !== true })
     })
     .join('\n')
 }
