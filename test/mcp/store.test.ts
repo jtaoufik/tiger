@@ -8,7 +8,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFsStore } from '../../src/mcp/store'
-import { handleListEnvironments, handleListRequests } from '../../src/mcp/handlers'
+import {
+  handleListEnvironments,
+  handleListRequests,
+  handleRunRequest,
+  type HttpRunner
+} from '../../src/mcp/handlers'
+import type { BuiltRequest } from '../../src/core/request'
 
 let base = ''
 beforeAll(() => {
@@ -31,6 +37,19 @@ function collection(files: Record<string, string>): string {
 const request = (name: string, url = 'https://api.test/x'): string =>
   `meta {\n  name: ${name}\n}\nget {\n  url: ${url}\n}\n`
 
+/** A runner that records what would be sent instead of sending it. */
+function recordingRunner(): HttpRunner & { sent: BuiltRequest[] } {
+  const sent: BuiltRequest[] = []
+  return {
+    sent,
+    oauthToken: async () => 'unused',
+    send: async (built) => {
+      sent.push(built)
+      return { status: 200, statusText: 'OK', headers: {}, body: '{}', timeMs: 1 }
+    }
+  }
+}
+
 describe('list_requests', () => {
   it('lists requests only, not the collection.tiger and folder.tiger settings files', async () => {
     const root = collection({
@@ -41,6 +60,22 @@ describe('list_requests', () => {
     })
     const listed = JSON.parse((await handleListRequests(createFsStore(root))).content[0].text)
     expect(listed).toEqual([{ name: 'List', path: join('admin', 'list.tiger') }])
+  })
+})
+
+describe('run_request auth', () => {
+  it('sends the default auth of the folder.tiger above the request, then the collection’s', async () => {
+    const root = collection({
+      'collection.tiger': 'auth:bearer {\n  token: collection-token\n}\n',
+      'admin/folder.tiger': 'auth:bearer {\n  token: folder-token\n}\n',
+      'admin/users/list.tiger': request('List users'),
+      'public/get.tiger': request('Public')
+    })
+    const store = createFsStore(root)
+    const runner = recordingRunner()
+    await handleRunRequest(store, runner, { path: join('admin', 'users', 'list.tiger') })
+    await handleRunRequest(store, runner, { path: join('public', 'get.tiger') })
+    expect(runner.sent.map((b) => b.headers.Authorization)).toEqual(['Bearer folder-token', 'Bearer collection-token'])
   })
 })
 

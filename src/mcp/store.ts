@@ -72,6 +72,16 @@ export function createFsStore(root: string): CollectionStore {
     }
   }
 
+  async function readFolderAuth(folder: string[]): Promise<TigerAuth | undefined> {
+    try {
+      const text = await readTextFile(join(root, ...folder, FOLDER_FILE))
+      return parseCollectionSettings(text).auth
+    } catch {
+      // No folder.tiger (or unreadable): the folder has no default auth.
+      return undefined
+    }
+  }
+
   return {
     async listRequests() {
       const acc: RequestRef[] = []
@@ -80,6 +90,7 @@ export function createFsStore(root: string): CollectionStore {
     },
     readRequest: (path) => readTextFile(join(root, path)),
     readCollectionAuth,
+    readFolderAuth,
     listEnvironments,
     async readEnvironment(name) {
       const ref = (await listEnvironments()).find((e) => e.name === name)

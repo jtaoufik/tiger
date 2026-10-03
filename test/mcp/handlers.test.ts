@@ -25,7 +25,12 @@ const files: Record<string, string> = {
   // A request whose bearer token is a {{variable}} reference (must NOT redact).
   'var-secret.tiger':
     'meta {\n  name: VarSecret\n}\nget {\n  url: https://api.test/x\n}\n' +
-    'auth:bearer {\n  token: {{apiToken}}\n}'
+    'auth:bearer {\n  token: {{apiToken}}\n}',
+  // Requests in nested folders, without auth / with their own / opting out.
+  'admin/users/list.tiger': 'meta {\n  name: List\n}\nget {\n  url: https://api.test/admin/users\n}',
+  'admin/users/own.tiger':
+    'meta {\n  name: Own\n}\nget {\n  url: https://api.test/admin/me\n}\nauth:bearer {\n  token: own-tok\n}',
+  'admin/users/none.tiger': 'meta {\n  name: None\n}\nget {\n  url: https://api.test/admin/open\n}\nauth:none {\n}'
 }
 
 function makeStore(overrides: Partial<CollectionStore> = {}): CollectionStore {
@@ -36,6 +41,7 @@ function makeStore(overrides: Partial<CollectionStore> = {}): CollectionStore {
       throw new Error('file not found')
     },
     readCollectionAuth: async () => undefined,
+    readFolderAuth: async () => undefined,
     listEnvironments: async () => [{ name: 'dev', path: 'environments/dev.tiger' }],
     readEnvironment: async (name) =>
       name === 'dev'
@@ -203,6 +209,47 @@ describe('handleRunRequest', () => {
     })
     await handleRunRequest(inheritStore, runner, { path: 'inherit.tiger' })
     expect(runner.last?.headers.Authorization).toBe('Bearer collection-tok')
+  })
+
+  it('applies the nearest folder default auth before the collection default, like the app', async () => {
+    const folderStore = (folders: Record<string, string>) =>
+      makeStore({
+        // list_requests reports Windows paths with backslashes.
+        readRequest: async (path) => files[path.replace(/\\/g, '/')],
+        readCollectionAuth: async () => ({ type: 'bearer', token: 'collection-tok' }),
+        readFolderAuth: async (folder) => {
+          const token = folders[folder.join('/')]
+          return token ? { type: 'bearer', token } : undefined
+        }
+      })
+
+    // admin/users has no folder.tiger: the request inherits admin's.
+    let runner = fakeRunner()
+    await handleRunRequest(folderStore({ admin: 'admin-tok' }), runner, { path: 'admin/users/list.tiger' })
+    expect(runner.last?.headers.Authorization).toBe('Bearer admin-tok')
+
+    // The nearest folder wins; Windows paths name the same folders.
+    runner = fakeRunner()
+    await handleRunRequest(folderStore({ admin: 'admin-tok', 'admin/users': 'users-tok' }), runner, {
+      path: 'admin\\users\\list.tiger'
+    })
+    expect(runner.last?.headers.Authorization).toBe('Bearer users-tok')
+
+    // No folder auth on the way: the collection default applies.
+    runner = fakeRunner()
+    await handleRunRequest(folderStore({}), runner, { path: 'admin/users/list.tiger' })
+    expect(runner.last?.headers.Authorization).toBe('Bearer collection-tok')
+  })
+
+  it('keeps a request’s own auth, or its explicit auth:none, over a folder default', async () => {
+    const store = makeStore({ readFolderAuth: async () => ({ type: 'bearer', token: 'folder-tok' }) })
+    let runner = fakeRunner()
+    await handleRunRequest(store, runner, { path: 'admin/users/own.tiger' })
+    expect(runner.last?.headers.Authorization).toBe('Bearer own-tok')
+
+    runner = fakeRunner()
+    await handleRunRequest(store, runner, { path: 'admin/users/none.tiger' })
+    expect(runner.last?.headers.Authorization).toBeUndefined()
   })
 
   it('does not inherit when the collection has no default auth', async () => {

@@ -4,7 +4,7 @@
  * filesystem or network. `server.ts` wires them to the MCP SDK over stdio.
  */
 
-import { resolveAuth } from '../core/collectionSettings'
+import { nearestFolderAuth, resolveAuth } from '../core/collectionSettings'
 import { envToVars, type VarMap } from '../core/interpolate'
 import { buildRequest, type BuiltRequest } from '../core/request'
 import { formatResponse, type RawResponse } from '../core/response'
@@ -27,6 +27,8 @@ export interface CollectionStore {
   readRequest(path: string): Promise<string>
   /** The collection's default auth (from `collection.tiger`), if any. */
   readCollectionAuth(): Promise<TigerAuth | undefined>
+  /** A folder's default auth (from its `folder.tiger`), if any. `folder` runs from the collection root. */
+  readFolderAuth(folder: string[]): Promise<TigerAuth | undefined>
   listEnvironments(): Promise<EnvironmentRef[]>
   readEnvironment(name: string): Promise<TigerEnvironment | null>
 }
@@ -130,6 +132,14 @@ export interface RunArgs {
   timeoutMs?: number
 }
 
+/** The folders a request file sits in, from the collection root down ('/' or '\' separated). */
+function folderPath(path: string): string[] {
+  return path
+    .split(/[\\/]/)
+    .filter((part) => part && part !== '.')
+    .slice(0, -1)
+}
+
 export async function handleRunRequest(
   store: CollectionStore,
   runner: HttpRunner,
@@ -141,9 +151,13 @@ export async function handleRunRequest(
     const env = args.environment ? await store.readEnvironment(args.environment) : null
     const vars = envToVars(env)
 
-    // Inherit the collection's default auth unless the request opts out.
-    const collectionAuth = await store.readCollectionAuth()
-    let effective: TigerRequest = { ...request, auth: resolveAuth(request, collectionAuth) }
+    // Inherit like the app: the request's own auth (an explicit auth:none opts
+    // out), else its nearest folder's default auth, else the collection's.
+    const folders = folderPath(args.path)
+    const folderAuths = await Promise.all(folders.map((_, i) => store.readFolderAuth(folders.slice(0, i + 1))))
+    const inherited =
+      nearestFolderAuth(folders, (p) => folderAuths[p.length - 1]) ?? (await store.readCollectionAuth())
+    let effective: TigerRequest = { ...request, auth: resolveAuth(request, inherited) }
 
     // OAuth2 client-credentials must be resolved to a bearer token before the
     // request is built, otherwise no Authorization header is ever sent.
