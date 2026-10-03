@@ -64,7 +64,10 @@ function toKeyValues(raw: unknown): KeyValue[] {
     .filter((kv): kv is KeyValue => kv !== null)
 }
 
-function queryFromString(qs: string): KeyValue[] {
+/** A query param; `bare` is a key without a value (`?flag`, `value: null`). */
+type QueryParam = KeyValue & { bare?: boolean }
+
+function queryFromString(qs: string): QueryParam[] {
   if (!qs) return []
   return qs
     .split('&')
@@ -74,9 +77,22 @@ function queryFromString(qs: string): KeyValue[] {
       return {
         name: idx === -1 ? pair : pair.slice(0, idx),
         value: idx === -1 ? '' : pair.slice(idx + 1),
-        enabled: true
+        enabled: true,
+        ...(idx === -1 ? { bare: true } : {})
       }
     })
+}
+
+/**
+ * Postman sends a key without a value as `?flag`; a Tiger query row always
+ * sends `flag=`, so an enabled one stays in the URL.
+ */
+function keepBareParams(base: string, params: QueryParam[]): { url: string; query: KeyValue[] } {
+  const bare = params.filter((p) => p.bare && p.enabled).map((p) => p.name)
+  const query = params
+    .filter((p) => !(p.bare && p.enabled))
+    .map(({ name, value, enabled }) => ({ name, value, enabled }))
+  return { url: bare.length ? `${base}?${bare.join('&')}` : base, query }
 }
 
 interface UrlParts {
@@ -89,7 +105,7 @@ function splitUrl(url: unknown): UrlParts {
   if (typeof url === 'string') {
     const idx = url.indexOf('?')
     if (idx === -1) return { url, query: [], pathVars: [] }
-    return { url: url.slice(0, idx), query: queryFromString(url.slice(idx + 1)), pathVars: [] }
+    return { ...keepBareParams(url.slice(0, idx), queryFromString(url.slice(idx + 1))), pathVars: [] }
   }
   const u = (url ?? {}) as Json
   let raw = str(u.raw)
@@ -103,12 +119,22 @@ function splitUrl(url: unknown): UrlParts {
   }
   const idx = raw.indexOf('?')
   const base = idx === -1 ? raw : raw.slice(0, idx)
-  const query = Array.isArray(u.query) ? toKeyValues(u.query) : queryFromString(idx === -1 ? '' : raw.slice(idx + 1))
+  const params: QueryParam[] = Array.isArray(u.query)
+    ? u.query
+        .map((entry) => (entry ?? {}) as Json)
+        .filter((e) => typeof e.key === 'string')
+        .map((e) => ({
+          name: str(e.key),
+          value: scalar(e.value),
+          enabled: e.disabled !== true,
+          ...(e.value == null ? { bare: true } : {})
+        }))
+    : queryFromString(idx === -1 ? '' : raw.slice(idx + 1))
   const pathVars = asArray(u.variable)
     .map((v) => (v ?? {}) as Json)
     .filter((v) => typeof v.key === 'string')
     .map((v) => ({ name: str(v.key), value: scalar(v.value) }))
-  return { url: base, query, pathVars }
+  return { ...keepBareParams(base, params), pathVars }
 }
 
 function description(raw: unknown): string | undefined {
