@@ -386,7 +386,8 @@ button {
   min-width: 0;
 }
 .row-actions {
-  display: none;
+  display: inline-flex;
+  visibility: hidden;
   align-items: center;
   gap: 1px;
   flex-shrink: 0;
@@ -395,7 +396,7 @@ button {
 .col-head:hover .row-actions,
 .tree-row:focus-within .row-actions,
 .col-head:focus-within .row-actions {
-  display: inline-flex;
+  visibility: visible;
 }
 /* Keyboard focus: the treeitem wraps its row and its child group, so the
    ring is drawn on the row only (inset, never clipped by the scroller). */
@@ -411,7 +412,7 @@ button {
 .tree-node:focus-visible > .tree-row .row-actions,
 .tree-node:focus-visible > .col-head .row-actions,
 .tree-node:focus-visible > .folder-row .row-actions {
-  display: inline-flex;
+  visibility: visible;
 }
 .method-pill {
   font-family: var(--mono);
@@ -1491,8 +1492,8 @@ button {
 .env-row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 0.8125rem; }
 .env-row:hover { background: var(--accent-weak); }
 .env-row.sel { background: var(--glass-strong); box-shadow: var(--shadow-sm); }
-.env-row .row-actions { display: none; gap: 1px; }
-.env-row:hover .row-actions, .env-row.sel .row-actions { display: inline-flex; }
+.env-row .row-actions { display: inline-flex; visibility: hidden; gap: 1px; }
+.env-row:hover .row-actions, .env-row.sel .row-actions { visibility: visible; }
 .env-activate { color: var(--text-faint); opacity: 0.4; }
 .env-row:hover .env-activate { opacity: 0.7; }
 .env-activate.on { color: var(--m-get); opacity: 1; }
