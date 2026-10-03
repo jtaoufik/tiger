@@ -6,18 +6,28 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`
 }
 
+/**
+ * curl options for the body. curl reads a file for a --data value or a -F
+ * value that starts with @ (or <): bodies go as --data-raw and form text
+ * fields as --form-string, so only real file rows (-F name=@path) read one.
+ */
+function curlBodyArgs(built: BuiltRequest, quote: (value: string) => string): string[] {
+  if (built.multipart?.length) {
+    return built.multipart.map((part) =>
+      part.isFile
+        ? `-F ${quote(`${part.name}=@${part.value}`)}`
+        : `--form-string ${quote(`${part.name}=${part.value}`)}`
+    )
+  }
+  return built.body ? [`--data-raw ${quote(built.body)}`] : []
+}
+
 export function toCurl(built: BuiltRequest): string {
   const parts = [`curl -X ${built.method} ${shellQuote(built.url)}`]
   for (const [name, value] of Object.entries(built.headers)) {
     parts.push(`-H ${shellQuote(`${name}: ${value}`)}`)
   }
-  if (built.multipart?.length) {
-    for (const part of built.multipart) {
-      parts.push(`-F ${shellQuote(`${part.name}=${part.isFile ? `@${part.value}` : part.value}`)}`)
-    }
-  } else if (built.body) {
-    parts.push(`--data ${shellQuote(built.body)}`)
-  }
+  parts.push(...curlBodyArgs(built, shellQuote))
   return parts.join(' \\\n  ')
 }
 

@@ -85,10 +85,10 @@ describe('multipart through buildRequest and the .tiger format', () => {
     expect(back).toEqual(req)
   })
 
-  it('renders curl -F flags for multipart requests', () => {
+  it('renders curl form flags for multipart requests (text literal, files read)', () => {
     const built = buildRequest(req, { base: 'https://api.test', tag: 'pets', dir: '/tmp' })
     const curl = toCurl(built)
-    expect(curl).toContain("-F 'label=pets'")
+    expect(curl).toContain("--form-string 'label=pets'")
     expect(curl).toContain("-F 'photo=@/tmp/cat.png'")
     expect(curl).not.toContain('--data')
   })
