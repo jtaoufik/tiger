@@ -43,29 +43,30 @@ function pathMatches(requestPath: string, cookiePath: string): boolean {
   return requestPath[cookiePath.length] === '/'
 }
 
+/** A cookie read from a Set-Cookie header; `expired` means it deletes the stored one. */
+export interface ResponseCookie {
+  cookie: StoredCookie
+  expired: boolean
+}
+
 /**
- * Upsert cookies parsed from Set-Cookie response headers into `jar`.
- *
- * Returns a new array (the original is mutated in place for efficiency, but a
- * reference to the same array is returned so callers can re-assign freely).
- * Expired cookies delete matching existing entries; non-expired cookies
- * replace or append. Uses `now` (epoch ms) so tests can control the clock.
+ * Read the Set-Cookie response headers of `url` into cookies, in order, with
+ * their domain, path and expiry resolved. Uses `now` (epoch ms) so tests can
+ * control the clock. A malformed URL yields nothing.
  */
-export function upsertCookies(
-  jar: StoredCookie[],
+export function parseResponseCookies(
   url: string,
   setCookieValues: string[],
   now: number
-): StoredCookie[] {
-  if (!setCookieValues.length) return jar
-
+): ResponseCookie[] {
   let host: string
   try {
     host = new URL(url).hostname.toLowerCase()
   } catch {
-    return jar
+    return []
   }
 
+  const out: ResponseCookie[] = []
   for (const raw of setCookieValues) {
     for (const cookie of parseSetCookie([raw])) {
       const attrs = Object.fromEntries(
@@ -110,27 +111,42 @@ export function upsertCookies(
       const path = attrs.path ?? '/'
       const secure = attrs.secure !== undefined
 
-      const existing = jar.findIndex(
-        (c) => c.domain === domain && c.path === path && c.name === cookie.name
-      )
-      const next: StoredCookie = {
-        domain,
-        path,
-        name: cookie.name,
-        value: cookie.value,
-        expires,
-        hostOnly,
-        secure
-      }
+      out.push({
+        cookie: { domain, path, name: cookie.name, value: cookie.value, expires, hostOnly, secure },
+        expired: expires !== undefined && expires <= now
+      })
+    }
+  }
+  return out
+}
 
-      if (expires !== undefined && expires <= now) {
-        // expired = delete
-        if (existing !== -1) jar.splice(existing, 1)
-      } else if (existing !== -1) {
-        jar[existing] = next
-      } else {
-        jar.push(next)
-      }
+/**
+ * Upsert cookies parsed from Set-Cookie response headers into `jar`.
+ *
+ * Returns a new array (the original is mutated in place for efficiency, but a
+ * reference to the same array is returned so callers can re-assign freely).
+ * Expired cookies delete matching existing entries; non-expired cookies
+ * replace or append. Uses `now` (epoch ms) so tests can control the clock.
+ */
+export function upsertCookies(
+  jar: StoredCookie[],
+  url: string,
+  setCookieValues: string[],
+  now: number
+): StoredCookie[] {
+  if (!setCookieValues.length) return jar
+
+  for (const { cookie: next, expired } of parseResponseCookies(url, setCookieValues, now)) {
+    const existing = jar.findIndex(
+      (c) => c.domain === next.domain && c.path === next.path && c.name === next.name
+    )
+    if (expired) {
+      // expired = delete
+      if (existing !== -1) jar.splice(existing, 1)
+    } else if (existing !== -1) {
+      jar[existing] = next
+    } else {
+      jar.push(next)
     }
   }
 

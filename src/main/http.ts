@@ -1,10 +1,11 @@
-import { net, session } from 'electron'
+import { net, session, type Session } from 'electron'
 import { mainT } from './i18n'
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { request as httpsRequest, type RequestOptions } from 'node:https'
 import { STATUS_CODES, request as httpRequest } from 'node:http'
-import { cookieHeaderFor, storeCookies } from './cookieJar'
+import { attachCookieStore, cookieHeaderFor, cookiesSettled, storeCookies } from './cookieJar'
+import { isE2E, isLoopbackOrLocal } from './e2eGuard'
 import type { BuiltRequest } from '../core/request'
 import { assembleMultipart, generateBoundary, type MultipartPart } from '../core/multipart'
 import type { RawResponse, ResponseTimings } from '../core/response'
@@ -17,20 +18,8 @@ import {
 import type { TigerAuth } from '../core/types'
 import { loadSettings } from './settings'
 
-/**
- * Push proxy + TLS settings into the Chromium session that sends requests.
- * Call at startup and whenever advanced settings change.
- */
-export function applyNetworkSettings(): void {
-  const s = loadSettings()
-  const ses = session.defaultSession
-  // Without a proxy of its own, Tiger uses the system's (Windows or macOS
-  // settings, PAC, WPAD), as a browser does on a corporate network.
-  ses.setProxy(
-    s.proxyEnabled && s.proxyUrl
-      ? { mode: 'fixed_servers', proxyRules: s.proxyUrl }
-      : { mode: 'system' }
-  )
+/** Push proxy + TLS settings into one Chromium session; resolves once the proxy applies. */
+function configureSession(ses: Session, s: ReturnType<typeof loadSettings>): Promise<void> {
   // cb(0) = trust, cb(-3) = use Chromium's default verification. Scoped
   // exceptions beat the all-or-nothing switch for internal CAs.
   const exceptions = new Set(
@@ -43,6 +32,41 @@ export function applyNetworkSettings(): void {
     if (!s.sslVerify) return cb(0)
     cb(exceptions.has(req.hostname.toLowerCase()) ? 0 : -3)
   })
+  // Without a proxy of its own, Tiger uses the system's (Windows or macOS
+  // settings, PAC, WPAD), as a browser does on a corporate network.
+  return ses.setProxy(
+    s.proxyEnabled && s.proxyUrl
+      ? { mode: 'fixed_servers', proxyRules: s.proxyUrl }
+      : { mode: 'system' }
+  )
+}
+
+/** The session requests go through, and when it is ready (proxy applied, jar filled). */
+let requestSes: { session: Session; ready: Promise<unknown> } | null = null
+
+/**
+ * The Chromium session every Send goes through. It is not the app's default
+ * session: it keeps no HTTP cache (an API client must reach the server every
+ * time), and its cookie store holds Tiger's cookie jar and nothing else.
+ */
+function requestSession(): { session: Session; ready: Promise<unknown> } {
+  if (requestSes) return requestSes
+  const ses = session.fromPartition('tiger-requests', { cache: false })
+  // Same hermetic rule as the default session in end-to-end runs.
+  if (isE2E()) ses.webRequest.onBeforeRequest((details, cb) => cb({ cancel: !isLoopbackOrLocal(details.url) }))
+  const proxied = configureSession(ses, loadSettings()).catch(() => undefined)
+  requestSes = { session: ses, ready: Promise.all([proxied, attachCookieStore(ses)]) }
+  return requestSes
+}
+
+/**
+ * Push proxy + TLS settings into the Chromium sessions (the app's own and the
+ * one that sends requests). Call at startup and whenever advanced settings change.
+ */
+export function applyNetworkSettings(): void {
+  const s = loadSettings()
+  void configureSession(session.defaultSession, s)
+  if (requestSes) void configureSession(requestSes.session, s)
 }
 
 /** In-flight sends by renderer-chosen key, so the user can cancel them. */
@@ -158,17 +182,28 @@ function abortError(): Error {
  * One exchange through Chromium's network stack (proxy, system certificates).
  * A redirect is not followed here but returned: `exchange` follows it or not,
  * so Follow redirects off shows the 3xx and Max redirects holds.
+ *
+ * `jarCookies`: Chromium attaches the jar's cookies and stores the response's
+ * (also a redirect's, whose Set-Cookie it never hands over). Otherwise its
+ * cookie store is left out: nothing is attached, nothing is kept.
  */
 function chromiumHop(
   url: string,
   method: string,
   headers: Record<string, string>,
   body: string | Buffer | undefined,
-  signal: AbortSignal
+  signal: AbortSignal,
+  jarCookies: boolean
 ): Promise<Hop> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) return reject(abortError())
-    const req = net.request({ method, url, redirect: 'manual', useSessionCookies: true })
+    const req = net.request({
+      method,
+      url,
+      session: requestSession().session,
+      redirect: 'manual',
+      useSessionCookies: jarCookies
+    })
     const onAbort = (): void => {
       req.abort()
       reject(abortError())
@@ -349,8 +384,13 @@ function toRawResponse(hop: Hop, started: number): RawResponse {
 
 /**
  * Send `built` and follow its redirects the way the settings say (Follow
- * redirects, Max redirects), with fetch's method and body rules. Every hop
- * stores its cookies; a cross-origin hop sheds Authorization and Cookie.
+ * redirects, Max redirects), with fetch's method and body rules. A
+ * cross-origin hop sheds Authorization and Cookie.
+ *
+ * Cookies come from Tiger's jar only, and only when it is on: each hop gets
+ * the jar's cookies for its own URL (so one set by a redirect reaches the
+ * next hop) unless the request writes its own Cookie header, and every
+ * response's cookies go into the jar.
  */
 async function exchange(
   built: BuiltRequest,
@@ -361,31 +401,31 @@ async function exchange(
 ): Promise<RawResponse> {
   const started = Date.now()
   const tls = viaNode ? readTlsFiles(s) : {}
+  // The Chromium session gets its proxy and the jar before its first send.
+  if (!viaNode || s.cookieJarEnabled) await requestSession().ready
+  if (s.cookieJarEnabled) await cookiesSettled()
   let url = built.url
   let method = built.method
   let headers = built.headers
   let body = payload
   for (let hops = 0; ; hops++) {
-    const hop = viaNode
-      ? await nodeHop(url, method, headers, body, signal, tls, s)
-      : await chromiumHop(url, method, headers, body, signal)
-    // Persist Set-Cookie on EVERY hop, not just the final response, so the
-    // jar reflects cookies set by intermediate redirecting responses.
-    if (s.cookieJarEnabled && hop.setCookies.length) storeCookies(url, hop.setCookies)
+    const jar = s.cookieJarEnabled && !Object.keys(headers).some((h) => h.toLowerCase() === 'cookie')
+    let hop: Hop
+    if (viaNode) {
+      const cookie = jar ? await cookieHeaderFor(url) : ''
+      hop = await nodeHop(url, method, cookie ? { ...headers, Cookie: cookie } : headers, body, signal, tls, s)
+    } else {
+      hop = await chromiumHop(url, method, headers, body, signal, jar)
+    }
+    // When Chromium attached the jar's cookies, it also stored this hop's.
+    if (s.cookieJarEnabled && (viaNode || !jar)) await storeCookies(url, hop.setCookies)
     const next = followTarget(hop, url, s, hops)
     if (!next) return toRawResponse(hop, started)
     const sem = redirectMethodBody(hop.status, method, body)
-    // Strip Authorization/Cookie on cross-origin hops, then recompute the jar
-    // Cookie for the new URL when the jar is enabled.
-    const nextHeaders = redirectHeaders(headers, url, next)
-    if (s.cookieJarEnabled && !sameOrigin(url, next)) {
-      const cookie = cookieHeaderFor(next)
-      if (cookie) nextHeaders.Cookie = cookie
-    }
+    headers = redirectHeaders(headers, url, next)
     url = next
     method = sem.method
     body = sem.body
-    headers = nextHeaders
   }
 }
 
@@ -424,12 +464,6 @@ export async function sendHttp(
   const controller = new AbortController()
   if (cancelKey) inFlight.set(cancelKey, controller)
   const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-  // Attach jarred cookies unless the request sets its own Cookie header.
-  if (s.cookieJarEnabled && !Object.keys(built.headers).some((h) => h.toLowerCase() === 'cookie')) {
-    const cookie = cookieHeaderFor(built.url)
-    if (cookie) built = { ...built, headers: { ...built.headers, Cookie: cookie } }
-  }
 
   // multipart/form-data: read file rows and assemble the binary body now.
   let bodyPayload: string | Buffer | undefined = built.body
