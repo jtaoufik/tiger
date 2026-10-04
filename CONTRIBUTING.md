@@ -43,6 +43,8 @@ npm run test:e2e   # builds, then drives the real Electron app with Playwright (
 
 The end-to-end suite runs every journey against a temp copy of `examples/jsonplaceholder` and a local HTTP server it starts itself; the app runs with `TIGER_E2E=1`, which blocks any non-loopback request, so it never touches the internet. On Linux without a display, wrap it: `xvfb-run -a npm run test:e2e`.
 
+`e2e/a11y.spec.ts` is part of that run: it audits every screen with axe-core (WCAG 2.2 AA) in light and dark, English and Arabic, then again with forced colors and reduced motion, and walks the window keyboard-only (Tab order, no trap outside dialogs, a focus outline on every stop). Any violation fails it; the per-run report lands in `test-results/a11y/`. Fix findings in the UI rather than turning rules off; a proven false positive goes in the spec's `EXCLUDE` list with the reason.
+
 ## Reporting bugs
 
 Open an issue with the request that reproduces it (a `.tiger` snippet is perfect), what you expected, and what happened instead.
