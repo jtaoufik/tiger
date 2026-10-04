@@ -52,8 +52,27 @@ export interface TigerBody {
   variables?: string
 }
 
-/** One HTTP request, the in-memory form of a single `.tiger` file. */
+/**
+ * What a request file holds: an HTTP request (the default, also for every
+ * file written before realtime requests existed), a WebSocket or a
+ * Server-Sent Events stream.
+ */
+export type RequestKind = 'http' | 'ws' | 'sse'
+
+/** How a saved WebSocket message is edited (JSON gets Prettify). */
+export type MessageFormat = 'text' | 'json'
+
+/** A WebSocket message kept with the request, sent with one click. */
+export interface SavedMessage {
+  name: string
+  format: MessageFormat
+  content: string
+}
+
+/** One request, the in-memory form of a single `.tiger` file. */
 export interface TigerRequest {
+  /** Absent for HTTP, so HTTP files read and write exactly as before. */
+  kind?: 'ws' | 'sse'
   name: string
   seq?: number
   method: HttpMethod
@@ -74,6 +93,22 @@ export interface TigerRequest {
   preScript?: string
   /** JavaScript run after the response arrives (variables, assertions). */
   postScript?: string
+  /** WebSocket only: Sec-WebSocket-Protocol values offered to the server. */
+  subprotocols?: string[]
+  /** WebSocket only: messages kept with the request. */
+  messages?: SavedMessage[]
+  /** Server-Sent Events only: reconnect when the stream ends or fails. */
+  reconnect?: boolean
+}
+
+/** The kind of a request, `http` when the file names none. */
+export function requestKind(req: Pick<TigerRequest, 'kind'>): RequestKind {
+  return req.kind ?? 'http'
+}
+
+/** The short label a request shows in the sidebar and tabs: GET, POST, WS, SSE. */
+export function requestBadge(req: { kind?: 'ws' | 'sse'; method: HttpMethod }): string {
+  return (req.kind ?? req.method).toUpperCase()
 }
 
 /** A named set of `{{variable}}` values. */

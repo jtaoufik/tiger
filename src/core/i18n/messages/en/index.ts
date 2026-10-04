@@ -16,6 +16,7 @@ import { modals } from './modals'
 import { views } from './views'
 import { imports } from './imports'
 import { main } from './main'
+import { realtime } from './realtime'
 
 export const en = {
   ...common,
@@ -30,7 +31,8 @@ export const en = {
   ...modals,
   ...views,
   ...imports,
-  ...main
+  ...main,
+  ...realtime
 } as const
 
 /** Namespace name -> its English keys, for the completeness tests. */
@@ -47,5 +49,6 @@ export const EN_NAMESPACES = {
   modals,
   views,
   imports,
-  main
+  main,
+  realtime
 } as const

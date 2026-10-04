@@ -27,6 +27,7 @@ import type { VarMap } from '../core/interpolate'
 import type { ScriptJob } from '../core/scriptProtocol'
 import type { ScriptRunResult } from '../core/script'
 import type { Locale } from '../core/i18n/locales'
+import type { RealtimeEvent, RealtimeOpenSpec } from '../core/realtime'
 
 /** The language main resolved at window creation (--tiger-locale=xx). */
 function initialLocale(): string | undefined {
@@ -87,6 +88,21 @@ const api = {
   /** Run a collection script in the isolated script host (never in this window). */
   runScript: (job: ScriptJob): Promise<ScriptRunResult> => invoke('tiger:script:run', job),
   cancelSend: (key: string): Promise<boolean> => invoke('tiger:cancelSend', key),
+  /** WebSocket and Server-Sent Events connections, owned by main. */
+  realtime: {
+    open: (spec: RealtimeOpenSpec): Promise<void> => invoke('tiger:realtime:open', spec),
+    send: (id: string, text: string): Promise<boolean> => invoke('tiger:realtime:send', id, text),
+    close: (id: string): Promise<boolean> => invoke('tiger:realtime:close', id),
+    setReconnect: (id: string, on: boolean): Promise<void> => invoke('tiger:realtime:reconnect', id, on),
+    /** Connection events in order, in batches; returns an unsubscribe function. */
+    onEvents: (cb: (events: RealtimeEvent[]) => void): (() => void) => {
+      const listener = (_e: unknown, events: RealtimeEvent[]): void => cb(events)
+      ipcRenderer.on('tiger:realtime:events', listener)
+      return () => {
+        ipcRenderer.removeListener('tiger:realtime:events', listener)
+      }
+    }
+  },
   oauthToken: (auth: Extract<TigerAuth, { type: 'oauth2' }>, vars: VarMap): Promise<string> =>
     invoke('tiger:oauthToken', auth, vars),
   /** Forget a cached OAuth2 token so the next send asks for a fresh one. */

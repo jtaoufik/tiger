@@ -3,6 +3,11 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
+## Unreleased
+
+- WebSocket and Server-Sent Events requests (New WebSocket request, New Server-Sent Events request). Connect and disconnect (Ctrl+Shift+Enter, Cmd+Shift+Enter on macOS), write text or JSON messages with Prettify, send with Ctrl+Enter, and keep messages with the request to send them again with one click. A live timeline lists every message sent and received with its time and size, with search and a sent or received filter; screen readers hear new messages politely, at most one announcement every 1.5 seconds. SSE shows named events and can reconnect automatically, resuming with Last-Event-ID. Connections run in the main process with your proxy (Tiger's or the system's), Verify SSL, custom CA and client certificates, and {{variables}} resolve in the address, headers and messages.
+- The .tiger format gains `ws` and `sse` request blocks, `subprotocols` and `message:<format>:<name>` blocks. HTTP files are unchanged. The runner skips WebSocket and SSE requests, the Postman and OpenAPI exports leave them out, and the MCP server's run_request says it sends HTTP requests only.
+
 ## 0.8.1
 
 - Imported requests send with their own variables. Each collection now uses its own environment: opening a request switches to that collection's environment (the one you last picked there), so a second import no longer leaves the first collection's {{variables}} unresolved or pointed at the other collection's host. The collection runner, Copy as curl and export use the right collection's environment too.

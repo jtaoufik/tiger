@@ -21,6 +21,8 @@ export interface RequestTab {
   kind: 'request' | 'collection' | 'folder'
   label: string
   method?: HttpMethod
+  /** WebSocket or SSE: shown as WS or SSE instead of the method. */
+  realtime?: 'ws' | 'sse'
   /** Unsaved changes (request tabs only). */
   dirty?: boolean
 }
@@ -47,7 +49,7 @@ export function tabAccessibleName(
       : tab.kind === 'folder'
         ? 'sidebar.tabs.folderName'
         : 'sidebar.tabs.collectionName',
-    { method: tab.method?.toUpperCase() ?? '', label: tab.label }
+    { method: (tab.realtime ?? tab.method)?.toUpperCase() ?? '', label: tab.label }
   ).trim()
   return tab.dirty ? translate('sidebar.tabs.nameUnsaved', { name }) : name
 }
@@ -210,8 +212,8 @@ export function RequestTabs({
             }}
           >
             {tab.kind === 'request' ? (
-              <span className={`method-pill m-${tab.method}`} aria-hidden>
-                {tab.method?.toUpperCase()}
+              <span className={`method-pill m-${tab.realtime ?? tab.method}`} aria-hidden>
+                {(tab.realtime ?? tab.method)?.toUpperCase()}
               </span>
             ) : tab.kind === 'folder' ? (
               <FolderIcon size={13} />

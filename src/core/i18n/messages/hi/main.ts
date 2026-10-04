@@ -23,5 +23,12 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'निर्यात',
   'main.http.certRead': 'प्रमाणपत्र फ़ाइल पढ़ी नहीं जा सकी: {reason}',
   'main.http.tokenStatus': 'टोकन एंडपॉइंट ने {status} लौटाया',
-  'main.http.tokenMissing': 'टोकन प्रतिसाद में access_token नहीं था'
+  'main.http.tokenMissing': 'टोकन प्रतिसाद में access_token नहीं था',
+  'main.realtime.badUrl': 'यह पता इस कनेक्शन के लिए इस्तेमाल नहीं हो सकता: {url}',
+  'main.realtime.refused': '{url} पर कुछ भी नहीं सुन रहा है',
+  'main.realtime.proxyTimeout': 'प्रॉक्सी ने समय पर जवाब नहीं दिया',
+  'main.realtime.proxyRefused': 'प्रॉक्सी ने कनेक्शन अस्वीकार किया (स्थिति {status})',
+  'main.realtime.handshakeStatus': 'सर्वर ने WebSocket खोलने के बजाय {status} जवाब दिया',
+  'main.realtime.sseStatus': 'सर्वर ने इवेंट स्ट्रीम के बजाय {status} जवाब दिया',
+  'main.realtime.sseType': 'सर्वर ने text/event-stream के बजाय {type} भेजा'
 }

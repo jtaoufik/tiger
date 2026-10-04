@@ -52,7 +52,7 @@ let requestSes: { session: Session; ready: Promise<unknown> } | null = null
  * session: it keeps no HTTP cache (an API client must reach the server every
  * time), and its cookie store holds Tiger's cookie jar and nothing else.
  */
-function requestSession(): { session: Session; ready: Promise<unknown> } {
+export function requestSession(): { session: Session; ready: Promise<unknown> } {
   if (requestSes) return requestSes
   const ses = session.fromPartition('tiger-requests', { cache: false })
   // Same hermetic rule as the default session in end-to-end runs.
@@ -83,7 +83,7 @@ export function cancelSend(key: string): boolean {
 }
 
 /** True when imported certificate files require the Node TLS send path. */
-function tlsConfigured(s: ReturnType<typeof loadSettings>): boolean {
+export function tlsConfigured(s: ReturnType<typeof loadSettings>): boolean {
   return !!(s.caFile || s.clientPfxFile || (s.clientCertFile && s.clientKeyFile))
 }
 
@@ -133,7 +133,7 @@ function withBodyLength(headers: Record<string, string>, body: string | Buffer |
   return out
 }
 
-function hostExcepted(s: ReturnType<typeof loadSettings>, hostname: string): boolean {
+export function hostExcepted(s: ReturnType<typeof loadSettings>, hostname: string): boolean {
   return s.certExceptions
     .split(',')
     .map((h) => h.trim().toLowerCase())
@@ -341,10 +341,10 @@ async function decodeBody(body: Buffer, contentEncoding: string | undefined): Pr
   }
 }
 
-type TlsFiles = Pick<RequestOptions, 'ca' | 'cert' | 'key' | 'pfx' | 'passphrase'>
+export type TlsFiles = Pick<RequestOptions, 'ca' | 'cert' | 'key' | 'pfx' | 'passphrase'>
 
 /** The imported certificate files, for the Node send path. */
-function readTlsFiles(s: ReturnType<typeof loadSettings>): TlsFiles {
+export function readTlsFiles(s: ReturnType<typeof loadSettings>): TlsFiles {
   const tls: TlsFiles = {}
   try {
     if (s.caFile) tls.ca = readFileSync(s.caFile)

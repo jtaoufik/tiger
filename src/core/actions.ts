@@ -80,6 +80,18 @@ export const ACTIONS = [
     docs: 'first-request'
   },
   {
+    id: 'new-websocket',
+    group: 'file',
+    docs: 'first-request',
+    keywords: 'ws wss socket realtime live postman insomnia'
+  },
+  {
+    id: 'new-sse',
+    group: 'file',
+    docs: 'first-request',
+    keywords: 'sse eventsource event stream server-sent realtime live'
+  },
+  {
     id: 'new-folder',
     group: 'file',
     opensDialog: true,
@@ -173,6 +185,19 @@ export const ACTIONS = [
     shortcut: { mod: true, key: 'Enter' },
     rendererKey: true,
     docs: 'first-request'
+  },
+  {
+    id: 'connect',
+    group: 'request',
+    shortcut: { mod: true, shift: true, key: 'Enter' },
+    rendererKey: true,
+    docs: 'first-request',
+    keywords: 'websocket ws sse open close disconnect live'
+  },
+  {
+    id: 'clear-timeline',
+    group: 'request',
+    keywords: 'websocket sse messages log reset'
   },
   {
     id: 'save',
@@ -459,7 +484,7 @@ export const SHORTCUT_GROUPS: Array<{ titleKey: MessageKey; ids: ActionId[] }> =
   },
   {
     titleKey: 'actions.group.request',
-    ids: ['send', 'save', 'new-request', 'focus-url', 'search-response', 'rename']
+    ids: ['send', 'connect', 'save', 'new-request', 'focus-url', 'search-response', 'rename']
   },
   {
     titleKey: 'actions.group.tabs',
