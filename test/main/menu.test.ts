@@ -100,6 +100,8 @@ describe('application menu', () => {
       items(top(build(isMac).template, 'File')).map((i) => i.id).filter(Boolean)
     expect(fileIds(false)).toEqual([
       'new-request',
+      'new-websocket',
+      'new-sse',
       'new-folder',
       'new-collection',
       'new-environment',
@@ -118,7 +120,7 @@ describe('application menu', () => {
 
   it('Request acts on the open request only', () => {
     const reqIds = items(top(build(false).template, 'Request')).map((i) => i.id).filter(Boolean)
-    expect(reqIds).toEqual(['send', 'save', 'duplicate-request', 'copy-curl', 'load-test', 'run-collection'])
+    expect(reqIds).toEqual(['send', 'connect', 'save', 'duplicate-request', 'copy-curl', 'load-test', 'run-collection'])
   })
 
   it('View has sidebar, theme, zoom with Ctrl+= and the palette', () => {

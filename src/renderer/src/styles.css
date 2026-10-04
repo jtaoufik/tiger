@@ -442,6 +442,9 @@ button {
 .m-patch { color: var(--m-patch); }
 .m-delete { color: var(--m-delete); }
 .m-head, .m-options { color: var(--m-other); }
+/* WebSocket and SSE requests reuse method hues already measured for contrast. */
+.m-ws { color: var(--m-patch); }
+.m-sse { color: var(--m-put); }
 
 /* ---------- Main / request ---------- */
 .main {

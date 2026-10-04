@@ -21,5 +21,12 @@ export const main = {
   'main.export.title': 'Export',
   'main.http.certRead': 'Could not read certificate file: {reason}',
   'main.http.tokenStatus': 'Token endpoint returned {status}',
-  'main.http.tokenMissing': 'Token response had no access_token'
+  'main.http.tokenMissing': 'Token response had no access_token',
+  'main.realtime.badUrl': 'This address cannot be used for this connection: {url}',
+  'main.realtime.refused': 'Nothing is listening at {url}',
+  'main.realtime.proxyTimeout': 'The proxy did not answer in time',
+  'main.realtime.proxyRefused': 'The proxy refused the connection (status {status})',
+  'main.realtime.handshakeStatus': 'The server answered {status} instead of opening the WebSocket',
+  'main.realtime.sseStatus': 'The server answered {status} instead of an event stream',
+  'main.realtime.sseType': 'The server sent {type} instead of text/event-stream'
 } as const

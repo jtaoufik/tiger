@@ -23,5 +23,12 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'تصدير',
   'main.http.certRead': 'تعذرت قراءة ملف الشهادة: {reason}',
   'main.http.tokenStatus': 'أرجعت نقطة نهاية الرمز المميز {status}',
-  'main.http.tokenMissing': 'لا تحتوي استجابة الرمز المميز على access_token'
+  'main.http.tokenMissing': 'لا تحتوي استجابة الرمز المميز على access_token',
+  'main.realtime.badUrl': 'لا يمكن استخدام هذا العنوان لهذا الاتصال: {url}',
+  'main.realtime.refused': 'لا يوجد ما يستمع على {url}',
+  'main.realtime.proxyTimeout': 'لم يستجب الوكيل في الوقت المحدد',
+  'main.realtime.proxyRefused': 'رفض الوكيل الاتصال (الحالة {status})',
+  'main.realtime.handshakeStatus': 'أجاب الخادم بـ {status} بدلًا من فتح WebSocket',
+  'main.realtime.sseStatus': 'أجاب الخادم بـ {status} بدلًا من دفق أحداث',
+  'main.realtime.sseType': 'أرسل الخادم {type} بدلًا من text/event-stream'
 }

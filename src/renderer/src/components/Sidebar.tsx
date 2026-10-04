@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode
 } from 'react'
-import type { HttpMethod } from '@core/types'
+import { requestBadge, type HttpMethod } from '@core/types'
 import { Logo } from '../Logo'
 import './Sidebar.css'
 import { actionTitle } from '../actions'
@@ -48,6 +48,8 @@ export interface SidebarEntry {
   id: string
   name: string
   method: HttpMethod
+  /** WebSocket or SSE: the row shows WS or SSE instead of the method. */
+  kind?: 'ws' | 'sse'
   folderPath: string[]
 }
 
@@ -342,7 +344,7 @@ const RequestRow = memo(function RequestRow({
 }: RequestRowProps) {
   const t = useT()
   const key = reqKey(entry.id)
-  const method = entry.method.toUpperCase()
+  const method = requestBadge(entry)
   return (
     <div
       role="treeitem"
@@ -374,7 +376,7 @@ const RequestRow = memo(function RequestRow({
           api.requestMenu(entry.id, e.clientX, e.clientY)
         }}
       >
-        <span className={`method-pill m-${entry.method}`} aria-hidden>
+        <span className={`method-pill m-${entry.kind ?? entry.method}`} aria-hidden>
           {method}
         </span>
         {renaming ? (

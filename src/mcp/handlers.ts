@@ -151,6 +151,10 @@ export async function handleRunRequest(
   let built: BuiltRequest
   try {
     const request = parseRequest(await store.readRequest(args.path))
+    if (request.kind) {
+      const what = request.kind === 'ws' ? 'a WebSocket' : 'a Server-Sent Events'
+      return fail(`"${args.path}" is ${what} request: run_request sends HTTP requests only. Open it in Tiger to connect.`)
+    }
     const env = args.environment ? await store.readEnvironment(args.environment) : null
     const vars = envToVars(env)
 

@@ -58,6 +58,7 @@ See [all downloads and checksums](https://github.com/jtaoufik/tiger/releases/lat
 ## Features
 
 - **Git-native collections.** One `.tiger` text file per request. Diff, branch and review them like code.
+- **WebSocket and Server-Sent Events.** Connect, send text or JSON messages (with Prettify), keep messages to send again with one click, and watch a live timeline of everything sent and received, with times, sizes, search and a filter. SSE can reconnect by itself. Proxy, certificate and variable settings apply as for HTTP.
 - **Save values.** Capture a status code, a header or a JSON path such as `body.data[0].id` from a response into a variable for the next request.
 - **Scripts & tests.** Pre-request and post-response JavaScript, with `tiger.test` assertions that show pass or fail. Postman (`pm.*`), Insomnia (`insomnia.*`) and Bruno (`bru`, `res`, `req`) scripts run through a compatibility layer, inside an isolated sandbox with no access to your files or the network.
 - **Collection runner.** Run a whole collection or folder in order, with live results, saved values passed between requests, and a stop button.
@@ -180,7 +181,44 @@ capture {
 }
 ```
 
-A `~` prefix disables a line without deleting it. The `capture` block writes response values into environment variables for the next request in the chain. Environments live in an `environments/` subfolder:
+A `~` prefix disables a line without deleting it. The `capture` block writes response values into environment variables for the next request in the chain.
+
+A WebSocket request names `ws` instead of a method. It can list the subprotocols it offers and keep messages you send with one click (`message:<text|json>:<name>`). A Server-Sent Events request names `sse`; `reconnect: true` turns on auto-reconnect. Both take `headers`, `query`, `auth` and `docs` like any request, and `{{variables}}` resolve in the address, headers and messages:
+
+```
+meta {
+  name: Live prices
+}
+
+ws {
+  url: wss://{{host}}/prices
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+subprotocols {
+  graphql-transport-ws
+}
+
+message:json:Subscribe {
+  { "type": "subscribe", "symbol": "{{symbol}}" }
+}
+```
+
+```
+meta {
+  name: Order events
+}
+
+sse {
+  url: {{baseUrl}}/events
+  reconnect: true
+}
+```
+
+Files written before these kinds existed read and save exactly as before. Environments live in an `environments/` subfolder:
 
 ```
 meta {

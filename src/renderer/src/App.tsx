@@ -39,6 +39,19 @@ import { CollectionView } from './components/CollectionView'
 import { FolderView } from './components/FolderView'
 import { WelcomeView } from './components/WelcomeView'
 import { RequestEditor } from './components/RequestEditor'
+import { RealtimeEditor } from './components/RealtimeEditor'
+import { RealtimeTimeline } from './components/RealtimeTimeline'
+import {
+  clearTimeline,
+  connectRealtime,
+  connectionState,
+  disconnectRealtime,
+  draftFor,
+  forgetRealtime,
+  isConnected,
+  sendRealtimeMessage,
+  setRealtimeReconnect
+} from './realtime'
 import { RequestTabs, tabAccessibleName, type RequestTab } from './components/RequestTabs'
 import { ResponsePanel } from './components/ResponsePanel'
 import type { ExportFormat } from './components/ImportExportModal'
@@ -889,11 +902,11 @@ export default function App() {
       // needlessly re-runs effects keyed on it (e.g. refreshGitStates).
       setCollections((prev) => {
         const entry = prev.flatMap((c) => c.entries).find((e) => e.id === activeId)
-        if (entry && entry.name === request.name && entry.method === request.method) return prev
+        if (entry && entry.name === request.name && entry.method === request.method && entry.kind === request.kind) return prev
         return prev.map((col) => ({
           ...col,
           entries: col.entries.map((e) =>
-            e.id === activeId ? { ...e, name: request.name, method: request.method } : e
+            e.id === activeId ? { ...e, name: request.name, method: request.method, kind: request.kind } : e
           )
         }))
       })
@@ -1000,8 +1013,49 @@ export default function App() {
       .filter(([k, v]) => before[k] !== v)
       .map(([name, value]) => ({ name, value }))
 
+  /** Open the active WebSocket or SSE request's connection, or close it. */
+  const toggleConnection = useCallback(async () => {
+    if (!activeId || !active?.kind) return
+    const id = activeId
+    if (isConnected(id)) {
+      await disconnectRealtime(id)
+      return
+    }
+    if (!window.tiger?.realtime) {
+      toast(t('realtime.desktopOnly'), { error: true })
+      return
+    }
+    try {
+      const colId = activeColIdRef.current
+      const env = colId ? await environmentFor(colId) : activeEnv
+      const vars = envToVars(env)
+      // OAuth2 becomes its bearer token here; main fills in the {{variables}}.
+      const request = await withOAuthToken(activeEffective ?? active, vars)
+      await connectRealtime(id, request, vars)
+    } catch (e) {
+      toast(t('realtime.connectFailed', { message: (e as Error).message }), { error: true })
+    }
+  }, [activeId, active, activeEffective, activeEnv, environmentFor, toast])
+
+  /** Send the composer's message on the open WebSocket. */
+  const sendRealtimeDraft = useCallback(
+    async (text: string) => {
+      if (!activeId) return
+      if (!(await sendRealtimeMessage(activeId, text))) toast(t('realtime.send.offline'))
+    },
+    [activeId, toast]
+  )
+
   const send = useCallback(async () => {
     if (!activeId || !active) return
+    // Send on a realtime request: the message when the socket is open,
+    // otherwise connect (SSE has nothing to send).
+    if (active.kind) {
+      const status = connectionState(activeId).status
+      if (active.kind === 'ws' && status === 'open') return sendRealtimeDraft(draftFor(activeId))
+      if (status === 'connecting' || status === 'open') return
+      return toggleConnection()
+    }
     const id = activeId
     if (sendingIds.has(id)) return
     setSendingIds((prev) => new Set(prev).add(id))
@@ -1169,7 +1223,8 @@ export default function App() {
     const items: RunnerItem[] = []
     for (const e of entries) {
       const request = await loadRequest(e.id)
-      if (!request) continue
+      // WebSocket and SSE requests stay open until closed: nothing to run.
+      if (!request || request.kind) continue
       const inherited =
         nearestFolderAuth(
           e.folderPath,
@@ -1308,6 +1363,12 @@ export default function App() {
     if (colId) newRequestRef.current(colId)
   }, [activeCollection, collections])
 
+  // The keyboard listener below reads these, so it need not re-register per keystroke.
+  const toggleConnectionRef = useRef(toggleConnection)
+  toggleConnectionRef.current = toggleConnection
+  const activeKindRef = useRef(active?.kind)
+  activeKindRef.current = active?.kind
+
   useEffect(() => {
     const isMac = /Mac/i.test(navigator.platform)
     const onKey = (e: KeyboardEvent) => {
@@ -1333,6 +1394,9 @@ export default function App() {
       if (key === 's') {
         e.preventDefault()
         save()
+      } else if (e.key === 'Enter' && e.shiftKey && activeKindRef.current) {
+        e.preventDefault()
+        void toggleConnectionRef.current()
       } else if (e.key === 'Enter') {
         e.preventDefault()
         send()
@@ -1382,6 +1446,7 @@ export default function App() {
         id: `${opened.root}${SEP}${r.path}`,
         name: r.name,
         method: r.method,
+        ...(r.kind ? { kind: r.kind } : {}),
         folderPath: r.folder
       }))
       reviveIds(entries.map((e) => e.id))
@@ -1566,7 +1631,7 @@ export default function App() {
       setCollections((prev) =>
         prev.map((c) =>
           c.id === target.id
-            ? { ...c, entries: [...c.entries, { id, name: req.name, method: req.method, folderPath: [] }] }
+            ? { ...c, entries: [...c.entries, { id, name: req.name, method: req.method, kind: req.kind, folderPath: [] }] }
             : c
         )
       )
@@ -1769,6 +1834,7 @@ export default function App() {
         id: `${colId}${SEP}${i}`,
         name: r.request.name,
         method: r.request.method,
+        ...(r.request.kind ? { kind: r.request.kind } : {}),
         folderPath: r.path
       }))
       reviveIds(entries.map((e) => e.id))
@@ -1938,21 +2004,23 @@ export default function App() {
   )
 
   const newRequest = useCallback(
-    async (collectionId: string, folderPath: string[] = []) => {
+    async (collectionId: string, folderPath: string[] = [], kind?: 'ws' | 'sse') => {
       const col = collections.find((c) => c.id === collectionId)
       if (!col) return
       const request: TigerRequest = {
-        name: 'New request',
+        ...(kind ? { kind } : {}),
+        name: kind === 'ws' ? t('realtime.newName.ws') : kind === 'sse' ? t('realtime.newName.sse') : 'New request',
         method: 'get',
         url: '',
         query: [],
         headers: [],
-        body: { type: 'none', content: '' }
+        body: { type: 'none', content: '' },
+        ...(kind === 'ws' ? { subprotocols: [], messages: [] } : kind === 'sse' ? { reconnect: false } : {})
       }
       let id: string
       if (col.root && window.tiger) {
         const dir = [col.root, ...folderPath].join('/')
-        const path = `${dir}/new-request-${Date.now()}.tiger`
+        const path = `${dir}/${kind === 'ws' ? 'new-websocket' : kind === 'sse' ? 'new-sse' : 'new-request'}-${Date.now()}.tiger`
         id = `${col.id}${SEP}${path}`
         const text = serializeRequest(request)
         await window.tiger.writeFile(path, text)
@@ -1971,7 +2039,7 @@ export default function App() {
                 ...c,
                 entries: [
                   ...c.entries,
-                  { id, name: request.name, method: 'get' as HttpMethod, folderPath }
+                  { id, name: request.name, method: 'get' as HttpMethod, kind, folderPath }
                 ]
               }
             : c
@@ -2020,7 +2088,7 @@ export default function App() {
                 ...c,
                 entries: [
                   ...c.entries,
-                  { id, name: clone.name, method: clone.method, folderPath: entry.folderPath }
+                  { id, name: clone.name, method: clone.method, kind: clone.kind, folderPath: entry.folderPath }
                 ]
               }
             : c
@@ -2217,7 +2285,7 @@ export default function App() {
           id = `${col.id}${SEP}dupf-${Date.now()}-${added.length}`
         }
         newRequests[id] = clone
-        added.push({ id, name: clone.name, method: clone.method, folderPath: newFolder })
+        added.push({ id, name: clone.name, method: clone.method, kind: clone.kind, folderPath: newFolder })
       }
       if (!added.length) return
       reviveIds(added.map((a) => a.id))
@@ -2242,6 +2310,7 @@ export default function App() {
         }
       }
       deletedIds.current.add(entryId)
+      forgetRealtime(entryId)
       setCollections((prev) =>
         prev.map((c) => ({ ...c, entries: c.entries.filter((e) => e.id !== entryId) }))
       )
@@ -2269,6 +2338,7 @@ export default function App() {
       const ids = new Set(col.entries.map((e) => e.id))
       for (const id of ids) {
         deletedIds.current.add(id)
+        forgetRealtime(id)
         serializedCache.current.delete(id)
       }
       setCollections((prev) => prev.filter((c) => c.id !== collectionId))
@@ -2686,7 +2756,7 @@ export default function App() {
   const paletteItems: SearchItem[] = useMemo(
     () =>
       collections.flatMap((c) =>
-        c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.method }))
+        c.entries.map((e) => ({ id: e.id, name: e.name, collection: c.name, method: e.kind ?? e.method }))
       ),
     [collections]
   )
@@ -2702,7 +2772,16 @@ export default function App() {
     if (t.kind === 'request') {
       const entry = entryById.get(t.id)
       return entry
-        ? [{ key, kind: 'request' as const, label: entry.name, method: entry.method, dirty: isDirty(t.id) }]
+        ? [
+            {
+              key,
+              kind: 'request' as const,
+              label: entry.name,
+              method: entry.method,
+              ...(entry.kind ? { realtime: entry.kind } : {}),
+              dirty: isDirty(t.id)
+            }
+          ]
         : []
     }
     const col = collections.find((c) => c.id === t.colId)
@@ -2771,6 +2850,7 @@ export default function App() {
   }
   openEnvironmentsRef.current = openEnvironments
   const needRequest = () => toast(t('app.toast.openRequestFirst'))
+  const needRealtime = () => toast(t('realtime.needRealtime'))
   /** Team sync for the current collection; `sync` also starts a sync once it is ready. */
   const openTeamSync = (sync = false) => {
     const target = currentTarget()
@@ -2792,6 +2872,16 @@ export default function App() {
       if (t) newRequest(t.colId, inspect?.type === 'folder' ? inspect.path : [])
       else needCollection()
     },
+    'new-websocket': () => {
+      const t = currentTarget()
+      if (t) newRequest(t.colId, inspect?.type === 'folder' ? inspect.path : [], 'ws')
+      else needCollection()
+    },
+    'new-sse': () => {
+      const t = currentTarget()
+      if (t) newRequest(t.colId, inspect?.type === 'folder' ? inspect.path : [], 'sse')
+      else needCollection()
+    },
     'new-folder': () => {
       const t = currentTarget()
       if (t) setNewFolderIn({ colId: t.colId, path: inspect?.type === 'folder' ? inspect.path : [] })
@@ -2808,6 +2898,8 @@ export default function App() {
     settings: () => setView('settings'),
     'close-tab': closeActiveTab,
     send,
+    connect: () => (active?.kind ? toggleConnection() : needRealtime()),
+    'clear-timeline': () => (activeId && active?.kind ? clearTimeline(activeId) : needRealtime()),
     save,
     'duplicate-request': () => (activeId ? duplicateRequest(activeId) : needRequest()),
     'copy-curl': () => (activeId ? copyAsCurl(activeId) : needRequest()),
@@ -2876,6 +2968,8 @@ export default function App() {
 
   const newMenuItems = (): MenuItem[] => [
     actionItem('new-request', actionHandlers['new-request']),
+    actionItem('new-websocket', actionHandlers['new-websocket']),
+    actionItem('new-sse', actionHandlers['new-sse']),
     actionItem('new-folder', actionHandlers['new-folder']),
     'sep',
     actionItem('new-collection', newCollection),
@@ -3164,7 +3258,23 @@ export default function App() {
                   gap: 0
                 }}
               >
-                {active ? (
+                {active?.kind && activeId ? (
+                  <RealtimeEditor
+                    key={activeId}
+                    id={activeId}
+                    request={active}
+                    diskBacked={!!pathById[activeId]}
+                    dirty={dirty}
+                    missingVars={missingVars}
+                    onChange={(next) => {
+                      if (next.reconnect !== active.reconnect) setRealtimeReconnect(activeId, next.reconnect === true)
+                      updateActive(next)
+                    }}
+                    onSave={save}
+                    onToggleConnection={() => void toggleConnection()}
+                    onSendMessage={(text) => void sendRealtimeDraft(text)}
+                  />
+                ) : active ? (
                   <RequestEditor
                     key={activeId}
                     request={active}
@@ -3252,7 +3362,11 @@ export default function App() {
                     })
                   }
                 />
-                <ResponsePanel state={activeId ? responses[activeId] : undefined} />
+                {active?.kind && activeId ? (
+                  <RealtimeTimeline id={activeId} />
+                ) : (
+                  <ResponsePanel state={activeId ? responses[activeId] : undefined} />
+                )}
               </div>
             )}
             </div>

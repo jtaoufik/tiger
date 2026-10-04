@@ -9,6 +9,8 @@ import type { HttpMethod, TigerAuth } from '../core/types'
 export interface RequestEntry {
   name: string
   method: HttpMethod
+  /** WebSocket or SSE requests; absent for HTTP. */
+  kind?: 'ws' | 'sse'
   /** Position within its folder (`meta { seq }`), when the file has one. */
   seq?: number
   path: string
@@ -34,11 +36,18 @@ const ENVIRONMENTS_DIR = 'environments'
  */
 const norm = (p: string): string => (sep === '\\' ? p.split(sep).join('/') : p)
 
-async function readMeta(path: string): Promise<{ name: string; method: HttpMethod; seq?: number }> {
+async function readMeta(
+  path: string
+): Promise<{ name: string; method: HttpMethod; kind?: 'ws' | 'sse'; seq?: number }> {
   try {
     const r = parseRequest(await readTextFile(path))
     const seq = Number.isFinite(r.seq) ? r.seq : undefined
-    return { name: r.name || basename(path, '.tiger'), method: r.method, ...(seq !== undefined ? { seq } : {}) }
+    return {
+      name: r.name || basename(path, '.tiger'),
+      method: r.method,
+      ...(r.kind ? { kind: r.kind } : {}),
+      ...(seq !== undefined ? { seq } : {})
+    }
   } catch {
     return { name: basename(path, '.tiger'), method: 'get' }
   }

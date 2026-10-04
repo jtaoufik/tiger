@@ -180,6 +180,9 @@ export function exportPostman(
 ): unknown {
   const root: PostmanItem[] = []
   for (const { path, request } of requests) {
+    // A Postman v2.1 collection holds HTTP requests only: WebSocket and SSE
+    // requests would become GETs to a ws:// address.
+    if (request.kind) continue
     const events = toPostmanEvents(request)
     ;(ensureFolder(root, path)?.item ?? root).push({
       name: request.name,
@@ -243,6 +246,8 @@ export function exportOpenApi(name: string, requests: ImportedRequest[]): unknow
   const paths: Record<string, Record<string, unknown>> = {}
 
   for (const { request } of requests) {
+    // OpenAPI describes HTTP operations; WebSocket and SSE requests are left out.
+    if (request.kind) continue
     const apiPath = toApiPath(request.url)
     const method = request.method.toLowerCase()
     const parameters = [
