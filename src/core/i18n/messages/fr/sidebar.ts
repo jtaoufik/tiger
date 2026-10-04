@@ -28,6 +28,8 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.row.deleteRequest': 'Supprimer la requête',
   'sidebar.row.duplicateFolder': 'Dupliquer le dossier',
   'sidebar.row.closeCollection': 'Fermer la collection',
+  'sidebar.unsaved.badge': 'Non enregistrée',
+  'sidebar.unsaved.title': '{name} n’est pas enregistrée et sera perdue à la fermeture de Tiger. L’enregistrer dans un dossier',
   'sidebar.sync.label': 'Synchronisation d\'équipe : {label}',
   'sidebar.sync.title': 'Synchronisation d\'équipe : {label}. {detail}',
   'sidebar.foot': 'Tiger · client d\'API local d\'abord',

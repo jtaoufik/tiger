@@ -65,6 +65,27 @@
   background: var(--accent-weak);
 }
 
+/* An import that only lives in memory: "Not saved", click to save it. */
+.unsaved-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 6px;
+  min-height: 20px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.unsaved-chip:hover {
+  background: var(--accent-weak);
+}
+
 /* Search field: native clear button off, the wrapper draws the chrome. */
 .sidebar-search input[type='search'] {
   appearance: none;
