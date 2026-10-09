@@ -39,7 +39,6 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.tabs.nameUnsaved': '{name}, बिना सहेजे बदलाव',
   'sidebar.tabs.titleUnsaved': '{label} (बिना सहेजे बदलाव)',
   'sidebar.tabs.closeTitle': 'टैब बंद करें ({mod}+W)',
-  'sidebar.tabs.closeLabel': '{label} बंद करें',
   'sidebar.lazy.loading': '{label} लोड हो रहा है…',
   'sidebar.lazy.failed': '{label} लोड नहीं हो सका। इसे बंद करें और फिर कोशिश करें।',
   'sidebar.lazy.settings': 'सेटिंग्स',

@@ -3,6 +3,7 @@ import type { DocsPage } from '@core/actions'
 import { CloseIcon } from './Icons'
 import { HelpLink } from './HelpLink'
 import { useDialog } from './useDialog'
+import { useScrollFocus } from './useScrollFocus'
 import { useT } from '../i18n'
 import './a11y.css'
 import './Modal.css'
@@ -39,7 +40,9 @@ export function Modal({
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const descId = useId()
+  const bodyRef = useRef<HTMLDivElement>(null)
   useDialog(backdropRef, dialogRef, onClose)
+  useScrollFocus(bodyRef, titleId)
 
   return (
     <div
@@ -74,7 +77,7 @@ export function Modal({
             <CloseIcon />
           </button>
         </div>
-        <div className="modal-body">
+        <div ref={bodyRef} className="modal-body">
           {description && (
             <div id={descId} className="modal-desc">
               {description}

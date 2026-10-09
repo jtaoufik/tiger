@@ -84,12 +84,16 @@ describe('RequestTabs tablist', () => {
     expect(focused()).toBe(tab('Folder Orders'))
   })
 
-  it('close buttons are labelled per tab and stay out of the Tab order', () => {
-    render(<Host />)
-    const close = screen.getByRole('button', { name: 'Close Orders' })
-    expect(close).toHaveAttribute('tabindex', '-1')
+  it('the close mark is pointer only: no control nested in a tab, Delete announced instead', () => {
+    const { container } = render(<Host />)
+    expect(screen.queryAllByRole('button')).toEqual([])
+    expect(tab('Folder Orders')).toHaveAttribute('aria-keyshortcuts', 'Delete')
+    const close = tab('Folder Orders').querySelector('.request-tab-close')!
+    expect(close).toHaveAttribute('aria-hidden', 'true')
+    expect(close).not.toHaveAttribute('tabindex')
     fireEvent.click(close)
     expect(screen.queryByRole('tab', { name: 'Folder Orders' })).not.toBeInTheDocument()
+    expect(container.querySelectorAll('[role=tab] :is(button, [tabindex])')).toHaveLength(0)
   })
 
   it('Shift+F10 opens the tab menu for the focused tab', () => {

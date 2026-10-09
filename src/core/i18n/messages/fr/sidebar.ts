@@ -39,7 +39,6 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.tabs.nameUnsaved': '{name}, modifications non enregistrées',
   'sidebar.tabs.titleUnsaved': '{label} (modifications non enregistrées)',
   'sidebar.tabs.closeTitle': 'Fermer l\'onglet ({mod}+W)',
-  'sidebar.tabs.closeLabel': 'Fermer {label}',
   'sidebar.lazy.loading': 'Chargement : {label}…',
   'sidebar.lazy.failed': 'Chargement impossible : {label}. Fermez et réessayez.',
   'sidebar.lazy.settings': 'paramètres',

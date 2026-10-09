@@ -145,6 +145,7 @@ export function RequestTabs({
             aria-selected={active}
             aria-controls={active ? panelId : undefined}
             aria-label={name}
+            aria-keyshortcuts="Delete"
             tabIndex={tab.key === stopKey ? 0 : -1}
             className={`request-tab${active ? ' active' : ''}${
               drop?.key === tab.key ? ` drop-${drop.side}` : ''
@@ -220,12 +221,14 @@ export function RequestTabs({
             )}
             <span className="request-tab-name">{tab.label}</span>
             {tab.dirty && <span className="request-tab-dirty" aria-hidden />}
-            <button
-              type="button"
+            {/* Pointer-only affordance: a button inside role=tab is a nested
+                interactive control (WCAG 4.1.2). Keyboard and screen reader
+                users close a tab with Delete (aria-keyshortcuts) or the tab
+                menu (Shift+F10). */}
+            <span
               className="request-tab-close"
               title={t('sidebar.tabs.closeTitle', { mod: MOD })}
-              aria-label={t('sidebar.tabs.closeLabel', { label: tab.label })}
-              tabIndex={-1}
+              aria-hidden
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
                 e.stopPropagation()
@@ -233,7 +236,7 @@ export function RequestTabs({
               }}
             >
               <CloseIcon size={12} />
-            </button>
+            </span>
           </div>
         )
       })}

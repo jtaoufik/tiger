@@ -37,7 +37,6 @@ export const sidebar = {
   'sidebar.tabs.nameUnsaved': '{name}, unsaved changes',
   'sidebar.tabs.titleUnsaved': '{label} (unsaved changes)',
   'sidebar.tabs.closeTitle': 'Close tab ({mod}+W)',
-  'sidebar.tabs.closeLabel': 'Close {label}',
   'sidebar.lazy.loading': 'Loading {label}…',
   'sidebar.lazy.failed': 'Could not load {label}. Close it and try again.',
   'sidebar.lazy.settings': 'settings',
