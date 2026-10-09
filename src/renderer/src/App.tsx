@@ -166,6 +166,9 @@ const FALLBACK_SETTINGS: Settings = {
   clientId: 'local'
 }
 
+/** Ids of collections imported into memory (only when saving them to disk failed). */
+const IMPORT_PREFIX = 'import-'
+
 const DEMO_COLLECTION: CollectionState = {
   id: 'demo',
   name: 'Demo collection',
@@ -273,6 +276,8 @@ export default function App() {
     selectedEnvironment?: string
     /** The folder the import was saved in. */
     savedTo?: string
+    /** The import stayed in memory: the report offers to save it to a folder. */
+    unsavedColId?: string
   } | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
 
@@ -1423,15 +1428,21 @@ export default function App() {
 
   /**
    * Save a collection that only lives in memory (an import, the sample) as a
-   * folder in Documents/Tiger and open that folder in its place: it then
-   * survives a restart and Ctrl+S writes to it. Returns the opened folder,
-   * or null when it could not be saved (the reason is in the error).
+   * folder and open that folder in its place: it then survives a restart and
+   * Ctrl+S writes to it. `pick` asks the user where (Save to a folder);
+   * otherwise it goes to Documents/Tiger. Returns the opened folder, or null
+   * when it was not saved (cancelled; a failure throws).
    */
   const writeCollectionToDisk = useCallback(
-    async (snapshot: CollectionSnapshot): Promise<{ opened: OpenedCollection; ids: string[] } | null> => {
-      if (!window.tiger?.saveCollection) return null
+    async (
+      snapshot: CollectionSnapshot,
+      pick = false
+    ): Promise<{ opened: OpenedCollection; ids: string[] } | null> => {
+      const save = pick ? window.tiger?.saveCollectionTo : window.tiger?.saveCollection
+      if (!save) return null
       const layout = collectionFiles(snapshot)
-      const opened = await window.tiger.saveCollection(snapshot.name, layout.files)
+      const opened = await save(snapshot.name, layout.files)
+      if (!opened) return null
       applyOpenedCollection(opened)
       // The editor gets the requests as written, so nothing reads the files
       // again and nothing looks unsaved.
@@ -1451,14 +1462,15 @@ export default function App() {
   )
 
   /**
-   * Ctrl+S or "Save to disk" on a collection that only lives in memory: save
-   * it as a folder, which then replaces it with the same tabs, the same
-   * active request and the same environment. Unsaved edits are saved too.
+   * Ctrl+S or "Save to a folder" on a collection that only lives in memory:
+   * ask where, save it as a folder, which then replaces it with the same
+   * tabs, the same active request and the same environment. Unsaved edits
+   * are saved too.
    */
   const saveCollectionToDisk = useCallback(
     async (colId: string) => {
       const col = collectionsRef.current.find((c) => c.id === colId)
-      if (!col || col.root || !window.tiger?.saveCollection) return
+      if (!col || col.root || !window.tiger?.saveCollectionTo) return
       const requests: Array<{ oldId: string; path: string[]; request: TigerRequest }> = []
       for (const e of col.entries) {
         const request = requestsById[e.id] ?? (await loadRequest(e.id))
@@ -1474,7 +1486,7 @@ export default function App() {
           environments: col.environments.flatMap((e) => (e.data ? [e.data] : [])),
           auth: col.auth,
           docs: col.docs
-        })
+        }, true)
         if (!saved) return
         const { opened, ids } = saved
         const newId = new Map(requests.map((r, i) => [r.oldId, ids[i]]))
@@ -1778,7 +1790,7 @@ export default function App() {
 
       // Unique across launches: history keeps request ids, and a fresh import
       // must not inherit the sends of an earlier one.
-      const colId = `import-${Date.now().toString(36)}-${++importCount.current}`
+      const colId = `${IMPORT_PREFIX}${Date.now().toString(36)}-${++importCount.current}`
       const entries: SidebarEntry[] = result.requests.map((r, i) => ({
         id: `${colId}${SEP}${i}`,
         name: r.request.name,
@@ -1824,7 +1836,11 @@ export default function App() {
         setActiveEnvKey(`${colId}${SEP}${firstEnv.name}`)
         setActiveEnv(firstEnv.data)
       }
-      setImportReport({ summary, selectedEnvironment: firstEnv?.name })
+      setImportReport({
+        summary,
+        selectedEnvironment: firstEnv?.name,
+        ...(window.tiger?.saveCollectionTo ? { unsavedColId: colId } : {})
+      })
       announce(importReportSentence(summary))
       trackEvent(events.collectionImported(result.source, result.requests.length))
     },
@@ -2523,9 +2539,9 @@ export default function App() {
         actionItem('environments', () => openEnvironmentsRef.current(colId)),
         actionItem('export', () => openIo('export', colId))
       ]
-      if (!col.root && window.tiger?.saveCollection) {
+      if (!col.root && window.tiger?.saveCollectionTo) {
         items.push({
-          label: t('app.menu.saveToDisk'),
+          label: t('app.menu.saveToFolder'),
           icon: <SaveIcon size={14} />,
           onClick: () => void saveCollectionToDiskRef.current(colId)
         })
@@ -2689,6 +2705,17 @@ export default function App() {
   useEffect(() => {
     window.tiger?.setDirty?.(anyDirty)
   }, [anyDirty])
+
+  // Imports that only live in memory: flagged "Not saved" in the sidebar, and
+  // closing the window names them before they are lost.
+  const unsavedImportIds = useMemo(
+    () => new Set(collections.filter((c) => !c.root && c.id.startsWith(IMPORT_PREFIX)).map((c) => c.id)),
+    [collections]
+  )
+  const unsavedImportNames = collections.filter((c) => unsavedImportIds.has(c.id)).map((c) => c.name).join('\n')
+  useEffect(() => {
+    window.tiger?.setUnsavedImports?.(unsavedImportNames ? unsavedImportNames.split('\n') : [])
+  }, [unsavedImportNames])
 
   const missingVars =
     activeEffective && !largeBody
@@ -3011,6 +3038,8 @@ export default function App() {
           renameTarget={renameTarget}
           onNewRequest={newRequest}
           onCloseCollection={requestCloseCollection}
+          unsavedIds={unsavedImportIds}
+          onSaveCollection={(colId) => void saveCollectionToDiskRef.current(colId)}
           onEmptyMenu={(x, y) => setEmptyMenu({ x, y })}
           onDeleteRequest={setConfirmDeleteId}
           onDuplicateRequest={duplicateRequest}
@@ -3288,6 +3317,15 @@ export default function App() {
           selectedEnvironment={importReport.selectedEnvironment}
           savedTo={importReport.savedTo}
           onClose={() => setImportReport(null)}
+          onSaveToFolder={
+            importReport.unsavedColId
+              ? () => {
+                  const colId = importReport.unsavedColId!
+                  setImportReport(null)
+                  void saveCollectionToDiskRef.current(colId)
+                }
+              : undefined
+          }
         />
       )}
       {modal === 'io' && (

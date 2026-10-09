@@ -68,6 +68,9 @@ const api = {
   /** Save a collection that lives in memory (an import) as a folder in Documents/Tiger. */
   saveCollection: (name: string, files: CollectionFile[]): Promise<OpenedCollection> =>
     invoke('tiger:saveCollection', name, files),
+  /** "Save to a folder": asks where, never writes over files; null when cancelled. */
+  saveCollectionTo: (name: string, files: CollectionFile[]): Promise<OpenedCollection | null> =>
+    invoke('tiger:saveCollectionTo', name, files),
   reload: (root: string): Promise<RequestEntry[]> => invoke('tiger:reload', root),
   readFile: (path: string): Promise<string> => invoke('tiger:readFile', path),
   writeFile: (path: string, content: string): Promise<boolean> =>
@@ -184,6 +187,10 @@ const api = {
   },
   setDirty: (dirty: boolean): void => {
     ipcRenderer.send('tiger:dirtyState', dirty)
+  },
+  /** Names of imported collections that only live in memory (warned about on close). */
+  setUnsavedImports: (names: string[]): void => {
+    ipcRenderer.send('tiger:unsavedImports', names)
   },
   openExternal: (url: string): Promise<void> => invoke('tiger:openExternal', url),
   reveal: (path: string): Promise<void> => invoke('tiger:reveal', path),

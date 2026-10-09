@@ -27,7 +27,8 @@ import {
   UploadIcon,
   SearchIcon,
   TrashIcon,
-  UsersIcon
+  UsersIcon,
+  WarningIcon
 } from './Icons'
 import { summarizeSync, useConflictRoots } from '../gitUx'
 import { useT } from '../i18n'
@@ -92,6 +93,10 @@ interface Props {
   inspected?: { colId: string; path: string[] } | null
   /** Start renaming a request (id) or folder (colId + path); nonce re-triggers. */
   renameTarget?: { id?: string; colId?: string; path?: string[]; nonce: number } | null
+  /** Imported collections that only live in memory: shown "Not saved". */
+  unsavedIds?: ReadonlySet<string>
+  /** "Save to a folder" from the Not saved badge. */
+  onSaveCollection?: (collectionId: string) => void
 }
 
 interface TreeFolder {
@@ -536,7 +541,9 @@ export function Sidebar({
   onInspectFolder,
   onEmptyMenu,
   onNewMenu,
-  renameTarget
+  renameTarget,
+  unsavedIds,
+  onSaveCollection
 }: Props) {
   const t = useT()
   const conflictRoots = useConflictRoots()
@@ -1378,8 +1385,13 @@ export function Sidebar({
       const colKey = root.key
       const open = !collapsed.has(colKey)
       const selected = !!inspected && inspected.colId === col.id && inspected.path.length === 0
+      const unsaved = !!unsavedIds?.has(col.id)
       return (
-        <div key={col.id} {...itemProps(colKey, 1, trees.length, ci + 1, col.name, selected, open)}>
+        <div
+          key={col.id}
+          {...itemProps(colKey, 1, trees.length, ci + 1, col.name, selected, open)}
+          aria-description={unsaved ? t('sidebar.unsaved.badge') : undefined}
+        >
           <div
             className={`col-head ${selected ? 'active' : ''} ${dropKey === colKey ? 'drop-target' : ''}`}
             onClick={() => onInspectCollection(col.id)}
@@ -1410,6 +1422,23 @@ export function Sidebar({
               {col.name}
             </span>
             {syncChips(col.id, col.root)}
+            {unsaved && (
+              <button
+                type="button"
+                className="unsaved-chip"
+                title={t('sidebar.unsaved.title', { name: col.name })}
+                aria-label={t('sidebar.unsaved.title', { name: col.name })}
+                tabIndex={-1}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onSaveCollection?.(col.id)
+                }}
+              >
+                <WarningIcon size={12} aria-hidden="true" />
+                {t('sidebar.unsaved.badge')}
+              </button>
+            )}
             <span className="row-actions">
               {col.root && rowButton(actionTitle('team-sync'), <GitBranchIcon size={13} />, () => onGit(col.id))}
               {rowButton(actionTitle('new-request'), <PlusIcon size={13} />, () => onNewRequest(col.id))}

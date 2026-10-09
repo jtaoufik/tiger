@@ -75,13 +75,16 @@ export function bridge(imports: ImportResult[], history: unknown[] = []) {
   }
 }
 
-export async function importVia(source: string): Promise<void> {
+/** Import through the dialog; the report is closed unless `keepReport`. */
+export async function importVia(source: string, keepReport = false): Promise<void> {
   fireEvent.click(screen.getByRole('button', { name: 'Import' }))
   const choice = [...document.querySelectorAll<HTMLButtonElement>('.modal button.choice')].find((b) =>
     b.textContent?.startsWith(source)
   )
   fireEvent.click(choice!)
-  fireEvent.click(await screen.findByRole('button', { name: 'Done' }))
+  // "Later" when the import could not be saved and the report offers to.
+  const close = await screen.findByRole('button', { name: /^(Done|Later)$/ })
+  if (!keepReport) fireEvent.click(close)
 }
 
 export const sidebar = () => document.querySelector('.sidebar') as HTMLElement
@@ -100,9 +103,9 @@ export async function fakeDisk() {
   const { parseEnvironment } = await import('../../src/core/environment')
   const { parseCollectionSettings } = await import('../../src/core/collectionSettings')
   const files = new Map<string, string>()
-  const saveCollection = vi.fn(async (name: string, written: Array<{ path: string; content: string }>) => {
-    let root = `/Docs/Tiger/${name}`
-    for (let n = 2; [...files.keys()].some((k) => k.startsWith(`${root}/`)); n++) root = `/Docs/Tiger/${name} ${n}`
+  const writeUnder = async (parent: string, name: string, written: Array<{ path: string; content: string }>) => {
+    let root = `${parent}/${name}`
+    for (let n = 2; [...files.keys()].some((k) => k.startsWith(`${root}/`)); n++) root = `${parent}/${name} ${n}`
     for (const f of written) files.set(`${root}/${f.path}`, f.content)
     const under = [...files.entries()].filter(([k]) => k.startsWith(`${root}/`))
     const rel = (k: string) => k.slice(root.length + 1)
@@ -129,10 +132,19 @@ export async function fakeDisk() {
         .filter(([k]) => rel(k).endsWith('/folder.tiger'))
         .map(([k, v]) => ({ folder: rel(k).split('/').slice(0, -1), ...parseCollectionSettings(v) }))
     }
-  })
+  }
+  const saveCollection = vi.fn((name: string, written: Array<{ path: string; content: string }>) =>
+    writeUnder('/Docs/Tiger', name, written)
+  )
+  /** "Save to a folder": the user picks /Picked (a test can make it cancel with null). */
+  const saveCollectionTo = vi.fn(
+    (name: string, written: Array<{ path: string; content: string }>): Promise<Awaited<ReturnType<typeof writeUnder>> | null> =>
+      writeUnder('/Picked', name, written)
+  )
   return {
     files,
     saveCollection,
+    saveCollectionTo,
     readFile: vi.fn(async (path: string) => {
       const text = files.get(path)
       if (text === undefined) throw new Error(`ENOENT: ${path}`)

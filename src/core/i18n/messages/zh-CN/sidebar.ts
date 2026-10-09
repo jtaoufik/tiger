@@ -28,6 +28,8 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.row.deleteRequest': '删除请求',
   'sidebar.row.duplicateFolder': '复制文件夹',
   'sidebar.row.closeCollection': '关闭集合',
+  'sidebar.unsaved.badge': '未保存',
+  'sidebar.unsaved.title': '{name} 尚未保存，关闭 Tiger 后会丢失。将其保存到文件夹',
   'sidebar.sync.label': '团队同步：{label}',
   'sidebar.sync.title': '团队同步：{label}。{detail}',
   'sidebar.foot': 'Tiger · 本地优先的 API 客户端',
