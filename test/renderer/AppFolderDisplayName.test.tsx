@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../../src/renderer/src/App'
-import { installMatchMedia, sidebar } from './appHarness'
+import { fakeDisk, installMatchMedia, sidebar } from './appHarness'
 
 vi.mock('../../src/renderer/src/analytics', () => ({
   initAnalytics: vi.fn().mockResolvedValue(undefined),
@@ -110,5 +110,33 @@ describe('a folder shown under the name its folder.tiger keeps', () => {
     // The folder page shows the same name.
     fireEvent.click(within(folderRow('Store: v2?')).getByText('Store: v2?'))
     expect(await screen.findByRole('heading', { name: /Store: v2\?/ })).toBeInTheDocument()
+  })
+})
+
+describe('saving an in-memory collection keeps a folder name the disk cannot carry', () => {
+  it('writes name: into folder.tiger and the sidebar still shows the typed name after Save', async () => {
+    const disk = await fakeDisk()
+    ;(window as { tiger?: unknown }).tiger = {
+      ...disk,
+      send: vi.fn(),
+      getSettings: vi.fn().mockResolvedValue({ theme: 'system', timeoutMs: 30000, fontSize: 13, analyticsEnabled: false }),
+      version: vi.fn().mockResolvedValue('test'),
+      checkUpdate: vi.fn().mockResolvedValue(null),
+      onUpdateDownloaded: vi.fn(),
+      onShortcut: vi.fn(),
+      historyRead: vi.fn().mockResolvedValue([]),
+      track: vi.fn()
+    }
+    render(<App />)
+    await waitFor(() => expect(folderRow('Users')).toBeInTheDocument())
+    await renameFolder('Users', 'Users: v2?')
+    await waitFor(() => expect(folderRow('Users: v2?')).toBeInTheDocument())
+
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true })
+    expect(await screen.findByText(/Saved Demo collection in \/Docs\/Tiger\/Demo collection/)).toBeInTheDocument()
+    expect(disk.files.get('/Docs/Tiger/Demo collection/Users- v2-/folder.tiger')).toContain('name: Users: v2?')
+    expect([...disk.files.keys()].some((k) => k.startsWith('/Docs/Tiger/Demo collection/Users- v2-/'))).toBe(true)
+    await waitFor(() => expect(folderRow('Users: v2?')).toBeInTheDocument())
+    expect(sidebar().textContent).not.toContain('Users- v2-')
   })
 })

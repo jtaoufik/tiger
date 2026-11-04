@@ -116,7 +116,14 @@ export const app = {
     one: 'Kept one request with unsaved edits; save or discard it yourself.',
     other: 'Kept {count} requests with unsaved edits; save or discard them yourself.'
   },
-  'app.toast.rootUnavailable': 'Could not reopen {path}. Tiger will try again next launch.',
+  'app.toast.rootUnavailable': {
+    one: 'Could not reopen {path}. Tiger will try once more next launch, then forget it.',
+    other: 'Could not reopen {path}. Tiger will try again on the next {count} launches, then forget it.'
+  },
+  'app.toast.rootForgotten': {
+    one: 'Forgot {path}: its folder was missing at the last launch.',
+    other: 'Forgot {path}: its folder was missing at the last {count} launches in a row.'
+  },
   'app.closeCollection.unsaved': {
     one: 'Close "{name}"? One request has unsaved edits that will be lost. Saved files stay on disk.',
     other: 'Close "{name}"? {count} requests have unsaved edits that will be lost. Saved files stay on disk.'

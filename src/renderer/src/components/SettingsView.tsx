@@ -136,20 +136,21 @@ interface NumberFieldProps {
  */
 function NumberField({ label, value, min, max, step, describedBy, onCommit }: NumberFieldProps) {
   const [draft, setDraft] = useState(String(value))
-  const ref = useRef<HTMLInputElement>(null)
   useEffect(() => {
     setDraft(String(value))
   }, [value])
   const commit = () => {
     const n = Number(draft)
     if (draft.trim() === '' || !Number.isFinite(n)) return setDraft(String(value))
+    // An untouched draft (or the same number retyped) is not an edit: a stored
+    // value outside the field's bounds must survive a focus pass unchanged.
+    if (n === value) return setDraft(String(value))
     const next = Math.min(max, Math.max(min, n))
     setDraft(String(next))
     if (next !== value) onCommit(next)
   }
   return (
     <input
-      ref={ref}
       className="num-input"
       type="number"
       min={min}
@@ -161,10 +162,11 @@ function NumberField({ label, value, min, max, step, describedBy, onCommit }: Nu
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          commit()
-          ref.current?.blur()
-        }
+        if (e.key !== 'Enter') return
+        // blur() fires onBlur, which commits; committing here as well would
+        // store the value twice. Only commit directly when nothing is focused.
+        if (document.activeElement === e.currentTarget) e.currentTarget.blur()
+        else commit()
       }}
     />
   )

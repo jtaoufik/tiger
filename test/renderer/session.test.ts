@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  parseStoredRootMisses,
   parseStoredRoots,
   parseStoredTabs,
   resolveStoredTabs,
@@ -15,6 +16,15 @@ describe('parseStoredRoots', () => {
     expect(parseStoredRoots(null)).toEqual([])
     expect(parseStoredRoots('not json')).toEqual([])
     expect(parseStoredRoots('{"a":1}')).toEqual([])
+  })
+})
+
+describe('parseStoredRootMisses', () => {
+  it('keeps positive integer counts and drops junk', () => {
+    expect(parseStoredRootMisses(JSON.stringify({ '/a': 2, '/b': 0, '/c': 'x', '/d': 1.5 }))).toEqual({ '/a': 2 })
+    expect(parseStoredRootMisses(null)).toEqual({})
+    expect(parseStoredRootMisses('not json')).toEqual({})
+    expect(parseStoredRootMisses('["/a"]')).toEqual({})
   })
 })
 

@@ -29,6 +29,8 @@ export const SESSION_KEYS = {
   roots: 'tiger.session.roots',
   tabs: 'tiger.session.tabs',
   active: 'tiger.session.active',
+  /** JSON object, stored root -> launches in a row at which it did not open. */
+  rootMisses: 'tiger.session.rootMisses',
   /** Set once the first-run home screen (with the import cards) was shown. */
   welcomed: 'tiger.welcomed'
 } as const
@@ -42,6 +44,27 @@ export function parseStoredRoots(raw: string | null): string[] {
     return parsed.filter((r): r is string => typeof r === 'string' && r.length > 0)
   } catch {
     return []
+  }
+}
+
+/**
+ * Launches in a row a stored root may fail to open before it is forgotten:
+ * enough for an unmounted drive to come back, short enough that a deleted
+ * folder does not nag at every launch.
+ */
+export const ROOT_MISS_LIMIT = 3
+
+/** Parse the per-root miss counter; junk in, empty out. */
+export function parseStoredRootMisses(raw: string | null): Record<string, number> {
+  if (!raw) return {}
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    return Object.fromEntries(
+      Object.entries(parsed).filter((e): e is [string, number] => Number.isInteger(e[1]) && (e[1] as number) > 0)
+    )
+  } catch {
+    return {}
   }
 }
 

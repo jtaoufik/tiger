@@ -263,6 +263,33 @@ describe('SettingsView extras', () => {
       expect(timeout().value).toBe('1000')
     })
 
+    it('Enter on a focused field commits exactly once (the blur it triggers does the commit)', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      timeout().focus()
+      expect(document.activeElement).toBe(timeout())
+      fireEvent.change(timeout(), { target: { value: '5000' } })
+      fireEvent.keyDown(timeout(), { key: 'Enter' })
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenCalledWith({ timeoutMs: 5000 })
+      expect(document.activeElement).not.toBe(timeout())
+    })
+
+    it('leaves a stored out-of-range value alone when the field is not edited', () => {
+      const onChange = vi.fn()
+      // main accepts timeouts above the field's 600000 cap (hand-edited settings.json, the old UI).
+      render(<SettingsView settings={{ ...fallbackSettings, timeoutMs: 1800000 }} onChange={onChange} />)
+      expect(timeout().value).toBe('1800000')
+      fireEvent.blur(timeout())
+      fireEvent.keyDown(timeout(), { key: 'Enter' })
+      expect(onChange).not.toHaveBeenCalled()
+      expect(timeout().value).toBe('1800000')
+      // Retyping the same number is not an edit either.
+      fireEvent.change(timeout(), { target: { value: '1800000' } })
+      fireEvent.blur(timeout())
+      expect(onChange).not.toHaveBeenCalled()
+    })
+
     it('an empty or garbage draft falls back to the saved value', () => {
       const onChange = vi.fn()
       render(<SettingsView settings={fallbackSettings} onChange={onChange} />)

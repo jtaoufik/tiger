@@ -118,7 +118,14 @@ export const app: NamespaceCatalog<typeof en> = {
     one: 'Une requête avec des modifications non enregistrées a été conservée ; enregistrez-la ou abandonnez-la vous-même.',
     other: '{count} requêtes avec des modifications non enregistrées ont été conservées ; enregistrez-les ou abandonnez-les vous-même.'
   },
-  'app.toast.rootUnavailable': 'Impossible de rouvrir {path}. Tiger réessaiera au prochain lancement.',
+  'app.toast.rootUnavailable': {
+    one: "Impossible de rouvrir {path}. Tiger réessaiera une dernière fois au prochain lancement, puis l'oubliera.",
+    other: "Impossible de rouvrir {path}. Tiger réessaiera lors des {count} prochains lancements, puis l'oubliera."
+  },
+  'app.toast.rootForgotten': {
+    one: '{path} a été oublié : son dossier manquait au dernier lancement.',
+    other: '{path} a été oublié : son dossier manquait lors des {count} derniers lancements.'
+  },
   'app.closeCollection.unsaved': {
     one: 'Fermer « {name} » ? Une requête a des modifications non enregistrées qui seront perdues. Les fichiers enregistrés restent sur le disque.',
     other: 'Fermer « {name} » ? {count} requêtes ont des modifications non enregistrées qui seront perdues. Les fichiers enregistrés restent sur le disque.'

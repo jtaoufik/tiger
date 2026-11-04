@@ -118,7 +118,14 @@ export const app: NamespaceCatalog<typeof en> = {
     one: 'Se conservó una solicitud con cambios sin guardar; guárdala o descártala tú mismo.',
     other: 'Se conservaron {count} solicitudes con cambios sin guardar; guárdalas o descártalas tú mismo.'
   },
-  'app.toast.rootUnavailable': 'No se pudo reabrir {path}. Tiger lo intentará de nuevo en el próximo inicio.',
+  'app.toast.rootUnavailable': {
+    one: 'No se pudo reabrir {path}. Tiger lo intentará una vez más en el próximo inicio y luego lo olvidará.',
+    other: 'No se pudo reabrir {path}. Tiger lo intentará en los próximos {count} inicios y luego lo olvidará.'
+  },
+  'app.toast.rootForgotten': {
+    one: 'Se olvidó {path}: su carpeta faltaba en el último inicio.',
+    other: 'Se olvidó {path}: su carpeta faltaba en los últimos {count} inicios seguidos.'
+  },
   'app.closeCollection.unsaved': {
     one: '¿Cerrar «{name}»? Una solicitud tiene cambios sin guardar que se perderán. Los archivos guardados siguen en el disco.',
     other: '¿Cerrar «{name}»? {count} solicitudes tienen cambios sin guardar que se perderán. Los archivos guardados siguen en el disco.'

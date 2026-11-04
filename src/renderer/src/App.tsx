@@ -81,8 +81,10 @@ import {
   XCircleIcon
 } from './components/Icons'
 import {
+  ROOT_MISS_LIMIT,
   SEP,
   SESSION_KEYS,
+  parseStoredRootMisses,
   parseStoredRoots,
   parseStoredTabs,
   resolveStoredTabs,
@@ -625,9 +627,9 @@ export default function App() {
         }
       }
     },
-    // isDirty reads requestsById, pathById and the savedText/editedIds refs.
+    // isDirty reads pathById and the requestsByIdRef/savedText/editedIds refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [collections, activeId, pathById, requestsById, toast]
+    [collections, activeId, pathById, toast]
   )
 
   const fKey = (colId: string, path: string[]): string => `${colId}${SEP}${path.join('/')}`
@@ -645,6 +647,13 @@ export default function App() {
   /** A folder as shown: the name its folder.tiger keeps, else its disk name. */
   const folderLabel = (colId: string, path: string[]): string =>
     folderSettings[fKey(colId, path)]?.name || path[path.length - 1]
+  /**
+   * A folder path with every segment as shown, for saving an in-memory
+   * collection: collectionFiles derives the disk name from it and keeps the
+   * shown one in folder.tiger, so a name the disk cannot carry survives Save.
+   */
+  const shownPath = (colId: string, path: string[]): string[] =>
+    path.map((segment, i) => folderSettingsRef.current[fKey(colId, path.slice(0, i + 1))]?.name || segment)
   /** The same, by the sidebar's tree key, for the folders that have one. */
   const folderNames = useMemo(() => {
     const out: Record<string, string> = {}
@@ -845,6 +854,8 @@ export default function App() {
    * is back when its folder is, instead of being forgotten for good.
    */
   const unavailableRoots = useRef<string[]>([])
+  /** Launches in a row each unavailable root did not open (persisted with the roots). */
+  const rootMisses = useRef<Record<string, number>>({})
   const [pendingRestore, setPendingRestore] = useState<{
     tabs: OpenTab[]
     activeKey: string | null
@@ -871,8 +882,25 @@ export default function App() {
           missing.push(roots[i])
         }
       })
-      unavailableRoots.current = missing
-      for (const path of missing) toast(t('app.toast.rootUnavailable', { path }), { error: true })
+      // A missing root is retried for a few launches, then forgotten: an
+      // unmounted drive gets its chance to come back, a deleted folder does
+      // not nag forever. A root that opens starts its count over.
+      const misses = parseStoredRootMisses(readStored(SESSION_KEYS.rootMisses))
+      for (const root of openedRoots) delete misses[root]
+      unavailableRoots.current = []
+      for (const path of missing) {
+        const count = (misses[path] ?? 0) + 1
+        if (count >= ROOT_MISS_LIMIT) {
+          delete misses[path]
+          toast(t('app.toast.rootForgotten', { path, count }), { error: false })
+        } else {
+          misses[path] = count
+          unavailableRoots.current.push(path)
+          // Informational: nothing to fix right now, and Tiger says what comes next.
+          toast(t('app.toast.rootUnavailable', { path, count: ROOT_MISS_LIMIT - count }), { error: false })
+        }
+      }
+      rootMisses.current = misses
       if (!openedRoots.length) {
         // Every persisted root is gone: fall back to the demo bootstrap.
         setCollections([DEMO_COLLECTION])
@@ -1472,6 +1500,7 @@ export default function App() {
       }))
       reviveIds(entries.map((e) => e.id))
       unavailableRoots.current = unavailableRoots.current.filter((r) => r !== opened.root)
+      delete rootMisses.current[opened.root]
       const next: CollectionState = {
         id: opened.root,
         name: opened.settings?.name || opened.name,
@@ -1549,10 +1578,10 @@ export default function App() {
       const requests: Array<{ oldId: string; path: string[]; request: TigerRequest }> = []
       for (const e of col.entries) {
         const request = requestsById[e.id] ?? (await loadRequest(e.id))
-        if (request) requests.push({ oldId: e.id, path: e.folderPath, request })
+        if (request) requests.push({ oldId: e.id, path: shownPath(col.id, e.folderPath), request })
       }
       const own = `${col.id}${SEP}`
-      const folders = foldersOf(col.id)
+      const folders = foldersOf(col.id).map((f) => ({ ...f, path: shownPath(col.id, f.path) }))
       try {
         const saved = await writeCollectionToDisk({
           name: col.name,
@@ -2819,7 +2848,10 @@ export default function App() {
    */
   const serializedCache = useRef(new Map<string, { req: TigerRequest; text: string }>())
   const isDirty = (id: string): boolean => {
-    const req = requestsById[id]
+    // Through the ref, so a stale closure (invalidateCollectionCache captured
+    // by a sync that took seconds) judges the request as it is now, not as it
+    // was when the sync started; during render the ref holds this render's map.
+    const req = requestsByIdRef.current[id]
     if (!req || !pathById[id]) return false
     if (req.body.content.length > LARGE_BODY) return editedIds.current.has(id)
     const hit = serializedCache.current.get(id)
@@ -2885,6 +2917,7 @@ export default function App() {
       SESSION_KEYS.roots,
       JSON.stringify([...open, ...unavailableRoots.current.filter((r) => !open.includes(r))])
     )
+    writeStored(SESSION_KEYS.rootMisses, JSON.stringify(rootMisses.current))
     writeStored(SESSION_KEYS.tabs, JSON.stringify(openTabs))
     writeStored(SESSION_KEYS.active, activeTabKey ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
