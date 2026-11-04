@@ -99,6 +99,7 @@ export const settings: NamespaceCatalog<typeof en> = {
     'استبدل {placeholder} بالمسار الكامل للمجلد الذي فتحته في Tiger. يمكنك إضافة إدخال واحد لكل مجموعة.',
   'settings.mcp.copySnippet': 'نسخ المقتطف',
   'settings.mcp.snippetCopied': 'تم نسخ المقتطف',
+  'settings.mcp.copyFailed': 'تعذّر نسخ المقتطف',
   'settings.mcp.loading': 'جارٍ التحميل…',
   'settings.mcp.storeNote':
     'كل تحديث من Microsoft Store يثبّت Tiger في مجلد جديد. بعد التحديث، انسخ المقتطف مرة أخرى.',

@@ -199,10 +199,14 @@ function IdentityForm({
     []
   )
   const save = async (): Promise<void> => {
-    const result = await window.tiger!.git.setIdentity(root, name, email)
-    if (!result.ok) return setProblem(result.message)
-    announce(result.message)
-    onSaved?.()
+    try {
+      const result = await window.tiger!.git.setIdentity(root, name, email)
+      if (!result.ok) return setProblem(result.message)
+      announce(result.message)
+      onSaved?.()
+    } catch (e) {
+      setProblem((e as Error)?.message ?? String(e))
+    }
   }
   return (
     <form
@@ -380,6 +384,13 @@ export function useTeamSync(
         }
         notifyGitChanged()
         return result
+      } catch (e) {
+        // The bridge itself failed (not a git result): keep it on screen
+        // rather than leaving an unhandled rejection and a blank panel.
+        const message = (e as Error)?.message ?? String(e)
+        setError({ message })
+        announce(message, { assertive: true })
+        return null
       } finally {
         setBusy(null)
       }
@@ -414,6 +425,11 @@ export function useTeamSync(
         }
         notifyGitChanged()
         return result
+      } catch (e) {
+        const message = (e as Error)?.message ?? String(e)
+        setError({ message })
+        announce(message, { assertive: true })
+        return null
       } finally {
         stop?.()
         setBusy(null)
@@ -580,7 +596,10 @@ export function useChangeGroups(root: string, status: GitStatus | null): Grouped
   useEffect(() => {
     let live = true
     if (!paths.length || !window.tiger?.git.requestNames) return
-    window.tiger.git.requestNames(root, paths).then((n) => live && setNames(n))
+    window.tiger.git
+      .requestNames(root, paths)
+      .then((n) => live && setNames(n))
+      .catch(() => {}) // paths show without names
     return () => {
       live = false
     }
@@ -607,8 +626,10 @@ function ChangeRow({
   const toggle = async (): Promise<void> => {
     const next = !open
     setOpen(next)
-    if (next && diff === null && window.tiger?.git.diffFile)
-      setDiff(await window.tiger.git.diffFile(root, item.path))
+    if (next && diff === null && window.tiger?.git.diffFile) {
+      // An empty diff reads "no lines"; without the catch it read "Loading…" forever.
+      setDiff(await window.tiger.git.diffFile(root, item.path).catch(() => ''))
+    }
   }
   const lines = splitDiff(diff ?? '').filter((l) => l.kind !== 'meta')
   return (
@@ -828,7 +849,9 @@ export function ConflictPanel({
     let live = true
     const load = window.tiger?.git.conflicts
     if (!load) return setItems([])
-    load(root).then((c) => live && setItems(c))
+    load(root)
+      .then((c) => live && setItems(c))
+      .catch(() => live && setItems([]))
     return () => {
       live = false
     }
@@ -959,6 +982,10 @@ export function JoinTeamModal({
         return
       }
       onJoined(opened)
+    } catch (e) {
+      const message = (e as Error)?.message ?? String(e)
+      setError({ message })
+      announce(message, { assertive: true })
     } finally {
       setBusy(false)
     }

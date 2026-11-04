@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PerfPane } from '../../src/renderer/src/components/PerfPane'
 import type { TigerRequest } from '../../src/core/types'
 
@@ -51,5 +51,45 @@ describe('Load test', () => {
       expect(call[0].headers.Authorization).toBe('Bearer tok')
       expect(call[3]).toEqual({ record: false })
     }
+  })
+
+  it('stops firing and aborts the sends in flight when the pane unmounts mid-run', async () => {
+    // Sends hang until released, so the run is still going when the pane goes away.
+    const release: Array<() => void> = []
+    const send = vi.fn(
+      () =>
+        new Promise<Awaited<ReturnType<typeof ok>>>((resolve) => {
+          release.push(() => resolve({ status: 200, statusText: 'OK', headers: {}, body: '', timeMs: 1 }))
+        })
+    )
+    const cancelSend = vi.fn(async () => true)
+    ;(window as { tiger?: unknown }).tiger = { send, cancelSend }
+    const request: TigerRequest = {
+      name: 'Ping',
+      method: 'get',
+      url: 'https://api.test/ping',
+      headers: [],
+      query: [],
+      body: { type: 'none', content: '' }
+    }
+    const { unmount } = render(<PerfPane request={request} collectionAuth={undefined} env={null} timeoutMs={1000} />)
+    fireEvent.change(screen.getByLabelText('Total requests'), { target: { value: '6' } })
+    fireEvent.change(screen.getByLabelText('Concurrency'), { target: { value: '2' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Run 6 requests/ }))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
+    const keys = send.mock.calls.map((c) => (c as unknown as [unknown, number, string])[2])
+    expect(new Set(keys).size).toBe(2) // one cancel key per send: main aborts by key
+
+    unmount()
+    expect(cancelSend).toHaveBeenCalledTimes(2)
+    for (const key of keys) expect(cancelSend).toHaveBeenCalledWith(key)
+
+    // The workers wake up, see the run is cancelled, and send nothing more.
+    await act(async () => {
+      for (const r of release.splice(0)) r()
+      await Promise.resolve()
+    })
+    await new Promise((r) => setTimeout(r, 10))
+    expect(send).toHaveBeenCalledTimes(2)
   })
 })

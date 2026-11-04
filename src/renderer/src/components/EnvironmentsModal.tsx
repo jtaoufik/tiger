@@ -63,9 +63,15 @@ export function EnvironmentsModal({
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const idBase = useId()
 
+  // Reveals belong to one environment: hide everything again when another is
+  // picked. Not on every reload: an in-memory edit rebuilds `col`, and that
+  // used to re-hide every secret on each keystroke.
+  useEffect(() => {
+    setRevealed(new Set())
+  }, [colId, selected])
+
   const loadEnv = useCallback(
     async (name: string | null) => {
-      setRevealed(new Set())
       if (!col || !name) return setEnv(null)
       const ref = col.environments.find((e) => e.name === name)
       if (!ref) return setEnv(null)
@@ -86,13 +92,23 @@ export function EnvironmentsModal({
     loadEnv(selected)
   }, [selected, loadEnv])
 
+  /** Disk trouble stays visible: the edit is on screen, but not in the file. */
+  const ioFailed = useCallback(
+    (e: unknown) => onToast(t('modals.environments.toastSaveFailed', { error: (e as Error)?.message ?? String(e) }), { error: true }),
+    [onToast, t]
+  )
+
   const persist = useCallback(
     async (next: TigerEnvironment, refName: string) => {
       if (!col) return
       setEnv(next)
       const ref = col.environments.find((e) => e.name === refName)
       if (ref?.path && window.tiger) {
-        await window.tiger.writeFile(ref.path, serializeEnvironment(next))
+        try {
+          await window.tiger.writeFile(ref.path, serializeEnvironment(next))
+        } catch (e) {
+          return ioFailed(e)
+        }
       } else {
         onCollectionsChanged(
           col.id,
@@ -105,7 +121,7 @@ export function EnvironmentsModal({
         onActiveEnvMaybeChanged?.(col.id, refName, next)
       }
     },
-    [col, activeEnvKey, envKeySep, onActiveEnvMaybeChanged, onCollectionsChanged]
+    [col, activeEnvKey, envKeySep, onActiveEnvMaybeChanged, onCollectionsChanged, ioFailed]
   )
 
   /**
@@ -133,7 +149,11 @@ export function EnvironmentsModal({
       const data: TigerEnvironment = { name, variables: from ? [...from.variables] : [] }
       const path = envFilePath(name)
       if (path && window.tiger) {
-        await window.tiger.writeFile(path, serializeEnvironment(data))
+        try {
+          await window.tiger.writeFile(path, serializeEnvironment(data))
+        } catch (e) {
+          return ioFailed(e)
+        }
         onCollectionsChanged(col.id, [...col.environments, { name, path }])
       } else {
         onCollectionsChanged(col.id, [...col.environments, { name, data }])
@@ -141,7 +161,7 @@ export function EnvironmentsModal({
       setSelected(name)
       onToast(t(from ? 'modals.environments.toastDuplicated' : 'modals.environments.toastCreated'))
     },
-    [col, onCollectionsChanged, onToast, t]
+    [col, onCollectionsChanged, onToast, t, ioFailed]
   )
 
   // "New environment" from a menu opens the modal with one already created.
@@ -162,15 +182,20 @@ export function EnvironmentsModal({
       const current = env && env.name === oldName ? env : null
       const data: TigerEnvironment = { name: newName, variables: current?.variables ?? [] }
       if (ref.path && window.tiger) {
-        const text = current
-          ? serializeEnvironment(data)
-          : serializeEnvironment({ ...parseEnvironment(await window.tiger.readFile(ref.path)), name: newName })
         // Renaming "staging" to "Staging" is the same file on Windows and
         // macOS: rewrite it in place, never write it and then delete it.
-        let newPath = envFilePath(newName, ref.path)!
+        // Without a root (a file opened on its own) the file keeps its name.
+        let newPath = envFilePath(newName, ref.path) ?? ref.path
         if (newPath.toLowerCase() === ref.path.toLowerCase()) newPath = ref.path
-        await window.tiger.writeFile(newPath, text)
-        if (newPath !== ref.path) await window.tiger.deleteFile(ref.path)
+        try {
+          const text = current
+            ? serializeEnvironment(data)
+            : serializeEnvironment({ ...parseEnvironment(await window.tiger.readFile(ref.path)), name: newName })
+          await window.tiger.writeFile(newPath, text)
+          if (newPath !== ref.path) await window.tiger.deleteFile(ref.path)
+        } catch (e) {
+          return ioFailed(e)
+        }
         onCollectionsChanged(
           col.id,
           col.environments.map((e) => (e.name === oldName ? { name: newName, path: newPath } : e))
@@ -186,7 +211,7 @@ export function EnvironmentsModal({
       }
       setSelected(newName)
     },
-    [col, env, activeEnvKey, envKeySep, onActivate, onCollectionsChanged, onToast, t]
+    [col, env, activeEnvKey, envKeySep, onActivate, onCollectionsChanged, onToast, t, ioFailed]
   )
 
   const deleteEnv = useCallback(
@@ -228,12 +253,17 @@ export function EnvironmentsModal({
     await loadEnv(name)
     setSelected(name)
     const ref = col.environments.find((x) => x.name === name)
-    const data =
-      ref?.data ??
-      (ref?.path && window.tiger
-        ? parseEnvironment(await window.tiger.readFile(ref.path))
-        : { name, variables: [] })
-    createEnv(data)
+    let data: TigerEnvironment
+    try {
+      data =
+        ref?.data ??
+        (ref?.path && window.tiger
+          ? parseEnvironment(await window.tiger.readFile(ref.path))
+          : { name, variables: [] })
+    } catch (e) {
+      return ioFailed(e)
+    }
+    void createEnv(data)
   }
 
   const envs = col?.environments ?? []
@@ -389,10 +419,13 @@ export function EnvironmentsModal({
                   key={env.name}
                   spellCheck={false}
                   aria-describedby={`${idBase}-name-hint`}
+                  // Enter commits by blurring: calling renameEnv here as well
+                  // ran it twice (Enter, then the blur) and the second run
+                  // toasted "name taken" for a rename that had just worked.
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') renameEnv(env.name, (e.target as HTMLInputElement).value.trim())
+                    if (e.key === 'Enter') e.currentTarget.blur()
                   }}
-                  onBlur={(e) => renameEnv(env.name, e.target.value.trim())}
+                  onBlur={(e) => void renameEnv(env.name, e.target.value.trim())}
                 />
                 <div id={`${idBase}-name-hint`} className="env-hint">
                   {t('modals.environments.renameHint')}
@@ -501,7 +534,15 @@ export function EnvironmentsModal({
                                 ? t('modals.environments.removeLabelNamed', { n: i + 1, name: row.name })
                                 : t('modals.environments.removeLabel', { n: i + 1 })
                             }
-                            onClick={() => setVars(env.variables.filter((_, idx) => idx !== i))}
+                            onClick={() => {
+                              // Rows below slide up one index: move their
+                              // reveal state with them, or the next secret
+                              // down would show up in plain text.
+                              setRevealed(
+                                (prev) => new Set([...prev].filter((j) => j !== i).map((j) => (j > i ? j - 1 : j)))
+                              )
+                              setVars(env.variables.filter((_, idx) => idx !== i))
+                            }}
                           >
                             <CloseIcon size={14} />
                           </button>

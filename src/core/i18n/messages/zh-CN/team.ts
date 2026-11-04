@@ -59,6 +59,8 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.git.restored': '更改已恢复',
   'team.git.cloned': '已克隆到 {dir}',
   'team.git.cloneFailed': '克隆失败',
+  'team.git.err.nestedRepo': '此文件夹位于另一个仓库之内。只有当集合自己的文件夹就是仓库时，Tiger 才会同步它。',
+  'team.git.badBranchName': '这不是有效的分支名称',
 
   'team.ux.checking.label': '正在检查…',
   'team.ux.checking.short': '检查中',
@@ -276,5 +278,6 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.modal.shareOnly': '仅共享版本',
   'team.modal.sharingVersions': '正在共享你的版本…',
   'team.modal.allUnsaved': '所有未保存的更改',
-  'team.modal.allUnsavedDiff': '所有未保存的更改（diff 形式）'
+  'team.modal.allUnsavedDiff': '所有未保存的更改（diff 形式）',
+  'team.modal.showAllDiff': { other: '显示全部 {count} 行' }
 }

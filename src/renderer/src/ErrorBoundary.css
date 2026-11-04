@@ -1,0 +1,41 @@
+/* Crash panel shown by ErrorBoundary when a render throws. Uses only the base
+   tokens from styles.css with fallbacks, so it also renders if that sheet
+   never applied. */
+.crash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg, #fff);
+  color: var(--text, #222);
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+.crash-panel {
+  max-width: 480px;
+  width: 100%;
+  padding: 24px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: var(--radius, 10px);
+  background: var(--panel, #fafafa);
+}
+.crash-panel h1 {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+.crash-panel p {
+  margin: 0 0 12px;
+  color: var(--text-dim, #666);
+  font-size: 0.875rem;
+}
+.crash-panel pre {
+  margin: 0 0 16px;
+  padding: 8px 10px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--code-bg, rgba(0, 0, 0, 0.05));
+}

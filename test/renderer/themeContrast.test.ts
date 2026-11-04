@@ -46,6 +46,22 @@ function cssFiles(dir: string): string[] {
 
 const themes = { light: block(':root'), dark: block("[data-theme='dark']") }
 
+describe('dark theme before the attribute is set', () => {
+  it('declares the same tokens under prefers-color-scheme as under data-theme', () => {
+    // The media block paints the first frame dark for dark users; it must
+    // never drift from the block the renderer switches to afterwards.
+    const declarations = (css: string) =>
+      css
+        .split('\n')
+        .slice(1)
+        .map((l) => l.trim())
+        .filter((l) => l.startsWith('--') || l.startsWith('color-scheme'))
+    const media = block(":root:not([data-theme='light'])")
+    expect(declarations(media)).toEqual(declarations(themes.dark))
+    expect(styles).toMatch(/@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\) \{/)
+  })
+})
+
 describe('text on the orange accent', () => {
   for (const [theme, css] of Object.entries(themes)) {
     it(`is light text on a deep orange in the ${theme} theme, at least 4.5:1 (hover included)`, () => {

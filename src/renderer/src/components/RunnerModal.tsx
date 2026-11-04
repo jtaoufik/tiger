@@ -46,6 +46,19 @@ export function RunnerModal({
   const [results, setResults] = useState<RunnerResult[]>([])
   const [summary, setSummary] = useState<{ passed: number; failed: number; stopped: boolean } | null>(null)
   const stopRef = useRef(false)
+  /** False once the dialog is gone: a run it left behind must not write anywhere. */
+  const alive = useRef(true)
+
+  // Closing the dialog mid-run ends the run: the in-flight send is aborted and
+  // the runner stops before the next item (App's onClose only drops the scope).
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+      stopRef.current = true
+      void cancelRequest(RUNNER_KEY)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -91,7 +104,7 @@ export function RunnerModal({
     const changed = Object.entries(outcome.vars)
       .filter(([name, value]) => initial[name] !== value)
       .map(([name, value]) => ({ name, value }))
-    if (changed.length) onVariablesChanged?.(changed)
+    if (alive.current && changed.length) onVariablesChanged?.(changed)
 
     setSummary({ passed: outcome.passed, failed: outcome.failed, stopped: outcome.stopped })
     setPhase('done')

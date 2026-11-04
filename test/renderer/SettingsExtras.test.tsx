@@ -241,6 +241,57 @@ describe('SettingsView extras', () => {
     })
   })
 
+  describe('numeric settings commit on blur or Enter, clamped to their bounds', () => {
+    const timeout = () => screen.getByRole('spinbutton', { name: 'Request timeout (ms)' }) as HTMLInputElement
+
+    it('does not store a partial number while typing', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      fireEvent.change(timeout(), { target: { value: '5' } })
+      expect(onChange).not.toHaveBeenCalled()
+      fireEvent.change(timeout(), { target: { value: '5000' } })
+      fireEvent.blur(timeout())
+      expect(onChange).toHaveBeenCalledWith({ timeoutMs: 5000 })
+    })
+
+    it('clamps to the minimum on Enter and shows the stored value', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      fireEvent.change(timeout(), { target: { value: '5' } })
+      fireEvent.keyDown(timeout(), { key: 'Enter' })
+      expect(onChange).toHaveBeenCalledWith({ timeoutMs: 1000 })
+      expect(timeout().value).toBe('1000')
+    })
+
+    it('an empty or garbage draft falls back to the saved value', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      fireEvent.change(timeout(), { target: { value: '' } })
+      fireEvent.blur(timeout())
+      expect(onChange).not.toHaveBeenCalled()
+      expect(timeout().value).toBe('30000')
+    })
+
+    it('font size clamps to its maximum', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      const font = screen.getByRole('spinbutton', { name: 'Editor font size' })
+      fireEvent.change(font, { target: { value: '40' } })
+      fireEvent.blur(font)
+      expect(onChange).toHaveBeenCalledWith({ fontSize: 22 })
+    })
+
+    it('zero redirects is a valid choice', () => {
+      const onChange = vi.fn()
+      render(<SettingsView settings={fallbackSettings} onChange={onChange} />)
+      fireEvent.click(screen.getByRole('tab', { name: 'Advanced' }))
+      const redirects = screen.getByRole('spinbutton', { name: 'Maximum redirects' })
+      fireEvent.change(redirects, { target: { value: '0' } })
+      fireEvent.blur(redirects)
+      expect(onChange).toHaveBeenCalledWith({ maxRedirects: 0 })
+    })
+  })
+
   it('toggles "Install updates automatically" on the About tab (default on)', () => {
     const onChange = vi.fn()
     const { rerender } = render(<SettingsView settings={fallbackSettings} onChange={onChange} />)

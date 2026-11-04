@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { buildRequest } from '@core/request'
 import { withResolvedFiles } from '@core/multipart'
 import { envToVars } from '@core/interpolate'
@@ -6,7 +6,7 @@ import { computeStats, runPool, type PerfStats } from '@core/perf'
 import { resolveAuth } from '@core/collectionSettings'
 import type { TigerAuth, TigerEnvironment, TigerRequest } from '@core/types'
 import { useT } from '../i18n'
-import { withOAuthToken } from '../runRequest'
+import { cancelRequest, withOAuthToken } from '../runRequest'
 import { GaugeIcon } from './Icons'
 import './a11y.css'
 import './PerfPane.css'
@@ -34,7 +34,20 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs, baseDir }: P
   const [statusBuckets, setStatusBuckets] = useState<Record<string, number>>({})
   const [error, setError] = useState<string | null>(null)
   const cancelled = useRef(false)
+  /** Cancel keys of the sends in flight: main holds one controller per key. */
+  const inFlight = useRef(new Set<string>())
+  const runId = useRef(0)
   const uid = useId()
+
+  /** Stop scheduling jobs and abort every send already on the wire. */
+  const stop = () => {
+    cancelled.current = true
+    for (const key of inFlight.current) void cancelRequest(key)
+  }
+  // Switching tab or request unmounts the pane; the load test must not go on
+  // firing in the background with no Stop button left to reach it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => stop(), [])
 
   const run = async () => {
     setRunning(true)
@@ -43,6 +56,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs, baseDir }: P
     setStatusBuckets({})
     setError(null)
     cancelled.current = false
+    const id = ++runId.current
 
     const vars = envToVars(env)
     let effective: TigerRequest
@@ -62,19 +76,23 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs, baseDir }: P
     await runPool(
       total,
       concurrency,
-      async () => {
+      async (index) => {
         if (cancelled.current) return
+        const key = `perf:${id}:${index}`
+        inFlight.current.add(key)
         try {
           // Built per request: {{$guid}}, {{$timestamp}} and the like get a
           // fresh value each time, as they do on Send.
           const built = withResolvedFiles(buildRequest(effective, vars), baseDir)
-          const res = await window.tiger!.send(built, timeoutMs, undefined, { record: false })
+          const res = await window.tiger!.send(built, timeoutMs, key, { record: false })
           times.push(res.timeMs)
           const bucket = `${Math.floor(res.status / 100)}xx`
           buckets[bucket] = (buckets[bucket] ?? 0) + 1
           if (res.status >= 200 && res.status < 300) okCount++
         } catch {
           buckets.error = (buckets.error ?? 0) + 1
+        } finally {
+          inFlight.current.delete(key)
         }
       },
       (d) => setDone(d)
@@ -222,7 +240,7 @@ export function PerfPane({ request, collectionAuth, env, timeoutMs, baseDir }: P
 
       <div className="perf-actions">
         {running ? (
-          <button type="button" className="btn danger" onClick={() => (cancelled.current = true)}>
+          <button type="button" className="btn danger" onClick={stop}>
             {t('request.perf.stop')}
           </button>
         ) : (

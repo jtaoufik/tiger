@@ -60,6 +60,8 @@ export const team = {
   'team.git.restored': 'Changes restored',
   'team.git.cloned': 'Cloned into {dir}',
   'team.git.cloneFailed': 'Clone failed',
+  'team.git.err.nestedRepo': 'This folder is inside another repository. Tiger syncs a collection only when its own folder is the repository.',
+  'team.git.badBranchName': 'That is not a valid branch name',
 
   // ---- gitUx: status summaries ----
   'team.ux.checking.label': 'Checking…',
@@ -312,5 +314,6 @@ export const team = {
   'team.modal.shareOnly': 'Share versions only',
   'team.modal.sharingVersions': 'Sharing your versions…',
   'team.modal.allUnsaved': 'All unsaved changes',
-  'team.modal.allUnsavedDiff': 'All unsaved changes as a diff'
+  'team.modal.allUnsavedDiff': 'All unsaved changes as a diff',
+  'team.modal.showAllDiff': { one: 'Show all {count} lines', other: 'Show all {count} lines' }
 } as const

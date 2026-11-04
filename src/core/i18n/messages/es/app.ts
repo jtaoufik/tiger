@@ -112,6 +112,20 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.closeCollection.title': 'Cerrar colección',
   'app.closeCollection.message': '¿Cerrar «{name}»? Tus archivos siguen en el disco; esto solo la quita de la barra lateral.',
   'app.closeCollection.fallbackName': 'esta colección',
+  'app.toast.saveFailed': 'No se pudo guardar: {message}',
+  'app.toast.actionFailed': 'Algo salió mal: {message}',
+  'app.toast.unsavedKept': {
+    one: 'Se conservó una solicitud con cambios sin guardar; guárdala o descártala tú mismo.',
+    other: 'Se conservaron {count} solicitudes con cambios sin guardar; guárdalas o descártalas tú mismo.'
+  },
+  'app.toast.rootUnavailable': 'No se pudo reabrir {path}. Tiger lo intentará de nuevo en el próximo inicio.',
+  'app.closeCollection.unsaved': {
+    one: '¿Cerrar «{name}»? Una solicitud tiene cambios sin guardar que se perderán. Los archivos guardados siguen en el disco.',
+    other: '¿Cerrar «{name}»? {count} solicitudes tienen cambios sin guardar que se perderán. Los archivos guardados siguen en el disco.'
+  },
+  'app.crash.title': 'Algo salió mal',
+  'app.crash.detail': 'Tiger encontró un error del que no pudo recuperarse. Recarga para continuar; tus archivos guardados están a salvo.',
+  'app.crash.reload': 'Recargar',
   'app.deleteRequest.title': 'Eliminar solicitud',
   'app.deleteRequest.message': '¿Eliminar «{name}»? Esta acción no se puede deshacer.',
   'app.deleteRequest.fallbackName': 'esta solicitud',

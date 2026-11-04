@@ -68,6 +68,8 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.git.restored': 'Modifications restaurées',
   'team.git.cloned': 'Cloné dans {dir}',
   'team.git.cloneFailed': 'Échec du clonage',
+  'team.git.err.nestedRepo': 'Ce dossier se trouve dans un autre dépôt. Tiger ne synchronise une collection que lorsque son propre dossier est le dépôt.',
+  'team.git.badBranchName': 'Ce n’est pas un nom de branche valide',
 
   'team.ux.checking.label': 'Vérification…',
   'team.ux.checking.short': 'Vérification',
@@ -330,5 +332,6 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.modal.shareOnly': 'Partager uniquement les versions',
   'team.modal.sharingVersions': 'Partage de vos versions…',
   'team.modal.allUnsaved': 'Toutes les modifications non enregistrées',
-  'team.modal.allUnsavedDiff': 'Toutes les modifications non enregistrées sous forme de diff'
+  'team.modal.allUnsavedDiff': 'Toutes les modifications non enregistrées sous forme de diff',
+  'team.modal.showAllDiff': { one: 'Afficher la seule ligne', other: 'Afficher les {count} lignes' }
 }

@@ -118,6 +118,58 @@ function FileRow({ label, desc, value, filters, onChange }: FileRowProps) {
   )
 }
 
+interface NumberFieldProps {
+  label: string
+  value: number
+  min: number
+  max: number
+  step?: number
+  describedBy?: string
+  onCommit: (value: number) => void
+}
+
+/**
+ * A numeric setting that commits on blur or Enter, never per keystroke: typing
+ * "5000" used to store a 5 ms timeout on the first key, and the editor font
+ * shrank to 1px while "14" was being typed. Out-of-range values clamp to the
+ * field's bounds; an empty or non-numeric draft falls back to the saved value.
+ */
+function NumberField({ label, value, min, max, step, describedBy, onCommit }: NumberFieldProps) {
+  const [draft, setDraft] = useState(String(value))
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
+  const commit = () => {
+    const n = Number(draft)
+    if (draft.trim() === '' || !Number.isFinite(n)) return setDraft(String(value))
+    const next = Math.min(max, Math.max(min, n))
+    setDraft(String(next))
+    if (next !== value) onCommit(next)
+  }
+  return (
+    <input
+      ref={ref}
+      className="num-input"
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      aria-label={label}
+      aria-describedby={describedBy}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          commit()
+          ref.current?.blur()
+        }
+      }}
+    />
+  )
+}
+
 /**
  * Settings > General > Language. Each language is written in its own name
  * (and tagged with its lang, so screen readers pronounce it right); "System
@@ -192,34 +244,42 @@ export function SettingsView({ settings, onChange }: Props) {
   }, [settings.proxyPassword])
 
   useEffect(() => {
-    window.tiger?.version?.().then(setVersion)
+    window.tiger?.version?.().then(setVersion, () => {})
   }, [])
 
   useEffect(() => {
     if (tab === 'mcp') {
       // Main answers with a whole McpInfo (src/mcp/launch.ts); the preload
       // bridge still types it by its serverPath alone.
-      window.tiger?.mcpInfo?.().then(setMcpInfo)
+      window.tiger?.mcpInfo?.().then(setMcpInfo, () => {})
     }
   }, [tab])
 
   function handleClearCookies() {
-    window.tiger?.clearCookies?.().then(() => {
-      setClearLabel('cleared')
-      announce(t('settings.cookies.announceCleared'))
-      setTimeout(() => setClearLabel('clear'), 1200)
-    })
+    window.tiger?.clearCookies?.().then(
+      () => {
+        setClearLabel('cleared')
+        announce(t('settings.cookies.announceCleared'))
+        setTimeout(() => setClearLabel('clear'), 1200)
+      },
+      () => {}
+    )
   }
 
   const mcpSnippet = mcpInfo ? mcpClientConfig(mcpInfo, t('settings.mcp.pathPlaceholder')) : null
 
   function handleCopyMcp() {
     if (!mcpSnippet) return
-    navigator.clipboard.writeText(mcpSnippet).then(() => {
-      setCopied(true)
-      announce(t('settings.mcp.snippetCopied'))
-      setTimeout(() => setCopied(false), 1500)
-    })
+    // The clipboard rejects when the window is not focused; say so instead
+    // of leaving an unhandled rejection and a silent button.
+    navigator.clipboard.writeText(mcpSnippet).then(
+      () => {
+        setCopied(true)
+        announce(t('settings.mcp.snippetCopied'))
+        setTimeout(() => setCopied(false), 1500)
+      },
+      () => announce(t('settings.mcp.copyFailed'), { assertive: true })
+    )
   }
 
   return (
@@ -293,14 +353,13 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="label">{t('settings.timeout.label')}</div>
               <div className="desc">{t('settings.timeout.desc')}</div>
             </div>
-            <input
-              className="num-input"
-              type="number"
-              min={1000}
-              step={1000}
-              aria-label={t('settings.timeout.aria')}
+            <NumberField
+              label={t('settings.timeout.aria')}
               value={settings.timeoutMs}
-              onChange={(e) => onChange({ timeoutMs: Number(e.target.value) || 30000 })}
+              min={1000}
+              max={600000}
+              step={1000}
+              onCommit={(timeoutMs) => onChange({ timeoutMs })}
             />
           </div>
 
@@ -309,14 +368,12 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="label">{t('settings.fontSize.label')}</div>
               <div className="desc">{t('settings.fontSize.desc')}</div>
             </div>
-            <input
-              className="num-input"
-              type="number"
+            <NumberField
+              label={t('settings.fontSize.label')}
+              value={settings.fontSize}
               min={10}
               max={22}
-              aria-label={t('settings.fontSize.label')}
-              value={settings.fontSize}
-              onChange={(e) => onChange({ fontSize: Number(e.target.value) || 13 })}
+              onCommit={(fontSize) => onChange({ fontSize })}
             />
           </div>
         </>
@@ -487,14 +544,12 @@ export function SettingsView({ settings, onChange }: Props) {
               <div className="label">{t('settings.maxRedirects.label')}</div>
               <div className="desc">{t('settings.maxRedirects.desc')}</div>
             </div>
-            <input
-              className="num-input"
-              type="number"
+            <NumberField
+              label={t('settings.maxRedirects.label')}
+              value={settings.maxRedirects}
               min={0}
               max={20}
-              aria-label={t('settings.maxRedirects.label')}
-              value={settings.maxRedirects}
-              onChange={(e) => onChange({ maxRedirects: Number(e.target.value) || 5 })}
+              onCommit={(maxRedirects) => onChange({ maxRedirects })}
             />
           </div>
 

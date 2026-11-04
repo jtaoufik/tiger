@@ -61,6 +61,8 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.git.restored': 'تمت استعادة التغييرات',
   'team.git.cloned': 'تم الاستنساخ إلى {dir}',
   'team.git.cloneFailed': 'فشل الاستنساخ',
+  'team.git.err.nestedRepo': 'هذا المجلد داخل مستودع آخر. يزامن Tiger المجموعة فقط عندما يكون مجلدها هو المستودع نفسه.',
+  'team.git.badBranchName': 'هذا ليس اسم فرع صالحًا',
 
   'team.ux.checking.label': 'جارٍ التحقق…',
   'team.ux.checking.short': 'تحقق',
@@ -346,5 +348,13 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.modal.shareOnly': 'مشاركة النسخ فقط',
   'team.modal.sharingVersions': 'جارٍ مشاركة نسخك…',
   'team.modal.allUnsaved': 'كل التغييرات غير المحفوظة',
-  'team.modal.allUnsavedDiff': 'كل التغييرات غير المحفوظة بصيغة diff'
+  'team.modal.allUnsavedDiff': 'كل التغييرات غير المحفوظة بصيغة diff',
+  'team.modal.showAllDiff': {
+    zero: 'عرض كل الأسطر',
+    one: 'عرض السطر الوحيد',
+    two: 'عرض السطرين',
+    few: 'عرض كل الأسطر الـ{count}',
+    many: 'عرض كل الأسطر الـ{count}',
+    other: 'عرض كل الأسطر الـ{count}'
+  }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { Resizer, RESIZE_STEP, RESIZE_STEP_LARGE } from '../../src/renderer/src/components/Resizer'
@@ -68,5 +68,26 @@ describe('Resizer keyboard', () => {
   it('stays pointer-only (not focusable) without a keyboard handler', () => {
     render(<Resizer direction="col" onDrag={() => {}} />)
     expect(screen.getByRole('separator')).not.toHaveAttribute('tabindex')
+  })
+})
+
+describe('Resizer pointer', () => {
+  it('a cancelled pointer ends the drag: later moves do not resize', () => {
+    const onDrag = vi.fn()
+    const onEnd = vi.fn()
+    render(<Resizer direction="col" label="Resize sidebar" onDrag={onDrag} onEnd={onEnd} />)
+    const el = sep()
+    // jsdom has no PointerEvent; a MouseEvent under the pointer type name carries clientX.
+    const pointer = (type: string, clientX: number) => fireEvent(el, new MouseEvent(type, { bubbles: true, clientX }))
+    pointer('pointerdown', 100)
+    pointer('pointermove', 120)
+    expect(onDrag).toHaveBeenCalledWith(20)
+    pointer('pointercancel', 120)
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    pointer('pointermove', 300)
+    expect(onDrag).toHaveBeenCalledTimes(1)
+    // Releasing capture after the cancel does not end the drag a second time.
+    fireEvent(el, new Event('lostpointercapture'))
+    expect(onEnd).toHaveBeenCalledTimes(1)
   })
 })

@@ -172,11 +172,20 @@ const api = {
       ipcRenderer.removeListener('tiger:update:state', listener)
     }
   },
-  onShortcut: (cb: (name: string) => void): void => {
-    ipcRenderer.on('tiger:shortcut', (_e, name) => cb(name))
+  /** Native menu actions; returns an unsubscribe function (a remount must not double the handlers). */
+  onShortcut: (cb: (name: string) => void): (() => void) => {
+    const listener = (_e: unknown, name: string): void => cb(name)
+    ipcRenderer.on('tiger:shortcut', listener)
+    return () => {
+      ipcRenderer.removeListener('tiger:shortcut', listener)
+    }
   },
-  onFullscreen: (cb: (state: boolean) => void): void => {
-    ipcRenderer.on('tiger:fullscreen', (_e, state) => cb(state))
+  onFullscreen: (cb: (state: boolean) => void): (() => void) => {
+    const listener = (_e: unknown, state: boolean): void => cb(state)
+    ipcRenderer.on('tiger:fullscreen', listener)
+    return () => {
+      ipcRenderer.removeListener('tiger:fullscreen', listener)
+    }
   },
   /** Dev-only startup timing (see src/main/perf.ts); ignored when disabled. */
   perfMark: (name: string, at: number): void => {

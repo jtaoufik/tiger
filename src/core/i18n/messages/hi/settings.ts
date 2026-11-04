@@ -102,6 +102,7 @@ export const settings: NamespaceCatalog<typeof en> = {
     '{placeholder} को उस फ़ोल्डर के पूर्ण पथ से बदलें जिसे आपने Tiger में खोला है। हर संग्रह के लिए एक प्रविष्टि रख सकते हैं।',
   'settings.mcp.copySnippet': 'स्निपेट कॉपी करें',
   'settings.mcp.snippetCopied': 'स्निपेट कॉपी हो गया',
+  'settings.mcp.copyFailed': 'स्निपेट कॉपी नहीं हो सका',
   'settings.mcp.loading': 'लोड हो रहा है…',
   'settings.mcp.storeNote':
     'Microsoft Store का हर अपडेट Tiger को एक नए फ़ोल्डर में इंस्टॉल करता है। अपडेट के बाद स्निपेट फिर से कॉपी करें।',

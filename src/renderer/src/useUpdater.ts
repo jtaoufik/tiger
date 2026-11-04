@@ -86,7 +86,11 @@ export function useUpdater() {
   const check = useCallback(() => {
     userInitiated.current = true
     setDismissed(null)
-    return window.tiger?.checkForUpdatesNow?.().then(setState)
+    // A failed IPC call must not leave the dialog on "Checking…" for good.
+    return window.tiger?.checkForUpdatesNow?.().then(setState, (e: unknown) => {
+      console.error('Tiger: update check failed', e)
+      setState({ status: 'error', message: e instanceof Error ? e.message : String(e) })
+    })
   }, [])
 
   const download = useCallback(() => {
