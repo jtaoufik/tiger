@@ -272,6 +272,9 @@ jobs:
       # (the yml files reference the versioned installer/zip, never an alias), and
       # the globs below cannot match a .blockmap (Tiger-*.zip != *.zip.blockmap).
       - name: Add version-less installer aliases
+        # Only a release needs the aliases: a manual run would upload every
+        # installer twice (the artifact was 1 GB for macOS alone).
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           cd release
