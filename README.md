@@ -33,7 +33,7 @@
 
 ## Download
 
-Free, no sign-up. Version 0.7.0.
+Free, no sign-up. Version 0.8.1.
 
 | Platform | Download | Notes |
 |---|---|---|

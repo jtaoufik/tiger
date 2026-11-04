@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: jtaoufik.Tiger
+PackageVersion: 0.8.1
+InstallerType: nullsoft
+InstallerLocale: en-US
+Scope: user
+UpgradeBehavior: install
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+InstallerSwitches:
+  Silent: /S
+  SilentWithProgress: /S
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/jtaoufik/tiger/releases/download/v0.8.1/Tiger-Setup-0.8.1-windows-x64.exe
+    InstallerSha256: 7F39FB455C24D7A03569459947359C8434C9F390386EE54FF28A443E62CFCDBB
+ManifestType: installer
+ManifestVersion: 1.6.0

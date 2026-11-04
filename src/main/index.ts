@@ -67,12 +67,15 @@ import { sanitizeCollectionName } from '../core/newCollection'
 import { resolveMcpLaunch, type McpInfo } from '../mcp/launch'
 import { disposeScriptHost, runIsolatedScript } from './scriptHost'
 import { appWindows, targetAppWindow } from './windows'
+import { guardWindow, installCrashGuards } from './resilience'
 import { redactedUrl, type BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
 perfMark('main:entry')
+// Before anything async: a failure anywhere is logged, never a crash dialog.
+installCrashGuards()
 
 /** Was this saved position still visible on a connected display? */
 function isOnScreen(state: { x?: number; y?: number; width: number; height: number }): boolean {
@@ -193,6 +196,8 @@ function createWindow(): BrowserWindow {
     },
     ...headlessWindowOptions(headless)
   })
+  // A dead or hung renderer is reloaded (or asked about), never left blank.
+  guardWindow(win, mayShowWindow(headless))
 
   win.once('ready-to-show', () => {
     perfMark('main:ready-to-show')
