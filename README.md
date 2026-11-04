@@ -14,7 +14,6 @@
   <a href="https://github.com/jtaoufik/tiger/releases/latest"><img src="https://img.shields.io/badge/version-0.8.1-orange" alt="Version 0.8.1" /></a>
   <a href="https://codecov.io/gh/jtaoufik/tiger"><img src="https://codecov.io/gh/jtaoufik/tiger/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml"><img src="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-  <a href="https://buymeacoffee.com/tigerapi"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00.svg?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
   <a href="https://www.linkedin.com/in/taoufik-jabbari"><img src="https://img.shields.io/badge/LinkedIn-Taoufik%20Jabbari-0A66C2?logo=linkedin&logoColor=white" alt="Taoufik Jabbari on LinkedIn" /></a>
 </p>
 
