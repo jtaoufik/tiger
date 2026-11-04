@@ -91,3 +91,10 @@ describe('auth round-trips through the .tiger format', () => {
     expect(serializeRequest(req({}))).not.toContain('auth')
   })
 })
+
+describe('credentials with a lone surrogate half', () => {
+  it('encodes basic auth instead of throwing', () => {
+    const { headers } = applyAuth({ type: 'basic', username: 'u\ud83d', password: 'p' }, {})
+    expect(headers.Authorization).toBe(`Basic ${Buffer.from('u�:p', 'utf8').toString('base64')}`)
+  })
+})

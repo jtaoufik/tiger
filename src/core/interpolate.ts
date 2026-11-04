@@ -106,7 +106,8 @@ export function interpolate(template: string, vars: VarMap, maxDepth = 10): stri
       // Try normal variables first
       if (Object.prototype.hasOwnProperty.call(vars, key)) {
         changed = true
-        return vars[key]
+        // A map built from JSON may hold an undefined: never the text "undefined".
+        return String(vars[key] ?? '')
       }
       // Try dynamic runtime variables (always re-evaluate)
       const runtimeValue = resolveRuntimeVar(key)

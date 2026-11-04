@@ -194,3 +194,111 @@ describe('pre/post request scripts', () => {
     expect(back.postScript).toBe(req.postScript)
   })
 })
+
+describe('fields the plain line cannot hold', () => {
+  const base: TigerRequest = {
+    name: 'n',
+    method: 'post',
+    url: 'https://api.test/x',
+    query: [],
+    headers: [],
+    body: { type: 'none', content: '' }
+  }
+  const again = (r: TigerRequest) => parseRequest(serializeRequest(r))
+  const tricky = ['  padded  ', 'line one\nline two', 'Pa$$w0rd}', 'He said "hi']
+
+  it('keeps a padded or multiline name and url', () => {
+    for (const value of tricky) {
+      expect(again({ ...base, name: value }).name).toBe(value)
+      expect(again({ ...base, url: value }).url).toBe(value)
+    }
+  })
+
+  it('keeps a padded or multiline value in every auth field', () => {
+    for (const v of tricky) {
+      expect(again({ ...base, auth: { type: 'bearer', token: v } }).auth).toEqual({ type: 'bearer', token: v })
+      expect(again({ ...base, auth: { type: 'basic', username: v, password: v } }).auth).toEqual({
+        type: 'basic',
+        username: v,
+        password: v
+      })
+      expect(again({ ...base, auth: { type: 'apikey', key: v, value: v, in: 'query' } }).auth).toEqual({
+        type: 'apikey',
+        key: v,
+        value: v,
+        in: 'query'
+      })
+      const oauth = {
+        type: 'oauth2' as const,
+        grantType: 'client_credentials' as const,
+        tokenUrl: v,
+        clientId: v,
+        clientSecret: v,
+        scope: v
+      }
+      expect(again({ ...base, auth: oauth }).auth).toEqual(oauth)
+    }
+  })
+
+  it('writes the plain line when nothing needs quoting, so unrelated files do not change', () => {
+    const out = serializeRequest({
+      ...base,
+      name: 'Get user',
+      url: 'https://api.test/x',
+      auth: { type: 'basic', username: 'ada', password: 'pw' }
+    })
+    expect(out).toContain('  name: Get user\n')
+    expect(out).toContain('  url: https://api.test/x\n')
+    expect(out).toContain('  username: ada\n  password: pw\n')
+    expect(out).not.toContain('::')
+  })
+
+  it('keeps a header or query name holding a colon or starting like a comment or marker', () => {
+    const names = ['a:b', '#x', '//y', '~z', '"q', ' padded ']
+    const headers = names.map((name) => ({ name, value: 'v', enabled: true }))
+    const disabled = names.map((name) => ({ name, value: 'v', enabled: false }))
+    expect(again({ ...base, headers, query: disabled })).toMatchObject({ headers, query: disabled })
+    expect(parseKeyValues('"a:b": v\n~"#x":: " padded value "')).toEqual([
+      { name: 'a:b', value: 'v', enabled: true },
+      { name: '#x', value: ' padded value ', enabled: false }
+    ])
+    // Plain names stay plain, so existing files keep their lines.
+    expect(parseKeyValues('Accept: text/plain')).toEqual([{ name: 'Accept', value: 'text/plain', enabled: true }])
+  })
+
+  it('still reads a hand-written name that starts with a quote', () => {
+    expect(parseKeyValues('"unterminated: v')).toEqual([{ name: '"unterminated', value: 'v', enabled: true }])
+    expect(parseKeyValues('"If-None-Match": "etag"')).toEqual([{ name: 'If-None-Match', value: '"etag"', enabled: true }])
+  })
+
+  it('keeps the body type of an empty body (body:json {})', () => {
+    for (const type of ['json', 'xml', 'text', 'form', 'graphql', 'multipart'] as const) {
+      const out = serializeRequest({ ...base, body: { type, content: '' } })
+      expect(out).toContain(`body:${type} {\n}`)
+      expect(parseRequest(out).body).toEqual({ type, content: '' })
+    }
+    expect(again({ ...base, body: { type: 'graphql', content: '', variables: '{"a":1}' } }).body).toEqual({
+      type: 'graphql',
+      content: '',
+      variables: '{"a":1}'
+    })
+  })
+
+  it('leaves a non-numeric seq out instead of writing NaN', () => {
+    expect(parseRequest('meta {\n  seq: abc\n}\nget {\n  url: x\n}').seq).toBeUndefined()
+    expect(serializeRequest({ ...base, seq: Number('abc') })).not.toContain('seq')
+  })
+
+  it('reads an unknown body subtype as text', () => {
+    expect(parseRequest('get {\n  url: x\n}\nbody:sparql {\n  SELECT *\n}').body).toEqual({ type: 'text', content: 'SELECT *' })
+  })
+
+  it('parses a form line without a colon leniently when asked', () => {
+    expect(() => parseKeyValues('flag')).toThrow(TigerParseError)
+    expect(parseKeyValues('flag\n~off\na: 1', true)).toEqual([
+      { name: 'flag', value: '', enabled: true },
+      { name: 'off', value: '', enabled: false },
+      { name: 'a', value: '1', enabled: true }
+    ])
+  })
+})

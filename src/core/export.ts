@@ -6,6 +6,7 @@
 
 import type { ImportedFolder, ImportedRequest } from './import/types'
 import { parseMultipartContent } from './multipart'
+import { parseKeyValues } from './tigerFormat'
 import type { KeyValue, TigerAuth, TigerEnvironment, TigerRequest } from './types'
 
 interface PostmanItem {
@@ -118,19 +119,12 @@ function toPostmanBody(req: TigerRequest): unknown {
     }
   }
   if (req.body.type === 'form') {
-    const pairs = req.body.content
-      .split('\n')
-      .filter((l) => l.trim())
-      .map((line) => {
-        const disabled = line.trimStart().startsWith('~')
-        const l = disabled ? line.trim().slice(1) : line
-        const idx = l.indexOf(':')
-        return {
-          key: idx === -1 ? l.trim() : l.slice(0, idx).trim(),
-          value: idx === -1 ? '' : l.slice(idx + 1).trim(),
-          ...(disabled ? { disabled: true } : {})
-        }
-      })
+    // The format's own parser: a `name:: "multi\nline"` value stays one field.
+    const pairs = parseKeyValues(req.body.content, true).map((kv) => ({
+      key: kv.name,
+      value: kv.value,
+      ...(kv.enabled === false ? { disabled: true } : {})
+    }))
     return { mode: 'urlencoded', urlencoded: pairs }
   }
   if (req.body.type === 'multipart') {
@@ -216,14 +210,23 @@ export function exportPostman(
   return collection
 }
 
-/** Reduce a Tiger URL to an OpenAPI path: drop a leading {{base}}, host and query. */
-function toApiPath(url: string): string {
+/**
+ * Reduce a Tiger URL to an OpenAPI path: drop a leading {{base}}, host and
+ * query, and turn each remaining `{{id}}` into the `{id}` path template (with
+ * the names, for the path parameters), which the importer reads back as {{id}}.
+ */
+function toApiPath(url: string): { path: string; params: string[] } {
   let p = url.replace(/^\{\{[^}]+\}\}/, '')
   const m = p.match(/^[a-z][a-z0-9+.-]*:\/\/[^/]+(\/.*)?$/i)
   if (m) p = m[1] ?? '/'
   p = p.split('?')[0].split('#')[0]
   if (!p.startsWith('/')) p = `/${p}`
-  return p || '/'
+  const params: string[] = []
+  p = p.replace(/\{\{\s*([^{}]*?)\s*\}\}/g, (_m, name: string) => {
+    if (name && !params.includes(name)) params.push(name)
+    return `{${name}}`
+  })
+  return { path: p || '/', params }
 }
 
 const OPENAPI_CONTENT_TYPE: Record<string, string> = {
@@ -241,11 +244,23 @@ const OPENAPI_CONTENT_TYPE: Record<string, string> = {
  */
 export function exportOpenApi(name: string, requests: ImportedRequest[]): unknown {
   const paths: Record<string, Record<string, unknown>> = {}
+  const operationIds = new Set<string>()
 
   for (const { request } of requests) {
-    const apiPath = toApiPath(request.url)
+    const { path, params } = toApiPath(request.url)
     const method = request.method.toLowerCase()
+    // A path item holds one operation per method: a second request on the
+    // same path and method used to overwrite the first. It keeps its own
+    // path, told apart by a fragment, which a send never puts on the wire.
+    let apiPath = path
+    for (let n = 2; paths[apiPath]?.[method]; n++) apiPath = `${path}#${n}`
+    // operationIds must be unique in the document.
+    const baseId = request.name.replace(/[^\w]+/g, '_').replace(/^_|_$/g, '') || method
+    let operationId = baseId
+    for (let n = 2; operationIds.has(operationId); n++) operationId = `${baseId}_${n}`
+    operationIds.add(operationId)
     const parameters = [
+      ...params.map((name) => ({ name, in: 'path', required: true, schema: { type: 'string' } })),
       ...request.query
         .filter((q) => q.name && q.enabled !== false)
         .map((q) => ({ name: q.name, in: 'query', schema: { type: 'string' }, example: q.value })),
@@ -256,7 +271,7 @@ export function exportOpenApi(name: string, requests: ImportedRequest[]): unknow
 
     const operation: Record<string, unknown> = {
       summary: request.name,
-      operationId: request.name.replace(/[^\w]+/g, '_').replace(/^_|_$/g, '') || method,
+      operationId,
       responses: { '200': { description: 'OK' } }
     }
     if (parameters.length) operation.parameters = parameters

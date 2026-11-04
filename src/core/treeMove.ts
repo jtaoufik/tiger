@@ -29,6 +29,9 @@ export function renamedFolderPath(
   folder: string[],
   newName: string
 ): string[] | null {
+  // The root is not a folder to rename: with no segment to replace, the
+  // index below would be -1 and write a stray property on the array.
+  if (folder.length === 0) return null
   if (entryFolderPath.length < folder.length) return null
   for (let i = 0; i < folder.length; i++) {
     if (entryFolderPath[i] !== folder[i]) return null

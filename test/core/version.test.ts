@@ -30,3 +30,23 @@ describe('isNewerVersion', () => {
     expect(isNewerVersion('', '0.1.0')).toBe(false)
   })
 })
+
+describe('pre-release versions', () => {
+  it('orders a release above its pre-releases, and pre-releases as semver does', () => {
+    expect(compareVersions('1.0.0', '1.0.0-rc.1')).toBe(1)
+    expect(compareVersions('1.0.0-rc.1', '1.0.0')).toBe(-1)
+    expect(compareVersions('1.0.0-rc.1', '0.9.0')).toBe(1)
+    expect(compareVersions('1.0.0-alpha', '1.0.0-alpha.1')).toBe(-1)
+    expect(compareVersions('1.0.0-alpha.1', '1.0.0-alpha.beta')).toBe(-1)
+    expect(compareVersions('1.0.0-beta.2', '1.0.0-beta.11')).toBe(-1)
+    expect(compareVersions('1.0.0-rc.1', '1.0.0-rc.1')).toBe(0)
+    expect(compareVersions('1.0.0+build.5', '1.0.0')).toBe(0)
+  })
+
+  it('offers the final release to someone on a pre-release, and a newer pre-release to anyone', () => {
+    expect(isNewerVersion('1.0.0', '1.0.0-rc.1')).toBe(true)
+    expect(isNewerVersion('v1.0.0-rc.2', '1.0.0-rc.1')).toBe(true)
+    expect(isNewerVersion('1.0.0-rc.1', '1.0.0')).toBe(false)
+    expect(isNewerVersion('1.0.0-rc.1', '0.9.0')).toBe(true)
+  })
+})

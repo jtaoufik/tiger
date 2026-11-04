@@ -39,7 +39,7 @@ export function serializeEnvironment(env: TigerEnvironment): string {
   const line = (v: { enabled: boolean; name: string; value: string }) => `  ${keyValueLine(v)}`
   const plain = env.variables.filter((v) => !v.secret)
   const secret = env.variables.filter((v) => v.secret)
-  const parts = [`meta {\n  name: ${env.name}\n}`]
+  const parts = [`meta {\n  ${keyValueLine({ name: 'name', value: env.name })}\n}`]
   parts.push(`vars {\n${plain.map(line).join('\n')}\n}`)
   if (secret.length) parts.push(`vars:secret {\n${secret.map(line).join('\n')}\n}`)
   return `${parts.join('\n\n')}\n`

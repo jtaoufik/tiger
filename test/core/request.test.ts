@@ -258,3 +258,16 @@ describe('redactedUrl', () => {
     expect(redactedUrl({ method: 'GET', url: 'https://x.test/?a=1', headers: {} })).toBe('https://x.test/?a=1')
   })
 })
+
+describe('values that must not stop a send', () => {
+  it('sends a form body line without a colon as a field with an empty value', () => {
+    const built = buildRequest(req({ method: 'post', body: { type: 'form', content: 'flag\nname: Ada' } }))
+    expect(built.body).toBe('flag=&name=Ada')
+    expect(buildRequest(req({ method: 'get', body: { type: 'form', content: 'flag' } })).body).toBe('flag=')
+  })
+
+  it('replaces a lone surrogate half in a query value instead of throwing', () => {
+    const built = buildRequest(req({ query: [{ name: 'q', value: 'a\ud83d', enabled: true }] }))
+    expect(built.url).toBe('https://api.test/things?q=a%EF%BF%BD')
+  })
+})

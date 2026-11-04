@@ -10,15 +10,23 @@
  *   expect(x).to.be.oneOf([1, 2])    expect(x).to.not.be.empty
  *   expect(x).to.be.true / .false / .null / .undefined / .ok / .exist
  *
+ * It follows Chai 4 where a test would otherwise pass or fail differently:
+ * a word Chai does not know throws ("Invalid Chai property"), `.keys` means
+ * exactly those keys unless `.include` or `.any` says otherwise, `.equal` is
+ * `===`, `.property(name)` goes on with the property's value, and `.length`
+ * chains into `.above` and friends. The `Assertion` class is the one list of
+ * the vocabulary: every public member is a word a script may use.
+ *
  * Failures throw an Error with a Chai-like message ("expected 404 to equal
  * 200"), which `test()` records as a failed test.
  */
 
 function show(value: unknown): string {
   if (typeof value === 'string') return `'${value}'`
-  if (value === undefined) return 'undefined'
+  if (value === undefined || typeof value === 'number') return String(value)
   if (typeof value === 'function') return '[Function]'
-  if (value instanceof RegExp) return String(value)
+  if (value instanceof RegExp || value instanceof Date) return String(value)
+  if (value instanceof Map || value instanceof Set) return show([...value])
   try {
     const text = JSON.stringify(value)
     return text.length > 120 ? `${text.slice(0, 117)}...` : text
@@ -30,7 +38,25 @@ function show(value: unknown): string {
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true
   if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object') return false
+  // Dates, regexps, maps and sets have no own keys: compare what they hold.
+  if (a instanceof Date || b instanceof Date) {
+    return a instanceof Date && b instanceof Date && Object.is(a.getTime(), b.getTime())
+  }
+  if (a instanceof RegExp || b instanceof RegExp) {
+    return a instanceof RegExp && b instanceof RegExp && String(a) === String(b)
+  }
+  if (a instanceof Map || b instanceof Map) {
+    if (!(a instanceof Map && b instanceof Map) || a.size !== b.size) return false
+    for (const [k, v] of a) if (!b.has(k) || !deepEqual(v, b.get(k))) return false
+    return true
+  }
+  if (a instanceof Set || b instanceof Set) {
+    if (!(a instanceof Set && b instanceof Set) || a.size !== b.size) return false
+    const rest = [...b]
+    return [...a].every((v) => rest.some((w) => deepEqual(v, w)))
+  }
   if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a) && a.length !== (b as unknown[]).length) return false
   const ka = Object.keys(a as object)
   const kb = Object.keys(b as object)
   if (ka.length !== kb.length) return false
@@ -44,6 +70,10 @@ function typeName(value: unknown): string {
   if (Array.isArray(value)) return 'array'
   if (value instanceof RegExp) return 'regexp'
   if (value instanceof Date) return 'date'
+  if (value instanceof Map) return 'map'
+  if (value instanceof Set) return 'set'
+  if (value instanceof Promise) return 'promise'
+  if (value instanceof Error) return 'error'
   return typeof value
 }
 
@@ -54,11 +84,19 @@ function sizeOf(value: unknown): number | undefined {
   return undefined
 }
 
+/** The keys `.keys` compares, or null when the value has none. */
+function keysOf(value: unknown): string[] | null {
+  if (value instanceof Map || value instanceof Set) return [...value.keys()].map(String)
+  if (value && typeof value === 'object') return Object.keys(value)
+  return null
+}
+
 function includes(haystack: unknown, needle: unknown, deep: boolean): boolean {
+  const same = (item: unknown) => (deep ? deepEqual(item, needle) : item === needle)
   if (typeof haystack === 'string') return haystack.includes(String(needle))
-  if (Array.isArray(haystack)) {
-    return haystack.some((item) => (deep ? deepEqual(item, needle) : Object.is(item, needle)))
-  }
+  if (Array.isArray(haystack)) return haystack.some(same)
+  if (haystack instanceof Set) return [...haystack].some(same)
+  if (haystack instanceof Map) return [...haystack.values()].some(same)
   if (haystack && typeof haystack === 'object' && needle && typeof needle === 'object') {
     // Object subset: every key of the needle is present with an equal value.
     return Object.entries(needle).every(([k, v]) =>
@@ -68,9 +106,49 @@ function includes(haystack: unknown, needle: unknown, deep: boolean): boolean {
   return false
 }
 
+/** `a.b[0].c` resolved step by step, as Chai's `.nested.property` reads it. */
+function nestedProperty(root: unknown, path: string): { has: boolean; value: unknown } {
+  let current: unknown = root
+  for (const step of path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean)) {
+    if (current == null || !(step in Object(current))) return { has: false, value: undefined }
+    current = (current as Record<string, unknown>)[step]
+  }
+  return { has: true, value: current }
+}
+
+/**
+ * A Chai chainable method: `.length(3)` calls it, `.length.above(2)` sets its
+ * flag and goes on with the assertion. Reads go to the assertion itself, so a
+ * word it does not know still throws.
+ */
+function chainable<T extends object, A extends unknown[]>(
+  self: T,
+  onChain: () => void,
+  call: (...args: A) => unknown
+): Chain<T, A> {
+  const target = function () {} as unknown as Chain<T, A>
+  return new Proxy(target, {
+    get(_t, prop) {
+      onChain()
+      const value = (self as Record<PropertyKey, unknown>)[prop]
+      return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(self) : value
+    },
+    apply: (_t, _this, args) => call(...(args as A))
+  })
+}
+
+/** An assertion that can also be called: `.length(3)` and `.length.above(2)`. */
+type Chain<T, A extends unknown[]> = T & ((...args: A) => T)
+
 export class Assertion {
   private negate = false
   private deepFlag = false
+  private anyFlag = false
+  private containsFlag = false
+  private nestedFlag = false
+  private ownFlag = false
+  private lengthFlag = false
+  private orderedFlag = false
 
   constructor(
     private readonly actual: unknown,
@@ -87,6 +165,17 @@ export class Assertion {
 
   private get subject(): string {
     return `expected ${show(this.actual)}`
+  }
+
+  /** Chai goes on with a new subject after `.property()` and `.throw()`. */
+  private derive(actual: unknown): Assertion {
+    return expect(actual, this.message)
+  }
+
+  /** What `.above` and friends compare: the value, or its length after `.length`. */
+  private measure(): { value: number; what: string } {
+    if (this.lengthFlag) return { value: sizeOf(this.actual) ?? NaN, what: `${this.subject} to have a length` }
+    return { value: this.actual as number, what: this.subject }
   }
 
   // Language chains: readable, no behaviour.
@@ -129,16 +218,20 @@ export class Assertion {
   get same(): this {
     return this
   }
+  get but(): this {
+    return this
+  }
   get does(): this {
     return this
   }
   get still(): this {
     return this
   }
-  get own(): this {
+  get also(): this {
     return this
   }
 
+  // Flags.
   get not(): this {
     this.negate = !this.negate
     return this
@@ -146,6 +239,52 @@ export class Assertion {
   get deep(): this {
     this.deepFlag = true
     return this
+  }
+  get nested(): this {
+    this.nestedFlag = true
+    return this
+  }
+  get own(): this {
+    this.ownFlag = true
+    return this
+  }
+  get any(): this {
+    this.anyFlag = true
+    return this
+  }
+  get all(): this {
+    this.anyFlag = false
+    return this
+  }
+  get ordered(): this {
+    this.orderedFlag = true
+    return this
+  }
+
+  // Chainable methods: a flag when read, an assertion when called.
+  get length(): Chain<this, [n: number]> {
+    return chainable(this, () => (this.lengthFlag = true), (n) => this.sizeIs(n))
+  }
+  get lengthOf(): Chain<this, [n: number]> {
+    return this.length
+  }
+  get include(): Chain<this, [needle: unknown]> {
+    return chainable(this, () => (this.containsFlag = true), (needle) => this.includeValue(needle))
+  }
+  get includes(): Chain<this, [needle: unknown]> {
+    return this.include
+  }
+  get contain(): Chain<this, [needle: unknown]> {
+    return this.include
+  }
+  get contains(): Chain<this, [needle: unknown]> {
+    return this.include
+  }
+  get a(): Chain<this, [type: string]> {
+    return chainable(this, () => undefined, (type) => this.typeOf(type))
+  }
+  get an(): Chain<this, [type: string]> {
+    return this.a
   }
 
   // Terminal getters.
@@ -180,7 +319,8 @@ export class Assertion {
 
   // Methods.
   equal(expected: unknown): this {
-    const pass = this.deepFlag ? deepEqual(this.actual, expected) : Object.is(this.actual, expected)
+    // Chai's strict equality: NaN never equals NaN, 0 equals -0.
+    const pass = this.deepFlag ? deepEqual(this.actual, expected) : this.actual === expected
     return this.check(
       pass,
       `${this.subject} to equal ${show(expected)}`,
@@ -203,16 +343,13 @@ export class Assertion {
   eqls(expected: unknown): this {
     return this.eql(expected)
   }
-  a(type: string): this {
+  private typeOf(type: string): this {
     const want = type.toLowerCase()
     return this.check(
       typeName(this.actual) === want,
       `${this.subject} to be a ${want}`,
       `${this.subject} not to be a ${want}`
     )
-  }
-  an(type: string): this {
-    return this.a(type)
   }
   instanceOf(ctor: new (...args: never[]) => unknown): this {
     return this.check(
@@ -221,54 +358,83 @@ export class Assertion {
       `${this.subject} to not be an instance of ${ctor.name}`
     )
   }
-  include(needle: unknown): this {
+  instanceof(ctor: new (...args: never[]) => unknown): this {
+    return this.instanceOf(ctor)
+  }
+  private includeValue(needle: unknown): this {
     return this.check(
       includes(this.actual, needle, this.deepFlag),
       `${this.subject} to include ${show(needle)}`,
       `${this.subject} to not include ${show(needle)}`
     )
   }
-  includes(needle: unknown): this {
-    return this.include(needle)
-  }
-  contain(needle: unknown): this {
-    return this.include(needle)
-  }
-  contains(needle: unknown): this {
-    return this.include(needle)
-  }
-  property(name: string, ...value: unknown[]): this {
-    const obj = this.actual as Record<string, unknown> | null | undefined
-    const has = obj != null && typeof obj === 'object' && name in obj
-    if (value.length === 0) {
-      return this.check(
-        has,
-        `${this.subject} to have property '${name}'`,
-        `${this.subject} to not have property '${name}'`
-      )
-    }
-    const got = has ? obj![name] : undefined
-    const pass = has && (this.deepFlag ? deepEqual(got, value[0]) : Object.is(got, value[0]))
+  string(text: string): this {
     return this.check(
-      pass,
-      `expected property '${name}' of ${show(this.actual)} to be ${show(value[0])}, got ${show(got)}`,
-      `expected property '${name}' of ${show(this.actual)} to not be ${show(value[0])}`
+      typeof this.actual === 'string' && this.actual.includes(text),
+      `${this.subject} to contain ${show(text)}`,
+      `${this.subject} to not contain ${show(text)}`
     )
   }
+  property(name: string, ...value: unknown[]): Assertion {
+    const obj = this.actual
+    let has: boolean
+    let got: unknown
+    if (this.nestedFlag) {
+      ;({ has, value: got } = nestedProperty(obj, name))
+    } else {
+      has =
+        obj != null &&
+        (this.ownFlag ? Object.prototype.hasOwnProperty.call(obj, name) : name in Object(obj))
+      got = has ? (Object(obj) as Record<string, unknown>)[name] : undefined
+    }
+    const kind = this.nestedFlag ? 'nested property' : this.ownFlag ? 'own property' : 'property'
+    if (value.length === 0) {
+      this.check(has, `${this.subject} to have ${kind} '${name}'`, `${this.subject} to not have ${kind} '${name}'`)
+    } else {
+      const pass = has && (this.deepFlag ? deepEqual(got, value[0]) : got === value[0])
+      this.check(
+        pass,
+        `expected ${kind} '${name}' of ${show(this.actual)} to be ${show(value[0])}, got ${show(got)}`,
+        `expected ${kind} '${name}' of ${show(this.actual)} to not be ${show(value[0])}`
+      )
+    }
+    // As in Chai, the assertion goes on with the property's value.
+    return this.derive(got)
+  }
+  ownProperty(name: string, ...value: unknown[]): Assertion {
+    this.ownFlag = true
+    return this.property(name, ...value)
+  }
+  haveOwnProperty(name: string, ...value: unknown[]): Assertion {
+    return this.ownProperty(name, ...value)
+  }
   keys(...names: unknown[]): this {
-    const list = (names.length === 1 && Array.isArray(names[0]) ? names[0] : names).map(String)
-    const obj = this.actual as Record<string, unknown> | null
-    const pass = obj != null && typeof obj === 'object' && list.every((k) => k in obj)
+    const first = names[0]
+    const list = (
+      names.length === 1 && Array.isArray(first)
+        ? first
+        : names.length === 1 && first && typeof first === 'object'
+          ? Object.keys(first)
+          : names
+    ).map(String)
+    const actual = keysOf(this.actual) ?? []
+    const has = (k: string) => actual.includes(k)
+    // Chai: `.have.keys` means exactly these, `.include.keys` at least these,
+    // `.any.keys` at least one of them.
+    const pass = this.anyFlag
+      ? list.some(has)
+      : list.every(has) && (this.containsFlag || actual.length === list.length)
+    const words = `${this.containsFlag ? 'contain ' : 'have '}${this.anyFlag ? 'any' : 'all'} keys`
     return this.check(
-      pass,
-      `${this.subject} to have keys ${show(list)}`,
-      `${this.subject} to not have keys ${show(list)}`
+      keysOf(this.actual) !== null && pass,
+      `${this.subject} to ${words} ${show(list)}`,
+      `${this.subject} to not ${words} ${show(list)}`
     )
   }
   key(name: string): this {
     return this.keys(name)
   }
-  lengthOf(n: number): this {
+  private sizeIs(n: number): this {
     const size = sizeOf(this.actual)
     return this.check(
       size === n,
@@ -276,15 +442,9 @@ export class Assertion {
       `${this.subject} to not have a length of ${n}`
     )
   }
-  length(n: number): this {
-    return this.lengthOf(n)
-  }
   above(n: number): this {
-    return this.check(
-      (this.actual as number) > n,
-      `${this.subject} to be above ${n}`,
-      `${this.subject} to be at most ${n}`
-    )
+    const m = this.measure()
+    return this.check(m.value > n, `${m.what} above ${n}`, `${m.what} at most ${n}`)
   }
   gt(n: number): this {
     return this.above(n)
@@ -293,11 +453,8 @@ export class Assertion {
     return this.above(n)
   }
   below(n: number): this {
-    return this.check(
-      (this.actual as number) < n,
-      `${this.subject} to be below ${n}`,
-      `${this.subject} to be at least ${n}`
-    )
+    const m = this.measure()
+    return this.check(m.value < n, `${m.what} below ${n}`, `${m.what} at least ${n}`)
   }
   lt(n: number): this {
     return this.below(n)
@@ -306,32 +463,43 @@ export class Assertion {
     return this.below(n)
   }
   least(n: number): this {
-    return this.check(
-      (this.actual as number) >= n,
-      `${this.subject} to be at least ${n}`,
-      `${this.subject} to be below ${n}`
-    )
+    const m = this.measure()
+    return this.check(m.value >= n, `${m.what} at least ${n}`, `${m.what} below ${n}`)
   }
   gte(n: number): this {
     return this.least(n)
   }
+  greaterThanOrEqual(n: number): this {
+    return this.least(n)
+  }
   most(n: number): this {
-    return this.check(
-      (this.actual as number) <= n,
-      `${this.subject} to be at most ${n}`,
-      `${this.subject} to be above ${n}`
-    )
+    const m = this.measure()
+    return this.check(m.value <= n, `${m.what} at most ${n}`, `${m.what} above ${n}`)
   }
   lte(n: number): this {
     return this.most(n)
   }
+  lessThanOrEqual(n: number): this {
+    return this.most(n)
+  }
   within(low: number, high: number): this {
+    const m = this.measure()
+    return this.check(
+      m.value >= low && m.value <= high,
+      `${m.what} within ${low}..${high}`,
+      `${m.what} to not be within ${low}..${high}`
+    )
+  }
+  closeTo(n: number, delta: number): this {
     const v = this.actual as number
     return this.check(
-      v >= low && v <= high,
-      `${this.subject} to be within ${low}..${high}`,
-      `${this.subject} to not be within ${low}..${high}`
+      typeof v === 'number' && Math.abs(v - n) <= delta,
+      `${this.subject} to be close to ${n} +/- ${delta}`,
+      `${this.subject} not to be close to ${n} +/- ${delta}`
     )
+  }
+  approximately(n: number, delta: number): this {
+    return this.closeTo(n, delta)
   }
   match(re: RegExp): this {
     return this.check(
@@ -340,10 +508,11 @@ export class Assertion {
       `${this.subject} not to match ${String(re)}`
     )
   }
+  matches(re: RegExp): this {
+    return this.match(re)
+  }
   oneOf(list: unknown[]): this {
-    const pass = list.some((item) =>
-      this.deepFlag ? deepEqual(item, this.actual) : Object.is(item, this.actual)
-    )
+    const pass = list.some((item) => (this.deepFlag ? deepEqual(item, this.actual) : item === this.actual))
     return this.check(
       pass,
       `${this.subject} to be one of ${show(list)}`,
@@ -352,18 +521,80 @@ export class Assertion {
   }
   members(list: unknown[]): this {
     const actual = Array.isArray(this.actual) ? this.actual : []
+    const same = (a: unknown, b: unknown) => (this.deepFlag ? deepEqual(a, b) : a === b)
     const pass =
       actual.length === list.length &&
-      list.every((item) => actual.some((a) => deepEqual(a, item)))
+      (this.orderedFlag
+        ? list.every((item, i) => same(actual[i], item))
+        : list.every((item) => actual.some((a) => same(a, item))))
+    const words = this.orderedFlag ? 'the same ordered members as' : 'the same members as'
     return this.check(
       pass,
-      `${this.subject} to have the same members as ${show(list)}`,
-      `${this.subject} to not have the same members as ${show(list)}`
+      `${this.subject} to have ${words} ${show(list)}`,
+      `${this.subject} to not have ${words} ${show(list)}`
     )
+  }
+  satisfy(matcher: (value: unknown) => unknown): this {
+    return this.check(
+      !!matcher(this.actual),
+      `${this.subject} to satisfy ${show(matcher)}`,
+      `${this.subject} to not satisfy ${show(matcher)}`
+    )
+  }
+  satisfies(matcher: (value: unknown) => unknown): this {
+    return this.satisfy(matcher)
+  }
+  throw(expected?: string | RegExp | (new (...args: never[]) => unknown)): Assertion {
+    if (typeof this.actual !== 'function') throw new Error(`${this.subject} to be a function`)
+    let error: unknown
+    let threw = false
+    try {
+      ;(this.actual as () => unknown)()
+    } catch (e) {
+      threw = true
+      error = e
+    }
+    const text = error instanceof Error ? error.message : String(error)
+    const matches =
+      expected === undefined
+        ? true
+        : typeof expected === 'string'
+          ? text.includes(expected)
+          : expected instanceof RegExp
+            ? expected.test(text)
+            : error instanceof expected
+    const want = expected === undefined ? 'an error' : `an error like ${show(expected)}`
+    this.check(
+      threw && matches,
+      `expected function to throw ${want}${threw ? ` but got '${text}'` : ' but it did not throw'}`,
+      `expected function to not throw ${want}`
+    )
+    return this.derive(error)
+  }
+  throws(expected?: string | RegExp | (new (...args: never[]) => unknown)): Assertion {
+    return this.throw(expected)
+  }
+  Throw(expected?: string | RegExp | (new (...args: never[]) => unknown)): Assertion {
+    return this.throw(expected)
   }
 }
 
-/** `expect(value, message?)`, Chai style. */
+/** Names tooling reads from any object, which are not misspelled assertions. */
+const PASSTHROUGH = new Set<string>(['then', 'toJSON', 'inspect', 'constructor', 'valueOf', 'toString', 'asymmetricMatch', 'nodeType'])
+
+/**
+ * `expect(value, message?)`, Chai style. A word the vocabulary does not have
+ * throws instead of passing silently: `expect(x).to.be.truthy` used to be a
+ * test that could never fail.
+ */
 export function expect(actual: unknown, message?: string): Assertion {
-  return new Assertion(actual, message)
+  const assertion = new Assertion(actual, message)
+  return new Proxy(assertion, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && !(prop in target) && !PASSTHROUGH.has(prop)) {
+        throw new Error(`Invalid Chai property: ${prop}`)
+      }
+      return Reflect.get(target, prop, receiver)
+    }
+  })
 }
