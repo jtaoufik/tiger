@@ -15,7 +15,58 @@ describe('Chai words the subset does not know', () => {
   it('throw instead of passing silently', () => {
     vi(failure(() => (expect(false) as any).to.be.truthy)).toBe('Invalid Chai property: truthy')
     vi(failure(() => (expect(1) as any).to.exists)).toBe('Invalid Chai property: exists')
-    vi(failure(() => (expect({}) as any).to.have.length.frozen)).toBe('Invalid Chai property: frozen')
+    vi(failure(() => (expect({}) as any).to.have.length.foo)).toBe('Invalid Chai property: foo')
+  })
+
+  it('do not include the rest of the Chai 4 vocabulary', () => {
+    vi(failure(() => expect(5).to.be.finite)).toBeNull()
+    vi(failure(() => expect(NaN).to.not.be.finite)).toBeNull()
+    vi(failure(() => expect(Infinity).to.be.finite)).toBe('expected Infinity to be a finite number')
+    vi(failure(() => expect('5').to.be.finite)).toBe("expected '5' to be a finite number")
+    vi(failure(() => expect(Object.freeze({})).to.be.frozen)).toBeNull()
+    vi(failure(() => expect({}).to.be.frozen)).toBe('expected {} to be frozen')
+    vi(failure(() => expect(Object.seal({})).to.be.sealed)).toBeNull()
+    vi(failure(() => expect({}).to.not.be.sealed)).toBeNull()
+    vi(failure(() => expect({}).to.be.extensible)).toBeNull()
+    vi(failure(() => expect(Object.preventExtensions({})).to.be.extensible)).toBe('expected {} to be extensible')
+    vi(failure(() => expect((function () { return arguments })()).to.be.arguments)).toBeNull()
+    vi(failure(() => expect([]).to.be.arguments)).toBe('expected [] to be arguments but got array')
+
+    vi(failure(() => expect({ go() {} }).to.respondTo('go'))).toBeNull()
+    vi(failure(() => expect({ go: 1 }).to.respondTo('go'))).toBe("expected {\"go\":1} to respond to 'go'")
+    class Cat {
+      meow(): void {}
+      static purr(): void {}
+    }
+    vi(failure(() => expect(Cat).to.respondTo('meow'))).toBeNull()
+    vi(failure(() => expect(Cat).itself.to.respondTo('purr'))).toBeNull()
+    vi(failure(() => expect(Cat).itself.to.not.respondTo('meow'))).toBeNull()
+    vi(failure(() => expect(Cat).to.respondsTo('purr'))).toBe("expected [Function] to respond to 'purr'")
+
+    const obj = { a: 1 }
+    vi(failure(() => expect(obj).to.have.ownPropertyDescriptor('a'))).toBeNull()
+    vi(failure(() => expect(obj).to.haveOwnPropertyDescriptor('a', { value: 1, writable: true, enumerable: true, configurable: true }))).toBeNull()
+    vi(failure(() => expect(obj).to.have.ownPropertyDescriptor('a', { value: 2 }))).toMatch(/^expected the own property descriptor for 'a' on .* to match/)
+    vi(failure(() => expect(obj).to.have.ownPropertyDescriptor('b'))).toBe("expected {\"a\":1} to have an own property descriptor for 'b'")
+    vi(failure(() => expect(obj).to.have.ownPropertyDescriptor('a').that.has.property('value', 1))).toBeNull()
+
+    const counter = { n: 0, s: 'a' }
+    const inc = () => (counter.n += 2)
+    const dec = () => (counter.n -= 1)
+    vi(failure(() => expect(inc).to.change(counter, 'n'))).toBeNull()
+    vi(failure(() => expect(inc).to.increase(counter, 'n').by(2))).toBeNull()
+    vi(failure(() => expect(dec).to.decrease(counter, 'n').by(1))).toBeNull()
+    vi(failure(() => expect(dec).to.change(counter, 'n').by(1))).toBeNull()
+    vi(failure(() => expect(() => undefined).to.not.change(counter, 'n'))).toBeNull()
+    vi(failure(() => expect(() => undefined).to.change(counter, 's'))).toBe('expected .s to change')
+    vi(failure(() => expect(inc).to.increase(counter, 'n').by(3))).toBe('expected .n to increase by 3')
+    vi(failure(() => expect(inc).to.decrease(counter, 'n'))).toBe('expected .n to decrease')
+    vi(failure(() => expect(inc).to.increases(() => counter.n).by(2))).toBeNull()
+    vi(failure(() => expect(5).to.be.above(1).by(2))).toBe('expected .by to follow .change, .increase or .decrease')
+
+    vi(failure(() => expect.fail())).toBe('expect.fail()')
+    vi(failure(() => expect.fail('nope'))).toBe('nope')
+    vi(failure(() => expect.fail(1, 2, 'custom'))).toBe('custom')
   })
 
   it('leave the names tooling reads alone', () => {

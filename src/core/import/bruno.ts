@@ -241,15 +241,17 @@ export function assertionsToScript(content: string): { script?: string; skipped:
 
 /**
  * Bruno file rows are `@file(path)` (or `@file(a|b)`), optionally followed by
- * `@contentType(type)`; Tiger uses `@file:path` and picks the type from the
- * file name. `resolveFile` turns a path relative to the collection into one
- * Tiger can open.
+ * `@contentType(type)`; Tiger uses `@file:path` and has no per-part content
+ * type, so a declared one is reported. `resolveFile` turns a path relative to
+ * the collection into one Tiger can open.
  */
 function multipartLine(
   kv: KeyValue,
   resolveFile: (path: string) => string
 ): { line: string; file?: string; extra: boolean; contentType?: string } {
-  const m = kv.value.match(/^@file\(([^)]*)\)\s*(?:@contentType\(([^)]*)\))?\s*$/)
+  // The path group is lazy, not `[^)]*`: file names may hold ')' ("Screenshot (1).png"),
+  // so the path runs to the last ')' that still leaves room for the optional tail.
+  const m = kv.value.match(/^@file\((.*?)\)\s*(?:@contentType\(([^)]*)\))?\s*$/)
   const prefix = kv.enabled ? '' : '~'
   if (!m) return { line: keyValueLine(kv), extra: false }
   const files = m[1].split('|').map((f) => f.trim()).filter(Boolean)

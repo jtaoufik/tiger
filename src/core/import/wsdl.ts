@@ -205,7 +205,12 @@ export function importWsdl(xml: string): ImportResult {
     root = undefined
   }
   const definitions = child(root, 'definitions')
-  if (!definitions) return { name: 'WSDL', source: 'wsdl', requests: [], warnings: [{ request: 'WSDL', ...warning('imports.notWsdl') }] }
+  if (!definitions) {
+    // WSDL 2.0 has a <description> root and interface/endpoint elements this
+    // importer does not read: say that, not "not a WSDL".
+    const key = child(root, 'description') ? 'imports.wsdl2Unsupported' : 'imports.notWsdl'
+    return { name: 'WSDL', source: 'wsdl', requests: [], warnings: [{ request: 'WSDL', ...warning(key) }] }
+  }
 
   const targetNs = attr(definitions, 'targetNamespace') ?? ''
   const services = children(definitions, 'service')

@@ -149,6 +149,9 @@ export class Assertion {
   private ownFlag = false
   private lengthFlag = false
   private orderedFlag = false
+  private itselfFlag = false
+  /** What `.change`/`.increase`/`.decrease` saw, for `.by(delta)`. */
+  private delta?: { kind: 'change' | 'increase' | 'decrease'; before: number; after: number; what: string }
 
   constructor(
     private readonly actual: unknown,
@@ -260,6 +263,10 @@ export class Assertion {
     this.orderedFlag = true
     return this
   }
+  get itself(): this {
+    this.itselfFlag = true
+    return this
+  }
 
   // Chainable methods: a flag when read, an assertion when called.
   get length(): Chain<this, [n: number]> {
@@ -315,6 +322,35 @@ export class Assertion {
   }
   get empty(): this {
     return this.check(sizeOf(this.actual) === 0, `${this.subject} to be empty`, `${this.subject} not to be empty`)
+  }
+  get finite(): this {
+    return this.check(
+      typeof this.actual === 'number' && Number.isFinite(this.actual),
+      `${this.subject} to be a finite number`,
+      `${this.subject} to not be a finite number`
+    )
+  }
+  // Primitives count as frozen, sealed and not extensible, as in Chai (and ES2015).
+  get frozen(): this {
+    return this.check(Object.isFrozen(this.actual), `${this.subject} to be frozen`, `${this.subject} to not be frozen`)
+  }
+  get sealed(): this {
+    return this.check(Object.isSealed(this.actual), `${this.subject} to be sealed`, `${this.subject} to not be sealed`)
+  }
+  get extensible(): this {
+    return this.check(
+      Object.isExtensible(this.actual),
+      `${this.subject} to be extensible`,
+      `${this.subject} to not be extensible`
+    )
+  }
+  get arguments(): this {
+    const tag = Object.prototype.toString.call(this.actual)
+    return this.check(
+      tag === '[object Arguments]',
+      `${this.subject} to be arguments but got ${typeName(this.actual)}`,
+      `${this.subject} to not be arguments`
+    )
   }
 
   // Methods.
@@ -407,6 +443,42 @@ export class Assertion {
   }
   haveOwnProperty(name: string, ...value: unknown[]): Assertion {
     return this.ownProperty(name, ...value)
+  }
+  /**
+   * The descriptor of an own property, deep-compared to `descriptor` when one
+   * is given. As in Chai, the assertion goes on with the descriptor.
+   */
+  ownPropertyDescriptor(name: string, ...descriptor: unknown[]): Assertion {
+    const got = this.actual == null ? undefined : Object.getOwnPropertyDescriptor(Object(this.actual), name)
+    if (descriptor.length === 0) {
+      this.check(
+        got !== undefined,
+        `${this.subject} to have an own property descriptor for '${name}'`,
+        `${this.subject} to not have an own property descriptor for '${name}'`
+      )
+    } else {
+      this.check(
+        got !== undefined && deepEqual(got, descriptor[0]),
+        `expected the own property descriptor for '${name}' on ${show(this.actual)} to match ${show(descriptor[0])}, got ${show(got)}`,
+        `expected the own property descriptor for '${name}' on ${show(this.actual)} to not match ${show(descriptor[0])}`
+      )
+    }
+    return this.derive(got)
+  }
+  haveOwnPropertyDescriptor(name: string, ...descriptor: unknown[]): Assertion {
+    return this.ownPropertyDescriptor(name, ...descriptor)
+  }
+  /** A method on the object, or on a constructor's prototype unless `.itself`. */
+  respondTo(method: string): this {
+    const target =
+      typeof this.actual === 'function' && !this.itselfFlag
+        ? (this.actual as { prototype?: unknown }).prototype
+        : this.actual
+    const has = target != null && typeof (Object(target) as Record<string, unknown>)[method] === 'function'
+    return this.check(has, `${this.subject} to respond to '${method}'`, `${this.subject} to not respond to '${method}'`)
+  }
+  respondsTo(method: string): this {
+    return this.respondTo(method)
   }
   keys(...names: unknown[]): this {
     const first = names[0]
@@ -544,6 +616,57 @@ export class Assertion {
   satisfies(matcher: (value: unknown) => unknown): this {
     return this.satisfy(matcher)
   }
+  /**
+   * Call the function subject and watch `target[prop]` (or the value `target()`
+   * returns) before and after. `.by(delta)` then checks the size of the change.
+   */
+  private watch(kind: 'change' | 'increase' | 'decrease', target: unknown, prop?: string): this {
+    if (typeof this.actual !== 'function') throw new Error(`${this.subject} to be a function`)
+    const read = (): unknown =>
+      prop === undefined ? (target as () => unknown)() : (Object(target) as Record<string, unknown>)[prop]
+    if (prop === undefined && typeof target !== 'function') throw new Error(`expected ${show(target)} to be a function`)
+    const before = read()
+    ;(this.actual as () => unknown)()
+    const after = read()
+    const what = prop === undefined ? 'function' : `.${prop}`
+    this.delta = { kind, before: before as number, after: after as number, what }
+    const pass =
+      kind === 'change'
+        ? !deepEqual(before, after)
+        : kind === 'increase'
+          ? (after as number) > (before as number)
+          : (after as number) < (before as number)
+    return this.check(pass, `expected ${what} to ${kind}`, `expected ${what} to not ${kind}`)
+  }
+  change(target: unknown, prop?: string): this {
+    return this.watch('change', target, prop)
+  }
+  changes(target: unknown, prop?: string): this {
+    return this.change(target, prop)
+  }
+  increase(target: unknown, prop?: string): this {
+    return this.watch('increase', target, prop)
+  }
+  increases(target: unknown, prop?: string): this {
+    return this.increase(target, prop)
+  }
+  decrease(target: unknown, prop?: string): this {
+    return this.watch('decrease', target, prop)
+  }
+  decreases(target: unknown, prop?: string): this {
+    return this.decrease(target, prop)
+  }
+  by(delta: number): this {
+    const d = this.delta
+    if (!d) throw new Error('expected .by to follow .change, .increase or .decrease')
+    // Chai: `.change(...).by(n)` is a change of n either way, the others are signed.
+    const diff = d.kind === 'change' ? Math.abs(d.after - d.before) : d.kind === 'increase' ? d.after - d.before : d.before - d.after
+    return this.check(
+      diff === delta,
+      `expected ${d.what} to ${d.kind} by ${delta}`,
+      `expected ${d.what} to not ${d.kind} by ${delta}`
+    )
+  }
   throw(expected?: string | RegExp | (new (...args: never[]) => unknown)): Assertion {
     if (typeof this.actual !== 'function') throw new Error(`${this.subject} to be a function`)
     let error: unknown
@@ -597,4 +720,10 @@ export function expect(actual: unknown, message?: string): Assertion {
       return Reflect.get(target, prop, receiver)
     }
   })
+}
+
+/** `expect.fail(message?)` or `expect.fail(actual, expected, message?)`, as in Chai. */
+expect.fail = (...args: unknown[]): never => {
+  const message = args.length <= 1 ? args[0] : args[2]
+  throw new Error(typeof message === 'string' && message ? message : 'expect.fail()')
 }

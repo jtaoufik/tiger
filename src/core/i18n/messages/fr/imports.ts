@@ -74,8 +74,10 @@ export const imports: NamespaceCatalog<typeof en> = {
     'Les variables de dossier ne sont pas prises en charge : {names}. Ajoutez-les à un environnement.',
   'imports.notWsdl':
     'Ce n’est pas un document WSDL : il n’a aucun élément <definitions>. Enregistrez le WSDL du service (souvent l’adresse ?wsdl) et importez ce fichier.',
+  'imports.wsdl2Unsupported':
+    'Ceci est un document WSDL 2.0 (racine <description>). Tiger n’importe que le WSDL 1.1 ; beaucoup de services publient aussi une version 1.1 (souvent l’adresse ?wsdl). Importez ce fichier.',
   'imports.formFileContentType':
-    'Le champ de formulaire "{field}" envoie son fichier en {type}. Tiger choisit le type de contenu d’après le nom du fichier ; définissez un Content-Type sur la partie à la main si le serveur exige {type}.',
+    'Le champ de formulaire "{field}" déclare son fichier en {type}. Tiger n’a pas de type de contenu par partie et envoie chaque partie fichier en application/octet-stream ; vérifiez que le serveur l’accepte.',
   'imports.folderScripts':
     'Les scripts du dossier ont été copiés dans chaque requête de ce dossier. Modifiez-les là.',
   'imports.templateTags': 'Utilise des balises de modèle que Tiger ne peut pas exécuter : {tags}.',

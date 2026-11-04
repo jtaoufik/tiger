@@ -199,8 +199,7 @@ function sampleFromSchema(doc: Json, raw: unknown, depth = 0, budget = { left: S
   }
   const one = asArray(schema.oneOf ?? schema.anyOf)
   if (one.length) return sampleFromSchema(doc, one[0], depth + 1, budget)
-  // OpenAPI 3.1 writes a nullable field as `type: ['string', 'null']`: sample the value, not the null.
-  const type = Array.isArray(schema.type) ? schema.type.find((t) => t !== 'null') : schema.type
+  const type = schemaType(schema)
   switch (type) {
     case 'object':
     case undefined: {
@@ -225,12 +224,17 @@ function sampleFromSchema(doc: Json, raw: unknown, depth = 0, budget = { left: S
   }
 }
 
+/** The schema's type; OpenAPI 3.1 writes a nullable field as `type: ['string', 'null']`. */
+function schemaType(schema: Json): unknown {
+  return Array.isArray(schema.type) ? schema.type.find((t) => t !== 'null') : schema.type
+}
+
 function formFromSchema(doc: Json, schema: unknown, multipart: boolean): string {
   const props = (deref(doc, schema).properties ?? {}) as Json
   return Object.entries(props)
     .map(([k, v]) => {
       const s = deref(doc, v)
-      const isFile = multipart && s.type === 'string' && (s.format === 'binary' || s.format === 'base64')
+      const isFile = multipart && schemaType(s) === 'string' && (s.format === 'binary' || s.format === 'base64')
       return isFile ? `${k}: @file:` : keyValueLine({ name: k, value: scalar(s.example ?? '') })
     })
     .join('\n')

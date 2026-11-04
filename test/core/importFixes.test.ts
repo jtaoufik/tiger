@@ -84,6 +84,33 @@ describe('OpenAPI edge cases', () => {
   })
 })
 
+describe('OpenAPI 3.1 nullable file field', () => {
+  it('is a file row like its 3.0 spelling', () => {
+    const doc = (avatar: object) => ({
+      openapi: '3.1.0',
+      info: { title: 'Files', version: '1' },
+      paths: {
+        '/avatar': {
+          post: {
+            operationId: 'Upload avatar',
+            requestBody: {
+              content: {
+                'multipart/form-data': {
+                  schema: { type: 'object', properties: { avatar, name: { type: 'string' } } }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+    const body31 = importOpenApi(doc({ type: ['string', 'null'], format: 'binary' })).requests[0].request.body
+    const body30 = importOpenApi(doc({ type: 'string', format: 'binary', nullable: true })).requests[0].request.body
+    expect(body31).toEqual({ type: 'multipart', content: 'avatar: @file:\nname: ' })
+    expect(body30).toEqual(body31)
+  })
+})
+
 describe('WSDL that is not XML', () => {
   it('says the file is not a WSDL instead of importing nothing or throwing', () => {
     for (const text of ['{"openapi": "3.0.0"}', 'not xml at all', '<<<', '<html><body>404</body></html>']) {
@@ -91,6 +118,15 @@ describe('WSDL that is not XML', () => {
       expect(result.requests).toEqual([])
       expect(result.warnings?.map((w) => w.i18n?.key)).toEqual(['imports.notWsdl'])
     }
+  })
+
+  it('tells a WSDL 2.0 document apart: it is a WSDL, just not one Tiger reads', () => {
+    const result = importWsdl(
+      '<?xml version="1.0"?><description xmlns="http://www.w3.org/ns/wsdl" targetNamespace="urn:x"><interface name="I"/></description>'
+    )
+    expect(result.requests).toEqual([])
+    expect(result.warnings?.map((w) => w.i18n?.key)).toEqual(['imports.wsdl2Unsupported'])
+    expect(result.warnings?.[0].message).toMatch(/WSDL 2\.0/)
   })
 })
 
@@ -107,7 +143,7 @@ describe('Bruno assertions and multipart file rows', () => {
     expect(run(200, '{}').error).toBeUndefined()
   })
 
-  it('keeps @file(path) @contentType(type) a file row, and says the type comes from the file name', () => {
+  it('keeps @file(path) @contentType(type) a file row, and warns that the declared type is dropped', () => {
     const warnings: never[] = []
     const { request } = importBrunoRequest(
       `meta {\n  name: Upload\n  type: http\n  seq: 1\n}\n\npost {\n  url: https://x.test/u\n  body: multipartForm\n}\n\nbody:multipart-form {\n  photo: @file(photos/a.png) @contentType(image/png)\n  plain: @file(b.txt)\n  caption: hi\n}\n`,
@@ -120,5 +156,25 @@ describe('Bruno assertions and multipart file rows', () => {
       key: 'imports.formFileContentType',
       vars: { field: 'photo', type: 'image/png' }
     })
+  })
+
+  it('accepts a file name with parentheses, with or without a content type', () => {
+    const warnings: Array<{ i18n?: { key: string; vars?: object } }> = []
+    const { request } = importBrunoRequest(
+      `meta {\n  name: Upload\n  type: http\n  seq: 1\n}\n\npost {\n  url: https://x.test/u\n  body: multipartForm\n}\n\nbody:multipart-form {\n  photo: @file(Screenshot (1).png)\n  typed: @file(a (1).png) @contentType(image/png)\n  many: @file(a (1).png|b.png)\n}\n`,
+      [],
+      warnings as never[],
+      (p) => `/col/${p}`
+    )
+    expect(request.body).toEqual({
+      type: 'multipart',
+      content: 'photo: @file:/col/Screenshot (1).png\ntyped: @file:/col/a (1).png\nmany: @file:/col/a (1).png'
+    })
+    expect(warnings.map((w) => w.i18n)).toEqual([
+      { key: 'imports.formFileUpload', vars: { field: 'photo', files: '/col/Screenshot (1).png' } },
+      { key: 'imports.formFileUpload', vars: { field: 'typed', files: '/col/a (1).png' } },
+      { key: 'imports.formFileContentType', vars: { field: 'typed', type: 'image/png' } },
+      { key: 'imports.formFileUploadFirstOnly', vars: { field: 'many', files: '/col/a (1).png' } }
+    ])
   })
 })

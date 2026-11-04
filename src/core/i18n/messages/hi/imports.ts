@@ -71,8 +71,10 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.folderVariables': 'फ़ोल्डर वेरिएबल समर्थित नहीं हैं: {names}। उन्हें परिवेश में जोड़ें।',
   'imports.notWsdl':
     'यह WSDL दस्तावेज़ नहीं है: इसमें कोई <definitions> तत्व नहीं है। सेवा का WSDL (अक्सर ?wsdl पता) सहेजें और उस फ़ाइल को आयात करें।',
+  'imports.wsdl2Unsupported':
+    'यह WSDL 2.0 दस्तावेज़ है (मूल तत्व <description>)। Tiger केवल WSDL 1.1 आयात करता है; कई सेवाएँ 1.1 संस्करण भी प्रकाशित करती हैं (अक्सर ?wsdl पता)। उस फ़ाइल को आयात करें।',
   'imports.formFileContentType':
-    'फ़ॉर्म फ़ील्ड "{field}" अपनी फ़ाइल {type} के रूप में भेजता है। Tiger फ़ाइल नाम से सामग्री प्रकार चुनता है; अगर सर्वर को {type} चाहिए तो उस भाग पर Content-Type हाथ से सेट करें।',
+    'फ़ॉर्म फ़ील्ड "{field}" अपनी फ़ाइल को {type} घोषित करता है। Tiger में प्रति भाग सामग्री प्रकार नहीं है और हर फ़ाइल भाग application/octet-stream के रूप में भेजा जाता है; जाँचें कि सर्वर इसे स्वीकार करता है।',
   'imports.folderScripts':
     'फ़ोल्डर की स्क्रिप्ट इस फ़ोल्डर के हर अनुरोध में कॉपी की गईं। उन्हें वहीं संपादित करें।',
   'imports.templateTags': 'ऐसे टेम्पलेट टैग इस्तेमाल हुए हैं जिन्हें Tiger नहीं चला सकता: {tags}।',
