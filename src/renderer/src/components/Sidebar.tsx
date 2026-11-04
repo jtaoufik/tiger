@@ -92,6 +92,11 @@ interface Props {
   inspected?: { colId: string; path: string[] } | null
   /** Start renaming a request (id) or folder (colId + path); nonce re-triggers. */
   renameTarget?: { id?: string; colId?: string; path?: string[]; nonce: number } | null
+  /**
+   * Folders shown under another name than their disk name (an import's
+   * "Store: front?" lives in "Store- front-"), by tree key: JSON [colId, ...path].
+   */
+  folderNames?: Record<string, string>
 }
 
 interface TreeFolder {
@@ -155,7 +160,7 @@ function firstRowStartingAt(S: Float64Array, value: number): number {
  * as its own collection (disk ids are absolute paths) or when an imported
  * folder name contains the separator character.
  */
-function buildTree(collectionId: string, entries: SidebarEntry[]): TreeFolder {
+function buildTree(collectionId: string, entries: SidebarEntry[], names?: Record<string, string>): TreeFolder {
   const root: TreeFolder = {
     name: '',
     key: JSON.stringify([collectionId]),
@@ -173,9 +178,10 @@ function buildTree(collectionId: string, entries: SidebarEntry[]): TreeFolder {
       let child = children.get(segment)
       if (!child) {
         const path = [...node.path, segment]
+        const key = JSON.stringify([collectionId, ...path])
         child = {
-          name: segment,
-          key: JSON.stringify([collectionId, ...path]),
+          name: names?.[key] ?? segment,
+          key,
           path,
           folders: [],
           requests: []
@@ -536,7 +542,8 @@ export function Sidebar({
   onInspectFolder,
   onEmptyMenu,
   onNewMenu,
-  renameTarget
+  renameTarget,
+  folderNames
 }: Props) {
   const t = useT()
   const conflictRoots = useConflictRoots()
@@ -614,8 +621,9 @@ export function Sidebar({
         }
         return next
       })
-      setDraft(path[path.length - 1])
-      setRenaming({ kind: 'folder', key: JSON.stringify([renameTarget.colId, ...path]) })
+      const key = JSON.stringify([renameTarget.colId, ...path])
+      setDraft(folderNames?.[key] ?? path[path.length - 1])
+      setRenaming({ kind: 'folder', key })
     }
     // Only a new nonce should restart a rename; collections changing mid-rename must not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -746,11 +754,20 @@ export function Sidebar({
     () =>
       collections.map((col) => ({
         col,
-        tree: buildTree(col.id, col.entries),
-        // Lower-cased once per collection change, not once per keystroke.
-        lowerNames: col.entries.map((e) => e.name.toLowerCase())
+        tree: buildTree(col.id, col.entries, folderNames),
+        // Lower-cased once per collection change, not once per keystroke. A
+        // request is also found by its folders' names, shown or on disk.
+        lowerNames: col.entries.map((e) =>
+          [
+            e.name,
+            ...e.folderPath,
+            ...e.folderPath.map((_, i) => folderNames?.[JSON.stringify([col.id, ...e.folderPath.slice(0, i + 1)])] ?? '')
+          ]
+            .join('\n')
+            .toLowerCase()
+        )
       })),
-    [collections]
+    [collections, folderNames]
   )
 
   /** Keys of the active request's collection and folders, outermost first. */

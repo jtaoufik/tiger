@@ -19,6 +19,8 @@ export interface RequestEntry {
 /** A folder's own settings, from its `folder.tiger`. */
 export interface FolderSettingsEntry {
   folder: string[]
+  /** The name shown, when the disk name had to differ ("Store: front?" on disk as "Store- front-"). */
+  name?: string
   auth?: TigerAuth
   docs?: string
 }
@@ -157,12 +159,17 @@ async function readFolderFiles(files: ListedFile[]): Promise<{ folders: FolderSe
     try {
       const settings = parseCollectionSettings(await readTextFile(full))
       if (settings.seq !== undefined) seqs.set(folder.join('/'), settings.seq)
-      return { folder, ...(settings.auth ? { auth: settings.auth } : {}), ...(settings.docs ? { docs: settings.docs } : {}) }
+      return {
+        folder,
+        ...(settings.name ? { name: settings.name } : {}),
+        ...(settings.auth ? { auth: settings.auth } : {}),
+        ...(settings.docs ? { docs: settings.docs } : {})
+      }
     } catch {
       return { folder }
     }
   })
-  return { folders: parsed.filter((f) => f.auth || f.docs), seqs }
+  return { folders: parsed.filter((f) => f.name || f.auth || f.docs), seqs }
 }
 
 export interface EnvironmentRef {

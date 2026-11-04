@@ -226,7 +226,9 @@ describe('saving an import to disk and reading it back', () => {
     expect(opened(back.requests)).toEqual(placed(result).map((p) => p.replace('Store: front?', 'Store- front-')))
     const settings = parseCollectionSettings(await readFile(join(root, 'Store- front-', 'folder.tiger'), 'utf8'))
     expect(settings).toEqual({ name: 'Store: front?', seq: 2 })
-    expect(back.folders).toEqual([
+    // The opened collection carries the shown name, so the sidebar can use it.
+    expect(back.folders.sort((x, y) => x.folder.length - y.folder.length)).toEqual([
+      { folder: ['Store- front-'], name: 'Store: front?' },
       { folder: ['Store- front-', 'Catalog'], auth: { type: 'basic', username: 'catalog-bot', password: '{{pass}}' } }
     ])
   })
@@ -275,8 +277,11 @@ describe('saving an import to disk and reading it back', () => {
       'Deep/environments: nested env folder'
     ])
     expect(files.map((f) => f.path)).toContain('Users/folder 2.tiger')
-    expect(back.folders.sort((x, y) => x.folder.length - y.folder.length)).toEqual([
-      { folder: ['a-b'], docs: 'slash folder' },
+    // Folders whose disk name had to change carry the name to show.
+    expect(back.folders.sort((x, y) => x.folder.length - y.folder.length || x.folder.join('/').localeCompare(y.folder.join('/')))).toEqual([
+      { folder: ['a-b'], name: 'a/b', docs: 'slash folder' },
+      { folder: ['a-b 2'], name: 'a-b' },
+      { folder: ['environments 2'], name: 'environments' },
       { folder: ['a', 'b'], docs: 'nested folder' }
     ])
   })

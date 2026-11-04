@@ -356,9 +356,12 @@ export default function App() {
     { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
   >(null)
   const [colHistory, setColHistory] = useState<HistoryEntry[]>([])
-  /** Folder-level default auth + docs, keyed by `${colId}${SEP}${path}`. */
+  /**
+   * Folder-level default auth + docs, keyed by `${colId}${SEP}${path}`, plus
+   * the name a folder is shown under when its disk name had to differ.
+   */
   const [folderSettings, setFolderSettings] = useState<
-    Record<string, { auth?: TigerAuth; docs?: string }>
+    Record<string, { auth?: TigerAuth; docs?: string; name?: string }>
   >({})
   const folderSettingsRef = useRef(folderSettings)
   useEffect(() => {
@@ -636,9 +639,22 @@ export default function App() {
   const foldersOf = (colId: string): Array<{ path: string[]; auth?: TigerAuth; docs?: string }> => {
     const own = `${colId}${SEP}`
     return Object.entries(folderSettingsRef.current)
-      .filter(([key]) => key.startsWith(own))
-      .map(([key, value]) => ({ path: key.slice(own.length).split('/').filter(Boolean), ...value }))
+      .filter(([key, value]) => key.startsWith(own) && (value.auth || value.docs))
+      .map(([key, { auth, docs }]) => ({ path: key.slice(own.length).split('/').filter(Boolean), auth, docs }))
   }
+  /** A folder as shown: the name its folder.tiger keeps, else its disk name. */
+  const folderLabel = (colId: string, path: string[]): string =>
+    folderSettings[fKey(colId, path)]?.name || path[path.length - 1]
+  /** The same, by the sidebar's tree key, for the folders that have one. */
+  const folderNames = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(folderSettings)) {
+      if (!value.name) continue
+      const at = key.indexOf(SEP)
+      out[JSON.stringify([key.slice(0, at), ...key.slice(at + 1).split('/')])] = value.name
+    }
+    return out
+  }, [folderSettings])
 
   const active = activeId ? requestsById[activeId] : undefined
   const activeCollection = activeId
@@ -803,7 +819,7 @@ export default function App() {
             .then((text) => {
               const parsed = parseCollectionSettings(text)
               setFolderSettings((prev) =>
-                prev[key] ? prev : { ...prev, [key]: { auth: parsed.auth, docs: parsed.docs } }
+                prev[key] ? prev : { ...prev, [key]: { auth: parsed.auth, docs: parsed.docs, name: parsed.name } }
               )
             })
             .catch(() => {
@@ -1482,7 +1498,7 @@ export default function App() {
         setFolderSettings((prev) => {
           const next = { ...prev }
           for (const f of opened.folders) {
-            next[`${opened.root}${SEP}${f.folder.join('/')}`] = { auth: f.auth, docs: f.docs }
+            next[`${opened.root}${SEP}${f.folder.join('/')}`] = { auth: f.auth, docs: f.docs, name: f.name }
           }
           return next
         })
@@ -2198,12 +2214,21 @@ export default function App() {
         return
       }
       // Valid on every disk (and so for every teammate): no ":?*\"<>|", no
-      // trailing dot, no CON.
-      const trimmed = safeFileName(newName, '')
-      if (!col || !trimmed || trimmed === path[path.length - 1]) return
+      // trailing dot, no CON. When the typed name is not, the folder is shown
+      // under the typed name (kept in its folder.tiger) and the disk gets the
+      // safe one.
+      const typed = newName.replace(/\s+/g, ' ').trim()
+      const trimmed = safeFileName(typed, '')
+      const shown = typed !== trimmed ? typed : undefined
+      const oldKey = `${colId}${SEP}${path.join('/')}`
+      if (!col || !trimmed) return
+      const moved = trimmed !== path[path.length - 1]
+      if (!moved && shown === folderSettingsRef.current[oldKey]?.name) return
+      const newPath = [...path.slice(0, -1), trimmed]
+      const newKey = `${colId}${SEP}${newPath.join('/')}`
       const fromDir = col.root ? `${col.root}/${path.join('/')}` : null
-      const toDir = col.root ? `${col.root}/${[...path.slice(0, -1), trimmed].join('/')}` : null
-      if (fromDir && toDir && window.tiger) {
+      const toDir = col.root ? `${col.root}/${newPath.join('/')}` : null
+      if (moved && fromDir && toDir && window.tiger) {
         try {
           await window.tiger.moveFile(fromDir, toDir)
         } catch (e) {
@@ -2211,20 +2236,42 @@ export default function App() {
           return
         }
       }
-      setCollections((prev) =>
-        prev.map((c) =>
-          c.id === colId
-            ? {
-                ...c,
-                entries: c.entries.map((e) => {
-                  const next = renamedFolderPath(e.folderPath, path, trimmed)
-                  return next ? { ...e, folderPath: next } : e
-                })
-              }
-            : c
+      if (toDir && window.tiger) {
+        // The old shown name must not linger in folder.tiger; its auth, docs
+        // and position stay.
+        const file = `${toDir}/folder.tiger`
+        let kept: ReturnType<typeof parseCollectionSettings> | undefined
+        try {
+          kept = parseCollectionSettings(await window.tiger.readFile(file))
+        } catch {
+          /* no folder.tiger yet */
+        }
+        const { name: _was, ...rest } = kept ?? {}
+        const text = serializeCollectionSettings(shown ? { name: shown, ...rest } : rest)
+        if (text || kept) {
+          try {
+            await window.tiger.writeFile(file, text)
+          } catch (e) {
+            toast(t('app.toast.saveFailed', { message: (e as Error).message }), { error: true })
+          }
+        }
+      }
+      if (moved) {
+        setCollections((prev) =>
+          prev.map((c) =>
+            c.id === colId
+              ? {
+                  ...c,
+                  entries: c.entries.map((e) => {
+                    const next = renamedFolderPath(e.folderPath, path, trimmed)
+                    return next ? { ...e, folderPath: next } : e
+                  })
+                }
+              : c
+          )
         )
-      )
-      if (fromDir && toDir) {
+      }
+      if (moved && fromDir && toDir) {
         setPathById((prev) => {
           const out: Record<string, string> = {}
           for (const [k, v] of Object.entries(prev)) {
@@ -2232,30 +2279,33 @@ export default function App() {
           }
           return out
         })
-        setFolderSettings((prev) => {
-          const out: typeof prev = {}
-          const oldKey = `${colId}${SEP}${path.join('/')}`
-          const newKey = `${colId}${SEP}${[...path.slice(0, -1), trimmed].join('/')}`
-          for (const [k, v] of Object.entries(prev)) {
-            if (k === oldKey) out[newKey] = v
-            else if (k.startsWith(`${oldKey}/`)) out[newKey + k.slice(oldKey.length)] = v
-            else out[k] = v
-          }
-          return out
+      }
+      // Settings follow the folder (and its sub-folders) to the new key; the
+      // ref too, so a save in the same tick builds on the renamed state.
+      const remapped: typeof folderSettingsRef.current = {}
+      for (const [k, v] of Object.entries(folderSettingsRef.current)) {
+        if (k === oldKey) continue
+        if (k.startsWith(`${oldKey}/`)) remapped[newKey + k.slice(oldKey.length)] = v
+        else remapped[k] = v
+      }
+      const { name: _shown, ...ownSettings } = folderSettingsRef.current[oldKey] ?? {}
+      remapped[newKey] = shown ? { ...ownSettings, name: shown } : ownSettings
+      folderSettingsRef.current = remapped
+      setFolderSettings(remapped)
+      if (moved) {
+        setOpenTabs((prev) =>
+          prev.map((t) => {
+            if (t.kind !== 'folder' || t.colId !== colId) return t
+            const next = renamedFolderPath(t.path, path, trimmed)
+            return next ? { ...t, path: next } : t
+          })
+        )
+        setInspect((cur) => {
+          if (!cur || cur.type !== 'folder' || cur.colId !== colId) return cur
+          const next = renamedFolderPath(cur.path, path, trimmed)
+          return next ? { ...cur, path: next } : cur
         })
       }
-      setOpenTabs((prev) =>
-        prev.map((t) => {
-          if (t.kind !== 'folder' || t.colId !== colId) return t
-          const next = renamedFolderPath(t.path, path, trimmed)
-          return next ? { ...t, path: next } : t
-        })
-      )
-      setInspect((cur) => {
-        if (!cur || cur.type !== 'folder' || cur.colId !== colId) return cur
-        const next = renamedFolderPath(cur.path, path, trimmed)
-        return next ? { ...cur, path: next } : cur
-      })
       toast(t('app.toast.folderRenamed'))
     },
     [toast]
@@ -2821,7 +2871,7 @@ export default function App() {
       return [{ key, kind: 'collection' as const, label: col.name }]
     }
     return [
-      { key, kind: 'folder' as const, label: t.path[t.path.length - 1] ?? tr('app.tab.folderFallback') }
+      { key, kind: 'folder' as const, label: t.path.length ? folderLabel(t.colId, t.path) : tr('app.tab.folderFallback') }
     ]
   })
 
@@ -3130,6 +3180,7 @@ export default function App() {
           onRenameFolder={renameFolder}
           onDuplicateFolder={duplicateFolder}
           onMoveRequest={moveRequest}
+          folderNames={folderNames}
         />
         )}
 
@@ -3236,6 +3287,7 @@ export default function App() {
                       onSaveAuth={(auth) => saveFolderAuth(col.id, inspect.path, auth)}
                       onSaveDocs={(docs) => saveFolderDocs(col.id, inspect.path, docs)}
                       onToast={toast}
+                      labelOf={(p) => folderLabel(col.id, p)}
                     />
                   )
                 }
@@ -3419,7 +3471,7 @@ export default function App() {
         (() => {
           const col = collections.find((c) => c.id === runnerScope.colId)
           const title = runnerScope.path?.length
-            ? runnerScope.path[runnerScope.path.length - 1]
+            ? folderLabel(runnerScope.colId, runnerScope.path)
             : (col?.name ?? t('app.runner.collectionFallback'))
           return (
             <RunnerModal

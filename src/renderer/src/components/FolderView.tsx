@@ -23,6 +23,8 @@ interface Props {
   onSaveAuth: (auth: TigerAuth | undefined) => void
   onSaveDocs: (docs: string) => void
   onToast: (text: string) => void
+  /** The name shown for a folder path (its folder.tiger name, else the disk name). */
+  labelOf?: (path: string[]) => string
 }
 
 type PageTab = 'requests' | 'docs' | 'auth'
@@ -43,14 +45,16 @@ export function FolderView({
   onRun,
   onNewRequest,
   onSaveAuth,
-  onSaveDocs
+  onSaveDocs,
+  labelOf
 }: Props) {
   const t = useT()
   const key = path.join('/')
   const [pageTab, setPageTab] = useState<PageTab>('requests')
   const uid = useId()
-  const name = path[path.length - 1]
-  const crumbs = [collectionName, ...path]
+  const label = (p: string[]) => labelOf?.(p) ?? p[p.length - 1]
+  const name = label(path)
+  const crumbs = [collectionName, ...path.map((_, i) => label(path.slice(0, i + 1)))]
   return (
     <section className="panel collection-view" aria-labelledby={`${uid}-title`}>
       <div className="cv-head">
@@ -178,7 +182,13 @@ export function FolderView({
                 <button type="button" className="cv-req-row" onClick={() => onSelect(e.id)} title={e.name}>
                   <span className={`method-pill m-${e.method}`}>{e.method.toUpperCase()}</span>
                   {e.folderPath.length > path.length && (
-                    <span className="cv-dim">{e.folderPath.slice(path.length).join(' / ')} /</span>
+                    <span className="cv-dim">
+                      {e.folderPath
+                        .slice(path.length)
+                        .map((_, i) => label(e.folderPath.slice(0, path.length + i + 1)))
+                        .join(' / ')}{' '}
+                      /
+                    </span>
                   )}
                   <span className="row-label">{e.name}</span>
                 </button>
