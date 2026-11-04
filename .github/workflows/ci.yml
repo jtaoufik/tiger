@@ -29,6 +29,11 @@ jobs:
       - name: i18n check
         run: npm run i18n:check
 
+      # Broken links and anchors on the website, and every stated version
+      # (README, home page, install page, version.json) matching package.json.
+      - name: Website check
+        run: npm run site:check
+
       - name: Test with coverage
         run: npm run test:coverage
 

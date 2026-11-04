@@ -169,6 +169,29 @@ for (const file of pages.keys()) {
 if (!/Sitemap: https:\/\/jtaoufik\.github\.io\/tiger\/sitemap\.xml/.test(readFileSync(join(ROOT, 'robots.txt'), 'utf8')))
   fail('robots.txt', 'does not point to the sitemap')
 
+// --- version ------------------------------------------------------------
+// Every place that states the release version must agree with package.json:
+// the README and the home page once said 0.7.0 while 0.8.1 was out.
+const pkgVersion = JSON.parse(readFileSync(join(ROOT, '..', 'package.json'), 'utf8')).version
+const siteVersion = JSON.parse(readFileSync(join(ROOT, 'version.json'), 'utf8')).version
+if (siteVersion !== pkgVersion) fail('version.json', `says ${siteVersion}, package.json says ${pkgVersion}`)
+const versionMentions = [
+  ['index.html', /"softwareVersion": "([^"]+)"/],
+  ['index.html', /Version ([0-9]+\.[0-9]+\.[0-9]+) &middot;/],
+  ['index.html', /What is in Tiger ([0-9]+\.[0-9]+\.[0-9]+)/],
+  ['docs/install/index.html', /current release \(v([0-9]+\.[0-9]+\.[0-9]+)\)/]
+]
+for (const [rel, re] of versionMentions) {
+  const html = readFileSync(join(ROOT, rel), 'utf8')
+  const m = html.match(re)
+  if (!m) fail(rel, `no version found for ${re}`)
+  else if (m[1] !== pkgVersion) fail(rel, `says ${m[1]}, package.json says ${pkgVersion}`)
+}
+const readme = readFileSync(join(ROOT, '..', 'README.md'), 'utf8')
+for (const m of readme.matchAll(/Version ([0-9]+\.[0-9]+\.[0-9]+)/g)) {
+  if (m[1] !== pkgVersion) fail('README.md', `says ${m[1]}, package.json says ${pkgVersion}`)
+}
+
 for (const w of warnings) console.log('warn ', w)
 for (const e of errors) console.log('FAIL ', e)
 console.log(`\n${pages.size} pages, ${locs.length} sitemap urls, ${errors.length} errors, ${warnings.length} warnings`)

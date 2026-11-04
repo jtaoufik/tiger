@@ -41,6 +41,7 @@
     "test:e2e": "npm run build && npm run build:mcp && playwright test",
     "test:contrast": "npm run build && npm run build:mcp && TIGER_CONTRAST_SWEEP=1 AUDIT_STRICT=1 playwright test e2e/contrast",
     "i18n:check": "node scripts/i18n-check.mjs",
+    "site:check": "node scripts/check-site.mjs",
     "package": "npm run build && npm run build:mcp && electron-builder",
     "analyze": "electron-vite build",
     "perf:startup": "node scripts/perf-startup.mjs",
