@@ -134,8 +134,16 @@ export async function launchTiger(
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
   // A dev server URL would make the app load a Vite server instead of out/.
   delete env.ELECTRON_RENDERER_URL
+  // Chromium refuses to start as root with its sandbox on (containers run the
+  // suite as root); a user account keeps the sandbox.
+  const asRoot = typeof process.getuid === 'function' && process.getuid() === 0
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${userDataDir}`, `--lang=${opts.lang ?? 'en-US'}`],
+    args: [
+      REPO_ROOT,
+      ...(asRoot ? ['--no-sandbox'] : []),
+      `--user-data-dir=${userDataDir}`,
+      `--lang=${opts.lang ?? 'en-US'}`
+    ],
     cwd: REPO_ROOT,
     env: { ...env, TIGER_E2E: '1', ...extraEnv }
   })
