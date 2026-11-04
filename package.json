@@ -209,5 +209,8 @@
       }
     ],
     "afterSign": "build/notarize.cjs"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.7"
   }
 }
