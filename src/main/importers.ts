@@ -125,7 +125,10 @@ async function importBrunoFolder(): Promise<ImportResult | null> {
     properties: ['openDirectory']
   })
   if (result.canceled || !result.filePaths[0]) return null
-  return readBrunoFolder(result.filePaths[0])
+  const dir = result.filePaths[0]
+  // The folder picked may be the collection itself or a parent of it (the
+  // repository): the collection is then found inside, with its own name.
+  return (await isBrunoFolder(dir)) ? readBrunoFolder(dir) : importPaths([dir])
 }
 
 /**

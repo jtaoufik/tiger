@@ -72,6 +72,10 @@ export const imports: NamespaceCatalog<typeof en> = {
     'L’authentification Bearer utilise le préfixe "{prefix}". Tiger envoie toujours "Bearer" ; ajoutez plutôt un en-tête Authorization si le serveur exige "{prefix}".',
   'imports.folderVariables':
     'Les variables de dossier ne sont pas prises en charge : {names}. Ajoutez-les à un environnement.',
+  'imports.notWsdl':
+    'Ce n’est pas un document WSDL : il n’a aucun élément <definitions>. Enregistrez le WSDL du service (souvent l’adresse ?wsdl) et importez ce fichier.',
+  'imports.formFileContentType':
+    'Le champ de formulaire "{field}" envoie son fichier en {type}. Tiger choisit le type de contenu d’après le nom du fichier ; définissez un Content-Type sur la partie à la main si le serveur exige {type}.',
   'imports.folderScripts':
     'Les scripts du dossier ont été copiés dans chaque requête de ce dossier. Modifiez-les là.',
   'imports.templateTags': 'Utilise des balises de modèle que Tiger ne peut pas exécuter : {tags}.',

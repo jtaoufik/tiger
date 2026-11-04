@@ -48,6 +48,9 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.bearerPrefix':
     'Bearer 认证使用了前缀“{prefix}”。Tiger 始终发送“Bearer”；如果服务器需要“{prefix}”，请改为添加 Authorization 标头。',
   'imports.folderVariables': '不支持文件夹变量：{names}。请将它们添加到环境中。',
+  'imports.notWsdl': '这不是 WSDL 文档：其中没有 <definitions> 元素。请保存服务的 WSDL（通常是 ?wsdl 地址）并导入该文件。',
+  'imports.formFileContentType':
+    '表单字段“{field}”以 {type} 发送其文件。Tiger 根据文件名选择内容类型；如果服务器需要 {type}，请手动为该部分设置 Content-Type。',
   'imports.folderScripts': '文件夹脚本已复制到此文件夹中的每个请求。请在那里编辑。',
   'imports.templateTags': '使用了 Tiger 无法运行的模板标签：{tags}。',
   'imports.templateTagsKept': '使用了 Tiger 无法运行的模板标签：{tags}。它们已作为文本保留。',

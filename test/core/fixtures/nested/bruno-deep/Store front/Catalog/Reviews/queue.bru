@@ -1,0 +1,11 @@
+meta {
+  name: Moderation queue
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/reviews/queue
+  body: none
+  auth: inherit
+}

@@ -2669,17 +2669,35 @@ export default function App() {
     (colId: string, path: string[], patch: { auth?: TigerAuth; docs?: string }, label: string) => {
       const col = collections.find((c) => c.id === colId)
       const key = `${colId}${SEP}${path.join('/')}`
-      setFolderSettings((prev) => {
-        const next = { ...(prev[key] ?? {}), ...patch }
-        if (col?.root && window.tiger) {
-          window.tiger.writeFile(
-            `${col.root}/${path.join('/')}/folder.tiger`,
-            serializeCollectionSettings(next)
-          )
+      // The ref is updated here as well as by its effect, so two saves in one
+      // tick build on each other; the write happens once, outside the updater.
+      const next = { ...(folderSettingsRef.current[key] ?? {}), ...patch }
+      folderSettingsRef.current = { ...folderSettingsRef.current, [key]: next }
+      setFolderSettings((prev) => ({ ...prev, [key]: next }))
+      if (!col?.root || !window.tiger) {
+        toast(label)
+        return
+      }
+      const file = `${col.root}/${path.join('/')}/folder.tiger`
+      void (async () => {
+        // folder.tiger also holds what an import wrote there: the folder's
+        // position among its siblings and its display name. Editing the auth
+        // or the notes must not drop them, or the folder jumps to the end.
+        let kept: { name?: string; seq?: number } = {}
+        try {
+          const existing = parseCollectionSettings(await window.tiger!.readFile(file))
+          kept = { name: existing.name, seq: existing.seq }
+        } catch {
+          /* no folder.tiger yet */
         }
-        return { ...prev, [key]: next }
-      })
-      toast(label)
+        try {
+          await window.tiger!.writeFile(file, serializeCollectionSettings({ ...kept, ...next }))
+          toast(label)
+        } catch (e) {
+          console.error(e)
+          toast(t('app.toast.saveFailed', { message: (e as Error).message }), { error: true })
+        }
+      })()
     },
     [collections, toast]
   )

@@ -161,13 +161,31 @@ function resolveAuth(
   return auth
 }
 
-/** A Bruno assertion value as a JS literal. */
+/**
+ * A Bruno assertion value as a JS literal. One that holds `{{variables}}` is
+ * interpolated when the test runs, then read the way Bruno reads it (a number
+ * as a number, `true` as a boolean), so `eq {{expectedStatus}}` compares to
+ * 200 and not to the text "{{expectedStatus}}".
+ */
 function literal(raw: string): string {
   const v = raw.trim()
+  if (v.includes('{{')) return `bruValue(${JSON.stringify(v)})`
   if (/^-?\d+(\.\d+)?$/.test(v) || v === 'true' || v === 'false' || v === 'null') return v
   if (/^(['"`]).*\1$/.test(v)) return v
   return JSON.stringify(v)
 }
+
+/** Runtime half of `literal` for interpolated values; defined once per converted script. */
+const BRU_VALUE =
+  'function bruValue(raw) {\n' +
+  '  var v = bru.interpolate(raw).trim();\n' +
+  '  if (/^-?\\d+(\\.\\d+)?$/.test(v)) return Number(v);\n' +
+  "  if (v === 'true') return true;\n" +
+  "  if (v === 'false') return false;\n" +
+  "  if (v === 'null') return null;\n" +
+  '  var q = /^([\'"`])([\\s\\S]*)\\1$/.exec(v);\n' +
+  '  return q ? q[2] : v;\n' +
+  '}'
 
 const ASSERT_OPS: Record<string, (x: string, v: string) => string> = {
   eq: (x, v) => `expect(${x}).to.eql(${literal(v)})`,
@@ -216,23 +234,28 @@ export function assertionsToScript(content: string): { script?: string; skipped:
     const label = JSON.stringify(`${kv.name}: ${kv.value}`)
     lines.push(`test(${label}, function () {\n  ${build(target, rest.join(' '))}\n})`)
   }
-  return { script: lines.length ? `// Converted from Bruno assertions\n${lines.join('\n')}` : undefined, skipped }
+  if (!lines.length) return { script: undefined, skipped }
+  const helper = lines.some((l) => l.includes('bruValue(')) ? [BRU_VALUE] : []
+  return { script: ['// Converted from Bruno assertions', ...helper, ...lines].join('\n'), skipped }
 }
 
 /**
- * Bruno file rows are `@file(path)` (or `@file(a|b)`); Tiger uses `@file:path`.
- * `resolveFile` turns a path relative to the collection into one Tiger can open.
+ * Bruno file rows are `@file(path)` (or `@file(a|b)`), optionally followed by
+ * `@contentType(type)`; Tiger uses `@file:path` and picks the type from the
+ * file name. `resolveFile` turns a path relative to the collection into one
+ * Tiger can open.
  */
 function multipartLine(
   kv: KeyValue,
   resolveFile: (path: string) => string
-): { line: string; file?: string; extra: boolean } {
-  const m = kv.value.match(/^@file\((.*)\)$/)
+): { line: string; file?: string; extra: boolean; contentType?: string } {
+  const m = kv.value.match(/^@file\(([^)]*)\)\s*(?:@contentType\(([^)]*)\))?\s*$/)
   const prefix = kv.enabled ? '' : '~'
   if (!m) return { line: keyValueLine(kv), extra: false }
   const files = m[1].split('|').map((f) => f.trim()).filter(Boolean)
   const file = files[0] ? resolveFile(files[0]) : ''
-  return { line: `${prefix}${kv.name}: @file:${file}`, file, extra: files.length > 1 }
+  const contentType = m[2]?.trim()
+  return { line: `${prefix}${kv.name}: @file:${file}`, file, extra: files.length > 1, ...(contentType ? { contentType } : {}) }
 }
 
 /**
@@ -286,6 +309,7 @@ function brunoBody(
             })
           : warning('imports.formFileNone', { field: r.kv.name })
       )
+      if (r.contentType) warn(warning('imports.formFileContentType', { field: r.kv.name, type: r.contentType }))
     }
     return { type, content: rows.map((r) => r.line).join('\n') }
   }

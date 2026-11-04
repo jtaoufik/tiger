@@ -18,7 +18,7 @@ import type {
   ImportedRequest,
   ImportWarning
 } from '../core/import'
-import { warning } from '../core/import/common'
+import { uniqueSiblingNames, warning } from '../core/import/common'
 import { layerCollectionVariables } from '../core/import/report'
 
 /**
@@ -52,6 +52,9 @@ export async function scanDroppedFolder(dir: string, exts: string[]): Promise<{ 
   return { files, brunoRoots }
 }
 
+/** Files found only at the root of a Bruno collection. */
+const BRUNO_MARKERS = new Set(['bruno.json', 'collection.bru'])
+
 async function walkDir(dir: string, allowed: Set<string>, out: string[], brunoRoots?: string[]): Promise<void> {
   let entries
   try {
@@ -61,7 +64,10 @@ async function walkDir(dir: string, allowed: Set<string>, out: string[], brunoRo
     // macOS) is skipped; it used to fail the whole import.
     return
   }
-  if (brunoRoots && entries.some((e) => e.isFile() && e.name === 'bruno.json')) {
+  // A folder with bruno.json or collection.bru, or one holding .bru files
+  // itself, is a Bruno collection: read whole, so its folders stay folders.
+  // Read file by file, each request became a folder named after its file.
+  if (brunoRoots && entries.some((e) => e.isFile() && (BRUNO_MARKERS.has(e.name) || e.name.endsWith('.bru')))) {
     brunoRoots.push(dir)
     return
   }
@@ -232,8 +238,11 @@ export function mergeImports(
   const folders: ImportedFolder[] = []
   const warnings: ImportWarning[] = []
   const globals: KeyValue[] = []
-  for (const item of items) {
-    const { name: prefix } = item
+  // Two files named alike in different folders ("api/collection.json" twice)
+  // must not pour their requests into one folder.
+  const prefixes = uniqueSiblingNames(items.map((i) => i.name))
+  for (const [index, item] of items.entries()) {
+    const prefix = prefixes[index]
     const nest = item !== single
     // Globals apply to everything: they are layered under every environment afterwards.
     const { globals: own, ...rest } = item.result

@@ -80,6 +80,10 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.bearerPrefix':
     'تستخدم مصادقة Bearer البادئة "{prefix}". يرسل Tiger دائمًا "Bearer"؛ أضف ترويسة Authorization بدلًا من ذلك إذا كان الخادم يتطلب "{prefix}".',
   'imports.folderVariables': 'متغيرات المجلد غير مدعومة: {names}. أضفها إلى بيئة.',
+  'imports.notWsdl':
+    'هذا ليس مستند WSDL: لا يحتوي على عنصر <definitions>. احفظ ملف WSDL الخاص بالخدمة (غالبًا عنوان ?wsdl) واستورد ذلك الملف.',
+  'imports.formFileContentType':
+    'حقل النموذج "{field}" يرسل ملفه بنوع {type}. يختار Tiger نوع المحتوى من اسم الملف؛ عيّن Content-Type للجزء يدويًا إذا كان الخادم يحتاج {type}.',
   'imports.folderScripts': 'نُسخت البرامج النصية للمجلد إلى كل طلب في هذا المجلد. عدّلها هناك.',
   'imports.templateTags': 'يستخدم وسوم قوالب لا يستطيع Tiger تشغيلها: {tags}.',
   'imports.templateTagsKept': 'يستخدم وسوم قوالب لا يستطيع Tiger تشغيلها: {tags}. تم الاحتفاظ بها كنص.',

@@ -69,6 +69,10 @@ export const imports: NamespaceCatalog<typeof en> = {
   'imports.bearerPrefix':
     'Bearer प्रमाणीकरण में उपसर्ग "{prefix}" है। Tiger हमेशा "Bearer" भेजता है; अगर सर्वर को "{prefix}" चाहिए तो उसकी जगह Authorization हेडर जोड़ें।',
   'imports.folderVariables': 'फ़ोल्डर वेरिएबल समर्थित नहीं हैं: {names}। उन्हें परिवेश में जोड़ें।',
+  'imports.notWsdl':
+    'यह WSDL दस्तावेज़ नहीं है: इसमें कोई <definitions> तत्व नहीं है। सेवा का WSDL (अक्सर ?wsdl पता) सहेजें और उस फ़ाइल को आयात करें।',
+  'imports.formFileContentType':
+    'फ़ॉर्म फ़ील्ड "{field}" अपनी फ़ाइल {type} के रूप में भेजता है। Tiger फ़ाइल नाम से सामग्री प्रकार चुनता है; अगर सर्वर को {type} चाहिए तो उस भाग पर Content-Type हाथ से सेट करें।',
   'imports.folderScripts':
     'फ़ोल्डर की स्क्रिप्ट इस फ़ोल्डर के हर अनुरोध में कॉपी की गईं। उन्हें वहीं संपादित करें।',
   'imports.templateTags': 'ऐसे टेम्पलेट टैग इस्तेमाल हुए हैं जिन्हें Tiger नहीं चला सकता: {tags}।',

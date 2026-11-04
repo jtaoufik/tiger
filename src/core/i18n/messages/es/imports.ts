@@ -71,6 +71,10 @@ export const imports: NamespaceCatalog<typeof en> = {
     'La autenticación Bearer usa el prefijo "{prefix}". Tiger siempre envía "Bearer"; añade en su lugar un encabezado Authorization si el servidor necesita "{prefix}".',
   'imports.folderVariables':
     'Las variables de carpeta no son compatibles: {names}. Añádelas a un entorno.',
+  'imports.notWsdl':
+    'Esto no es un documento WSDL: no tiene ningún elemento <definitions>. Guarda el WSDL del servicio (a menudo la dirección ?wsdl) e importa ese archivo.',
+  'imports.formFileContentType':
+    'El campo de formulario "{field}" envía su archivo como {type}. Tiger elige el tipo de contenido a partir del nombre del archivo; establece un Content-Type en la parte a mano si el servidor necesita {type}.',
   'imports.folderScripts':
     'Los scripts de la carpeta se copiaron en cada solicitud de esta carpeta. Edítalos allí.',
   'imports.templateTags': 'Usa etiquetas de plantilla que Tiger no puede ejecutar: {tags}.',

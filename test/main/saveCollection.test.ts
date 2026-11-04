@@ -78,13 +78,14 @@ describe('saving a collection that lived in memory', () => {
       ['', 'Login'],
       ['', 'Health'],
       ['', 'collection'],
-      ['environments 2', 'Inside a folder named environments'],
+      // Folders keep the order the source showed (folder.tiger seq), not alphabetical.
       ['Users', 'Zeta list'],
       ['Users', 'Alpha create'],
       ['Users', 'Alpha create'],
       ['Users', 'alpha CREATE'],
       ['Users', 'folder'],
-      ['Users/Admin- tools', 'CON']
+      ['Users/Admin- tools', 'CON'],
+      ['environments 2', 'Inside a folder named environments']
     ])
   })
 

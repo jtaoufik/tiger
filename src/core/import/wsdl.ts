@@ -195,9 +195,17 @@ function buildSoapRequest(opts: {
 }
 
 export function importWsdl(xml: string): ImportResult {
-  const root = parser.parse(xml)
+  // Text that is not XML at all (JSON, an HTML error page) is not a WSDL
+  // either: say so in the report instead of importing nothing, or throwing
+  // the parser's own message at the user.
+  let root: Node
+  try {
+    root = parser.parse(xml)
+  } catch {
+    root = undefined
+  }
   const definitions = child(root, 'definitions')
-  if (!definitions) return { name: 'WSDL', source: 'wsdl', requests: [] }
+  if (!definitions) return { name: 'WSDL', source: 'wsdl', requests: [], warnings: [{ request: 'WSDL', ...warning('imports.notWsdl') }] }
 
   const targetNs = attr(definitions, 'targetNamespace') ?? ''
   const services = children(definitions, 'service')
