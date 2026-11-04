@@ -88,6 +88,19 @@ describe('list_requests', () => {
     const listed = JSON.parse((await handleListRequests(createFsStore(root))).content[0].text)
     expect(listed).toEqual([{ name: 'List', path: join('admin', 'list.tiger') }])
   })
+
+  it('skips only the root environments folder; a nested one holds requests, as in the app', async () => {
+    const root = collection({
+      'environments/dev.tiger': 'meta {\n  name: Dev\n}\nvars {\n  k: v\n}\n',
+      'Deep/environments/x.tiger': request('Nested'),
+      'get.tiger': request('Get')
+    })
+    const listed = JSON.parse((await handleListRequests(createFsStore(root))).content[0].text)
+    expect(listed).toEqual([
+      { name: 'Nested', path: join('Deep', 'environments', 'x.tiger') },
+      { name: 'Get', path: 'get.tiger' }
+    ])
+  })
 })
 
 describe('run_request auth', () => {

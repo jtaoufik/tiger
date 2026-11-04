@@ -170,7 +170,10 @@ async function isBrunoFolder(dir: string): Promise<boolean> {
   const has = async (name: string) => !!(await stat(join(dir, name)).catch(() => null))
   if ((await has('bruno.json')) || (await has('collection.bru'))) return true
   const entries = await readdir(dir).catch(() => [] as string[])
-  return entries.some((n) => n.endsWith('.bru'))
+  if (entries.some((n) => n.endsWith('.bru'))) return true
+  // Environments live only at a Bruno root (as in importHelpers.ts walkDir).
+  const envs = await readdir(join(dir, 'environments')).catch(() => [] as string[])
+  return envs.some((n) => n.endsWith('.bru'))
 }
 
 const DETECTABLE = ['json', 'yaml', 'yml', 'wsdl', 'xml']

@@ -104,6 +104,11 @@ describe('a response larger than the body limit', () => {
         res.end(gzipSync(Buffer.alloc(1024 * 1024)))
         return true
       }
+      if (req.url === '/deflate-bomb') {
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'deflate' })
+        res.end(deflateSync(Buffer.alloc(1024 * 1024)))
+        return true
+      }
       return false
     }
   })
@@ -120,6 +125,11 @@ describe('a response larger than the body limit', () => {
     setMaxBodyBytes(64 * 1024)
     await expect(
       sendHttp({ method: 'GET', url: `${base}/bomb`, headers: { 'Accept-Encoding': 'gzip' } })
+    ).rejects.toThrow(/larger than/)
+    // A deflate body too: the raw-deflate retry used to turn the refusal into
+    // a 200 whose body was the compressed bytes.
+    await expect(
+      sendHttp({ method: 'GET', url: `${base}/deflate-bomb`, headers: { 'Accept-Encoding': 'deflate' } })
     ).rejects.toThrow(/larger than/)
   })
 })

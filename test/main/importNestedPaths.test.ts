@@ -120,6 +120,22 @@ describe('a Bruno collection folder nested three levels deep', () => {
     const two = await importPaths([await tree({ ...files, 'repo/api/orders/list.bru': bru('List orders', '{{baseUrl}}/orders') })])
     expect(placed(two).sort()).toEqual(['orders: List orders', 'users/Admin tools: Delete user', 'users: Get user'])
   })
+
+  it('keeps a root environments folder with its collection when there is no bruno.json', async () => {
+    // Read as a root of its own, environments/ became a folder of one bogus
+    // request per environment, and {{baseUrl}} resolved nowhere.
+    const files = {
+      'col/environments/Local.bru': 'vars {\n  baseUrl: http://localhost:3000\n}\n',
+      'col/users/get.bru': bru('Get user', '{{baseUrl}}/users/1'),
+      'col/orders/list.bru': bru('List orders', '{{baseUrl}}/orders')
+    }
+    for (const dropped of ['', 'col']) {
+      const result = await importPaths([join(await tree(files), dropped)])
+      expect(result?.name).toBe('col')
+      expect(placed(result).sort()).toEqual(['orders: List orders', 'users: Get user'])
+      expect(result?.environments?.map((e) => e.name)).toEqual(['Local'])
+    }
+  })
 })
 
 describe('importPaths: every way a drop or Open can hand over paths', () => {
@@ -198,6 +214,19 @@ describe('importPaths: every way a drop or Open can hand over paths', () => {
       await chmod(join(saved, 'locked'), 0o000)
       expect(opened((await readOpenedCollection(saved)).requests)).toEqual([': A'])
       await chmod(join(saved, 'locked'), 0o755)
+    }
+  )
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    '(i) the dropped folder itself being unreadable is an error, not "nothing to import"',
+    async () => {
+      const root = await tree({ 'shop.postman_collection.json': postman('Shop') })
+      await chmod(root, 0o000)
+      try {
+        await expect(importPaths([root])).rejects.toThrow(/EACCES/)
+      } finally {
+        await chmod(root, 0o755)
+      }
     }
   )
 })

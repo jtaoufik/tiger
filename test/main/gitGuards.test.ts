@@ -6,7 +6,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { execFile } from 'node:child_process'
-import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -15,7 +15,8 @@ import {
   gitDiscard,
   gitInit,
   gitStatus,
-  gitSync
+  gitSync,
+  nativeGitPath
 } from '../../src/main/git'
 
 for (const key of Object.keys(process.env)) {
@@ -93,6 +94,39 @@ describe('a collection folder inside a larger repository', () => {
     const status = await gitStatus(project)
     expect(status.isRepo).toBe(true)
     expect(status.nestedIn).toBeUndefined()
+  })
+
+  it('reads the top level as MSYS2 and Cygwin git print it on Windows', () => {
+    // Compared as printed, the repository root itself looked nested in another.
+    expect(nativeGitPath('/c/Users/me/api', 'win32')).toBe('c:/Users/me/api')
+    expect(nativeGitPath('/cygdrive/c/work/api', 'win32')).toBe('c:/work/api')
+    expect(nativeGitPath('/d', 'win32')).toBe('d:/')
+    expect(nativeGitPath('C:/work/api', 'win32')).toBe('C:/work/api')
+    expect(nativeGitPath('/c/Users/me/api', 'linux')).toBe('/c/Users/me/api')
+    expect(nativeGitPath('/home/me/api', 'win32')).toBe('/home/me/api')
+  })
+})
+
+describe.skipIf(process.platform === 'win32')('the environment git runs with', () => {
+  it('keeps the ssh command to the user (no GIT_SSH_COMMAND of its own) and disables prompts', async () => {
+    // A `git` first on PATH that records its environment instead of running.
+    const shim = join(base, 'shim')
+    await mkdir(shim)
+    const dump = join(shim, 'env.txt')
+    await writeFile(join(shim, 'git'), `#!/bin/sh\nenv > "${dump}"\nexit 0\n`)
+    await chmod(join(shim, 'git'), 0o755)
+    const path = process.env.PATH
+    process.env.PATH = `${shim}:${path}`
+    try {
+      await gitStatus(base)
+    } finally {
+      process.env.PATH = path
+    }
+    const env = (await readFile(dump, 'utf8')).split('\n')
+    // Setting it overrode the user's core.sshCommand (per-key and agent setups).
+    expect(env.filter((l) => l.startsWith('GIT_SSH'))).toEqual([])
+    expect(env).toContain('GIT_TERMINAL_PROMPT=0')
+    expect(env).toContain('GIT_EDITOR=:')
   })
 })
 

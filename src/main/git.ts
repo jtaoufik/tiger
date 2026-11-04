@@ -101,13 +101,12 @@ function run(
         env: {
           ...process.env,
           GIT_TERMINAL_PROMPT: '0',
-          // No command may wait on an editor or an ssh prompt nobody can see;
-          // the user's own ssh command (GIT_SSH_COMMAND or the older GIT_SSH),
-          // when set, is kept.
-          GIT_EDITOR: ':',
-          ...(process.env.GIT_SSH_COMMAND || process.env.GIT_SSH
-            ? {}
-            : { GIT_SSH_COMMAND: 'ssh -oBatchMode=yes' })
+          // No command may wait on an editor nobody can see. The ssh command is
+          // left to the user's own setup (GIT_SSH_COMMAND, GIT_SSH or
+          // core.sshCommand): setting it here overrode core.sshCommand and broke
+          // per-key and agent setups. A GUI app has no terminal for ssh to
+          // prompt on, and a hung command is killed after `timeoutMs` anyway.
+          GIT_EDITOR: ':'
         }
       },
       (error, stdout, stderr) =>
@@ -244,9 +243,21 @@ export async function gitStatus(root: string): Promise<GitStatus> {
   }
 }
 
+/**
+ * A path as git printed it, in the form Node's fs takes. MSYS2 and Cygwin git
+ * on Windows print `/c/Users/...` or `/cygdrive/c/...` for `--show-toplevel`;
+ * compared as is, every repository looked nested in another.
+ */
+export function nativeGitPath(path: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform !== 'win32') return path
+  const m = /^(?:\/cygdrive)?\/([a-zA-Z])(?=\/|$)(.*)$/.exec(path)
+  return m ? `${m[1]}:${m[2] || '/'}` : path
+}
+
 /** One form of a folder path for comparing: real, forward slashes, no trailing slash, case folded where the disk ignores case. */
 async function comparablePath(path: string): Promise<string> {
-  const real = await realpath(path).catch(() => resolve(path))
+  const native = nativeGitPath(path)
+  const real = await realpath(native).catch(() => resolve(native))
   const slashed = real.replace(/\\/g, '/').replace(/\/+$/, '')
   return process.platform === 'win32' || process.platform === 'darwin' ? slashed.toLowerCase() : slashed
 }

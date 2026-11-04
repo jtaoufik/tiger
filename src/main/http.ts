@@ -372,7 +372,13 @@ async function decodeBody(body: Buffer, contentEncoding: string | undefined): Pr
     for (const coding of codings.reverse()) {
       if (coding === 'gzip' || coding === 'x-gzip') out = await gunzipAsync(out, opts)
       // "deflate" is meant to be zlib-wrapped, but some servers send it raw.
-      else if (coding === 'deflate') out = await inflateAsync(out, opts).catch(() => inflateRawAsync(out, opts))
+      else if (coding === 'deflate')
+        out = await inflateAsync(out, opts).catch((e: NodeJS.ErrnoException) => {
+          // Past the cap is final: retried raw, the bytes would fail to decode
+          // and be shown compressed instead of refused.
+          if (e.code === 'ERR_BUFFER_TOO_LARGE') throw e
+          return inflateRawAsync(out, opts)
+        })
       else if (coding === 'br') out = await brotliDecompressAsync(out, opts)
       else return body
     }
