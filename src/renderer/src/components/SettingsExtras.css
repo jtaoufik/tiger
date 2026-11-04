@@ -164,7 +164,7 @@ h3.settings-group-label {
 
 /* Settings section tabs: selected = filled segment (>= 3:1) + bold. */
 .settings-tabs [role='tab'][aria-selected='true'] {
-  font-weight: 650;
+  font-weight: 600;
 }
 .settings-tabs {
   flex-wrap: wrap;
@@ -176,7 +176,7 @@ h3.settings-group-label {
   align-items: center;
   gap: 6px;
   margin: 14px 0 4px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-dim);
 }
 .settings-intro > span {

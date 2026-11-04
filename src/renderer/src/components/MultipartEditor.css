@@ -10,13 +10,9 @@
   color: var(--accent-text);
   flex-shrink: 0;
 }
-.multipart .mp-value .kv-input {
-  flex: 1;
-  min-width: 0;
-}
 .mp-hint {
   margin-top: 8px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-dim);
 }
 
@@ -30,7 +26,7 @@
 }
 .multipart .mp-value.is-file input[type='text'] {
   color: var(--text);
-  font-weight: 550;
+  font-weight: 500;
 }
 .multipart .mp-pick {
   width: 28px;
@@ -41,6 +37,6 @@
   cursor: not-allowed;
 }
 .multipart .mp-pick:focus-visible {
-  outline: 2px solid var(--tg-focus, var(--focus-ring, #2563eb));
+  outline: var(--focus-width) solid var(--tg-focus, var(--focus-ring, #2563eb));
   outline-offset: 1px;
 }

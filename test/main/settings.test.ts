@@ -25,10 +25,27 @@ const fsMock = {
     return files[p]
   },
   writeFileSync: (p: string, data: string) => {
+    if (diskFull) throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
     files[p] = data
+  },
+  // The atomic write goes through a temporary file renamed into place.
+  renameSync: (from: string, to: string) => {
+    if (!(from in files)) throw new Error('ENOENT')
+    files[to] = files[from]
+    delete files[from]
+  },
+  unlinkSync: (p: string) => {
+    delete files[p]
   }
 }
 vi.mock('node:fs', () => ({ ...fsMock, default: fsMock }))
+let diskFull = false
+const logged = vi.hoisted(() => ({ calls: [] as unknown[][] }))
+vi.mock('../../src/main/resilience', () => ({
+  logMainError: (...args: unknown[]) => {
+    logged.calls.push(args)
+  }
+}))
 
 const PATH = '/userData/settings.json'
 
@@ -40,6 +57,30 @@ async function freshLoad() {
 beforeEach(() => {
   files = {}
   encryptionOn = true
+  diskFull = false
+  logged.calls = []
+})
+
+describe('a profile folder that cannot be written', () => {
+  it('loads defaults on first run and saves in memory without throwing; the failure is logged', async () => {
+    diskFull = true
+    const { loadSettings, saveSettings } = await freshLoad()
+    expect(() => loadSettings()).not.toThrow()
+    expect(loadSettings().timeoutMs).toBe(30000)
+    expect(() => saveSettings({ fontSize: 15 })).not.toThrow()
+    expect(loadSettings().fontSize).toBe(15)
+    expect(files[PATH]).toBeUndefined()
+    expect(Object.keys(files).filter((f) => f.endsWith('.tmp'))).toEqual([])
+    expect(logged.calls.length).toBeGreaterThanOrEqual(2)
+    expect(logged.calls[0][0]).toBe('settings')
+  })
+
+  it('writes through a temporary file, leaving none behind on success', async () => {
+    const { saveSettings } = await freshLoad()
+    saveSettings({ fontSize: 16 })
+    expect(JSON.parse(files[PATH]).fontSize).toBe(16)
+    expect(Object.keys(files)).toEqual([PATH])
+  })
 })
 
 describe('loadSettings parse-error handling', () => {

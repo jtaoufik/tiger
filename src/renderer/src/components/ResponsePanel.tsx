@@ -290,6 +290,13 @@ export function ResponsePanel({ state }: Props) {
             className="meta-chip timing"
             tabIndex={timingRows.length ? 0 : undefined}
             aria-describedby={timingRows.length ? `${uid}-timing` : undefined}
+            // A tooltip must be dismissible without moving the pointer (WCAG 1.4.13).
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                e.currentTarget.blur()
+              }
+            }}
           >
             {t('response.meta.time')} <b>{t('response.meta.ms', { ms: t.number(res.timeMs) })}</b>
           </span>

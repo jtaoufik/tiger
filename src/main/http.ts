@@ -75,6 +75,35 @@ export function applyNetworkSettings(): void {
 /** In-flight sends by renderer-chosen key, so the user can cancel them. */
 const inFlight = new Map<string, AbortController>()
 
+/**
+ * The most response bytes one send keeps. Both hops buffer the whole body in
+ * memory, then text, base64 and the IPC copy multiply it: a larger download
+ * used to take the main process (or the window) down with it. The same limit
+ * bounds what a compressed body may decode to.
+ */
+export const MAX_BODY_BYTES = 100 * 1024 * 1024
+let maxBodyBytes = MAX_BODY_BYTES
+
+/** Tests only: a cap small enough for a loopback server to pass. */
+export function setMaxBodyBytes(bytes: number): void {
+  maxBodyBytes = bytes
+}
+
+function tooLargeError(): Error {
+  return new Error(mainT('main.http.tooLarge', { limit: Math.max(1, Math.round(maxBodyBytes / (1024 * 1024))) }))
+}
+
+/** Send and timeout values the renderer (or a hand-edited settings.json) may get wrong. */
+const MIN_TIMEOUT_MS = 1_000
+const MAX_TIMEOUT_MS = 60 * 60_000
+
+/** A usable send timeout: a NaN, zero or negative one used to abort every send at once. */
+export function clampTimeout(ms: unknown): number {
+  const n = typeof ms === 'number' ? ms : Number(ms)
+  if (!Number.isFinite(n)) return 30000
+  return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Math.round(n)))
+}
+
 export function cancelSend(key: string): boolean {
   const controller = inFlight.get(key)
   if (!controller) return false
@@ -279,7 +308,17 @@ function chromiumHop(
     req.on('response', (res) => {
       const headersAt = Date.now()
       const chunks: Buffer[] = []
-      res.on('data', (chunk: Buffer) => chunks.push(chunk))
+      let received = 0
+      res.on('data', (chunk: Buffer) => {
+        received += chunk.length
+        if (received > maxBodyBytes) {
+          done()
+          req.abort()
+          reject(tooLargeError())
+          return
+        }
+        chunks.push(chunk)
+      })
       res.on('end', () => {
         done()
         resolve({
@@ -326,17 +365,20 @@ async function decodeBody(body: Buffer, contentEncoding: string | undefined): Pr
     .map((c) => c.trim().toLowerCase())
     .filter((c) => c && c !== 'identity')
   if (!codings.length || !body.length) return body
+  // A small compressed body may decode to gigabytes; it is refused like a large plain one.
+  const opts = { maxOutputLength: maxBodyBytes }
   let out = body
   try {
     for (const coding of codings.reverse()) {
-      if (coding === 'gzip' || coding === 'x-gzip') out = await gunzipAsync(out)
+      if (coding === 'gzip' || coding === 'x-gzip') out = await gunzipAsync(out, opts)
       // "deflate" is meant to be zlib-wrapped, but some servers send it raw.
-      else if (coding === 'deflate') out = await inflateAsync(out).catch(() => inflateRawAsync(out))
-      else if (coding === 'br') out = await brotliDecompressAsync(out)
+      else if (coding === 'deflate') out = await inflateAsync(out, opts).catch(() => inflateRawAsync(out, opts))
+      else if (coding === 'br') out = await brotliDecompressAsync(out, opts)
       else return body
     }
     return out
-  } catch {
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE') throw tooLargeError()
     return body
   }
 }
@@ -395,22 +437,38 @@ function nodeHop(
     const req = requester(url, options, (res) => {
       const headersAt = Date.now()
       const chunks: Buffer[] = []
-      res.on('data', (chunk: Buffer) => chunks.push(chunk))
+      let received = 0
+      let tooLarge = false
+      res.on('data', (chunk: Buffer) => {
+        received += chunk.length
+        if (received > maxBodyBytes) {
+          tooLarge = true
+          reject(tooLargeError())
+          req.destroy()
+          return
+        }
+        chunks.push(chunk)
+      })
       res.on('end', async () => {
+        if (tooLarge) return
         const location = res.headers.location
-        resolve({
-          status: res.statusCode ?? 0,
-          statusText: res.statusMessage ?? '',
-          ...joinHeaders(res.headers),
-          ...(location ? { location } : {}),
-          body: await decodeBody(Buffer.concat(chunks), res.headers['content-encoding']),
-          headersAt,
-          phases: {
-            ...(dnsAt ? { dns: dnsAt - started } : {}),
-            ...(connectAt && dnsAt ? { tcp: connectAt - dnsAt } : {}),
-            ...(tlsAt && connectAt ? { tls: tlsAt - connectAt } : {})
-          }
-        })
+        try {
+          resolve({
+            status: res.statusCode ?? 0,
+            statusText: res.statusMessage ?? '',
+            ...joinHeaders(res.headers),
+            ...(location ? { location } : {}),
+            body: await decodeBody(Buffer.concat(chunks), res.headers['content-encoding']),
+            headersAt,
+            phases: {
+              ...(dnsAt ? { dns: dnsAt - started } : {}),
+              ...(connectAt && dnsAt ? { tcp: connectAt - dnsAt } : {}),
+              ...(tlsAt && connectAt ? { tls: tlsAt - connectAt } : {})
+            }
+          })
+        } catch (e) {
+          reject(e)
+        }
       })
       res.on('error', reject)
     })
@@ -552,17 +610,17 @@ export async function sendHttp(
   const s = loadSettings()
   const controller = new AbortController()
   if (cancelKey) inFlight.set(cancelKey, controller)
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-  // multipart/form-data: read file rows and assemble the binary body now.
-  let bodyPayload: string | Buffer | undefined = built.body
-  const mp = resolveMultipart(built)
-  if (mp) {
-    built = { ...built, headers: mp.headers }
-    bodyPayload = mp.bodyBytes
-  }
+  const timer = setTimeout(() => controller.abort(), clampTimeout(timeoutMs))
 
   try {
+    // multipart/form-data: read file rows and assemble the binary body now
+    // (inside the try: a missing file must still clear the timer and the key).
+    let bodyPayload: string | Buffer | undefined = built.body
+    const mp = resolveMultipart(built)
+    if (mp) {
+      built = { ...built, headers: mp.headers }
+      bodyPayload = mp.bodyBytes
+    }
     // Imported certificate files need Node's TLS; so do headers Chromium keeps for itself.
     const viaNode = tlsConfigured(s) || chromiumRefuses(built.headers)
     return await exchange(built, bodyPayload, s, controller.signal, viaNode)
@@ -586,6 +644,8 @@ const oauthTokens = new Map<string, { token: string; expiresAt: number }>()
 const OAUTH_DEFAULT_TTL_MS = 5 * 60_000
 /** Renew this long before the server's expiry, so a token never dies in flight. */
 const OAUTH_EXPIRY_MARGIN_MS = 30_000
+/** How long the token endpoint gets to answer. */
+const OAUTH_TIMEOUT_MS = 30_000
 
 function oauthKey(auth: OAuth2, vars: VarMap): string {
   return JSON.stringify([
@@ -614,10 +674,13 @@ export async function getOAuthToken(auth: OAuth2, vars: VarMap): Promise<string>
   })
   if (auth.scope) body.append('scope', interpolate(auth.scope, vars))
 
+  // Send awaits this before the request goes out and Cancel cannot reach it,
+  // so a token endpoint that never answers must not hang the send for good.
   const res = await net.fetch(interpolate(auth.tokenUrl, vars), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
+    body: body.toString(),
+    signal: AbortSignal.timeout(OAUTH_TIMEOUT_MS)
   })
   if (!res.ok) throw new Error(mainT('main.http.tokenStatus', { status: res.status }))
   const json = (await res.json()) as { access_token?: string; expires_in?: number | string }

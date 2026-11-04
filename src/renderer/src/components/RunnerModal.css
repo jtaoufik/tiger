@@ -23,15 +23,15 @@
 }
 .runner-count {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 .runner-summary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 650;
-  font-size: 13px;
+  font-weight: 600;
+  font-size: 0.8125rem;
   white-space: nowrap;
 }
 /* Greens/reds tuned for >= 4.5:1 on the modal glass in both themes. */
@@ -59,7 +59,7 @@
 .runner-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .runner-table thead th {
   position: sticky;
@@ -67,7 +67,7 @@
   z-index: 1;
   padding: 7px 10px;
   text-align: start;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -88,9 +88,9 @@
 }
 .runner-row.pass { background: rgba(44, 163, 106, 0.06); }
 .runner-row.fail { background: rgba(224, 83, 61, 0.07); }
-.runner-row[aria-current='step'] { box-shadow: inset calc(3px * var(--dir-sign)) 0 0 var(--accent); }
+.runner-row[aria-current='step'] { box-shadow: inset calc(3px * var(--dir-sign)) 0 0 var(--accent-fill); }
 .runner-table .runner-name {
-  font-weight: 550;
+  font-weight: 500;
   max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -99,14 +99,14 @@
 .runner-error {
   display: block;
   font-weight: 500;
-  font-size: 12px;
+  font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .runner-num {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   white-space: nowrap;
   color: var(--text-dim);
 }
@@ -119,12 +119,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-weight: 650;
+  font-weight: 600;
   white-space: nowrap;
 }
 .runner-na {
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

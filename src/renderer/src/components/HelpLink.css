@@ -11,7 +11,7 @@
   align-items: center;
   gap: 6px;
   margin: 0 0 10px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-dim);
 }
 .panel-intro > span {

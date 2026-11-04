@@ -53,7 +53,14 @@ export async function scanDroppedFolder(dir: string, exts: string[]): Promise<{ 
 }
 
 async function walkDir(dir: string, allowed: Set<string>, out: string[], brunoRoots?: string[]): Promise<void> {
-  const entries = await readdir(dir, { withFileTypes: true })
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    // A folder the OS protects (a profile junction on Windows, ~/Library on
+    // macOS) is skipped; it used to fail the whole import.
+    return
+  }
   if (brunoRoots && entries.some((e) => e.isFile() && e.name === 'bruno.json')) {
     brunoRoots.push(dir)
     return

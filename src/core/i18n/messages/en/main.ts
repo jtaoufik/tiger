@@ -28,5 +28,6 @@ export const main = {
   'main.export.title': 'Export',
   'main.http.certRead': 'Could not read certificate file: {reason}',
   'main.http.tokenStatus': 'Token endpoint returned {status}',
-  'main.http.tokenMissing': 'Token response had no access_token'
+  'main.http.tokenMissing': 'Token response had no access_token',
+  'main.http.tooLarge': 'The response is larger than {limit} MB and was not kept. Save it with another tool.'
 } as const

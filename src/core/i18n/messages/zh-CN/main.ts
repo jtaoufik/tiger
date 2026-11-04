@@ -30,5 +30,6 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': '导出',
   'main.http.certRead': '无法读取证书文件：{reason}',
   'main.http.tokenStatus': '令牌端点返回了 {status}',
-  'main.http.tokenMissing': '令牌响应中没有 access_token'
+  'main.http.tokenMissing': '令牌响应中没有 access_token',
+  'main.http.tooLarge': '响应超过 {limit} MB，未予保留。请用其他工具保存。'
 }

@@ -20,6 +20,7 @@ import { saveCollectionFiles } from './saveCollection'
 import { readTextFile } from './textFile'
 import type { CollectionFile } from '../core/collectionFiles'
 import { appendHistory, clearHistory, readHistory } from './history'
+import { writeAtomic } from './atomicWrite'
 import { clearCookies } from './cookieJar'
 import {
   applyUpdateSettings,
@@ -180,6 +181,9 @@ function createWindow(): BrowserWindow {
     icon: winIcon,
     backgroundColor: dark ? '#0f1117' : '#eef1f7',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // The traffic lights sit on the centre line of the 51 px title row the
+    // renderer draws; the default position left them above the buttons.
+    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 19 } : undefined,
     // Real OS-level translucency where the platform supports it; the renderer
     // also paints a CSS glass fallback so it looks right everywhere.
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
@@ -357,10 +361,11 @@ function registerIpc(): void {
   ipcMain.handle('tiger:readFile', async (_e, path: string) => readTextFile(path))
 
   ipcMain.handle('tiger:writeFile', async (_e, path: string, content: string) => {
-    const { writeFile, mkdir } = await import('node:fs/promises')
+    const { mkdir } = await import('node:fs/promises')
     const { dirname } = await import('node:path')
     await mkdir(dirname(path), { recursive: true })
-    await writeFile(path, content, 'utf8')
+    // Whole or not at all: a crash mid-save must not leave a truncated request file.
+    await writeAtomic(path, content)
     return true
   })
 

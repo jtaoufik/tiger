@@ -30,5 +30,6 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'Exporter',
   'main.http.certRead': 'Impossible de lire le fichier de certificat : {reason}',
   'main.http.tokenStatus': 'Le point de terminaison du jeton a renvoyé {status}',
-  'main.http.tokenMissing': 'La réponse du jeton ne contenait pas d’access_token'
+  'main.http.tokenMissing': 'La réponse du jeton ne contenait pas d’access_token',
+  'main.http.tooLarge': 'La réponse dépasse {limit} Mo et n’a pas été conservée. Enregistrez-la avec un autre outil.'
 }

@@ -1,8 +1,10 @@
 import { app, safeStorage } from 'electron'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { isLanguageChoice, type LanguageChoice } from '../core/i18n/locales'
+import { writeAtomicSync } from './atomicWrite'
+import { logMainError } from './resilience'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
@@ -164,7 +166,14 @@ function persist(settings: Settings): void {
   for (const field of SECRET_FIELDS) {
     if (typeof onDisk[field] === 'string') onDisk[field] = encryptSecret(onDisk[field])
   }
-  writeFileSync(settingsPath(), JSON.stringify(onDisk, null, 2), 'utf8')
+  // Written whole or not at all (a crash mid-write used to leave a truncated
+  // file). A profile folder that cannot be written is logged, never thrown:
+  // this runs at startup and from window move/resize timers.
+  try {
+    writeAtomicSync(settingsPath(), JSON.stringify(onDisk, null, 2))
+  } catch (e) {
+    logMainError('settings', e)
+  }
 }
 
 export function saveSettings(patch: Partial<Settings>): Settings {

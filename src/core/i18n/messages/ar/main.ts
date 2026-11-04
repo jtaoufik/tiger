@@ -30,5 +30,6 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'تصدير',
   'main.http.certRead': 'تعذرت قراءة ملف الشهادة: {reason}',
   'main.http.tokenStatus': 'أرجعت نقطة نهاية الرمز المميز {status}',
-  'main.http.tokenMissing': 'لا تحتوي استجابة الرمز المميز على access_token'
+  'main.http.tokenMissing': 'لا تحتوي استجابة الرمز المميز على access_token',
+  'main.http.tooLarge': 'حجم الاستجابة يتجاوز {limit} ميغابايت ولم يتم الاحتفاظ بها. احفظها بأداة أخرى.'
 }

@@ -132,10 +132,12 @@ async function exchangeOAuthToken(
   })
   if (auth.scope) body.append('scope', interpolate(auth.scope, vars))
 
+  // A token endpoint that never answers must not hang the tool call for good.
   const res = await fetch(interpolate(auth.tokenUrl, vars), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
+    body: body.toString(),
+    signal: AbortSignal.timeout(30_000)
   })
   if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`)
   const json = (await res.json()) as { access_token?: string }

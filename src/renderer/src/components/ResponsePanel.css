@@ -14,18 +14,18 @@
   background: transparent;
   outline: none;
   color: var(--text);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-family: var(--mono);
 }
 .resp-search-count {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   white-space: nowrap;
 }
 .resp-truncated {
   padding: 7px 12px;
   border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-dim);
   background: var(--code-surface);
 }
@@ -64,7 +64,9 @@
 .timing-wrap .meta-chip.timing { cursor: help; }
 .timing-pop {
   position: absolute;
-  top: calc(100% + 7px);
+  /* Starts flush under the chip; the 7 px gap is the popover's own padding, so
+     the pointer can cross it without leaving :hover (WCAG 1.4.13). */
+  top: 100%;
   inset-inline-start: 0;
   z-index: 60;
   display: none;
@@ -72,11 +74,18 @@
   gap: 3px;
   min-width: 190px;
   padding: 10px 12px;
+  margin-top: 7px;
   border-radius: 10px;
   background: var(--glass-modal);
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow);
-  font-size: 12px;
+  font-size: 0.75rem;
+}
+.timing-pop::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 auto 0;
+  height: 8px;
 }
 .timing-wrap:hover .timing-pop { display: flex; }
 .timing-row {
@@ -91,7 +100,7 @@
   padding-top: 5px;
   border-top: 1px solid var(--border);
   color: var(--text);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 /* ---------- Layout: status line, then tabs + body tools ---------- */
@@ -138,15 +147,16 @@
 .resp-error-text {
   max-width: 560px;
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-dim);
   overflow-wrap: anywhere;
+  user-select: text; /* copy the error into a search or a ticket */
 }
 
 /* Timing popover also opens on keyboard focus. */
 .timing-wrap:focus-within .timing-pop { display: flex; }
 .timing-wrap .meta-chip.timing:focus-visible {
-  outline: 2px solid var(--tg-focus);
+  outline: var(--focus-width) solid var(--tg-focus);
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -173,7 +183,7 @@
 
 /* ---------- Focus ---------- */
 .panel.response :is(button, [role='tab'], .response-body, iframe):focus-visible {
-  outline: 2px solid var(--tg-focus);
+  outline: var(--focus-width) solid var(--tg-focus);
   outline-offset: 2px;
 }
 .panel.response .response-body:focus-visible {
@@ -238,14 +248,14 @@
 .resp-empty-body {
   font-family: var(--sans);
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 /* ---------- Tests ---------- */
 .resp-test-summary {
   font-family: var(--sans);
-  font-weight: 650;
-  font-size: 12.5px;
+  font-weight: 600;
+  font-size: 0.78125rem;
   margin-bottom: 6px;
 }
 .resp-tests {

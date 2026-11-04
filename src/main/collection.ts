@@ -53,7 +53,15 @@ interface ListedFile {
 
 /** Every request file and folder.tiger under `dir`, with its folder path relative to `root`. */
 async function listRequestFiles(root: string, dir: string): Promise<ListedFile[]> {
-  const entries = await readdir(dir, { withFileTypes: true })
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch (e) {
+    // One subfolder Tiger may not read (permissions, a broken junction) used to
+    // hide the whole collection. The root itself must still fail loudly.
+    if (dir === root) throw e
+    return []
+  }
   const files: ListedFile[] = []
   const subdirs: string[] = []
   const rel = relative(root, dir)
@@ -61,7 +69,9 @@ async function listRequestFiles(root: string, dir: string): Promise<ListedFile[]
   for (const entry of entries) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) {
-      if (entry.name === ENVIRONMENTS_DIR || entry.name.startsWith('.')) continue
+      // Only the root's environments folder holds environments: a nested
+      // folder of that name is a folder of requests like any other.
+      if ((dir === root && entry.name === ENVIRONMENTS_DIR) || entry.name.startsWith('.')) continue
       subdirs.push(full)
     } else if (entry.isFile() && entry.name === 'folder.tiger') {
       if (folder.length) files.push({ full, folder, kind: 'folder' })
@@ -90,20 +100,35 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return out
 }
 
+/** Each folder's `seq` from its folder.tiger, by folder path ('/'-joined). */
+type FolderSeqs = Map<string, number>
+
+const NO_SEQ = Number.MAX_SAFE_INTEGER
+
 /**
  * Requests in folder order, then in their `seq` order (the order the source
- * tool showed, kept when an import is saved), then by name.
+ * tool showed, kept when an import is saved), then by name. Sibling folders
+ * follow their own `seq` (kept in folder.tiger by a saved import), then their
+ * name, so the sidebar shows them as the source tool did.
  */
-function byFolderSeqName(a: RequestEntry, b: RequestEntry): number {
-  return (
-    a.folder.join('/').localeCompare(b.folder.join('/')) ||
-    (a.seq ?? Number.MAX_SAFE_INTEGER) - (b.seq ?? Number.MAX_SAFE_INTEGER) ||
-    a.name.localeCompare(b.name) ||
-    a.path.localeCompare(b.path)
-  )
+function byFolderSeqName(seqs: FolderSeqs): (a: RequestEntry, b: RequestEntry) => number {
+  const folderSeq = (folder: string[], depth: number) => seqs.get(folder.slice(0, depth + 1).join('/')) ?? NO_SEQ
+  return (a, b) => {
+    const depth = Math.min(a.folder.length, b.folder.length)
+    for (let i = 0; i < depth; i++) {
+      if (a.folder[i] === b.folder[i]) continue
+      return folderSeq(a.folder, i) - folderSeq(b.folder, i) || a.folder[i].localeCompare(b.folder[i])
+    }
+    return (
+      a.folder.length - b.folder.length ||
+      (a.seq ?? NO_SEQ) - (b.seq ?? NO_SEQ) ||
+      a.name.localeCompare(b.name) ||
+      a.path.localeCompare(b.path)
+    )
+  }
 }
 
-async function readRequests(files: ListedFile[]): Promise<RequestEntry[]> {
+async function readRequests(files: ListedFile[], seqs: FolderSeqs): Promise<RequestEntry[]> {
   // Reads used to be awaited one file at a time; a 2,000-request collection
   // spent most of its open time waiting on the disk serially.
   const requests = files.filter((f) => f.kind === 'request')
@@ -112,25 +137,32 @@ async function readRequests(files: ListedFile[]): Promise<RequestEntry[]> {
     path: norm(full),
     folder
   }))
-  return acc.sort(byFolderSeqName)
+  return acc.sort(byFolderSeqName(seqs))
 }
 
 export async function readCollection(root: string): Promise<RequestEntry[]> {
-  return readRequests(await listRequestFiles(root, root))
+  const files = await listRequestFiles(root, root)
+  const { seqs } = await readFolderFiles(files)
+  return readRequests(files, seqs)
 }
 
-/** Every folder's auth and docs, so a request inherits its folder's auth from the first send. */
-async function readFolderSettings(files: ListedFile[]): Promise<FolderSettingsEntry[]> {
+/**
+ * Every folder.tiger: the folders' auth and docs (so a request inherits its
+ * folder's auth from the first send) and their order among their siblings.
+ */
+async function readFolderFiles(files: ListedFile[]): Promise<{ folders: FolderSettingsEntry[]; seqs: FolderSeqs }> {
   const folders = files.filter((f) => f.kind === 'folder')
+  const seqs: FolderSeqs = new Map()
   const parsed = await mapLimit(folders, READ_CONCURRENCY, async ({ full, folder }) => {
     try {
       const settings = parseCollectionSettings(await readTextFile(full))
+      if (settings.seq !== undefined) seqs.set(folder.join('/'), settings.seq)
       return { folder, ...(settings.auth ? { auth: settings.auth } : {}), ...(settings.docs ? { docs: settings.docs } : {}) }
     } catch {
       return { folder }
     }
   })
-  return parsed.filter((f) => f.auth || f.docs)
+  return { folders: parsed.filter((f) => f.auth || f.docs), seqs }
 }
 
 export interface EnvironmentRef {
@@ -184,12 +216,13 @@ export async function readOpenedCollection(root: string): Promise<OpenedCollecti
     /* optional file */
   }
   const files = await listRequestFiles(root, root)
+  const { folders, seqs } = await readFolderFiles(files)
   return {
     root: norm(root),
     name: basename(root),
-    requests: await readRequests(files),
+    requests: await readRequests(files, seqs),
     environments: await readEnvironments(root),
     settings,
-    folders: await readFolderSettings(files)
+    folders
   }
 }

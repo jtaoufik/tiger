@@ -38,7 +38,7 @@
   border: 1.5px solid var(--accent-fill);
   color: var(--accent-text);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .welcome-step.done .welcome-step-num {
   background: var(--accent-solid);
@@ -54,7 +54,7 @@
   min-width: 0;
 }
 .welcome-step-text .t {
-  font-weight: 650;
+  font-weight: 600;
   font-size: 0.875rem;
 }
 .welcome-step-text .d {
@@ -110,7 +110,7 @@
   gap: 8px;
 }
 .welcome-switch-name {
-  font-weight: 650;
+  font-weight: 600;
   font-size: 0.875rem;
 }
 .welcome-switch-head .btn {

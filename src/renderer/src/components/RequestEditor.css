@@ -21,7 +21,7 @@
 }
 
 .gql-vars-label {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-dim);
@@ -49,7 +49,7 @@
 }
 .panel.editor .body-tool {
   padding: 5px 11px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   min-height: 28px;
 }
 .panel.editor .body-copy {
@@ -58,7 +58,7 @@
 }
 .body-empty {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 0.8125rem;
   padding: 6px 2px;
 }
 
@@ -71,7 +71,7 @@
   margin-inline-start: 2px;
   padding: 0 5px;
   border-radius: 99px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 700;
   line-height: 16px;
   text-align: center;
@@ -90,7 +90,7 @@
 .panel.editor .icon-btn:focus-visible,
 .panel.editor .btn:focus-visible,
 .panel.editor .seg button:focus-visible {
-  outline: 2px solid var(--tg-focus);
+  outline: var(--focus-width) solid var(--tg-focus);
   outline-offset: 2px;
 }
 /* Inside the tab strip, so the strip never cuts the ring. */
@@ -98,23 +98,23 @@
   outline-offset: -2px;
 }
 .panel.editor .tab-body:focus-visible {
-  outline: 2px solid var(--tg-focus);
+  outline: var(--focus-width) solid var(--tg-focus);
   outline-offset: -2px;
 }
 .panel.editor .url-input:focus-visible,
 .panel.editor .method-select:focus-visible,
 .panel.editor .field input:focus-visible,
 .panel.editor .field select:focus-visible {
-  outline: 2px solid var(--tg-focus);
+  outline: var(--focus-width) solid var(--tg-focus);
   outline-offset: 1px;
 }
 .panel.editor .req-name:focus-visible {
-  outline: 2px solid var(--tg-focus);
+  outline: var(--focus-width) solid var(--tg-focus);
   outline-offset: 2px;
   border-radius: 4px;
 }
 .panel.editor .code-area:focus-visible {
-  outline: 2px solid var(--tg-focus);
+  outline: var(--focus-width) solid var(--tg-focus);
   outline-offset: 2px;
   border-radius: 6px;
 }

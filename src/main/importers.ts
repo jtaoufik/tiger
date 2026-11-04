@@ -136,7 +136,15 @@ async function importBrunoFolder(): Promise<ImportResult | null> {
 export async function readBrunoFolder(root: string): Promise<ImportResult> {
   const files: BrunoFile[] = []
   const collect = async (dir: string): Promise<void> => {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch (e) {
+      // One protected subfolder is skipped; the collection folder itself must be readable.
+      if (dir === root) throw e
+      return
+    }
+    for (const entry of entries) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
         if (!entry.name.startsWith('.') && entry.name !== 'node_modules') await collect(full)

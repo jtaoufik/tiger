@@ -30,5 +30,6 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'Exportar',
   'main.http.certRead': 'No se pudo leer el archivo de certificado: {reason}',
   'main.http.tokenStatus': 'El endpoint del token devolvió {status}',
-  'main.http.tokenMissing': 'La respuesta del token no incluía access_token'
+  'main.http.tokenMissing': 'La respuesta del token no incluía access_token',
+  'main.http.tooLarge': 'La respuesta supera los {limit} MB y no se conservó. Guárdala con otra herramienta.'
 }

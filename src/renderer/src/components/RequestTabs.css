@@ -11,10 +11,14 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 0 8px;
-  scrollbar-width: thin;
-  /* A standard scrollbar-width turns off the app's ::-webkit-scrollbar
-     styling, so give the thin bar the app's colors (no grey Windows bar). */
-  scrollbar-color: var(--border-strong) transparent;
+}
+/* A slimmer version of the app scrollbar (styles.css): scrollbar-width would
+   switch this strip to the platform's own bar, different on each OS. */
+.request-tabs::-webkit-scrollbar {
+  height: 7px;
+}
+.request-tabs::-webkit-scrollbar-thumb {
+  border-width: 2px;
 }
 .request-tab {
   display: inline-flex;
@@ -33,7 +37,7 @@
   background: var(--glass);
   color: var(--text-dim);
   font-size: 0.7812rem;
-  font-weight: 550;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
@@ -56,7 +60,7 @@
   outline-offset: -2px;
 }
 .request-tab.active .request-tab-name {
-  font-weight: 650;
+  font-weight: 600;
 }
 .request-tab .method-pill {
   flex-shrink: 0;
@@ -93,10 +97,4 @@
   border-radius: 50%;
   background: var(--accent-fill);
   flex-shrink: 0;
-}
-.request-tab.drop-before {
-  box-shadow: calc(-2px * var(--dir-sign)) 0 0 var(--accent-fill);
-}
-.request-tab.drop-after {
-  box-shadow: calc(2px * var(--dir-sign)) 0 0 var(--accent-fill);
 }

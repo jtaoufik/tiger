@@ -30,5 +30,6 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'निर्यात',
   'main.http.certRead': 'प्रमाणपत्र फ़ाइल पढ़ी नहीं जा सकी: {reason}',
   'main.http.tokenStatus': 'टोकन एंडपॉइंट ने {status} लौटाया',
-  'main.http.tokenMissing': 'टोकन प्रतिसाद में access_token नहीं था'
+  'main.http.tokenMissing': 'टोकन प्रतिसाद में access_token नहीं था',
+  'main.http.tooLarge': 'प्रतिसाद {limit} MB से बड़ा है और उसे रखा नहीं गया। उसे किसी अन्य टूल से सहेजें।'
 }
