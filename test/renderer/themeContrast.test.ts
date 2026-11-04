@@ -62,6 +62,62 @@ describe('dark theme before the attribute is set', () => {
   })
 })
 
+describe('high contrast before the attribute is set', () => {
+  // The slice of the file inside @media (prefers-contrast: more).
+  const start = styles.indexOf('@media (prefers-contrast: more) {')
+  // Comments stripped: the block's own comment names the old selector.
+  const hc = styles.slice(start, styles.indexOf('\n}\n', start)).replace(/\/\*[\s\S]*?\*\//g, '')
+  const declarations = (css: string) =>
+    css
+      .split('\n')
+      .slice(1)
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('--'))
+  const rule = (selector: string) => {
+    const i = hc.indexOf(`${selector} {`)
+    if (i === -1) throw new Error(`no ${selector} rule in the high-contrast block`)
+    return hc.slice(i, hc.indexOf('\n  }', i))
+  }
+
+  it('does not let the light tokens match the attribute-less first frame on a dark OS', () => {
+    // :root:not([data-theme='dark']) has the same specificity as the dark
+    // first-frame block and comes later, so it used to override it.
+    expect(hc).not.toContain(":not([data-theme='dark'])")
+    expect(hc).toMatch(/@media \(prefers-color-scheme: light\) \{\s*:root:not\(\[data-theme\]\) \{/)
+    expect(hc.indexOf(":root[data-theme='light'] {")).toBeLessThan(hc.indexOf(":root:not([data-theme]) {"))
+  })
+
+  it('declares the same light tokens for data-theme=light and the attribute-less light frame', () => {
+    expect(declarations(rule(':root:not([data-theme])'))).toEqual(declarations(rule(":root[data-theme='light']")))
+    expect(declarations(rule(":root[data-theme='light']")).length).toBeGreaterThan(0)
+  })
+})
+
+describe('crash panel (ErrorBoundary.css)', () => {
+  const crash = readFileSync(join(SRC, 'ErrorBoundary.css'), 'utf8')
+  const used = [...new Set([...crash.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]))]
+
+  it('only references tokens that styles.css declares', () => {
+    // It once used --bg/--panel, which do not exist: white surfaces under the
+    // dark theme's light text.
+    for (const name of used) expect(styles, name).toMatch(new RegExp(`\\n\\s*${name}:`))
+  })
+
+  it('takes its surfaces and text from tokens that flip with the theme', () => {
+    const themed = ['--bg-1', '--glass-strong-solid', '--code-surface-solid', '--text', '--text-dim', '--border']
+    for (const name of themed) {
+      expect(used, name).toContain(name)
+      for (const [theme, css] of Object.entries(themes)) expect(css, `${name} in ${theme}`).toContain(`${name}:`)
+    }
+    for (const [theme, css] of Object.entries(themes)) {
+      const panel = token(css, '--glass-strong-solid')
+      expect(contrast(token(css, '--text'), panel), `${theme} text on the panel`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(token(css, '--text-dim'), panel), `${theme} dim text on the panel`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(token(css, '--text'), token(css, '--bg-1')), `${theme} text on the page`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+})
+
 describe('text on the orange accent', () => {
   for (const [theme, css] of Object.entries(themes)) {
     it(`is light text on a deep orange in the ${theme} theme, at least 4.5:1 (hover included)`, () => {

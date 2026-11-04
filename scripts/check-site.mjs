@@ -191,6 +191,27 @@ const readme = readFileSync(join(ROOT, '..', 'README.md'), 'utf8')
 for (const m of readme.matchAll(/Version ([0-9]+\.[0-9]+\.[0-9]+)/g)) {
   if (m[1] !== pkgVersion) fail('README.md', `says ${m[1]}, package.json says ${pkgVersion}`)
 }
+// Generic sweep: any other 0.x.y on any page is a stale release number (the
+// Postman alternatives page said 0.7.0 after 0.8.1 shipped) unless it is one
+// of these historical mentions, matched precisely so a new stray number is
+// not waved through. <pre>/<code> (file names, commands) and comments are
+// skipped like the link check does.
+const HISTORICAL = [
+  /\b(?:new|added|starting|import) in (?:version )?0\.4\.0\b/gi,
+  /\b(?:since|as of) 0\.4\.0\b/g,
+  /\bTiger 0\.4\.0 (?:added|or later)\b/g
+]
+for (const [file, html] of pages) {
+  const prose = html
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<pre[\s\S]*?<\/pre>/g, '')
+    .replace(/<code[\s\S]*?<\/code>/g, '')
+    .replace(/\s+/g, ' ')
+  const rest = HISTORICAL.reduce((s, re) => s.replace(re, ''), prose)
+  for (const m of rest.matchAll(/\bv?(0\.[0-9]+\.[0-9]+)\b/g)) {
+    if (m[1] !== pkgVersion) fail(relative(ROOT, file), `says ${m[1]}, package.json says ${pkgVersion}`)
+  }
+}
 
 for (const w of warnings) console.log('warn ', w)
 for (const e of errors) console.log('FAIL ', e)

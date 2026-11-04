@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
@@ -89,5 +91,21 @@ describe('Resizer pointer', () => {
     // Releasing capture after the cancel does not end the drag a second time.
     fireEvent(el, new Event('lostpointercapture'))
     expect(onEnd).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Resizer grab zone', () => {
+  it('overhangs the sidebar (and editor) side by at most 4 px, so the scrollbar thumb stays clickable', () => {
+    // jsdom does not resolve pseudo-element styles, so read the sheet. The
+    // tree's scrollbar is 11 px wide right inside the sidebar's 1 px border and
+    // its thumb has a 3 px transparent fringe: more than 4 px covers the thumb.
+    const styles = readFileSync(join(__dirname, '../../src/renderer/src/styles.css'), 'utf8')
+    const col = styles.match(/\.resizer\.col::before \{([^}]*)\}/)?.[1] ?? ''
+    const row = styles.match(/\.resizer\.row::before \{([^}]*)\}/)?.[1] ?? ''
+    expect(col).toMatch(/inset-inline-start:\s*-4px/)
+    expect(row).toMatch(/inset-block-start:\s*-4px/)
+    // Still a 24 px target across the 6 px track: 4 + 6 + 14.
+    expect(col).toMatch(/inset-inline-end:\s*-14px/)
+    expect(row).toMatch(/inset-block-end:\s*-14px/)
   })
 })

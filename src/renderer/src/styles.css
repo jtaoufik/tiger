@@ -1127,14 +1127,18 @@ textarea {
 .resizer:hover::after,
 .resizer:focus-visible::after { opacity: 1; }
 /* Invisible grab area: 24 px across the 6 px track (WCAG 2.5.8; pointer
-   hit-testing counts pseudo-elements). It overlaps the panels' edges only,
-   their scrollbars sit 11 px further in. */
+   hit-testing counts pseudo-elements). The sidebar tree's 11 px scrollbar sits
+   directly inside its 1 px border on the resizer side (LTR and RTL), and its
+   thumb has a 3 px transparent fringe, so at most 4 px may overlap there or the
+   thumb stops being clickable. The rest of the width goes over the main panel
+   (and, for the row splitter, the response panel), whose scrollbars are on
+   the far edge. */
 .resizer::before {
   content: "";
   position: absolute;
 }
-.resizer.col::before { inset: 0 -9px; }
-.resizer.row::before { inset: -9px 0; }
+.resizer.col::before { inset-block: 0; inset-inline-start: -4px; inset-inline-end: -14px; }
+.resizer.row::before { inset-inline: 0; inset-block-start: -4px; inset-block-end: -14px; }
 .resizer:focus-visible {
   outline: none;
 }
@@ -1886,7 +1890,12 @@ optgroup {
 
 /* More contrast: near-opaque glass, stronger borders and text, thicker ring. */
 @media (prefers-contrast: more) {
-  :root:not([data-theme='dark']) {
+  /* Not :root:not([data-theme='dark']): that also matched the attribute-less
+     first frame on a dark OS and overrode the dark first-frame block above
+     (same specificity, later in the file), painting light glass and near-black
+     text over the dark body. Like the first-frame block, the attribute-less
+     case follows the OS scheme (a test keeps both lists equal). */
+  :root[data-theme='light'] {
     --glass: rgba(255, 255, 255, 0.94);
     --glass-strong: #ffffff;
     --glass-hover: #ffffff;
@@ -1898,6 +1907,21 @@ optgroup {
     --text-dim: #2c3550;
     --text-faint: #37405a;
     --focus-ring: #8a3300;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --glass: rgba(255, 255, 255, 0.94);
+      --glass-strong: #ffffff;
+      --glass-hover: #ffffff;
+      --glass-modal: #ffffff;
+      --border: rgba(20, 28, 56, 0.42);
+      --border-strong: rgba(20, 28, 56, 0.62);
+      --control-border: rgba(20, 28, 56, 0.8);
+      --text: #0b1020;
+      --text-dim: #2c3550;
+      --text-faint: #37405a;
+      --focus-ring: #8a3300;
+    }
   }
   /* :root[...] (0,2,0): outranks the first-frame dark block. */
   :root[data-theme='dark'] {

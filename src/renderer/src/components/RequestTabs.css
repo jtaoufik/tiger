@@ -98,3 +98,12 @@
   background: var(--accent-fill);
   flex-shrink: 0;
 }
+/* Drop-position bar while dragging a tab. RequestTabs.tsx builds the class
+   name dynamically (`drop-${drop.side}`), so a grep for the literal does not
+   find it: not dead CSS. */
+.request-tab.drop-before {
+  box-shadow: calc(-2px * var(--dir-sign)) 0 0 var(--accent-fill);
+}
+.request-tab.drop-after {
+  box-shadow: calc(2px * var(--dir-sign)) 0 0 var(--accent-fill);
+}
