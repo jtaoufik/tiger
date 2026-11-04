@@ -49,7 +49,17 @@ export async function startLoopback(route: Route = () => false): Promise<Loopbac
       res.end(JSON.stringify({ method: seen.method, url: seen.url, cookie: req.headers.cookie ?? null }))
     })
   })
-  await new Promise<void>((r) => server.listen(0, '::', r))
+  // Both stacks when the machine has IPv6; IPv4 alone where it is turned off
+  // (containers, some Windows and Linux setups), or the suite cannot start.
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', (e: NodeJS.ErrnoException) => {
+      if (e.code !== 'EAFNOSUPPORT' && e.code !== 'EADDRNOTAVAIL') return reject(e)
+      server.removeAllListeners('error')
+      server.once('error', reject)
+      server.listen(0, '127.0.0.1', resolve)
+    })
+    server.listen(0, '::', resolve)
+  })
   const port = (server.address() as AddressInfo).port
   return {
     url: `http://127.0.0.1:${port}`,
