@@ -676,7 +676,7 @@ app.whenReady().then(() => {
     if (process.platform === 'darwin' && !app.isPackaged && !headless) {
       setImmediate(() => {
         try {
-          app.dock.setIcon(join(__dirname, '../../build/icon.png'))
+          app.dock?.setIcon(join(__dirname, '../../build/icon.png'))
         } catch {
           /* missing icon asset must not block startup */
         }
