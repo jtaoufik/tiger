@@ -33,13 +33,26 @@ function sha512(file) {
   })
 }
 
-function rebuildBlockmap(file) {
+async function rebuildBlockmap(file) {
   const blockmap = `${file}.blockmap`
   if (!existsSync(blockmap)) return
-  const { appBuilderPath } = require('app-builder-bin')
-  execFileSync(appBuilderPath, ['blockmap', '--input', file, '--output', blockmap], {
-    stdio: ['ignore', 'ignore', 'inherit']
-  })
+  // electron-builder 26 builds block maps in JavaScript (app-builder-lib);
+  // older versions shipped the app-builder Go binary (app-builder-bin). The
+  // DMGs and zips get the default chunking either way, the same as the build.
+  let buildBlockMap
+  try {
+    ;({ buildBlockMap } = require('app-builder-lib/out/targets/blockmap/blockmap'))
+  } catch {
+    /* electron-builder before 26 */
+  }
+  if (buildBlockMap) {
+    await buildBlockMap(file, 'gzip', blockmap)
+  } else {
+    const { appBuilderPath } = require('app-builder-bin')
+    execFileSync(appBuilderPath, ['blockmap', '--input', file, '--output', blockmap], {
+      stdio: ['ignore', 'ignore', 'inherit']
+    })
+  }
   console.log(`rebuilt ${basename(blockmap)}`)
 }
 
@@ -79,7 +92,7 @@ for (const file of files) {
     changed++
     doc.set('sha512', hash)
   }
-  rebuildBlockmap(file)
+  await rebuildBlockmap(file)
   console.log(`${name}: sha512 ${hash.slice(0, 16)}… size ${size}`)
 }
 
