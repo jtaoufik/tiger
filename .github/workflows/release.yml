@@ -284,6 +284,24 @@ jobs:
           ls -la
 
 
+      # A build started by hand (Actions > Release > Run workflow, on any branch)
+      # is for trying a build out before a release: its installers are kept as
+      # workflow artifacts for two weeks instead of being attached to a release.
+      - name: Upload installers as workflow artifacts (manual runs)
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiger-${{ matrix.os }}
+          path: |
+            release/*.dmg
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.zip
+            release/*.tar.gz
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Generate release notes
         if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
         run: node scripts/release-notes.mjs "${{ github.ref_name }}" > release-notes.md
