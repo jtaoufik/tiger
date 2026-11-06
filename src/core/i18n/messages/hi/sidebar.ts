@@ -28,6 +28,8 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.row.deleteRequest': 'अनुरोध हटाएँ',
   'sidebar.row.duplicateFolder': 'फ़ोल्डर की प्रतिलिपि बनाएँ',
   'sidebar.row.closeCollection': 'संग्रह बंद करें',
+  'sidebar.unsaved.badge': 'सहेजा नहीं गया',
+  'sidebar.unsaved.title': '{name} सहेजा नहीं गया है और Tiger बंद होने पर खो जाएगा। इसे फ़ोल्डर में सहेजें',
   'sidebar.sync.label': 'टीम सिंक: {label}',
   'sidebar.sync.title': 'टीम सिंक: {label}। {detail}',
   'sidebar.foot': 'Tiger · लोकल-फ़र्स्ट API क्लाइंट',

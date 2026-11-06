@@ -26,6 +26,8 @@ export const sidebar = {
   'sidebar.row.deleteRequest': 'Delete request',
   'sidebar.row.duplicateFolder': 'Duplicate folder',
   'sidebar.row.closeCollection': 'Close collection',
+  'sidebar.unsaved.badge': 'Not saved',
+  'sidebar.unsaved.title': '{name} is not saved and is lost when Tiger closes. Save it to a folder',
   'sidebar.sync.label': 'Team sync: {label}',
   'sidebar.sync.title': 'Team sync: {label}. {detail}',
   'sidebar.foot': 'Tiger · local-first API client',

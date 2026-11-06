@@ -5,7 +5,7 @@
  * like NTFS does on Windows (asserted first).
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -146,5 +146,70 @@ describe('a second launch', () => {
   it('brings the running window forward', () => {
     appEvents.get('second-instance')!({}, [], '')
     expect(window.restore).toHaveBeenCalled()
+  })
+})
+
+describe('Save to a folder', () => {
+  const files = [
+    { path: 'collection.tiger', content: 'meta {\n  name: Shop\n}\n' },
+    { path: 'Get.tiger', content: 'meta {\n  name: Get\n}\nget {\n  url: https://shop.test\n}\n' }
+  ]
+  const save = (name = 'Shop') => handlers.get('tiger:saveCollectionTo')!({}, name, files) as Promise<{ root: string } | null>
+
+  it('writes straight into an empty folder the user picked', async () => {
+    const dir = await mkdtemp(join(root, 'empty-'))
+    dialog.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [dir] })
+    const opened = await save()
+    expect(opened?.root.replace(/\\/g, '/')).toBe(dir.replace(/\\/g, '/'))
+    expect(readdirSync(dir).sort()).toEqual(['Get.tiger', 'collection.tiger'])
+  })
+
+  it('never writes over a folder with files: it offers a subfolder named after the collection', async () => {
+    const dir = await mkdtemp(join(root, 'busy-'))
+    await writeFile(join(dir, 'Get.tiger'), 'mine')
+    dialog.showMessageBox.mockClear()
+    dialog.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [dir] })
+    dialog.showMessageBox.mockResolvedValueOnce({ response: 0 })
+    const opened = await save()
+    const box = dialog.showMessageBox.mock.calls[0][1]
+    expect(box.buttons[0]).toBe('Create "Shop"')
+    expect(opened?.root.replace(/\\/g, '/')).toBe(join(dir, 'Shop').replace(/\\/g, '/'))
+    expect(readFileSync(join(dir, 'Get.tiger'), 'utf8')).toBe('mine')
+    expect(readdirSync(join(dir, 'Shop')).sort()).toEqual(['Get.tiger', 'collection.tiger'])
+  })
+
+  it('lets the user choose another folder, or cancel without writing', async () => {
+    const busy = await mkdtemp(join(root, 'busy-'))
+    await writeFile(join(busy, 'notes.txt'), 'mine')
+    const empty = await mkdtemp(join(root, 'empty-'))
+    dialog.showOpenDialog
+      .mockResolvedValueOnce({ canceled: false, filePaths: [busy] })
+      .mockResolvedValueOnce({ canceled: false, filePaths: [empty] })
+    dialog.showMessageBox.mockResolvedValueOnce({ response: 1 })
+    expect((await save())?.root.replace(/\\/g, '/')).toBe(empty.replace(/\\/g, '/'))
+    expect(readdirSync(busy)).toEqual(['notes.txt'])
+
+    dialog.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [busy] })
+    dialog.showMessageBox.mockResolvedValueOnce({ response: 2 })
+    expect(await save()).toBeNull()
+    dialog.showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] })
+    expect(await save()).toBeNull()
+    expect(readdirSync(busy)).toEqual(['notes.txt'])
+  })
+})
+
+describe('Restart now with an import that was never saved', () => {
+  it('names the import and does not install on Keep editing', async () => {
+    handlers.get('tiger:dirtyState')!({}, false)
+    handlers.get('tiger:unsavedImports')!({}, ['Shop'])
+    autoUpdate.quitAndInstall.mockClear()
+    dialog.showMessageBox.mockClear()
+    dialog.showMessageBox.mockResolvedValueOnce({ response: 1 })
+    await handlers.get('tiger:installUpdate')!({})
+    const options = dialog.showMessageBox.mock.calls[0].at(-1)
+    expect(options.message).toBe('An imported collection is not saved')
+    expect(options.detail).toContain('Shop')
+    expect(autoUpdate.quitAndInstall).not.toHaveBeenCalled()
+    handlers.get('tiger:unsavedImports')!({}, [])
   })
 })

@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
 import { perfMark, perfRendererMark } from './perf'
 import { randomUUID } from 'node:crypto'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { readCollection, readEnvironments, readOpenedCollection } from './collection'
 import { buildAppMenu } from './menu'
 import { broadcastLocale, mainLocale, mainT, resolveAppLocale, setMainLocale } from './i18n'
@@ -16,7 +16,7 @@ import {
   track
 } from './http'
 import { importFromDisk, importPaths, saveExport, type ImportKind } from './importers'
-import { saveCollectionFiles } from './saveCollection'
+import { freeCollectionFolder, isEmptyFolder, saveCollectionFiles, saveCollectionInto } from './saveCollection'
 import { readTextFile } from './textFile'
 import type { CollectionFile } from '../core/collectionFiles'
 import { appendHistory, clearHistory, readHistory } from './history'
@@ -98,6 +98,8 @@ function parentWindow(): BrowserWindow | undefined {
  * uses it to warn before the window (and the edits) go away.
  */
 let hasUnsavedChanges = false
+/** Imported collections that only live in memory: closing loses them entirely. */
+let unsavedImports: string[] = []
 /** The user chose to restart for an update and drop unsaved edits: closing must not ask again. */
 let discardUnsavedForUpdate = false
 
@@ -227,13 +229,19 @@ function createWindow(): BrowserWindow {
   let closeConfirmed = false
   win.on('close', (e) => {
     // Unsaved request edits die with the window; warn once, close on confirm.
-    if (hasUnsavedChanges && !closeConfirmed && !discardUnsavedForUpdate) {
+    // An import that was never saved to a folder is lost as a whole: say so by name.
+    if ((hasUnsavedChanges || unsavedImports.length > 0) && !closeConfirmed && !discardUnsavedForUpdate) {
       e.preventDefault()
+      const imports = unsavedImports.length > 0
       dialog
         .showMessageBox(win, {
           type: 'warning',
-          message: mainT('main.dialog.unsavedTitle'),
-          detail: mainT('main.dialog.unsavedDetail'),
+          message: imports
+            ? mainT('main.dialog.unsavedImportsTitle', { count: unsavedImports.length })
+            : mainT('main.dialog.unsavedTitle'),
+          detail: imports
+            ? mainT('main.dialog.unsavedImportsDetail', { names: unsavedImports.join(', ') })
+            : mainT('main.dialog.unsavedDetail'),
           buttons: [mainT('main.dialog.closeAnyway'), mainT('main.dialog.keepEditing')],
           defaultId: 1,
           cancelId: 1
@@ -447,6 +455,39 @@ function registerIpc(): void {
     return readOpenedCollection(root)
   })
 
+  // "Save to a folder": the user picks where. An empty folder becomes the
+  // collection; a folder with files in it is never written over, the user
+  // picks another one or saves into a new subfolder named after the collection.
+  ipcMain.handle('tiger:saveCollectionTo', async (_e, name: string, files: CollectionFile[]) => {
+    const list = Array.isArray(files) ? files : []
+    const title = String(name)
+    for (;;) {
+      const picked = await dialog.showOpenDialog(parentWindow()!, {
+        title: mainT('main.dialog.saveCollectionTitle', { name: title }),
+        buttonLabel: mainT('main.dialog.saveHere'),
+        properties: ['openDirectory', 'createDirectory']
+      })
+      const dir = picked.filePaths[0]
+      if (picked.canceled || !dir) return null
+      if (await isEmptyFolder(dir)) return readOpenedCollection(await saveCollectionInto(dir, list))
+      const sub = basename(await freeCollectionFolder(dir, title))
+      const { response } = await dialog.showMessageBox(parentWindow()!, {
+        type: 'question',
+        message: mainT('main.dialog.folderNotEmptyTitle', { folder: basename(dir) }),
+        detail: mainT('main.dialog.folderNotEmptyDetail', { subfolder: sub }),
+        buttons: [
+          mainT('main.dialog.createSubfolder', { subfolder: sub }),
+          mainT('main.dialog.chooseAnotherFolder'),
+          mainT('common.cancel')
+        ],
+        defaultId: 0,
+        cancelId: 2
+      })
+      if (response === 0) return readOpenedCollection(await saveCollectionFiles(dir, title, list))
+      if (response !== 1) return null
+    }
+  })
+
   ipcMain.handle('tiger:import', async (_e, kind: ImportKind) => importFromDisk(kind))
   // Drag and drop: the renderer resolves dropped File objects to paths.
   ipcMain.handle('tiger:importPaths', async (_e, paths: unknown) =>
@@ -482,11 +523,17 @@ function registerIpc(): void {
     if (!canInstallNow()) return
     // Ask before the installer starts, never after: on Windows it force-closes
     // a Tiger whose window answered "Keep editing", and the edits with it.
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges || unsavedImports.length > 0) {
       const options = {
         type: 'warning' as const,
-        message: mainT('main.dialog.unsavedTitle'),
-        detail: mainT('main.dialog.updateUnsavedDetail'),
+        message:
+          unsavedImports.length > 0
+            ? mainT('main.dialog.unsavedImportsTitle', { count: unsavedImports.length })
+            : mainT('main.dialog.unsavedTitle'),
+        detail:
+          unsavedImports.length > 0
+            ? mainT('main.dialog.updateUnsavedImportsDetail', { names: unsavedImports.join(', ') })
+            : mainT('main.dialog.updateUnsavedDetail'),
         buttons: [mainT('main.dialog.restartAnyway'), mainT('main.dialog.keepEditing')],
         defaultId: 1,
         cancelId: 1
@@ -572,6 +619,9 @@ function registerIpc(): void {
 
   ipcMain.on('tiger:dirtyState', (_e, dirty: boolean) => {
     hasUnsavedChanges = dirty
+  })
+  ipcMain.on('tiger:unsavedImports', (_e, names: unknown) => {
+    unsavedImports = Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string') : []
   })
 
   ipcMain.handle(

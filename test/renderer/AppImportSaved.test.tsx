@@ -143,10 +143,10 @@ describe('a collection that only lives in memory', () => {
     const env = pickedEnv()
 
     fireEvent.contextMenu(demo.closest('.col-head')!)
-    fireEvent.click(screen.getByText('Save to disk'))
-    await screen.findByText(/Saved Demo collection in \/Docs\/Tiger\/Demo collection/)
+    fireEvent.click(screen.getByText('Save to a folder…'))
+    await screen.findByText(/Saved Demo collection in \/Picked\/Demo collection/)
 
-    expect([...b.files.keys()].some((k) => k.startsWith('/Docs/Tiger/Demo collection/'))).toBe(true)
+    expect([...b.files.keys()].some((k) => k.startsWith('/Picked/Demo collection/'))).toBe(true)
     expect(within(sidebar()).getAllByText('Demo collection')).toHaveLength(1)
     expect(document.querySelector<HTMLInputElement>('.url-input')?.value).toBe(before)
     expect(pickedEnv()).toBe(env)
@@ -156,16 +156,65 @@ describe('a collection that only lives in memory', () => {
     await waitFor(() =>
       expect([...b.files.values()].some((v) => v.includes('url: https://x.test/saved'))).toBe(true)
     )
-    expect(b.saveCollection).toHaveBeenCalledTimes(1)
+    expect(b.saveCollectionTo).toHaveBeenCalledTimes(1)
+    expect(b.saveCollection).not.toHaveBeenCalled()
   })
 
-  it('is saved to disk by Ctrl+S, which used to do nothing', async () => {
+  it('is saved to a folder by Ctrl+S, which used to do nothing', async () => {
     const disk = await fakeDisk()
     const b = Object.assign(bridge([]), disk)
     ;(window as { tiger?: unknown }).tiger = b
     render(<App />)
     await within(sidebar()).findByText('Demo collection')
     fireEvent.keyDown(window, { key: 's', ctrlKey: true, metaKey: true })
-    await waitFor(() => expect(b.saveCollection).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(b.saveCollectionTo).toHaveBeenCalledTimes(1))
+  })
+})
+
+describe('an import the disk refused', () => {
+  async function refusedImport(keepReport = false) {
+    const disk = await fakeDisk()
+    disk.saveCollection.mockRejectedValueOnce(new Error('EACCES: permission denied'))
+    const b = Object.assign(bridge([collection('Alpha', 'Get alpha', 'https://alpha.test')]), disk, {
+      setUnsavedImports: vi.fn()
+    })
+    ;(window as { tiger?: unknown }).tiger = b
+    render(<App />)
+    await importVia('Postman', keepReport)
+    await within(sidebar()).findByText('Get alpha')
+    return b
+  }
+  const alphaRow = () => within(sidebar()).getByText('Alpha').closest('.col-head') as HTMLElement
+
+  it('is flagged Not saved in the sidebar and named to main for the close warning', async () => {
+    const b = await refusedImport()
+    expect(within(alphaRow()).getByText('Not saved')).toBeInTheDocument()
+    expect(alphaRow().closest('[role="treeitem"]')).toHaveAttribute('aria-description', 'Not saved')
+    await waitFor(() => expect(b.setUnsavedImports).toHaveBeenLastCalledWith(['Alpha']))
+    // The demo collection lives in memory too, but it is not an import: no badge.
+    expect(within(sidebar()).queryAllByText('Not saved')).toHaveLength(1)
+  })
+
+  it('offers Save to a folder as the primary action of the import report', async () => {
+    const b = await refusedImport(true)
+    const report = await screen.findByRole('dialog', { name: /Imported Alpha/ })
+    expect(within(report).getByText(/only lives in memory/)).toBeInTheDocument()
+    fireEvent.click(within(report).getByRole('button', { name: 'Save to a folder' }))
+    await screen.findByText(/Saved Alpha in \/Picked\/Alpha/)
+    expect(b.saveCollectionTo).toHaveBeenCalledWith('Alpha', expect.any(Array))
+    expect(within(alphaRow()).queryByText('Not saved')).toBeNull()
+    await waitFor(() => expect(b.setUnsavedImports).toHaveBeenLastCalledWith([]))
+  })
+
+  it('stays Not saved when the folder picker is cancelled, and saves from the badge', async () => {
+    const b = await refusedImport()
+    b.saveCollectionTo.mockResolvedValueOnce(null)
+    fireEvent.click(within(alphaRow()).getByRole('button', { name: /Alpha is not saved/ }))
+    await waitFor(() => expect(b.saveCollectionTo).toHaveBeenCalledTimes(1))
+    expect(within(alphaRow()).getByText('Not saved')).toBeInTheDocument()
+
+    fireEvent.click(within(alphaRow()).getByRole('button', { name: /Alpha is not saved/ }))
+    await screen.findByText(/Saved Alpha in \/Picked\/Alpha/)
+    expect([...b.files.keys()].some((k) => k.startsWith('/Picked/Alpha/'))).toBe(true)
   })
 })

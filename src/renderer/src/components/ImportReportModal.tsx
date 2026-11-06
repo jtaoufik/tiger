@@ -15,6 +15,8 @@ interface Props {
   selectedEnvironment?: string
   /** The folder the import was saved in. */
   savedTo?: string
+  /** Present when the import only lives in memory: the primary action saves it. */
+  onSaveToFolder?: () => void
   onClose: () => void
 }
 
@@ -35,7 +37,7 @@ export function importReportSentence(summary: ImportSummary, tr: (key: MessageKe
 }
 
 /** What an import brought in, and what only came in partly. */
-export function ImportReportModal({ summary, environmentsTarget, selectedEnvironment, savedTo, onClose }: Props) {
+export function ImportReportModal({ summary, environmentsTarget, selectedEnvironment, savedTo, onSaveToFolder, onClose }: Props) {
   const uid = useId()
   const t = useT()
   const stats = [
@@ -62,9 +64,20 @@ export function ImportReportModal({ summary, environmentsTarget, selectedEnviron
       description={description}
       help={{ page: 'importing', topic: t('modals.importExport.topic') }}
       footer={
-        <button type="button" className="btn accent" onClick={onClose} data-autofocus>
-          {t('common.done')}
-        </button>
+        onSaveToFolder ? (
+          <>
+            <button type="button" className="btn" onClick={onClose}>
+              {t('imports.report.later')}
+            </button>
+            <button type="button" className="btn accent" onClick={onSaveToFolder} data-autofocus>
+              {t('imports.report.saveToFolder')}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn accent" onClick={onClose} data-autofocus>
+            {t('common.done')}
+          </button>
+        )
       }
     >
       <dl className="import-report-stats" aria-label={t('imports.report.statsLabel')}>
@@ -90,6 +103,13 @@ export function ImportReportModal({ summary, environmentsTarget, selectedEnviron
               {t(REVEAL_LABEL_KEY)}
             </button>
           )}
+        </p>
+      )}
+
+      {onSaveToFolder && (
+        <p className="import-report-saved import-report-unsaved" role="note">
+          <WarningIcon size={15} aria-hidden="true" />
+          <span className="import-report-saved-text">{t('imports.report.notSaved')}</span>
         </p>
       )}
 

@@ -109,3 +109,10 @@
   flex-shrink: 0;
   padding: 5px 10px;
 }
+.import-report-unsaved {
+  color: var(--text);
+}
+.import-report-unsaved svg {
+  flex-shrink: 0;
+  color: var(--warn);
+}
