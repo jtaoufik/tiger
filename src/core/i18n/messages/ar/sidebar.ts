@@ -39,7 +39,6 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.tabs.nameUnsaved': '{name}، تغييرات غير محفوظة',
   'sidebar.tabs.titleUnsaved': '{label} (تغييرات غير محفوظة)',
   'sidebar.tabs.closeTitle': 'إغلاق علامة التبويب ({mod}+W)',
-  'sidebar.tabs.closeLabel': 'إغلاق {label}',
   'sidebar.lazy.loading': 'جارٍ تحميل {label}…',
   'sidebar.lazy.failed': 'تعذر تحميل {label}. أغلقه وحاول مرة أخرى.',
   'sidebar.lazy.settings': 'الإعدادات',

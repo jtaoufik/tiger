@@ -1,4 +1,4 @@
-import { useCallback, useRef, type KeyboardEvent } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { isRtlDocument, logicalArrow } from '../a11y'
 
 interface Props {
@@ -42,6 +42,15 @@ export function Resizer({
   controls
 }: Props) {
   const start = useRef(0)
+  // A focusable separator must expose its position (aria-valuenow): when the
+  // size is not tracked yet (the editor keeps its natural height), report the
+  // measured one.
+  const [measured, setMeasured] = useState<number | undefined>(undefined)
+  useLayoutEffect(() => {
+    if (value !== undefined || !measure || !onResize) return
+    const now = Math.round(measure())
+    if (now !== measured) setMeasured(now)
+  })
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -94,7 +103,7 @@ export function Resizer({
       aria-orientation={direction === 'col' ? 'vertical' : 'horizontal'}
       aria-label={label}
       aria-controls={controls}
-      aria-valuenow={value !== undefined ? Math.round(value) : undefined}
+      aria-valuenow={value !== undefined ? Math.round(value) : focusable ? measured : undefined}
       aria-valuemin={focusable ? min : undefined}
       aria-valuemax={focusable ? max : undefined}
       tabIndex={focusable ? 0 : undefined}

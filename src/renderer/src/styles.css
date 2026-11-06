@@ -1063,8 +1063,11 @@ button {
 }
 .resizer.col::before { inset: 0 -4px; }
 .resizer.row::before { inset: -4px 0; }
+/* The whole splitter track gets the focus outline (the grip below also
+   lights up): a box shadow alone disappears in forced colors. */
 .resizer:focus-visible {
-  outline: none;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 0;
 }
 .resizer:focus-visible::after {
   background: var(--focus-ring);
@@ -1864,14 +1867,19 @@ optgroup {
 /* ---------- User preferences ---------- */
 
 /* Reduced motion: stop every transition and animation, app-wide (this also
-   covers component stylesheets). Hover lifts are dropped too. */
+   covers component stylesheets). Hover lifts are dropped too. Transitions get
+   0s, not a tiny duration: transition-property defaults to `all`, so any
+   non-zero duration starts a transition on every property of every element,
+   and a focus outline then begins at 0px until the next frame (never, in a
+   throttled window). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
   .welcome-tile:hover,
@@ -2010,7 +2018,12 @@ optgroup {
   .tree-row.active *,
   .col-head.active *,
   .folder-row.active *,
-  .request-tab.active * {
+  .request-tab.active *,
+  .palette-row.sel *,
+  .seg button.on *,
+  .seg button[aria-pressed='true'] *,
+  .seg button[aria-selected='true'] *,
+  .tab.active * {
     color: HighlightText;
   }
   .method-pill {
@@ -2205,14 +2218,18 @@ optgroup {
 }
 
 /* Method pills on rows that are already orange-tinted (active tab, hovered
-   or selected rows): a second translucent orange took them under 4.5:1. */
-.request-tab.active .method-pill,
-.request-tab:hover .method-pill,
-.palette-row.sel .method-pill,
-.cv-req-row:hover .method-pill,
-.tree-row:hover .method-pill,
-.tree-row.active .method-pill {
-  background: var(--glass-strong);
+   or selected rows): a second translucent orange took them under 4.5:1.
+   Not in forced colors: there the selected row is Highlight and its pill
+   text HighlightText, which a light glass fill would wash out (1.6:1). */
+@media (forced-colors: none) {
+  .request-tab.active .method-pill,
+  .request-tab:hover .method-pill,
+  .palette-row.sel .method-pill,
+  .cv-req-row:hover .method-pill,
+  .tree-row:hover .method-pill,
+  .tree-row.active .method-pill {
+    background: var(--glass-strong);
+  }
 }
 
 /* Send and Cancel share one width, so the URL field does not jump while sending. */

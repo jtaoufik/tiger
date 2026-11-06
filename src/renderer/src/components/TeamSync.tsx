@@ -795,7 +795,7 @@ function SideBySide({
       {text === null ? (
         <div className="ts-side-empty">{t('team.conflict.deleted')}</div>
       ) : (
-        <pre tabIndex={0} aria-label={label}>
+        <pre tabIndex={0} role="region" aria-label={label}>
           {lines.map((l, i) => (
             <span key={i} className={l.differs ? 'ts-differs' : undefined}>
               {l.text || ' '}

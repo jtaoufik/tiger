@@ -39,7 +39,6 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.tabs.nameUnsaved': '{name}，有未保存的更改',
   'sidebar.tabs.titleUnsaved': '{label}（有未保存的更改）',
   'sidebar.tabs.closeTitle': '关闭标签页 ({mod}+W)',
-  'sidebar.tabs.closeLabel': '关闭 {label}',
   'sidebar.lazy.loading': '正在加载{label}…',
   'sidebar.lazy.failed': '无法加载{label}。请关闭后重试。',
   'sidebar.lazy.settings': '设置',

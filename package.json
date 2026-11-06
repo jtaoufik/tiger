@@ -47,6 +47,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@electron/notarize": "^3.1.1",
     "@modelcontextprotocol/sdk": "^1.13.0",
     "@playwright/test": "^1.63.0",

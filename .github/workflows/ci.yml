@@ -50,7 +50,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # The accessibility audit (e2e/a11y.spec.ts) adds about 13 minutes.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -67,6 +68,9 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
+      # Every spec under e2e/ runs, including e2e/a11y.spec.ts: axe-core WCAG
+      # 2.2 AA over every screen (light/dark, English/Arabic, forced colors,
+      # reduced motion) and a keyboard-only journey. Any violation fails the job.
       - name: E2E (Linux, virtual display)
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum -- npm run test:e2e
@@ -74,6 +78,15 @@ jobs:
       - name: E2E (Windows)
         if: runner.os == 'Windows'
         run: npm run test:e2e
+
+      - name: Upload accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report-${{ matrix.os }}
+          path: test-results/a11y/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload Playwright report
         if: failure()

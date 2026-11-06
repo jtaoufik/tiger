@@ -39,7 +39,6 @@ export const sidebar: NamespaceCatalog<typeof en> = {
   'sidebar.tabs.nameUnsaved': '{name}, cambios sin guardar',
   'sidebar.tabs.titleUnsaved': '{label} (cambios sin guardar)',
   'sidebar.tabs.closeTitle': 'Cerrar pestaña ({mod}+W)',
-  'sidebar.tabs.closeLabel': 'Cerrar {label}',
   'sidebar.lazy.loading': 'Cargando {label}…',
   'sidebar.lazy.failed': 'No se pudo cargar {label}. Ciérralo e inténtalo de nuevo.',
   'sidebar.lazy.settings': 'configuración',
