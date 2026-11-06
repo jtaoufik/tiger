@@ -114,3 +114,42 @@ export function menuAnchor(el: Element): { x: number; y: number } {
   const r = el.getBoundingClientRect()
   return { x: Math.round(r.left + Math.min(24, r.width / 2)), y: Math.round(r.bottom) }
 }
+
+/**
+ * Announce a stream of events (WebSocket messages, SSE events) without
+ * flooding a screen reader: the first one is read at once, then at most one
+ * announcement per `intervalMs`. When several arrive inside one interval,
+ * a single summary replaces them ("5 more messages received").
+ */
+export function rateLimitedAnnouncer(opts: {
+  intervalMs: number
+  /** The text for `count` events that arrived inside one interval. */
+  summarize: (count: number) => string
+  announce?: (message: string) => void
+}): { push: (message: string) => void; dispose: () => void } {
+  const say = opts.announce ?? ((message: string) => announce(message))
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let pending: string[] = []
+  const tick = (): void => {
+    timer = null
+    if (!pending.length) return
+    say(pending.length === 1 ? pending[0] : opts.summarize(pending.length))
+    pending = []
+    timer = setTimeout(tick, opts.intervalMs)
+  }
+  return {
+    push: (message) => {
+      if (timer) {
+        pending.push(message)
+        return
+      }
+      say(message)
+      timer = setTimeout(tick, opts.intervalMs)
+    },
+    dispose: () => {
+      if (timer) clearTimeout(timer)
+      timer = null
+      pending = []
+    }
+  }
+}

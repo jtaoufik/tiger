@@ -12,6 +12,7 @@ import { modals } from './modals'
 import { views } from './views'
 import { imports } from './imports'
 import { main } from './main'
+import { realtime } from './realtime'
 
 const es: LocaleCatalog = {
   ...common,
@@ -26,7 +27,8 @@ const es: LocaleCatalog = {
   ...modals,
   ...views,
   ...imports,
-  ...main
+  ...main,
+  ...realtime
 }
 
 export default es
@@ -44,5 +46,6 @@ export const NAMESPACES = {
   modals,
   views,
   imports,
-  main
+  main,
+  realtime
 }

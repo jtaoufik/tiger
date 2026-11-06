@@ -34,12 +34,14 @@ afterEach(() => {
 const sidebar = () => screen.getByRole('navigation', { name: 'Collections' })
 
 describe('sidebar New menu', () => {
-  it('offers request, folder, collection and environment with registry names', () => {
+  it('offers request, WebSocket, SSE, folder, collection and environment with registry names', () => {
     render(<App />)
     fireEvent.click(within(sidebar()).getByRole('button', { name: 'New' }))
     const menu = screen.getByRole('menu', { name: 'New' })
     expect(within(menu).getAllByRole('menuitem').map((m) => m.textContent)).toEqual([
       'New request',
+      'New WebSocket request',
+      'New Server-Sent Events request',
       'New folder…',
       'New collection…',
       'New environment…'

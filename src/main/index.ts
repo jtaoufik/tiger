@@ -15,6 +15,8 @@ import {
   sendHttp,
   track
 } from './http'
+import { closeAllRealtime, closeRealtime, openRealtime, sendRealtime, setRealtimeReconnect } from './realtime'
+import type { RealtimeEvent, RealtimeOpenSpec } from '../core/realtime'
 import { importFromDisk, importPaths, saveExport, type ImportKind } from './importers'
 import { saveCollectionFiles } from './saveCollection'
 import { readTextFile } from './textFile'
@@ -396,6 +398,36 @@ function registerIpc(): void {
 
   ipcMain.handle('tiger:cancelSend', (_e, key: string) => cancelSend(key))
 
+  // WebSocket and SSE: main owns the connections; their events go back to
+  // the window that opened them, batched so a chatty server cannot flood IPC.
+  ipcMain.handle('tiger:realtime:open', async (e, spec: RealtimeOpenSpec) => {
+    const sender = e.sender
+    let queue: RealtimeEvent[] = []
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const flush = (): void => {
+      timer = null
+      const batch = queue
+      queue = []
+      if (!sender.isDestroyed()) sender.send('tiger:realtime:events', batch)
+    }
+    const watchClose = (): void => {
+      closeRealtime(spec.id)
+    }
+    sender.once('destroyed', watchClose)
+    await openRealtime(spec, (ev) => {
+      if (sender.isDestroyed()) {
+        closeRealtime(spec.id)
+        return
+      }
+      queue.push(ev)
+      if (ev.type === 'close') sender.off('destroyed', watchClose)
+      timer ??= setTimeout(flush, 16)
+    })
+  })
+  ipcMain.handle('tiger:realtime:send', (_e, id: string, text: string) => sendRealtime(id, String(text)))
+  ipcMain.handle('tiger:realtime:close', (_e, id: string) => closeRealtime(id))
+  ipcMain.handle('tiger:realtime:reconnect', (_e, id: string, on: boolean) => setRealtimeReconnect(id, !!on))
+
   ipcMain.handle(
     'tiger:send',
     async (_e, built: BuiltRequest, timeoutMs: number, key?: string, options?: { record?: boolean }) => {
@@ -683,6 +715,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  closeAllRealtime()
   // On Windows/Linux, quitting when the last window closes is expected.
   if (process.platform !== 'darwin') app.quit()
 })

@@ -23,5 +23,12 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'Exporter',
   'main.http.certRead': 'Impossible de lire le fichier de certificat : {reason}',
   'main.http.tokenStatus': 'Le point de terminaison du jeton a renvoyé {status}',
-  'main.http.tokenMissing': 'La réponse du jeton ne contenait pas d’access_token'
+  'main.http.tokenMissing': 'La réponse du jeton ne contenait pas d’access_token',
+  'main.realtime.badUrl': 'Cette adresse ne convient pas à cette connexion : {url}',
+  'main.realtime.refused': 'Rien n’écoute à l’adresse {url}',
+  'main.realtime.proxyTimeout': 'Le proxy n’a pas répondu à temps',
+  'main.realtime.proxyRefused': 'Le proxy a refusé la connexion (statut {status})',
+  'main.realtime.handshakeStatus': 'Le serveur a répondu {status} au lieu d’ouvrir le WebSocket',
+  'main.realtime.sseStatus': 'Le serveur a répondu {status} au lieu d’un flux d’événements',
+  'main.realtime.sseType': 'Le serveur a envoyé {type} au lieu de text/event-stream'
 }

@@ -79,6 +79,8 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
     label: t('menu.file'),
     submenu: [
       item('new-request'),
+      item('new-websocket'),
+      item('new-sse'),
       item('new-folder'),
       item('new-collection'),
       item('new-environment'),
@@ -126,6 +128,7 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
     label: t('menu.request'),
     submenu: [
       item('send'),
+      item('connect'),
       item('save'),
       sep,
       item('duplicate-request'),

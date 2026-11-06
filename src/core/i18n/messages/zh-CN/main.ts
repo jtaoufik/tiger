@@ -23,5 +23,12 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': '导出',
   'main.http.certRead': '无法读取证书文件：{reason}',
   'main.http.tokenStatus': '令牌端点返回了 {status}',
-  'main.http.tokenMissing': '令牌响应中没有 access_token'
+  'main.http.tokenMissing': '令牌响应中没有 access_token',
+  'main.realtime.badUrl': '此地址不能用于该连接：{url}',
+  'main.realtime.refused': '{url} 上没有服务在监听',
+  'main.realtime.proxyTimeout': '代理未及时响应',
+  'main.realtime.proxyRefused': '代理拒绝了连接（状态 {status}）',
+  'main.realtime.handshakeStatus': '服务器返回了 {status}，没有打开 WebSocket',
+  'main.realtime.sseStatus': '服务器返回了 {status}，而不是事件流',
+  'main.realtime.sseType': '服务器发送的是 {type}，而不是 text/event-stream'
 }

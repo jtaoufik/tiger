@@ -18,6 +18,25 @@
  *
  * Blocks may appear in any order. Serialization is deterministic so re-saving an
  * unchanged request produces no diff.
+ *
+ * A WebSocket request names `ws` instead of a method, and may list the
+ * subprotocols it offers and the messages kept with it; a Server-Sent Events
+ * request names `sse`:
+ *
+ *   ws {
+ *     url: wss://{{host}}/live
+ *   }
+ *   subprotocols {
+ *     graphql-transport-ws
+ *   }
+ *   message:json:Subscribe {
+ *     { "type": "subscribe" }
+ *   }
+ *
+ *   sse {
+ *     url: {{baseUrl}}/events
+ *     reconnect: true
+ *   }
  */
 
 import {
@@ -26,6 +45,8 @@ import {
   type BodyType,
   type HttpMethod,
   type KeyValue,
+  type MessageFormat,
+  type SavedMessage,
   type TigerAuth,
   type TigerBody,
   type TigerRequest
@@ -252,6 +273,10 @@ export function parseRequest(input: string): TigerRequest {
   let docs: string | undefined
   let preScript: string | undefined
   let postScript: string | undefined
+  let kind: 'ws' | 'sse' | undefined
+  let subprotocols: string[] | undefined
+  const messages: SavedMessage[] = []
+  let reconnect = false
 
   for (const block of blocks) {
     if (block.name === 'meta') {
@@ -264,6 +289,19 @@ export function parseRequest(input: string): TigerRequest {
       for (const kv of parseKeyValues(block.content)) {
         if (kv.name === 'url') url = kv.value
       }
+    } else if (block.name === 'ws' || block.name === 'sse') {
+      // A realtime handshake is a GET; the method keeps every HTTP-only
+      // reader (codegen, the runner's filters) on familiar ground.
+      kind = block.name
+      method = 'get'
+      for (const kv of parseKeyValues(block.content)) {
+        if (kv.name === 'url') url = kv.value
+        else if (kv.name === 'reconnect') reconnect = kv.value === 'true'
+      }
+    } else if (block.name === 'subprotocols') {
+      subprotocols = parseLines(block.content)
+    } else if (block.name === 'message') {
+      messages.push(parseMessageHeader(block.subtype, dedent(block.content)))
     } else if (block.name === 'headers') {
       headers = parseKeyValues(block.content)
     } else if (block.name === 'query') {
@@ -286,18 +324,51 @@ export function parseRequest(input: string): TigerRequest {
   }
 
   if (!method) {
-    throw new TigerParseError('Request is missing a method block (get, post, …)')
+    throw new TigerParseError('Request is missing a method block (get, post, ws, sse, …)')
   }
 
   if (graphqlVars !== undefined) body = { ...body, variables: graphqlVars }
 
   const request: TigerRequest = { name, seq, method, url, headers, query, body }
+  if (kind) request.kind = kind
+  if (kind === 'ws') {
+    request.subprotocols = subprotocols ?? []
+    request.messages = messages
+  } else if (kind === 'sse') {
+    request.reconnect = reconnect
+  }
   if (auth) request.auth = auth
   if (captures) request.captures = captures
   if (docs !== undefined) request.docs = docs
   if (preScript !== undefined) request.preScript = preScript
   if (postScript !== undefined) request.postScript = postScript
   return request
+}
+
+/** Non-empty lines, trimmed; `#` and `//` lines are comments. */
+function parseLines(content: string): string[] {
+  return content
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#') && !l.startsWith('//'))
+}
+
+/** `message:json:Subscribe`: the format, then the name (which may hold colons). */
+function parseMessageHeader(subtype: string | undefined, content: string): SavedMessage {
+  const raw = subtype ?? ''
+  const colon = raw.indexOf(':')
+  const head = (colon === -1 ? raw : raw.slice(0, colon)).trim()
+  const format: MessageFormat = head === 'json' ? 'json' : 'text'
+  const name = colon === -1 ? '' : raw.slice(colon + 1).trim()
+  return { name, format, content }
+}
+
+/**
+ * A message name as a block header can hold it: one line, no braces (the
+ * header ends at the first "{").
+ */
+export function messageHeaderName(name: string): string {
+  return name.replace(/[{}\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 function renderKeyValues(blockName: string, items: KeyValue[]): string {
@@ -321,10 +392,23 @@ export function serializeRequest(req: TigerRequest): string {
   if (req.seq !== undefined) metaLines.push(`  seq: ${req.seq}`)
   parts.push(`meta {\n${metaLines.join('\n')}\n}`)
 
-  parts.push(`${req.method} {\n  url: ${req.url}\n}`)
+  if (req.kind === 'sse') {
+    parts.push(`sse {\n  url: ${req.url}${req.reconnect ? '\n  reconnect: true' : ''}\n}`)
+  } else {
+    parts.push(`${req.kind === 'ws' ? 'ws' : req.method} {\n  url: ${req.url}\n}`)
+  }
 
   if (req.query.length) parts.push(renderKeyValues('query', req.query))
   if (req.headers.length) parts.push(renderKeyValues('headers', req.headers))
+  if (req.kind === 'ws') {
+    const protocols = (req.subprotocols ?? []).map((p) => p.trim()).filter(Boolean)
+    if (protocols.length) parts.push(`subprotocols {\n${protocols.map((p) => `  ${p}`).join('\n')}\n}`)
+    for (const m of req.messages ?? []) {
+      const name = messageHeaderName(m.name)
+      const header = `message:${m.format}${name ? `:${name}` : ''}`
+      parts.push(m.content.trim() ? renderTextBlock(header, m.content) : `${header} {\n}`)
+    }
+  }
 
   if (req.body.type !== 'none' && req.body.content.trim()) {
     parts.push(renderTextBlock(`body:${req.body.type}`, req.body.content))

@@ -59,6 +59,7 @@ import {
   type LucideProps
 } from 'lucide-react'
 import { CircleCheck, CircleDashed, CloudUpload, History, Laptop, Undo2, Users } from 'lucide-react'
+import { Eraser, Plug, Radio, Send, Unplug } from 'lucide-react'
 
 export type IconProps = LucideProps & { size?: number }
 
@@ -127,3 +128,8 @@ export const UsersIcon = base(Users)
 export const UndoIcon = base(Undo2)
 export const CloudUploadIcon = base(CloudUpload)
 export const HistoryIcon = base(History)
+export const PlugIcon = base(Plug)
+export const UnplugIcon = base(Unplug)
+export const SendIcon = base(Send)
+export const RadioIcon = base(Radio)
+export const EraserIcon = base(Eraser)
