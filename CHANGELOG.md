@@ -3,7 +3,7 @@
 All notable changes to Tiger are documented here. The update checker reads
 `website/version.json`; keep both in sync when releasing.
 
-## Unreleased
+## 0.9.0
 
 - Tiger stays up. An error in the main process is written to logs/main.log in the profile folder instead of appearing as a "JavaScript error" dialog over the window. A window whose renderer dies (out of memory on a huge response, a graphics fault) is reloaded in place; one that stops answering offers Wait or Reload. A thrown render shows the message and a Reload button instead of a blank window. Every action that used to fail silently (open, new, duplicate, rename, import from curl, history, update check, saving a request or an environment) reports what went wrong.
 - No edit is lost. A git sync or discard keeps requests with unsaved edits in memory and says how many; closing a collection with unsaved edits says how many go with it; a failed save leaves the request marked unsaved. settings.json, history.json, cookies.json and every saved .tiger file are written whole or not at all, so a crash mid-write never leaves a truncated file. Collections whose folder is not there at launch (an unmounted drive) stay in the saved session for three launches, with a note, before Tiger forgets them and says so.
