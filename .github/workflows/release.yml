@@ -24,13 +24,68 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Run workflow on a branch: with tag_version empty it builds every installer
+  # and keeps them as workflow artifacts (a trial build); with a version it
+  # creates the tag v<version> at the branch head and releases it, for when a
+  # tag cannot be pushed by hand (a cloud session may push only its own branch).
   workflow_dispatch:
+    inputs:
+      tag_version:
+        description: 'Release: create tag v<version> at this branch head and publish it. Empty: build installers as artifacts only.'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
 
 jobs:
+  # Manual release from a branch: tag it, then start this workflow again on the
+  # tag, where it runs exactly as for a pushed tag (github.ref is the tag).
+  tag:
+    if: github.event_name == 'workflow_dispatch' && inputs.tag_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version is the one the branch declares
+        env:
+          VERSION: ${{ inputs.tag_version }}
+        run: |
+          set -euo pipefail
+          pkg=$(node -p "require('./package.json').version")
+          [ "$pkg" = "$VERSION" ] || { echo "package.json says $pkg, not $VERSION"; exit 1; }
+          site=$(node -p "require('./website/version.json').version")
+          [ "$site" = "$VERSION" ] || { echo "website/version.json says $site, not $VERSION"; exit 1; }
+          grep -q "^## $VERSION\$" CHANGELOG.md || { echo "CHANGELOG.md has no '## $VERSION' section"; exit 1; }
+          if git ls-remote --exit-code --tags origin "v$VERSION" >/dev/null 2>&1; then
+            echo "tag v$VERSION already exists"; exit 1
+          fi
+
+      - name: Create and push the tag
+        env:
+          VERSION: ${{ inputs.tag_version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Tiger $VERSION"
+          git push origin "v$VERSION"
+
+      # A tag pushed with GITHUB_TOKEN starts no workflow by itself (GitHub
+      # suppresses push events from that token); a workflow_dispatch is not
+      # suppressed, so the release is started here on the tag ref.
+      - name: Start the release on the tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.tag_version }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "v$VERSION"
+
   build:
+    # Not for the tagging run above: its second run, on the tag, builds.
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.tag_version != '') }}
     strategy:
       fail-fast: false
       matrix:
