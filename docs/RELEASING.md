@@ -6,7 +6,18 @@ the release body, and deletes older releases (tags are kept).
 
 Before tagging: bump `version` in `package.json` and add a `## X.Y.Z` section to
 `CHANGELOG.md` (the release notes step pulls that section verbatim into the release body),
-and update `website/version.json` (the in-app update checker reads it).
+and update `website/version.json` (the in-app update checker reads it). `npm run site:check`
+fails on any page, the README or `version.json` still naming an older version.
+
+Where a tag cannot be pushed by hand (a cloud session may only push its own branch), run
+Actions > Tag release > Run workflow on the branch with the version as input: it creates the
+tag at the branch head and starts the Release workflow on it. Merge the branch into `main`
+once the release is published, so the website (and the in-app update check, which reads
+`website/version.json` from the deployed site) changes only when the installers exist.
+
+A manual run of the Release workflow on a branch (Actions > Release > Run workflow) builds
+every installer and keeps them as workflow artifacts for two weeks instead of publishing a
+release, which is how a branch is tried out before tagging.
 
 ## macOS signing (Developer ID + notarization)
 

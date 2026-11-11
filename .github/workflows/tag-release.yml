@@ -1,0 +1,58 @@
+name: Tag release
+
+# Starts a release from a branch when a tag cannot be pushed by hand (a cloud
+# session may only push its own branch): creates the annotated tag v<version>
+# at the branch head, then runs the Release workflow on that tag, which builds,
+# publishes and cleans up exactly as a pushed tag would. The version must
+# already be the one in package.json, CHANGELOG.md and website/version.json.
+# Run it from Actions > Tag release > Run workflow, on the branch to release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (must match package.json), e.g. 0.9.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version is the one the branch declares
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          pkg=$(node -p "require('./package.json').version")
+          [ "$pkg" = "$VERSION" ] || { echo "package.json says $pkg, not $VERSION"; exit 1; }
+          site=$(node -p "require('./website/version.json').version")
+          [ "$site" = "$VERSION" ] || { echo "website/version.json says $site, not $VERSION"; exit 1; }
+          grep -q "^## $VERSION\$" CHANGELOG.md || { echo "CHANGELOG.md has no '## $VERSION' section"; exit 1; }
+          if git ls-remote --exit-code --tags origin "v$VERSION" >/dev/null 2>&1; then
+            echo "tag v$VERSION already exists"; exit 1
+          fi
+
+      - name: Create and push the tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Tiger $VERSION"
+          git push origin "v$VERSION"
+
+      # A tag pushed with GITHUB_TOKEN starts no workflow by itself (GitHub
+      # suppresses push events from that token), so the Release workflow is
+      # started here on the tag ref; github.ref is then the tag, as for a push.
+      - name: Run the Release workflow on the tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "v$VERSION"
