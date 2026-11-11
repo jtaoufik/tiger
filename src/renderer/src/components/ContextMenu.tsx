@@ -99,14 +99,19 @@ export function ContextMenu({ x, y, items, onClose, label }: Props) {
     window.addEventListener('keydown', onKey, true)
     window.addEventListener('mousedown', onDown)
     window.addEventListener('blur', onDismiss)
-    // OS menus dismiss when the page under them moves.
-    window.addEventListener('scroll', onDismiss, true)
+    // OS menus dismiss when the user moves the page under them: the wheel, a
+    // touch drag, or the scrollbar (a mousedown outside). Not on every scroll
+    // event: the tree scrolls the row that was right-clicked into view itself,
+    // and in a short window that closed the menu before it could be used.
+    window.addEventListener('wheel', onDismiss, { capture: true, passive: true })
+    window.addEventListener('touchmove', onDismiss, { capture: true, passive: true })
     window.addEventListener('resize', onDismiss)
     return () => {
       window.removeEventListener('keydown', onKey, true)
       window.removeEventListener('mousedown', onDown)
       window.removeEventListener('blur', onDismiss)
-      window.removeEventListener('scroll', onDismiss, true)
+      window.removeEventListener('wheel', onDismiss, { capture: true })
+      window.removeEventListener('touchmove', onDismiss, { capture: true })
       window.removeEventListener('resize', onDismiss)
       if (restore.current && opener?.isConnected && opener !== document.body) opener.focus()
     }
