@@ -99,3 +99,25 @@ describe('ContextMenu keyboard', () => {
     expect(screen.getByRole('button', { name: 'Opener' })).not.toHaveFocus()
   })
 })
+
+describe('ContextMenu dismissal on movement', () => {
+  it('stays open when the page scrolls by itself (the tree scrolling the clicked row into view)', () => {
+    openMenu(items())
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    fireEvent.scroll(document.body)
+    fireEvent.scroll(window)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('closes when the user turns the wheel', () => {
+    openMenu(items())
+    fireEvent.wheel(screen.getByRole('button', { name: 'Elsewhere' }), { deltaY: 40 })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('closes when the user drags on a touch screen', () => {
+    openMenu(items())
+    fireEvent.touchMove(document.body)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+})

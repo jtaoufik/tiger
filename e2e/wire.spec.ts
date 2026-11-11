@@ -25,7 +25,9 @@ async function send(page: import('@playwright/test').Page): Promise<string> {
 }
 
 wire('headers that Chromium keeps for itself are sent as written', async ({ tiger, srv }) => {
-  test.setTimeout(120_000)
+  // Twenty-two requests opened and sent one after the other: about 90 s on a
+  // Windows runner, so the budget leaves room for a slow day there.
+  test.setTimeout(240_000)
   const headers: Array<[string, string]> = [
     // Chromium refuses these from the net module (the whole send used to fail).
     ['Host', 'virtual.test'],
