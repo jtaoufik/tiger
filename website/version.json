@@ -1,11 +1,11 @@
 {
-  "version": "0.8.1",
+  "version": "0.9.0",
   "url": "https://jtaoufik.github.io/tiger/#download",
   "notes": [
-    "Imported collections are saved to disk: they survive a restart and Ctrl+S saves them",
-    "{{variables}} resolve on Send, even right after launch or a switch of collection",
-    "Windows: line endings, Notepad and PowerShell files, Ctrl+W and the title bar fixed",
-    "More faithful imports from Postman, Insomnia, Bruno, OpenAPI, WSDL and curl",
-    "Readable everywhere in light and dark, and right to left in Arabic"
+    "Tiger stays up: errors are logged, a dead or hung window recovers, and every failed action says why",
+    "Nested folders import whole from Postman, Insomnia, Bruno, OpenAPI and WSDL, in the order the source showed",
+    "Git never touches a parent repository, and unsaved edits survive a sync or discard",
+    "The .tiger format keeps every value, and scripts assert like Chai",
+    "One coherent look on Linux, macOS and Windows, now on Electron 45"
   ]
 }

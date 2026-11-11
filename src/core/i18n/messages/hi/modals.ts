@@ -73,6 +73,7 @@ export const modals: NamespaceCatalog<typeof en> = {
   'modals.environments.toastCreated': 'परिवेश बनाया गया',
   'modals.environments.toastNameTaken': 'यह नाम पहले से उपयोग में है',
   'modals.environments.toastDeleted': 'परिवेश हटाया गया',
+  'modals.environments.toastSaveFailed': 'परिवेश फ़ाइल सहेजी नहीं जा सकी: {error}',
 
   'modals.runner.title': 'चलाएँ · {title}',
   'modals.runner.topic': 'संग्रह रनर',

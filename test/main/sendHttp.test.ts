@@ -24,7 +24,7 @@ vi.mock('../../src/main/cookieJar', () => ({
   storeCookies: async () => undefined
 }))
 
-import { sendHttp } from '../../src/main/http'
+import { clampTimeout, MAX_BODY_BYTES, sendHttp, setMaxBodyBytes } from '../../src/main/http'
 
 interface Seen {
   method: string
@@ -76,6 +76,84 @@ beforeEach(() => {
 })
 afterEach(() => {
   delete process.env.TIGER_E2E
+  setMaxBodyBytes(MAX_BODY_BYTES)
+})
+
+describe('a response larger than the body limit', () => {
+  const chunk = Buffer.alloc(1024, 0x61)
+
+  beforeEach(() => {
+    const dir = mkdtempSync(join(tmpdir(), 'tiger-ca-'))
+    writeFileSync(join(dir, 'ca.pem'), '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n')
+    settings.value = { ...defaults, caFile: join(dir, 'ca.pem') }
+    route = (req, res) => {
+      if (req.url === '/stream') {
+        // Eight chunks past a two-chunk cap, written as they are produced.
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' })
+        let n = 0
+        const tick = (): void => {
+          if (n++ === 8) return void res.end()
+          res.write(chunk, () => setImmediate(tick))
+        }
+        tick()
+        return true
+      }
+      if (req.url === '/bomb') {
+        // 1 MB of zeros gzips to about a kilobyte.
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip' })
+        res.end(gzipSync(Buffer.alloc(1024 * 1024)))
+        return true
+      }
+      if (req.url === '/deflate-bomb') {
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'deflate' })
+        res.end(deflateSync(Buffer.alloc(1024 * 1024)))
+        return true
+      }
+      return false
+    }
+  })
+
+  it('is refused with a clear error instead of being buffered', async () => {
+    setMaxBodyBytes(2 * 1024)
+    await expect(sendHttp({ method: 'GET', url: `${base}/stream`, headers: {} })).rejects.toThrow(/larger than/)
+    // Under the cap it still arrives whole.
+    setMaxBodyBytes(16 * 1024)
+    expect((await sendHttp({ method: 'GET', url: `${base}/stream`, headers: {} })).size).toBe(8 * 1024)
+  })
+
+  it('a compressed body that would decode past the limit is refused too', async () => {
+    setMaxBodyBytes(64 * 1024)
+    await expect(
+      sendHttp({ method: 'GET', url: `${base}/bomb`, headers: { 'Accept-Encoding': 'gzip' } })
+    ).rejects.toThrow(/larger than/)
+    // A deflate body too: the raw-deflate retry used to turn the refusal into
+    // a 200 whose body was the compressed bytes.
+    await expect(
+      sendHttp({ method: 'GET', url: `${base}/deflate-bomb`, headers: { 'Accept-Encoding': 'deflate' } })
+    ).rejects.toThrow(/larger than/)
+  })
+})
+
+describe('the send timeout', () => {
+  it('is clamped to a usable range', () => {
+    expect(clampTimeout(30000)).toBe(30000)
+    expect(clampTimeout(0)).toBe(1000)
+    expect(clampTimeout(-5)).toBe(1000)
+    expect(clampTimeout(NaN)).toBe(30000)
+    expect(clampTimeout(undefined)).toBe(30000)
+    expect(clampTimeout('45000')).toBe(45000)
+    expect(clampTimeout(2 ** 40)).toBe(60 * 60_000)
+  })
+
+  it('a zero or negative value no longer aborts the send at once', async () => {
+    settings.value = { ...defaults }
+    await expect(sendHttp({ method: 'GET', url: `${base}/ok`, headers: { Host: 'a.test' } }, 0)).resolves.toMatchObject({
+      status: 200
+    })
+    await expect(sendHttp({ method: 'GET', url: `${base}/ok`, headers: { Host: 'a.test' } }, -1)).resolves.toMatchObject({
+      status: 200
+    })
+  })
 })
 
 describe('compressed responses on the Node send path (certificate files configured)', () => {

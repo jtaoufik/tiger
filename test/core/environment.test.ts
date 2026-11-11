@@ -50,3 +50,12 @@ describe('looksLikeProduction', () => {
     }
   })
 })
+
+describe('environment names the plain line cannot hold', () => {
+  it('round-trips a padded or multiline name, and keeps the plain line otherwise', () => {
+    for (const name of ['  staging  ', 'eu\nwest']) {
+      expect(parseEnvironment(serializeEnvironment({ name, variables: [] })).name).toBe(name)
+    }
+    expect(serializeEnvironment(env)).toContain('meta {\n  name: dev\n}')
+  })
+})

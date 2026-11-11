@@ -71,6 +71,7 @@ export const modals = {
   'modals.environments.toastCreated': 'Environment created',
   'modals.environments.toastNameTaken': 'That name is taken',
   'modals.environments.toastDeleted': 'Environment deleted',
+  'modals.environments.toastSaveFailed': 'Could not save the environment file: {error}',
 
   'modals.runner.title': 'Run · {title}',
   'modals.runner.topic': 'Collection runner',

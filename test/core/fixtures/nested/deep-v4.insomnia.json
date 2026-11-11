@@ -1,0 +1,114 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-10-02T09:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v10.3.1",
+  "resources": [
+    {
+      "_id": "req_audit",
+      "parentId": "fld_audit",
+      "_type": "request",
+      "name": "List audit events",
+      "method": "GET",
+      "url": "{{ _.api.url }}/admin/audit",
+      "metaSortKey": -1000,
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {}
+    },
+    {
+      "_id": "fld_audit",
+      "parentId": "fld_admin",
+      "_type": "request_group",
+      "name": "Audit",
+      "metaSortKey": -1000,
+      "environment": {},
+      "environmentPropertyOrder": null
+    },
+    {
+      "_id": "fld_admin",
+      "parentId": "fld_users",
+      "_type": "request_group",
+      "name": "Admin",
+      "metaSortKey": -900,
+      "authentication": { "type": "basic", "username": "root", "password": "{{ _.rootPassword }}" },
+      "environment": { "adminHost": "admin.example.test" }
+    },
+    {
+      "_id": "req_me",
+      "parentId": "fld_users",
+      "_type": "request",
+      "name": "Me",
+      "method": "GET",
+      "url": "{{ _.api.url }}/me",
+      "metaSortKey": -1000,
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {}
+    },
+    {
+      "_id": "fld_users",
+      "parentId": "wrk_shop",
+      "_type": "request_group",
+      "name": "Users",
+      "metaSortKey": -1000
+    },
+    {
+      "_id": "req_ping",
+      "parentId": "wrk_shop",
+      "_type": "request",
+      "name": "Ping",
+      "method": "GET",
+      "url": "{{ _.api.url }}/ping",
+      "metaSortKey": -2000,
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {}
+    },
+    {
+      "_id": "req_billing_audit",
+      "parentId": "fld_billing_audit",
+      "_type": "request",
+      "name": "List audit events",
+      "method": "GET",
+      "url": "{{ _.api.url }}/billing/audit",
+      "metaSortKey": -1000,
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {}
+    },
+    {
+      "_id": "fld_billing_audit",
+      "parentId": "fld_billing",
+      "_type": "request_group",
+      "name": "Audit",
+      "metaSortKey": -1000
+    },
+    {
+      "_id": "fld_billing",
+      "parentId": "wrk_shop",
+      "_type": "request_group",
+      "name": "Billing",
+      "metaSortKey": -500
+    },
+    {
+      "_id": "env_base",
+      "parentId": "wrk_shop",
+      "_type": "environment",
+      "name": "Base Environment",
+      "data": { "api": { "url": "https://api.example.test" }, "rootPassword": "" },
+      "metaSortKey": 1
+    },
+    {
+      "_id": "wrk_shop",
+      "parentId": null,
+      "_type": "workspace",
+      "name": "Deep Insomnia",
+      "scope": "collection"
+    }
+  ]
+}

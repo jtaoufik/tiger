@@ -112,6 +112,27 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.closeCollection.title': 'संग्रह बंद करें',
   'app.closeCollection.message': '"{name}" बंद करें? आपकी फ़ाइलें डिस्क पर ही रहेंगी; यह इसे केवल साइडबार से हटाता है।',
   'app.closeCollection.fallbackName': 'यह संग्रह',
+  'app.toast.saveFailed': 'सहेजा नहीं जा सका: {message}',
+  'app.toast.actionFailed': 'कुछ गलत हो गया: {message}',
+  'app.toast.unsavedKept': {
+    one: 'बिना सहेजे बदलावों वाला एक अनुरोध रखा गया; इसे स्वयं सहेजें या छोड़ दें।',
+    other: 'बिना सहेजे बदलावों वाले {count} अनुरोध रखे गए; इन्हें स्वयं सहेजें या छोड़ दें।'
+  },
+  'app.toast.rootUnavailable': {
+    one: '{path} को फिर से खोला नहीं जा सका। Tiger अगली बार शुरू होने पर एक बार और कोशिश करेगा, फिर इसे भूल जाएगा।',
+    other: '{path} को फिर से खोला नहीं जा सका। Tiger अगले {count} बार शुरू होने पर फिर कोशिश करेगा, फिर इसे भूल जाएगा।'
+  },
+  'app.toast.rootForgotten': {
+    one: '{path} को भुला दिया गया: पिछली बार शुरू होने पर इसका फ़ोल्डर नहीं मिला।',
+    other: '{path} को भुला दिया गया: लगातार पिछली {count} बार शुरू होने पर इसका फ़ोल्डर नहीं मिला।'
+  },
+  'app.closeCollection.unsaved': {
+    one: '"{name}" बंद करें? एक अनुरोध में बिना सहेजे बदलाव हैं जो खो जाएंगे। सहेजी गई फ़ाइलें डिस्क पर ही रहेंगी।',
+    other: '"{name}" बंद करें? {count} अनुरोधों में बिना सहेजे बदलाव हैं जो खो जाएंगे। सहेजी गई फ़ाइलें डिस्क पर ही रहेंगी।'
+  },
+  'app.crash.title': 'कुछ गलत हो गया',
+  'app.crash.detail': 'Tiger को एक ऐसी त्रुटि मिली जिससे वह उबर नहीं सका। जारी रखने के लिए पुनः लोड करें; आपकी सहेजी गई फ़ाइलें सुरक्षित हैं।',
+  'app.crash.reload': 'पुनः लोड करें',
   'app.deleteRequest.title': 'अनुरोध हटाएं',
   'app.deleteRequest.message': '"{name}" हटाएं? इसे वापस नहीं किया जा सकता।',
   'app.deleteRequest.fallbackName': 'यह अनुरोध',

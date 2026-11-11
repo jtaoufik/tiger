@@ -72,3 +72,12 @@ describe('collection/folder docs', () => {
     expect(parseCollectionSettings(serializeCollectionSettings(settings))).toEqual(settings)
   })
 })
+
+describe('collection names the plain line cannot hold', () => {
+  it('round-trips a padded or multiline name, and keeps the plain line otherwise', () => {
+    for (const name of ['  Shop  ', 'Shop\nAPI']) {
+      expect(parseCollectionSettings(serializeCollectionSettings({ name })).name).toBe(name)
+    }
+    expect(serializeCollectionSettings({ name: 'Shop' })).toBe('meta {\n  name: Shop\n}\n')
+  })
+})

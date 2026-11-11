@@ -199,12 +199,13 @@ function sampleFromSchema(doc: Json, raw: unknown, depth = 0, budget = { left: S
   }
   const one = asArray(schema.oneOf ?? schema.anyOf)
   if (one.length) return sampleFromSchema(doc, one[0], depth + 1, budget)
-  switch (schema.type) {
+  const type = schemaType(schema)
+  switch (type) {
     case 'object':
     case undefined: {
       const props = (schema.properties ?? {}) as Json
       const keys = Object.keys(props)
-      if (!keys.length) return schema.type === 'object' ? {} : null
+      if (!keys.length) return type === 'object' ? {} : null
       if (depth > 0 && keys.length > budget.left) return {}
       budget.left -= keys.length
       return Object.fromEntries(keys.map((k) => [k, sampleFromSchema(doc, props[k], depth + 1, budget)]))
@@ -223,12 +224,17 @@ function sampleFromSchema(doc: Json, raw: unknown, depth = 0, budget = { left: S
   }
 }
 
+/** The schema's type; OpenAPI 3.1 writes a nullable field as `type: ['string', 'null']`. */
+function schemaType(schema: Json): unknown {
+  return Array.isArray(schema.type) ? schema.type.find((t) => t !== 'null') : schema.type
+}
+
 function formFromSchema(doc: Json, schema: unknown, multipart: boolean): string {
   const props = (deref(doc, schema).properties ?? {}) as Json
   return Object.entries(props)
     .map(([k, v]) => {
       const s = deref(doc, v)
-      const isFile = multipart && s.type === 'string' && (s.format === 'binary' || s.format === 'base64')
+      const isFile = multipart && schemaType(s) === 'string' && (s.format === 'binary' || s.format === 'base64')
       return isFile ? `${k}: @file:` : keyValueLine({ name: k, value: scalar(s.example ?? '') })
     })
     .join('\n')
@@ -456,6 +462,9 @@ function applySecurity(request: TigerRequest, auth: TigerAuth | undefined, alsoS
   for (const key of alsoSent) rows(key.in).push({ name: key.key, value: key.value, enabled: true })
 }
 
+/** Path item keys that are HTTP operations Tiger does not send (the rest are parameters, servers, summary...). */
+const OTHER_METHODS = new Set(['trace', 'connect', 'query'])
+
 export function importOpenApi(raw: unknown): ImportResult {
   const doc = (raw ?? {}) as Json
   const info = (doc.info ?? {}) as Json
@@ -474,8 +483,15 @@ export function importOpenApi(raw: unknown): ImportResult {
     const item = deref(doc, methodsRaw)
     const shared = asArray(item.parameters).map((p) => deref(doc, p))
     for (const [method, opRaw] of Object.entries(item)) {
-      if (!isHttpMethod(method)) continue
       const op = (opRaw ?? {}) as Json
+      if (!isHttpMethod(method)) {
+        // An operation Tiger cannot send (TRACE, QUERY) is reported, not dropped quietly.
+        if (OTHER_METHODS.has(method)) {
+          const label = str(op.summary) || str(op.operationId) || `${method.toUpperCase()} ${path}`
+          warnings.push({ request: label, path: [], ...warning('imports.methodUnsupported', { method: method.toUpperCase() }) })
+        }
+        continue
+      }
       const own = asArray(op.parameters).map((p) => deref(doc, p))
       // Operation parameters override path-level ones with the same name + location.
       const params = [

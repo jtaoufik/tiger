@@ -19,12 +19,12 @@
   align-items: center;
   gap: 6px;
   color: var(--text-dim);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 .import-report-stat dd {
   margin: 0;
-  font-size: 22px;
-  font-weight: 650;
+  font-size: 1.375rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
@@ -47,7 +47,7 @@
 .import-report-hint {
   margin: 0 0 10px;
   color: var(--text-dim);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 .import-report-list {
   margin: 0;
@@ -70,19 +70,19 @@
   align-items: baseline;
   gap: 4px 8px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 0.8125rem;
   overflow-wrap: anywhere;
 }
 .import-report-path {
   color: var(--text-faint);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .import-report-messages {
   margin: 4px 0 0;
   padding-inline-start: 18px;
   color: var(--text-dim);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -98,7 +98,7 @@
   gap: 8px;
   margin: 0 0 16px;
   color: var(--text-dim);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 .import-report-saved-text {
   flex: 1;

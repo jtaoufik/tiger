@@ -1,6 +1,8 @@
 import { app } from 'electron'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { writeAtomicSync } from './atomicWrite'
+import { logMainError } from './resilience'
 
 export interface HistoryEntry {
   id: string
@@ -29,12 +31,21 @@ export function readHistory(): HistoryEntry[] {
   }
 }
 
+/** Never throws: the history is a convenience, the response it records is not. */
+function persist(entries: HistoryEntry[]): void {
+  try {
+    writeAtomicSync(historyPath(), JSON.stringify(entries, null, 2))
+  } catch (e) {
+    logMainError('history', e)
+  }
+}
+
 export function appendHistory(entry: HistoryEntry): HistoryEntry[] {
   const next = [entry, ...readHistory()].slice(0, MAX_ENTRIES)
-  writeFileSync(historyPath(), JSON.stringify(next, null, 2), 'utf8')
+  persist(next)
   return next
 }
 
 export function clearHistory(): void {
-  writeFileSync(historyPath(), '[]', 'utf8')
+  persist([])
 }

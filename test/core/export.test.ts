@@ -202,3 +202,31 @@ describe('exportOpenApi', () => {
     expect(post.requestBody.content['application/json'].example).toBe('{"title":"hi"}')
   })
 })
+
+describe('exportOpenApi with clashing and templated paths', () => {
+  const req = (name: string, url: string): ImportedRequest => ({
+    path: [],
+    request: { name, method: 'post', url, query: [], headers: [], body: { type: 'none', content: '' } }
+  })
+
+  it('keeps both requests when two share a path and method', () => {
+    const doc = exportOpenApi('Demo', [req('Login A', '{{baseUrl}}/login'), req('Login B', '{{baseUrl}}/login'), req('Login C', '{{baseUrl}}/login')]) as any
+    expect(doc.paths['/login'].post.summary).toBe('Login A')
+    expect(doc.paths['/login#2'].post).toMatchObject({ summary: 'Login B', operationId: 'Login_B' })
+    expect(doc.paths['/login#3'].post).toMatchObject({ summary: 'Login C', operationId: 'Login_C' })
+  })
+
+  it('keeps operationIds unique when two requests share a name', () => {
+    const doc = exportOpenApi('Demo', [req('Login', '{{baseUrl}}/a'), req('Login', '{{baseUrl}}/b')]) as any
+    expect([doc.paths['/a'].post.operationId, doc.paths['/b'].post.operationId]).toEqual(['Login', 'Login_2'])
+  })
+
+  it('turns {{id}} into the {id} template with a path parameter', () => {
+    const doc = exportOpenApi('Demo', [req('Get user', '{{baseUrl}}/users/{{id}}/posts/{{ postId }}')]) as any
+    const op = doc.paths['/users/{id}/posts/{postId}'].post
+    expect(op.parameters).toEqual([
+      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+      { name: 'postId', in: 'path', required: true, schema: { type: 'string' } }
+    ])
+  })
+})

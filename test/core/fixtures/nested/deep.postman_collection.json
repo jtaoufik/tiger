@@ -1,0 +1,219 @@
+{
+  "info": {
+    "_postman_id": "0b3a3d2e-9c1f-4f3a-8a8e-2b1c7d6e5f40",
+    "name": "Deep Shop",
+    "description": "Folders four levels deep.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345678"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://shop.example.com/api",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Store",
+      "item": [
+        {
+          "name": "Catalog",
+          "item": [
+            {
+              "name": "Products",
+              "item": [
+                {
+                  "name": "List",
+                  "request": {
+                    "method": "GET",
+                    "url": "{{baseUrl}}/products"
+                  }
+                },
+                {
+                  "name": "Reviews",
+                  "item": [
+                    {
+                      "name": "List",
+                      "request": {
+                        "method": "GET",
+                        "url": {
+                          "raw": "{{baseUrl}}/products/:id/reviews",
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "path": [
+                            "products",
+                            ":id",
+                            "reviews"
+                          ],
+                          "variable": [
+                            {
+                              "key": "id",
+                              "value": "42"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "Create",
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                          }
+                        ],
+                        "url": "{{baseUrl}}/products/42/reviews",
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\"stars\": 5}"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Reviews",
+              "item": [
+                {
+                  "name": "Moderation queue",
+                  "request": {
+                    "method": "GET",
+                    "url": "{{baseUrl}}/reviews/queue"
+                  }
+                }
+              ]
+            }
+          ],
+          "auth": {
+            "type": "basic",
+            "basic": [
+              {
+                "key": "username",
+                "value": "catalog-bot"
+              },
+              {
+                "key": "password",
+                "value": "{{pass}}"
+              }
+            ]
+          },
+          "variable": [
+            {
+              "key": "pageSize",
+              "value": "50"
+            }
+          ]
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Stats",
+              "request": {
+                "method": "GET",
+                "url": "{{baseUrl}}/admin/stats"
+              }
+            }
+          ],
+          "auth": {
+            "type": "basic",
+            "basic": [
+              {
+                "key": "username",
+                "value": "store-admin"
+              },
+              {
+                "key": "password",
+                "value": "{{pass}}"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Everything the storefront calls."
+    },
+    {
+      "name": "Warehouse",
+      "item": [
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Stats",
+              "request": {
+                "method": "GET",
+                "url": "{{baseUrl}}/warehouse/stats"
+              }
+            },
+            {
+              "name": 2024,
+              "request": {
+                "method": "GET",
+                "url": {
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reports",
+                    {
+                      "type": "string",
+                      "value": "2024"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "auth": {
+            "type": "basic",
+            "basic": [
+              {
+                "key": "username",
+                "value": "warehouse-admin"
+              },
+              {
+                "key": "password",
+                "value": "{{pass}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Purge",
+              "request": {
+                "method": "GET",
+                "url": "{{baseUrl}}/warehouse/purge"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

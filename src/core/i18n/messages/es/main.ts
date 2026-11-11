@@ -14,6 +14,13 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.restartAnyway': 'Reiniciar de todos modos',
   'main.dialog.keepEditing': 'Seguir editando',
   'main.dialog.saveResponse': 'Guardar el cuerpo de la respuesta',
+  'main.dialog.crashLoopTitle': 'Tiger se detiene una y otra vez',
+  'main.dialog.crashLoopDetail': 'La ventana dejó de funcionar varias veces seguidas. El registro en {path} explica por qué.',
+  'main.dialog.unresponsiveTitle': 'Tiger no responde',
+  'main.dialog.unresponsiveDetail': 'Puedes esperar a que termine o recargar la ventana. Al recargar se pierden las ediciones que aún no se han guardado.',
+  'main.dialog.wait': 'Esperar',
+  'main.dialog.reload': 'Recargar',
+  'main.dialog.quit': 'Salir',
   'main.import.postman': 'Colección de Postman',
   'main.import.insomnia': 'Exportación de Insomnia',
   'main.import.wsdl': 'Documento WSDL',
@@ -23,5 +30,6 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'Exportar',
   'main.http.certRead': 'No se pudo leer el archivo de certificado: {reason}',
   'main.http.tokenStatus': 'El endpoint del token devolvió {status}',
-  'main.http.tokenMissing': 'La respuesta del token no incluía access_token'
+  'main.http.tokenMissing': 'La respuesta del token no incluía access_token',
+  'main.http.tooLarge': 'La respuesta supera los {limit} MB y no se conservó. Guárdala con otra herramienta.'
 }

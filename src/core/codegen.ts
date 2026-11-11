@@ -104,7 +104,9 @@ export function toPython(built: BuiltRequest): string {
   if (Object.keys(headers).length) {
     lines.push(`headers = ${JSON.stringify(headers, null, 4)}`)
   }
-  const args = [`"${built.url}"`]
+  // A JSON string literal is a valid Python one; a quote or backslash in
+  // the URL used to break the snippet.
+  const args = [JSON.stringify(built.url)]
   if (Object.keys(headers).length) args.push('headers=headers')
   if (built.multipart?.length) {
     // files= makes requests send multipart/form-data; (None, value) is a text field.

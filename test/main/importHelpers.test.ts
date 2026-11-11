@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { expandPaths, mergeImports, rootNameFor } from '../../src/main/importHelpers'
+import { expandPaths, mergeImports, rootNameFor, scanDroppedFolder } from '../../src/main/importHelpers'
 import type { ImportResult } from '../../src/core/import'
 
 async function makeTree(): Promise<string> {
@@ -76,6 +76,14 @@ describe('rootNameFor', () => {
   })
 })
 
+describe('scanDroppedFolder', () => {
+  it('fails on a root it cannot read instead of finding nothing to import', async () => {
+    const root = join(await mkdtemp(join(tmpdir(), 'tiger-import-')), 'gone')
+    await expect(scanDroppedFolder(root, ['json'])).rejects.toThrow(/ENOENT/)
+    await expect(expandPaths([root], ['json'])).resolves.toEqual([])
+  })
+})
+
 describe('mergeImports', () => {
   const a: ImportResult = {
     name: 'A',
@@ -119,6 +127,22 @@ describe('mergeImports', () => {
 
     const noEnv = mergeImports([{ name: 'a', result: a }], 'postman', 'team')
     expect(noEnv.environments).toBeUndefined()
+  })
+
+  it('numbers folders among the files that hold requests only', () => {
+    // An environment export named like a collection must not take its name
+    // and leave a "shop 2" folder with no "shop".
+    const envOnly: ImportResult = { name: 'Shop', source: 'postman', requests: [], environments: [{ name: 'Shop', variables: [] }] }
+    const merged = mergeImports(
+      [{ name: 'shop', result: envOnly }, { name: 'shop', result: a }, { name: 'orders', result: b }],
+      'postman',
+      'team'
+    )
+    expect(merged.requests.map((r) => r.path)).toEqual([['shop', 'Users'], ['orders']])
+    expect(merged.environments?.map((e) => e.name)).toEqual(['Shop', 'dev'])
+    // Two collections named alike still get separate folders.
+    const twice = mergeImports([{ name: 'shop', result: a }, { name: 'shop', result: b }], 'postman', 'team')
+    expect(twice.requests.map((r) => r.path)).toEqual([['shop', 'Users'], ['shop 2']])
   })
 
   it('keeps a lone collection at the root and turns nested collection settings into folder settings', () => {

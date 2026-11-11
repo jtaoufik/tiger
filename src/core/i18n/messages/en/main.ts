@@ -12,6 +12,13 @@ export const main = {
   'main.dialog.restartAnyway': 'Restart Anyway',
   'main.dialog.keepEditing': 'Keep Editing',
   'main.dialog.saveResponse': 'Save the response body',
+  'main.dialog.crashLoopTitle': 'Tiger keeps stopping',
+  'main.dialog.crashLoopDetail': 'The window stopped working several times in a row. The log at {path} says why.',
+  'main.dialog.unresponsiveTitle': 'Tiger is not responding',
+  'main.dialog.unresponsiveDetail': 'You can wait for it to finish, or reload the window. Edits that are not saved yet are lost on reload.',
+  'main.dialog.wait': 'Wait',
+  'main.dialog.reload': 'Reload',
+  'main.dialog.quit': 'Quit',
   'main.import.postman': 'Postman collection',
   'main.import.insomnia': 'Insomnia export',
   'main.import.wsdl': 'WSDL document',
@@ -21,5 +28,6 @@ export const main = {
   'main.export.title': 'Export',
   'main.http.certRead': 'Could not read certificate file: {reason}',
   'main.http.tokenStatus': 'Token endpoint returned {status}',
-  'main.http.tokenMissing': 'Token response had no access_token'
+  'main.http.tokenMissing': 'Token response had no access_token',
+  'main.http.tooLarge': 'The response is larger than {limit} MB and was not kept. Save it with another tool.'
 } as const

@@ -42,8 +42,12 @@ export function MultipartEditor({ items, onChange }: Props) {
   }
 
   const pickFile = async (index: number) => {
-    const path = await window.tiger?.pickFile?.([{ name: t('request.multipart.allFiles'), extensions: ['*'] }])
-    if (path) update(index, { value: `${FILE_PREFIX}${path}` })
+    try {
+      const path = await window.tiger?.pickFile?.([{ name: t('request.multipart.allFiles'), extensions: ['*'] }])
+      if (path) update(index, { value: `${FILE_PREFIX}${path}` })
+    } catch {
+      /* picker unavailable or cancelled */
+    }
   }
 
   return (

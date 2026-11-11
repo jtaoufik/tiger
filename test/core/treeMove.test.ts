@@ -56,3 +56,9 @@ describe('uniqueCopyName', () => {
     expect(uniqueCopyName('Posts', ['Posts copy', 'Posts copy 2'])).toBe('Posts copy 3')
   })
 })
+
+describe('renamedFolderPath at the root', () => {
+  it('renames nothing (and writes no stray index) when the folder path is empty', () => {
+    expect(renamedFolderPath(['a', 'b'], [], 'n')).toBeNull()
+  })
+})

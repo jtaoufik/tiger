@@ -13,9 +13,19 @@ export interface AuthApplication {
   query: KeyValue[]
 }
 
+/**
+ * `text` with every lone surrogate half replaced by U+FFFD: encodeURIComponent
+ * and btoa throw on one, which would abort the whole send over a broken
+ * character pasted into a value.
+ */
+export function wellFormed(text: string): string {
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD')
+}
+
 function base64(input: string): string {
-  if (typeof btoa === 'function') return btoa(unescape(encodeURIComponent(input)))
-  return Buffer.from(input, 'utf8').toString('base64')
+  const text = wellFormed(input)
+  if (typeof btoa === 'function') return btoa(unescape(encodeURIComponent(text)))
+  return Buffer.from(text, 'utf8').toString('base64')
 }
 
 export function applyAuth(auth: TigerAuth | undefined, vars: VarMap): AuthApplication {

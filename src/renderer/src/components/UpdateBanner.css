@@ -19,7 +19,7 @@
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow);
   font-size: 0.8438rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 .update-ready > svg:first-child {
   flex: none;
@@ -77,7 +77,7 @@
 .update-bar > span {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-fill); /* an indicator: >= 3:1 on the track */
   transition: width 0.3s ease;
 }
 @media (prefers-reduced-motion: reduce) {

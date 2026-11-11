@@ -68,6 +68,7 @@ export const modals: NamespaceCatalog<typeof en> = {
   'modals.environments.toastCreated': '环境已创建',
   'modals.environments.toastNameTaken': '该名称已被使用',
   'modals.environments.toastDeleted': '环境已删除',
+  'modals.environments.toastSaveFailed': '无法保存环境文件：{error}',
 
   'modals.runner.title': '运行 · {title}',
   'modals.runner.topic': '集合运行器',

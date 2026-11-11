@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { splitDiff } from '@core/diffView'
 import { timeAgo } from '@core/i18n'
 import type { GitBranches, GitCommit } from '../../../main/git'
@@ -23,6 +23,9 @@ import {
 import { ChevronIcon, DownloadIcon, HistoryIcon, RefreshIcon, SaveIcon, UndoIcon } from './Icons'
 import './a11y.css'
 import './GitModal.css'
+
+/** Diff lines rendered before "Show all": enough to read, cheap to lay out. */
+const DIFF_LINE_CAP = 2000
 
 interface Props {
   collectionName: string
@@ -66,13 +69,19 @@ export function GitModal({
   const [advanced, setAdvanced] = useState(false)
   const [newBranch, setNewBranch] = useState('')
   const [discarding, setDiscarding] = useState<ChangeItem[] | null>(null)
+  const [allDiffLines, setAllDiffLines] = useState(false)
+  const diffLines = useMemo(() => splitDiff(fullDiff), [fullDiff])
   const [undo, setUndo] = useState<{ token: string; text: string } | null>(null)
 
   const loadDetails = useCallback(async () => {
     if (!window.tiger?.git || !status?.isRepo) return
-    setLog(await window.tiger.git.log(root))
-    setBranches(await window.tiger.git.branches(root))
-    if (advanced) setFullDiff(await window.tiger.git.diff(root))
+    try {
+      setLog(await window.tiger.git.log(root))
+      setBranches(await window.tiger.git.branches(root))
+      if (advanced) setFullDiff(await window.tiger.git.diff(root))
+    } catch {
+      /* history and branches are extras; the status above still stands */
+    }
   }, [root, status, advanced])
 
   useEffect(() => {
@@ -451,12 +460,19 @@ export function GitModal({
                         aria-label={t('team.modal.allUnsavedDiff')}
                         tabIndex={0}
                       >
-                        {splitDiff(fullDiff).map((line, i) => (
+                        {/* A changed body file can run to hundreds of thousands of
+                            lines; show the first screenfuls, the rest on request. */}
+                        {(allDiffLines ? diffLines : diffLines.slice(0, DIFF_LINE_CAP)).map((line, i) => (
                           <div key={i} className={`dl-${line.kind}`}>
                             {line.text || ' '}
                           </div>
                         ))}
                       </div>
+                      {!allDiffLines && diffLines.length > DIFF_LINE_CAP && (
+                        <button type="button" className="btn ghost" onClick={() => setAllDiffLines(true)}>
+                          {t('team.modal.showAllDiff', { count: diffLines.length })}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

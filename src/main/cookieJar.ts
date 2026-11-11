@@ -12,10 +12,12 @@
  */
 
 import { app, session, type Cookie, type CookiesSetDetails, type Session } from 'electron'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseResponseCookies } from '../core/cookieStore'
 import type { StoredCookie } from '../core/cookieStore'
+import { writeAtomicSync } from './atomicWrite'
+import { logMainError } from './resilience'
 
 export type { StoredCookie }
 
@@ -30,10 +32,25 @@ function jarPath(): string {
   return join(app.getPath('userData'), 'cookies.json')
 }
 
+/** An entry the rest of this module can rely on; anything else is dropped. */
+function isStoredCookie(c: unknown): c is StoredCookie {
+  if (typeof c !== 'object' || c === null) return false
+  const v = c as Record<string, unknown>
+  return (
+    typeof v.name === 'string' &&
+    typeof v.domain === 'string' &&
+    typeof v.path === 'string' &&
+    typeof v.value === 'string' &&
+    (v.expires === undefined || typeof v.expires === 'number')
+  )
+}
+
 function readJarFile(): StoredCookie[] {
   try {
     const data = JSON.parse(readFileSync(jarPath(), 'utf8'))
-    return Array.isArray(data) ? data : []
+    // A hand-edited or damaged entry used to throw out of attachCookieStore and
+    // fail every send until the file was deleted.
+    return Array.isArray(data) ? data.filter(isStoredCookie) : []
   } catch {
     return []
   }
@@ -41,9 +58,10 @@ function readJarFile(): StoredCookie[] {
 
 function persist(): void {
   try {
-    writeFileSync(jarPath(), JSON.stringify(snapshot, null, 2), 'utf8')
-  } catch {
-    /* disk trouble must not break sends */
+    writeAtomicSync(jarPath(), JSON.stringify(snapshot, null, 2))
+  } catch (e) {
+    // Disk trouble must not break sends.
+    logMainError('cookies', e)
   }
 }
 
@@ -87,7 +105,13 @@ function toChromium(c: StoredCookie): CookiesSetDetails {
  */
 export function attachCookieStore(ses: Session): Promise<void> {
   jarSession = ses
-  snapshot = readJarFile().filter((c) => c.expires === undefined || c.expires > Date.now())
+  try {
+    snapshot = readJarFile().filter((c) => c.expires === undefined || c.expires > Date.now())
+  } catch (e) {
+    // Whatever the jar file holds, the app sends; the jar then starts empty.
+    logMainError('cookies', e)
+    snapshot = []
+  }
   const seeded = Promise.all(snapshot.map((c) => ses.cookies.set(toChromium(c)).catch(() => undefined)))
   ready = seeded
     .then(async () => {

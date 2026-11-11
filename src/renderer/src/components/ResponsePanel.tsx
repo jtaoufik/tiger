@@ -124,6 +124,11 @@ export function ResponsePanel({ state }: Props) {
     activeMarkRef.current?.scrollIntoView?.({ block: 'center' })
   }, [activeMatch, query])
 
+  // A new response has its own matches; the old index would read "7/3".
+  useEffect(() => {
+    setActiveMatch(0)
+  }, [state?.data])
+
   const copyBody = async (body: string) => {
     try {
       await navigator.clipboard.writeText(body)
@@ -285,6 +290,13 @@ export function ResponsePanel({ state }: Props) {
             className="meta-chip timing"
             tabIndex={timingRows.length ? 0 : undefined}
             aria-describedby={timingRows.length ? `${uid}-timing` : undefined}
+            // A tooltip must be dismissible without moving the pointer (WCAG 1.4.13).
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                e.currentTarget.blur()
+              }
+            }}
           >
             {t('response.meta.time')} <b>{t('response.meta.ms', { ms: t.number(res.timeMs) })}</b>
           </span>
@@ -513,7 +525,9 @@ export function ResponsePanel({ state }: Props) {
                 id={`${uid}-body`}
                 className="html-preview"
                 sandbox=""
-                srcDoc={res.raw}
+                // The same cap as the text view: a multi-MB document would be
+                // parsed in full by the frame. The banner above says so.
+                srcDoc={renderTruncated ? res.raw.slice(0, RENDER_LIMIT) : res.raw}
                 title={t('response.htmlPreviewTitle')}
               />
             ) : (

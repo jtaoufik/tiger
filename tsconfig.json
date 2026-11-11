@@ -14,9 +14,8 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
-    "baseUrl": ".",
     "paths": {
-      "@core/*": ["src/core/*"]
+      "@core/*": ["./src/core/*"]
     }
   },
   "include": ["src", "test", "e2e", "playwright.config.ts"]

@@ -131,3 +131,9 @@ describe('variable names with spaces (Postman allows them)', () => {
     expect(findMissingVars('{{ "a": 1 }}', {})).toEqual([])
   })
 })
+
+describe('values a map built from JSON may hold', () => {
+  it('never writes the text "undefined" for a variable without a value', () => {
+    expect(interpolate('<{{a}}>', { a: undefined as unknown as string })).toBe('<>')
+  })
+})

@@ -33,18 +33,18 @@
   padding: 18px 16px 20px;
   color: var(--text-dim);
   text-align: center;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .palette-backdrop .palette-empty b {
   color: var(--text);
-  font-weight: 650;
+  font-weight: 600;
 }
 .palette-foot {
   display: flex;
   gap: 16px;
   padding: 8px 14px;
   border-top: 1px solid var(--border);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-dim);
 }
 .palette-foot kbd {
@@ -56,7 +56,7 @@
   margin-inline-end: 3px;
   padding: 0 4px;
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
   background: var(--glass-strong);
@@ -67,8 +67,8 @@
 }
 .palette-group {
   padding: 8px 10px 4px;
-  font-size: 10.5px;
-  font-weight: 650;
+  font-size: 0.65625rem;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -87,7 +87,7 @@
   min-width: 0;
 }
 .palette-cmd-desc {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -106,7 +106,7 @@
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   line-height: 16px;
   text-align: center;
   border: 1px solid var(--border-strong);

@@ -11,7 +11,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="macOS, Windows and Linux" />
-  <a href="https://github.com/jtaoufik/tiger/releases/latest"><img src="https://img.shields.io/badge/version-0.8.1-orange" alt="Version 0.8.1" /></a>
+  <a href="https://github.com/jtaoufik/tiger/releases/latest"><img src="https://img.shields.io/badge/version-0.9.0-orange" alt="Version 0.9.0" /></a>
   <a href="https://codecov.io/gh/jtaoufik/tiger"><img src="https://codecov.io/gh/jtaoufik/tiger/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml"><img src="https://github.com/jtaoufik/tiger/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://www.linkedin.com/in/taoufik-jabbari"><img src="https://img.shields.io/badge/LinkedIn-Taoufik%20Jabbari-0A66C2?logo=linkedin&logoColor=white" alt="Taoufik Jabbari on LinkedIn" /></a>
@@ -33,7 +33,7 @@
 
 ## Download
 
-Free, no sign-up. Version 0.7.0.
+Free, no sign-up. Version 0.9.0.
 
 | Platform | Download | Notes |
 |---|---|---|

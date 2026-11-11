@@ -4,7 +4,7 @@
  * Content-Type chosen when the request does not set one.
  */
 
-import { applyAuth } from './auth'
+import { applyAuth, wellFormed } from './auth'
 import { interpolate, type VarMap } from './interpolate'
 import { parseMultipartContent } from './multipart'
 import { parseKeyValues } from './tigerFormat'
@@ -32,7 +32,7 @@ const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD'])
 
 /** True when a body holds something to send (a field, or non-blank text). */
 function hasContent(body: TigerBody): boolean {
-  if (body.type === 'form') return parseKeyValues(body.content).some((kv) => kv.enabled !== false)
+  if (body.type === 'form') return parseKeyValues(body.content, true).some((kv) => kv.enabled !== false)
   if (body.type === 'multipart') {
     return parseMultipartContent(body.content).some((row) => row.enabled !== false && row.name)
   }
@@ -51,7 +51,7 @@ function hasHeader(headers: Record<string, string>, name: string): boolean {
  * starts no escape is encoded like everything else that would change the query.
  */
 function encodeQueryPart(text: string): string {
-  return text
+  return wellFormed(text)
     .split(/(%[0-9A-Fa-f]{2})/)
     .map((part, i) => (i % 2 ? part : encodeURIComponent(part)))
     .join('')
@@ -155,7 +155,9 @@ export function buildRequest(req: TigerRequest, vars: VarMap = {}): BuiltRequest
       if (!hasHeader(headers, 'content-type')) headers['Content-Type'] = 'text/plain'
     } else if (req.body.type === 'form') {
       const params = new URLSearchParams()
-      for (const kv of parseKeyValues(req.body.content)) {
+      // Lenient: a line without a colon is a field with an empty value, not
+      // a parse error that stops the send.
+      for (const kv of parseKeyValues(req.body.content, true)) {
         if (kv.enabled === false) continue
         params.append(interpolate(kv.name, vars), interpolate(kv.value, vars))
       }

@@ -105,6 +105,7 @@ export const settings: NamespaceCatalog<typeof en> = {
     'Remplacez {placeholder} par le chemin absolu du dossier que vous avez ouvert dans Tiger. Vous pouvez avoir une entrée par collection.',
   'settings.mcp.copySnippet': 'Copier l’extrait',
   'settings.mcp.snippetCopied': 'Extrait copié',
+  'settings.mcp.copyFailed': 'Impossible de copier l’extrait',
   'settings.mcp.loading': 'Chargement…',
   'settings.mcp.storeNote':
     'Chaque mise à jour du Microsoft Store installe Tiger dans un nouveau dossier. Après une mise à jour, copiez de nouveau l’extrait.',

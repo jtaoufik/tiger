@@ -20,6 +20,7 @@ import { saveCollectionFiles } from './saveCollection'
 import { readTextFile } from './textFile'
 import type { CollectionFile } from '../core/collectionFiles'
 import { appendHistory, clearHistory, readHistory } from './history'
+import { writeAtomic } from './atomicWrite'
 import { clearCookies } from './cookieJar'
 import {
   applyUpdateSettings,
@@ -67,12 +68,15 @@ import { sanitizeCollectionName } from '../core/newCollection'
 import { resolveMcpLaunch, type McpInfo } from '../mcp/launch'
 import { disposeScriptHost, runIsolatedScript } from './scriptHost'
 import { appWindows, targetAppWindow } from './windows'
+import { guardWindow, installCrashGuards } from './resilience'
 import { redactedUrl, type BuiltRequest } from '../core/request'
 import type { AnalyticsEvent } from '../core/analytics'
 import type { TigerAuth } from '../core/types'
 import type { VarMap } from '../core/interpolate'
 
 perfMark('main:entry')
+// Before anything async: a failure anywhere is logged, never a crash dialog.
+installCrashGuards()
 
 /** Was this saved position still visible on a connected display? */
 function isOnScreen(state: { x?: number; y?: number; width: number; height: number }): boolean {
@@ -177,6 +181,9 @@ function createWindow(): BrowserWindow {
     icon: winIcon,
     backgroundColor: dark ? '#0f1117' : '#eef1f7',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // The traffic lights sit on the centre line of the 51 px title row the
+    // renderer draws; the default position left them above the buttons.
+    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 19 } : undefined,
     // Real OS-level translucency where the platform supports it; the renderer
     // also paints a CSS glass fallback so it looks right everywhere.
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
@@ -193,6 +200,8 @@ function createWindow(): BrowserWindow {
     },
     ...headlessWindowOptions(headless)
   })
+  // A dead or hung renderer is reloaded (or asked about), never left blank.
+  guardWindow(win, mayShowWindow(headless))
 
   win.once('ready-to-show', () => {
     perfMark('main:ready-to-show')
@@ -352,10 +361,11 @@ function registerIpc(): void {
   ipcMain.handle('tiger:readFile', async (_e, path: string) => readTextFile(path))
 
   ipcMain.handle('tiger:writeFile', async (_e, path: string, content: string) => {
-    const { writeFile, mkdir } = await import('node:fs/promises')
+    const { mkdir } = await import('node:fs/promises')
     const { dirname } = await import('node:path')
     await mkdir(dirname(path), { recursive: true })
-    await writeFile(path, content, 'utf8')
+    // Whole or not at all: a crash mid-save must not leave a truncated request file.
+    await writeAtomic(path, content)
     return true
   })
 
@@ -666,7 +676,7 @@ app.whenReady().then(() => {
     if (process.platform === 'darwin' && !app.isPackaged && !headless) {
       setImmediate(() => {
         try {
-          app.dock.setIcon(join(__dirname, '../../build/icon.png'))
+          app.dock?.setIcon(join(__dirname, '../../build/icon.png'))
         } catch {
           /* missing icon asset must not block startup */
         }

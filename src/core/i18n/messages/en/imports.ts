@@ -65,6 +65,12 @@ export const imports = {
   'imports.bearerPrefix':
     'Bearer auth uses the prefix "{prefix}". Tiger always sends "Bearer"; add an Authorization header instead if the server needs "{prefix}".',
   'imports.folderVariables': 'Folder variables are not supported: {names}. Add them to an environment.',
+  'imports.notWsdl':
+    'This is not a WSDL document: it has no <definitions> element. Save the service\'s WSDL (often the ?wsdl address) and import that file.',
+  'imports.wsdl2Unsupported':
+    'This is a WSDL 2.0 document (<description> root). Tiger imports WSDL 1.1 only; many services also publish a 1.1 version (often the ?wsdl address). Import that file.',
+  'imports.formFileContentType':
+    'Form field "{field}" declares its file as {type}. Tiger has no per-part content type and sends every file part as application/octet-stream; check the server accepts that.',
   'imports.folderScripts': 'Folder scripts were copied into each request in this folder. Edit them there.',
   'imports.templateTags': 'Uses template tags Tiger cannot run: {tags}.',
   'imports.templateTagsKept': 'Uses template tags Tiger cannot run: {tags}. They were kept as text.',

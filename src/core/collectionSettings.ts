@@ -4,11 +4,13 @@
  * inherit unless they set their own (an explicit `auth:none` opts out).
  */
 
-import { dedent, parseAuth, parseKeyValues, renderAuth, tokenizeBlocks } from './tigerFormat'
+import { dedent, keyValueLine, parseAuth, parseKeyValues, renderAuth, tokenizeBlocks } from './tigerFormat'
 import type { TigerAuth, TigerRequest } from './types'
 
 export interface CollectionSettings {
   name?: string
+  /** A folder's position among its siblings (`folder.tiger` only), kept from the import. */
+  seq?: number
   auth?: TigerAuth
   /** Free-form markdown documentation for a collection or folder. */
   docs?: string
@@ -20,6 +22,7 @@ export function parseCollectionSettings(text: string): CollectionSettings {
     if (block.name === 'meta') {
       for (const kv of parseKeyValues(block.content)) {
         if (kv.name === 'name') settings.name = kv.value
+        else if (kv.name === 'seq' && Number.isFinite(Number(kv.value))) settings.seq = Number(kv.value)
       }
     } else if (block.name === 'auth') {
       const auth = parseAuth(block.subtype, block.content)
@@ -33,7 +36,11 @@ export function parseCollectionSettings(text: string): CollectionSettings {
 
 export function serializeCollectionSettings(settings: CollectionSettings): string {
   const parts: string[] = []
-  if (settings.name) parts.push(`meta {\n  name: ${settings.name}\n}`)
+  const meta = [
+    ...(settings.name ? [`  ${keyValueLine({ name: 'name', value: settings.name })}`] : []),
+    ...(settings.seq !== undefined ? [`  seq: ${settings.seq}`] : [])
+  ]
+  if (meta.length) parts.push(`meta {\n${meta.join('\n')}\n}`)
   if (settings.auth && settings.auth.type !== 'none') parts.push(renderAuth(settings.auth))
   if (settings.docs && settings.docs.trim()) {
     const indented = settings.docs

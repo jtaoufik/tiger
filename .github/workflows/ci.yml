@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -28,6 +28,11 @@ jobs:
       # different {placeholders} than English, or missing a plural form.
       - name: i18n check
         run: npm run i18n:check
+
+      # Broken links and anchors on the website, and every stated version
+      # (README, home page, install page, version.json) matching package.json.
+      - name: Website check
+        run: npm run site:check
 
       - name: Test with coverage
         run: npm run test:coverage
@@ -56,7 +61,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - run: npm ci

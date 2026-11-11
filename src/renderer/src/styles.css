@@ -8,6 +8,15 @@
   --glass-hover: rgba(255, 255, 255, 0.85);
   --glass-modal: rgba(252, 253, 255, 0.94);
   --code-surface: rgba(250, 251, 254, 0.94);
+  /* Opaque twins of the glass surfaces: used when the blur is off (reduced
+     transparency, forced colors, or a renderer without backdrop-filter such as
+     Linux without GPU compositing) so every platform keeps the same layout and
+     contrast. */
+  --glass-solid: #f6f8fc;
+  --glass-strong-solid: #ffffff;
+  --glass-hover-solid: #ffffff;
+  --glass-modal-solid: #ffffff;
+  --code-surface-solid: #fbfcfe;
   --border: rgba(28, 38, 72, 0.1);
   --border-strong: rgba(28, 38, 72, 0.16);
   /* Boundary of form controls (inputs, selects, switch track): >= 3:1 on glass. */
@@ -38,8 +47,12 @@
   --radius: 14px;
   --radius-sm: 9px;
   --radius-xs: 6px;
-  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Kohinoor Devanagari", "Nirmala UI", "Noto Sans Devanagari", "Mangal", "Noto Sans Arabic", sans-serif;
+  /* One UI face per platform (SF / Segoe UI / the desktop's own sans on Linux),
+     then the same script fallbacks everywhere. Linux names come before the
+     generic so GNOME, KDE and Ubuntu do not fall through to DejaVu Sans, which
+     is wider and heavier than the other two platforms' faces. */
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, "Cascadia Mono", Consolas, "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Ubuntu, Cantarell, "Noto Sans", Roboto, Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Kohinoor Devanagari", "Nirmala UI", "Noto Sans Devanagari", "Mangal", "Noto Sans Arabic", sans-serif;
   --blur: blur(22px) saturate(165%);
 
   /* HTTP method + status hues, as TEXT on glass (>= 4.5:1). */
@@ -61,6 +74,11 @@
   --glass-hover: rgba(48, 54, 72, 0.8);
   --glass-modal: rgba(30, 34, 46, 0.96);
   --code-surface: rgba(16, 19, 28, 0.94);
+  --glass-solid: #1b1f2b;
+  --glass-strong-solid: #232836;
+  --glass-hover-solid: #2b3142;
+  --glass-modal-solid: #1e2230;
+  --code-surface-solid: #12151e;
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
   --control-border: rgba(255, 255, 255, 0.4);
@@ -87,6 +105,55 @@
   --m-patch: #cf9cf5;
   --m-delete: #ff968a;
   --m-other: #b7bfd1;
+}
+
+/* First frame: the renderer sets data-theme after it has read the settings,
+   and main already points nativeTheme at the chosen theme, so the OS query is
+   right before React runs. Without this a dark user saw one light frame.
+   Same declarations as [data-theme='dark'] above (a test keeps them equal). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg-1: #0e1016;
+    --bg-2: #161a26;
+    --bg-3: #1b1530;
+    --glass: rgba(32, 36, 50, 0.55);
+    --glass-strong: rgba(38, 43, 58, 0.72);
+    --glass-hover: rgba(48, 54, 72, 0.8);
+    --glass-modal: rgba(30, 34, 46, 0.96);
+    --code-surface: rgba(16, 19, 28, 0.94);
+    --glass-solid: #1b1f2b;
+    --glass-strong-solid: #232836;
+    --glass-hover-solid: #2b3142;
+    --glass-modal-solid: #1e2230;
+    --code-surface-solid: #12151e;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --control-border: rgba(255, 255, 255, 0.4);
+    --text: #e7ebf5;
+    --text-dim: #b7bfd1;
+    --text-faint: #a7b0c4;
+    --accent: #ff8c42;
+    --accent-text: #ffa266;
+    --accent-fill: #ff8c42;
+    /* Text on orange stays white on deep orange, as in light: never dark text on bright orange. */
+    --accent-solid: #c24f00;
+    --accent-solid-ink: #ffffff;
+    --accent-weak: rgba(255, 140, 66, 0.18);
+    --danger-fill: #b8321f;
+    --danger-ink: #ffffff;
+    --warn: #ffc24d;
+    --focus-ring: #ffab73;
+    --shadow: 0 12px 38px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.35);
+
+    --m-get: #4fd197;
+    --m-post: #ffa266;
+    --m-put: #7ab4ff;
+    --m-patch: #cf9cf5;
+    --m-delete: #ff968a;
+    --m-other: #b7bfd1;
+  }
 }
 
 * {
@@ -135,6 +202,9 @@ body {
   font-family: var(--sans);
   color: var(--text);
   font-size: 0.8438rem;
+  /* Explicit: "normal" is 1.15 for SF, 1.33 for Segoe UI and 1.16 for DejaVu,
+     so rows and buttons came out 1-2 px taller on Windows than on macOS. */
+  line-height: 1.4;
   background:
     radial-gradient(1200px 700px at 12% -8%, var(--bg-3), transparent 60%),
     radial-gradient(900px 600px at 110% 10%, var(--accent-weak), transparent 55%),
@@ -148,6 +218,13 @@ button {
   font-family: inherit;
   color: inherit;
   cursor: pointer;
+}
+/* Controls share one line box on every platform (see body). */
+button,
+input,
+select,
+textarea {
+  line-height: 1.25;
 }
 
 /* Browser-default placeholders are ~2.3:1; text-faint is measured >= 4.5:1. */
@@ -185,7 +262,7 @@ button {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.2px;
 }
 
@@ -210,7 +287,7 @@ button {
 
 .body {
   display: grid;
-  grid-template-columns: 264px 1fr;
+  /* grid-template-columns is inline (App.tsx): sidebar | resizer | main. */
   min-height: 0;
   gap: 12px;
   padding: 12px;
@@ -235,7 +312,7 @@ button {
   border: 1px solid var(--border-strong);
   background: var(--glass-strong);
   font-size: 0.8125rem;
-  font-weight: 550;
+  font-weight: 500;
   transition: background 0.14s ease, transform 0.06s ease, border-color 0.14s ease;
 }
 .btn:hover {
@@ -299,7 +376,7 @@ button {
 }
 .sidebar-head .title {
   margin: 0;
-  font-weight: 650;
+  font-weight: 600;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.7px;
@@ -364,16 +441,16 @@ button {
 }
 .tree-row.active .row-label,
 .folder-row.active .row-label {
-  font-weight: 650;
+  font-weight: 600;
 }
 .col-head {
-  font-weight: 650;
+  font-weight: 600;
   font-size: 0.7812rem;
   margin-top: 4px;
 }
 .folder-row {
   color: var(--text);
-  font-weight: 550;
+  font-weight: 500;
   font-size: 0.7812rem;
 }
 .folder-row svg,
@@ -470,7 +547,7 @@ button {
   color: var(--text);
   font-family: var(--sans);
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 600;
   padding: 2px 0;
   user-select: text;
 }
@@ -521,7 +598,7 @@ button {
   padding: 6px 11px;
   border-radius: 8px 8px 0 0;
   font-size: 0.7812rem;
-  font-weight: 550;
+  font-weight: 500;
   color: var(--text-dim);
   /* Over the panel: without it, dark mode showed the grey browser button face. */
   background: transparent;
@@ -706,7 +783,7 @@ button {
   background: transparent;
   padding: 6px 13px;
   border-radius: 7px;
-  font-weight: 550;
+  font-weight: 500;
   font-size: 0.7812rem;
   color: var(--text-dim);
 }
@@ -817,11 +894,7 @@ button {
   font-size: var(--code-size, 12.5px);
 }
 
-/* ---------- Modals ---------- */
-@keyframes backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* ---------- Modals (enter animations live in components/Modal.css) ---------- */
 @keyframes modal-in {
   from { opacity: 0; transform: scale(0.965) translateY(10px); }
   to { opacity: 1; transform: none; }
@@ -836,7 +909,6 @@ button {
   align-items: center;
   justify-content: center;
   z-index: 50;
-  animation: backdrop-in 0.13s ease;
 }
 .modal {
   width: 560px;
@@ -849,7 +921,6 @@ button {
   border: 1px solid var(--border-strong);
   border-radius: 16px;
   box-shadow: 0 24px 70px rgba(10, 16, 36, 0.35);
-  animation: modal-in 0.16s ease;
 }
 .modal-head {
   display: flex;
@@ -912,7 +983,7 @@ button {
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow);
   font-size: 0.8125rem;
-  font-weight: 550;
+  font-weight: 500;
   animation: modal-in 0.16s ease;
 }
 .toast svg {
@@ -955,7 +1026,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 650;
+  font-weight: 600;
 }
 .choice .t svg {
   color: var(--accent);
@@ -1055,14 +1126,19 @@ button {
 .resizer.row::after { height: 3px; width: 44px; }
 .resizer:hover::after,
 .resizer:focus-visible::after { opacity: 1; }
-/* Wider invisible grab area than the 6px track (pointer hit-testing counts
-   pseudo-elements), without covering the panels' scrollbars. */
+/* Invisible grab area: 24 px across the 6 px track (WCAG 2.5.8; pointer
+   hit-testing counts pseudo-elements). The sidebar tree's 11 px scrollbar sits
+   directly inside its 1 px border on the resizer side (LTR and RTL), and its
+   thumb has a 3 px transparent fringe, so at most 4 px may overlap there or the
+   thumb stops being clickable. The rest of the width goes over the main panel
+   (and, for the row splitter, the response panel), whose scrollbars are on
+   the far edge. */
 .resizer::before {
   content: "";
   position: absolute;
 }
-.resizer.col::before { inset: 0 -4px; }
-.resizer.row::before { inset: -4px 0; }
+.resizer.col::before { inset-block: 0; inset-inline-start: -4px; inset-inline-end: -14px; }
+.resizer.row::before { inset-inline: 0; inset-block-start: -4px; inset-block-end: -14px; }
 .resizer:focus-visible {
   outline: none;
 }
@@ -1209,7 +1285,7 @@ button {
   min-width: 0;
 }
 .welcome-tile svg { color: var(--accent); }
-.welcome-tile .t { font-weight: 650; font-size: 0.875rem; }
+.welcome-tile .t { font-weight: 600; font-size: 0.875rem; }
 .welcome-tile .d { color: var(--text-dim); font-size: 0.7812rem; line-height: 1.5; }
 .welcome-section-label {
   font-size: 0.7188rem;
@@ -1298,23 +1374,6 @@ button {
 }
 .cv-sync-row { display: flex; align-items: center; gap: 12px; }
 .cv-sync-row > div:first-child { flex: 1; }
-.cv-remote-row { display: flex; gap: 8px; }
-.cv-remote-row input {
-  flex: 1;
-  font-family: var(--mono);
-  font-size: 0.7812rem;
-  padding: 9px 12px;
-  border-radius: 9px;
-  border: 1px solid var(--control-border);
-  background: var(--glass-modal);
-  color: var(--text);
-  user-select: text;
-}
-.cv-remote-row input:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: 1px;
-  border-color: var(--focus-ring);
-}
 .docs-area {
   width: 100%;
   min-height: 120px;
@@ -1332,7 +1391,6 @@ button {
   outline-offset: 6px;
   border-radius: 4px;
 }
-.chev-btn { padding: 1px; }
 
 /* ---------- git ---------- */
 .git-empty {
@@ -1354,12 +1412,6 @@ button {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 1px 6px;
-}
-.git-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
 }
 .git-branch {
   display: inline-flex;
@@ -1384,52 +1436,6 @@ button {
 .git-chip.behind { color: var(--m-post); }
 .git-chip.synced { color: var(--m-get); }
 .git-chip.dirty { color: var(--accent-text); }
-.git-files {
-  max-height: 140px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-}
-.git-file {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--mono);
-  font-size: 0.7812rem;
-  padding: 4px 2px;
-}
-.git-st {
-  min-width: 22px;
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.6562rem;
-  border-radius: 5px;
-  padding: 1px 4px;
-  background: var(--accent-weak);
-}
-.st-m { color: var(--m-put); }
-.st-a { color: var(--m-get); }
-.st-d { color: var(--m-delete); }
-.st-q, .st-\? { color: var(--text-dim); }
-.git-commit {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.git-commit input {
-  flex: 1;
-  font-family: var(--sans);
-  font-size: 0.8438rem;
-  padding: 9px 12px;
-  border-radius: 9px;
-  border: 1px solid var(--control-border);
-  background: var(--glass-strong);
-  color: var(--text);
-}
-.git-commit input:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: 1px;
-  border-color: var(--focus-ring);
-}
 .git-diff {
   font-family: var(--mono);
   font-size: 0.75rem;
@@ -1455,35 +1461,6 @@ button {
   flex-shrink: 0;
 }
 .sync-chips .git-chip { padding: 1px 6px; font-size: 0.625rem; }
-
-.git-simple {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 15px;
-  border-radius: 12px;
-  background: var(--accent-weak);
-  border: 1px solid var(--border-strong);
-  margin-bottom: 14px;
-}
-.git-summary { flex: 1; font-weight: 600; font-size: 0.8438rem; }
-
-/* Conflict card: the whole merge story in two plain buttons. */
-.git-conflict {
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--m-post) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--m-post) 35%, transparent);
-  margin-bottom: 14px;
-}
-.git-conflict b { font-size: 0.8438rem; }
-.git-conflict p {
-  margin: 5px 0 12px;
-  color: var(--text-dim);
-  font-size: 0.7812rem;
-  line-height: 1.5;
-}
-.git-conflict-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* "Advanced" disclosure hiding branch / push / pull / diff from non-developers. */
 .adv-toggle {
@@ -1526,7 +1503,6 @@ button {
 .perf-cell .n { display: block; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.02em; }
 .perf-cell .l { display: block; font-size: 0.6875rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
 .perf-buckets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.hist-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
 
 .git-toolbar { display: flex; align-items: center; gap: 8px; margin: 4px 0 12px; flex-wrap: wrap; }
 .git-branch-pick { display: inline-flex; align-items: center; gap: 6px; }
@@ -1543,11 +1519,6 @@ button {
   outline-offset: 1px;
   border-color: var(--focus-ring);
 }
-.git-history {
-  max-height: 180px; overflow-y: auto; margin-bottom: 12px;
-  border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px;
-}
-.git-commit-row { display: flex; align-items: baseline; gap: 9px; padding: 4px 0; font-size: 0.7812rem; }
 .git-hash { font-family: var(--mono); color: var(--accent-text); flex-shrink: 0; }
 
 /* ---------- context menu ---------- */
@@ -1591,7 +1562,7 @@ button {
 /* ---------- update ---------- */
 .update-chip {
   color: var(--accent-text);
-  font-weight: 650;
+  font-weight: 600;
 }
 .changelog {
   margin: 0;
@@ -1608,9 +1579,13 @@ button {
 .jt-literal { color: var(--m-patch); font-weight: 600; }
 .jt-punct { color: var(--text-dim); }
 
+/* One scrollbar on every platform (Windows and Linux would otherwise draw
+   their classic grey bars). The thumb is >= 3:1 on the glass it scrolls (the
+   16 % border tint measured 1.4:1), stronger on hover. */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: color-mix(in srgb, var(--text-dim) 45%, transparent);
   border-radius: 99px;
   border: 3px solid transparent;
   background-clip: padding-box;
@@ -1768,7 +1743,7 @@ optgroup {
   border: 1px solid var(--control-border);
   box-shadow: var(--shadow);
   color: var(--text);
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
   -webkit-app-region: no-drag;
 }
@@ -1882,19 +1857,15 @@ optgroup {
 
 /* Reduced transparency: opaque surfaces, no backdrop blur. */
 @media (prefers-reduced-transparency: reduce) {
-  :root:not([data-theme='dark']) {
-    --glass: #f6f8fc;
-    --glass-strong: #ffffff;
-    --glass-hover: #ffffff;
-    --glass-modal: #ffffff;
-    --code-surface: #fbfcfe;
-  }
-  [data-theme='dark'] {
-    --glass: #1b1f2b;
-    --glass-strong: #232836;
-    --glass-hover: #2b3142;
-    --glass-modal: #1e2230;
-    --code-surface: #12151e;
+  /* Both selectors are always true: (0,2,0) and later in the file, so they win
+     over the first-frame dark block above whatever the attribute says. */
+  :root:not([data-theme='light']),
+  :root[data-theme='light'] {
+    --glass: var(--glass-solid);
+    --glass-strong: var(--glass-strong-solid);
+    --glass-hover: var(--glass-hover-solid);
+    --glass-modal: var(--glass-modal-solid);
+    --code-surface: var(--code-surface-solid);
   }
   *,
   *::before,
@@ -1903,10 +1874,28 @@ optgroup {
     -webkit-backdrop-filter: none !important;
   }
 }
+/* No backdrop-filter (a Linux session without GPU compositing, or an older
+   renderer): the same opaque surfaces, so panels keep their contrast and the
+   layout reads the same as on macOS and Windows. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:not([data-theme='light']),
+  :root[data-theme='light'] {
+    --glass: var(--glass-solid);
+    --glass-strong: var(--glass-strong-solid);
+    --glass-hover: var(--glass-hover-solid);
+    --glass-modal: var(--glass-modal-solid);
+    --code-surface: var(--code-surface-solid);
+  }
+}
 
 /* More contrast: near-opaque glass, stronger borders and text, thicker ring. */
 @media (prefers-contrast: more) {
-  :root:not([data-theme='dark']) {
+  /* Not :root:not([data-theme='dark']): that also matched the attribute-less
+     first frame on a dark OS and overrode the dark first-frame block above
+     (same specificity, later in the file), painting light glass and near-black
+     text over the dark body. Like the first-frame block, the attribute-less
+     case follows the OS scheme (a test keeps both lists equal). */
+  :root[data-theme='light'] {
     --glass: rgba(255, 255, 255, 0.94);
     --glass-strong: #ffffff;
     --glass-hover: #ffffff;
@@ -1919,7 +1908,23 @@ optgroup {
     --text-faint: #37405a;
     --focus-ring: #8a3300;
   }
-  [data-theme='dark'] {
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --glass: rgba(255, 255, 255, 0.94);
+      --glass-strong: #ffffff;
+      --glass-hover: #ffffff;
+      --glass-modal: #ffffff;
+      --border: rgba(20, 28, 56, 0.42);
+      --border-strong: rgba(20, 28, 56, 0.62);
+      --control-border: rgba(20, 28, 56, 0.8);
+      --text: #0b1020;
+      --text-dim: #2c3550;
+      --text-faint: #37405a;
+      --focus-ring: #8a3300;
+    }
+  }
+  /* :root[...] (0,2,0): outranks the first-frame dark block. */
+  :root[data-theme='dark'] {
     --glass: rgba(22, 25, 36, 0.96);
     --glass-strong: #1f2433;
     --glass-hover: #2a3042;
@@ -2092,10 +2097,8 @@ optgroup {
 [dir='rtl'] .kv input[type='text'],
 [dir='rtl'] .hist-row .url,
 [dir='rtl'] .cv-path,
-[dir='rtl'] .cv-remote-row input,
 [dir='rtl'] .ts-field input,
 [dir='rtl'] .ts-field textarea,
-[dir='rtl'] .git-file,
 [dir='rtl'] .git-newbranch,
 [dir='rtl'] .git-hash,
 [dir='rtl'] .curl-hint,

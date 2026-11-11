@@ -141,41 +141,81 @@ function indentedBlockEnd(input: string, start: number): number {
 }
 
 /**
+ * A name the plain `name: value` line cannot carry: one that would be read as
+ * a comment, a disabled marker or a quoted name, holds a colon or a line
+ * break, or has spaces at either end (parsing trims them).
+ */
+function needsQuotedName(name: string): boolean {
+  return /^["#~]|^\/\/|[:\r\n]/.test(name) || name !== name.trim()
+}
+
+/**
  * One `name: value` line. A value one line cannot hold (several lines, or
  * spaces at either end, which parsing trims) is written as a JSON string
  * after `name::` instead: a captured, pretty-printed JSON body used to break
- * the whole environment file.
+ * the whole environment file. A name the line cannot hold (see above) is
+ * written as a JSON string too: `"a:b": v`.
  */
 export function keyValueLine(kv: { name: string; value: string; enabled?: boolean }): string {
-  const prefix = `${kv.enabled === false ? '~' : ''}${kv.name}`
+  const name = needsQuotedName(kv.name) ? JSON.stringify(kv.name) : kv.name
+  const prefix = `${kv.enabled === false ? '~' : ''}${name}`
   const plain = !/[\r\n]/.test(kv.value) && kv.value === kv.value.trim()
   return plain ? `${prefix}: ${kv.value}` : `${prefix}:: ${JSON.stringify(kv.value)}`
 }
 
-/**
- * Split a `name: value` (or `name:: "json"`) line, already trimmed and
- * without its `~`. Null when there is no colon.
- */
-export function splitKeyValue(line: string): { name: string; value: string } | null {
-  const idx = line.indexOf(':')
-  if (idx === -1) return null
-  const name = line.slice(0, idx).trim()
-  if (line[idx + 1] === ':') {
-    const quoted = line.slice(idx + 2).trim()
+/** Index just past the closing quote of the JSON string `line` starts with, or -1. */
+function quotedEnd(line: string): number {
+  for (let i = 1; i < line.length; i++) {
+    if (line[i] === '\\') i++
+    else if (line[i] === '"') return i + 1
+  }
+  return -1
+}
+
+/** The value after the colon `rest` starts with: `: text` or `:: "json"`. */
+function valueAfterColon(rest: string): string {
+  if (rest[1] === ':') {
+    const quoted = rest.slice(2).trim()
     if (quoted.startsWith('"')) {
       try {
         const value: unknown = JSON.parse(quoted)
-        if (typeof value === 'string') return { name, value }
+        if (typeof value === 'string') return value
       } catch {
         /* not the quoted form: a value that starts with ":" */
       }
     }
   }
-  return { name, value: line.slice(idx + 1).trim() }
+  return rest.slice(1).trim()
 }
 
-/** Parse `key: value` lines (with optional leading `~` to disable). */
-export function parseKeyValues(content: string): KeyValue[] {
+/**
+ * Split a `name: value` (or `name:: "json"`, or `"name": value`) line,
+ * already trimmed and without its `~`. Null when there is no colon.
+ */
+export function splitKeyValue(line: string): { name: string; value: string } | null {
+  if (line.startsWith('"')) {
+    const end = quotedEnd(line)
+    const rest = end === -1 ? '' : line.slice(end).trimStart()
+    if (rest.startsWith(':')) {
+      try {
+        const name: unknown = JSON.parse(line.slice(0, end))
+        if (typeof name === 'string') return { name, value: valueAfterColon(rest) }
+      } catch {
+        /* not a quoted name: a name that starts with a quote, written by hand */
+      }
+    }
+  }
+  const idx = line.indexOf(':')
+  if (idx === -1) return null
+  return { name: line.slice(0, idx).trim(), value: valueAfterColon(line.slice(idx)) }
+}
+
+/**
+ * Parse `key: value` lines (with optional leading `~` to disable). A line
+ * without a colon is an error, or, when `lenient`, a name with an empty
+ * value: a form field typed as `flag` must not stop the whole send.
+ */
+export function parseKeyValues(content: string, lenient = false): KeyValue[] {
   const out: KeyValue[] = []
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim()
@@ -188,7 +228,7 @@ export function parseKeyValues(content: string): KeyValue[] {
       l = l.slice(1).trim()
     }
 
-    const kv = splitKeyValue(l)
+    const kv = splitKeyValue(l) ?? (lenient ? { name: l, value: '' } : null)
     if (!kv) {
       throw new TigerParseError(`Expected "key: value" but got "${line}"`)
     }
@@ -257,7 +297,7 @@ export function parseRequest(input: string): TigerRequest {
     if (block.name === 'meta') {
       for (const kv of parseKeyValues(block.content)) {
         if (kv.name === 'name') name = kv.value
-        else if (kv.name === 'seq') seq = Number(kv.value)
+        else if (kv.name === 'seq' && Number.isFinite(Number(kv.value))) seq = Number(kv.value)
       }
     } else if (isHttpMethod(block.name)) {
       method = block.name
@@ -269,7 +309,10 @@ export function parseRequest(input: string): TigerRequest {
     } else if (block.name === 'query') {
       query = parseKeyValues(block.content)
     } else if (block.name === 'body') {
-      const type = (block.subtype ?? 'text') as BodyType
+      // A subtype Tiger does not send (Bruno's body:sparql, a typo) is text,
+      // not a type the editor cannot show and the sender drops.
+      const subtype = block.subtype ?? 'text'
+      const type: BodyType = subtype in BODY_TYPES ? (subtype as BodyType) : 'text'
       body = { type, content: dedent(block.content) }
     } else if (block.name === 'graphqlvars') {
       graphqlVars = dedent(block.content)
@@ -300,6 +343,22 @@ export function parseRequest(input: string): TigerRequest {
   return request
 }
 
+/** Every body type, as a record so the type system keeps it complete. */
+const BODY_TYPES: Record<BodyType, true> = {
+  none: true,
+  json: true,
+  xml: true,
+  text: true,
+  form: true,
+  graphql: true,
+  multipart: true
+}
+
+/** `  name: value`, the line of a single named field in a block. */
+function fieldLine(name: string, value: string): string {
+  return `  ${keyValueLine({ name, value })}`
+}
+
 function renderKeyValues(blockName: string, items: KeyValue[]): string {
   const lines = items.map((kv) => `  ${keyValueLine(kv)}`)
   return `${blockName} {\n${lines.join('\n')}\n}`
@@ -307,6 +366,7 @@ function renderKeyValues(blockName: string, items: KeyValue[]): string {
 
 /** Render a free-text block (body, graphqlvars, docs) with two-space indent. */
 function renderTextBlock(header: string, content: string): string {
+  if (!content) return `${header} {\n}`
   const indented = content
     .split('\n')
     .map((l) => (l.length ? `  ${l}` : l))
@@ -317,16 +377,19 @@ function renderTextBlock(header: string, content: string): string {
 export function serializeRequest(req: TigerRequest): string {
   const parts: string[] = []
 
-  const metaLines = [`  name: ${req.name}`]
-  if (req.seq !== undefined) metaLines.push(`  seq: ${req.seq}`)
+  // Every single field goes through keyValueLine: a padded or multiline
+  // name, URL or password used to come back trimmed, or break the file.
+  const metaLines = [fieldLine('name', req.name)]
+  if (req.seq !== undefined && Number.isFinite(req.seq)) metaLines.push(`  seq: ${req.seq}`)
   parts.push(`meta {\n${metaLines.join('\n')}\n}`)
 
-  parts.push(`${req.method} {\n  url: ${req.url}\n}`)
+  parts.push(`${req.method} {\n${fieldLine('url', req.url)}\n}`)
 
   if (req.query.length) parts.push(renderKeyValues('query', req.query))
   if (req.headers.length) parts.push(renderKeyValues('headers', req.headers))
 
-  if (req.body.type !== 'none' && req.body.content.trim()) {
+  // An empty body keeps its type (body:json {}), so a reload shows JSON, not none.
+  if (req.body.type !== 'none') {
     parts.push(renderTextBlock(`body:${req.body.type}`, req.body.content))
   }
   if (req.body.type === 'graphql' && req.body.variables?.trim()) {
@@ -346,19 +409,19 @@ export function renderAuth(auth: TigerAuth): string {
   if (auth.type === 'none') return 'auth:none {\n}'
   const lines: string[] = []
   if (auth.type === 'bearer') {
-    lines.push(`  token: ${auth.token}`)
+    lines.push(fieldLine('token', auth.token))
   } else if (auth.type === 'basic') {
-    lines.push(`  username: ${auth.username}`, `  password: ${auth.password}`)
+    lines.push(fieldLine('username', auth.username), fieldLine('password', auth.password))
   } else if (auth.type === 'apikey') {
-    lines.push(`  key: ${auth.key}`, `  value: ${auth.value}`, `  in: ${auth.in}`)
+    lines.push(fieldLine('key', auth.key), fieldLine('value', auth.value), `  in: ${auth.in}`)
   } else if (auth.type === 'oauth2') {
     lines.push(
       `  grant_type: ${auth.grantType}`,
-      `  token_url: ${auth.tokenUrl}`,
-      `  client_id: ${auth.clientId}`,
-      `  client_secret: ${auth.clientSecret}`
+      fieldLine('token_url', auth.tokenUrl),
+      fieldLine('client_id', auth.clientId),
+      fieldLine('client_secret', auth.clientSecret)
     )
-    if (auth.scope) lines.push(`  scope: ${auth.scope}`)
+    if (auth.scope) lines.push(fieldLine('scope', auth.scope))
   }
   return `auth:${auth.type} {\n${lines.join('\n')}\n}`
 }

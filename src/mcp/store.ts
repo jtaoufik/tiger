@@ -43,7 +43,10 @@ export function createFsStore(root: string): CollectionStore {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
-        if (entry.name !== ENVIRONMENTS_DIR && !entry.name.startsWith('.')) await walk(full, acc)
+        // Only the root's environments folder holds environments; a nested one
+        // is a folder of requests, as in src/main/collection.ts.
+        if ((dir === root && entry.name === ENVIRONMENTS_DIR) || entry.name.startsWith('.')) continue
+        await walk(full, acc)
       } else if (entry.name === COLLECTION_FILE || entry.name === FOLDER_FILE) {
         // Collection and folder settings, not requests (as in src/main/collection.ts).
         continue
@@ -132,10 +135,12 @@ async function exchangeOAuthToken(
   })
   if (auth.scope) body.append('scope', interpolate(auth.scope, vars))
 
+  // A token endpoint that never answers must not hang the tool call for good.
   const res = await fetch(interpolate(auth.tokenUrl, vars), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
+    body: body.toString(),
+    signal: AbortSignal.timeout(30_000)
   })
   if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`)
   const json = (await res.json()) as { access_token?: string }

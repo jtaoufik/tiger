@@ -5,7 +5,7 @@
 .curl-label {
   display: block;
   margin-bottom: 5px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
 }
 .modal-backdrop .curl-area {
@@ -18,13 +18,19 @@
 .curl-hint {
   margin-top: 5px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-dim);
   overflow-wrap: anywhere;
 }
-/* Disabled export tiles still explain themselves; keep text readable. */
+/* Disabled export tiles still explain themselves: dimmed text that stays
+   >= 4.5:1 (0.6 opacity took the description to 2.9:1) and a dashed edge. */
 .modal-backdrop .choice:disabled {
-  opacity: 0.6;
+  opacity: 1;
+  color: var(--text-dim);
+  border-style: dashed;
+}
+.modal-backdrop .choice:disabled .t svg {
+  color: var(--text-dim);
 }
 .modal-backdrop .choice {
   min-height: 64px;

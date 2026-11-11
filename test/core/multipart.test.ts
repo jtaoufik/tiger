@@ -117,3 +117,15 @@ describe('file rows relative to the collection folder', () => {
     ])
   })
 })
+
+describe('part names the Content-Disposition header must not read as parameters', () => {
+  it('percent-encodes quotes and line breaks in the name and file name', () => {
+    const { bytes } = assembleMultipart(
+      [{ name: 'f"; filename="evil', value: new Uint8Array([1]), fileName: 'a"b\r\nX: y.png' }],
+      'B'
+    )
+    const text = new TextDecoder().decode(bytes)
+    expect(text).toContain('Content-Disposition: form-data; name="f%22; filename=%22evil"; filename="a%22b%0D%0AX: y.png"\r\n')
+    expect(text.split('\r\n').filter((l) => l.startsWith('X:'))).toEqual([])
+  })
+})

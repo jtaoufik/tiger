@@ -100,6 +100,7 @@ export const settings = {
     'Replace {placeholder} with the absolute path to the folder you opened in Tiger. You can have one entry per collection.',
   'settings.mcp.copySnippet': 'Copy snippet',
   'settings.mcp.snippetCopied': 'Snippet copied',
+  'settings.mcp.copyFailed': 'Could not copy the snippet',
   'settings.mcp.loading': 'Loading…',
   'settings.mcp.storeNote':
     'Each Microsoft Store update installs Tiger in a new folder. After an update, copy the snippet again.',

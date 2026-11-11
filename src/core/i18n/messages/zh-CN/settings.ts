@@ -95,6 +95,7 @@ export const settings: NamespaceCatalog<typeof en> = {
     '把 {placeholder} 替换为你在 Tiger 中打开的文件夹的绝对路径。每个集合可以有一个条目。',
   'settings.mcp.copySnippet': '复制代码片段',
   'settings.mcp.snippetCopied': '代码片段已复制',
+  'settings.mcp.copyFailed': '无法复制代码片段',
   'settings.mcp.loading': '加载中…',
   'settings.mcp.storeNote': '每次 Microsoft Store 更新都会把 Tiger 安装到新的文件夹。更新后，请重新复制代码片段。',
   'settings.mcp.nodeNote':

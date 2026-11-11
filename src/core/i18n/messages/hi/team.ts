@@ -64,6 +64,8 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.git.restored': 'बदलाव वापस आ गए',
   'team.git.cloned': '{dir} में क्लोन किया गया',
   'team.git.cloneFailed': 'क्लोन करना विफल रहा',
+  'team.git.err.nestedRepo': 'यह फ़ोल्डर किसी अन्य रिपॉज़िटरी के अंदर है। Tiger संग्रह को तभी सिंक करता है जब उसका अपना फ़ोल्डर ही रिपॉज़िटरी हो।',
+  'team.git.badBranchName': 'यह मान्य ब्रांच नाम नहीं है',
 
   'team.ux.checking.label': 'जाँच रहे हैं…',
   'team.ux.checking.short': 'जाँच जारी',
@@ -314,5 +316,6 @@ export const team: NamespaceCatalog<typeof en> = {
   'team.modal.shareOnly': 'सिर्फ़ संस्करण साझा करें',
   'team.modal.sharingVersions': 'आपके संस्करण साझा किए जा रहे हैं…',
   'team.modal.allUnsaved': 'सभी बिना सहेजे बदलाव',
-  'team.modal.allUnsavedDiff': 'सभी बिना सहेजे बदलाव, diff के रूप में'
+  'team.modal.allUnsavedDiff': 'सभी बिना सहेजे बदलाव, diff के रूप में',
+  'team.modal.showAllDiff': { one: 'सभी {count} पंक्ति दिखाएँ', other: 'सभी {count} पंक्तियाँ दिखाएँ' }
 }

@@ -128,3 +128,21 @@ describe('Postman export of the environment', () => {
     ])
   })
 })
+
+describe('form bodies through the Postman export', () => {
+  it('keeps a multiline field (written as name:: "...") and a disabled one as single fields', () => {
+    const value = 'line one\nline two'
+    const content = `note:: ${JSON.stringify(value)}\n~draft: yes\nflag`
+    const again = roundTrip('Forms', [{ path: [], request: request('Form', { method: 'post', body: { type: 'form', content } }) }], null)
+    const exported = exportPostman('Forms', [{ path: [], request: request('Form', { method: 'post', body: { type: 'form', content } }) }]) as {
+      item: Array<{ request: { body: { urlencoded: unknown } } }>
+    }
+    expect(exported.item[0].request.body.urlencoded).toEqual([
+      { key: 'note', value },
+      { key: 'draft', value: 'yes', disabled: true },
+      { key: 'flag', value: '' }
+    ])
+    // A bare `flag` comes back as the field it stands for, with an empty value.
+    expect(find(again, 'Form').body).toEqual({ type: 'form', content: content.replace(/flag$/, 'flag: ') })
+  })
+})

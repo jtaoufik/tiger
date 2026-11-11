@@ -229,3 +229,19 @@ describe('generateCode', () => {
     expect(generateCode(built, 'fetch').startsWith('await fetch')).toBe(true)
   })
 })
+
+describe('URLs with characters the snippet languages escape', () => {
+  const odd: BuiltRequest = { method: 'GET', url: 'https://api.test/x"y\\n?q=1', headers: {} }
+
+  it('quotes the Python URL as a string literal', () => {
+    expect(toPython(odd)).toContain(`requests.get(${JSON.stringify(odd.url)})`)
+    expect(toPython(odd)).not.toContain('"https://api.test/x"y')
+  })
+
+  it('quotes the fetch and curl URLs too', () => {
+    expect(toFetch(odd)).toContain(`fetch(${JSON.stringify(odd.url)}`)
+    expect(toCurl(odd)).toContain(`'https://api.test/x"y\\n?q=1'`)
+    // cmd: the quote is \" for the C runtime, and \ and " each get a ^ for cmd.exe.
+    expect(toCurlCmd(odd)).toContain('^"https://api.test/x^\\^"y^\\n?q=1^"')
+  })
+})

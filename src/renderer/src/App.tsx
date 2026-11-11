@@ -81,8 +81,10 @@ import {
   XCircleIcon
 } from './components/Icons'
 import {
+  ROOT_MISS_LIMIT,
   SEP,
   SESSION_KEYS,
+  parseStoredRootMisses,
   parseStoredRoots,
   parseStoredTabs,
   resolveStoredTabs,
@@ -90,6 +92,7 @@ import {
   type OpenTab
 } from './session'
 import { cancelRequest, runRequest, withKnownOAuthToken, withOAuthToken } from './runRequest'
+import { planReload } from './reloadPlan'
 import { announce, ensureLiveRegions, looksLikeError } from './a11y'
 import { initAnalytics, setAnalyticsEnabled, trackEvent } from './analytics'
 import { rendererPerfMark } from './perf'
@@ -355,9 +358,12 @@ export default function App() {
     { type: 'collection'; colId: string } | { type: 'folder'; colId: string; path: string[] } | null
   >(null)
   const [colHistory, setColHistory] = useState<HistoryEntry[]>([])
-  /** Folder-level default auth + docs, keyed by `${colId}${SEP}${path}`. */
+  /**
+   * Folder-level default auth + docs, keyed by `${colId}${SEP}${path}`, plus
+   * the name a folder is shown under when its disk name had to differ.
+   */
   const [folderSettings, setFolderSettings] = useState<
-    Record<string, { auth?: TigerAuth; docs?: string }>
+    Record<string, { auth?: TigerAuth; docs?: string; name?: string }>
   >({})
   const folderSettingsRef = useRef(folderSettings)
   useEffect(() => {
@@ -430,6 +436,27 @@ export default function App() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), error ? 6000 : 2600)
   }, [])
 
+  /**
+   * A user action whose promise nobody awaits: a rejection (file system,
+   * dialog, network) becomes an error toast instead of a silent no-op and an
+   * unhandled rejection.
+   */
+  const guarded = useCallback(
+    <A extends unknown[], R>(fn: (...args: A) => Promise<R>) =>
+      async (...args: A): Promise<R | undefined> => {
+        try {
+          return await fn(...args)
+        } catch (e) {
+          console.error(e)
+          toast(t('app.toast.actionFailed', { message: e instanceof Error ? e.message : String(e) }), {
+            error: true
+          })
+          return undefined
+        }
+      },
+    [toast]
+  )
+
   // Live regions must exist before their first message.
   useEffect(() => {
     ensureLiveRegions()
@@ -481,9 +508,10 @@ export default function App() {
     document.documentElement.dataset.platform = platform
     // macOS fullscreen hides the traffic lights; drop the titlebar inset that
     // reserves space for them (styles.css keys off this attribute).
-    window.tiger?.onFullscreen?.((state) => {
+    const off = window.tiger?.onFullscreen?.((state) => {
       document.documentElement.dataset.fullscreen = state ? 'true' : 'false'
     })
+    return () => off?.()
   }, [])
 
   useEffect(() => {
@@ -575,9 +603,16 @@ export default function App() {
     async (colId: string) => {
       const col = collections.find((c) => c.id === colId)
       if (!col) return
-      const ids = new Set(col.entries.map((e) => e.id))
+      // Unsaved edits exist nowhere but here (a sync commits what is on disk):
+      // keep those requests as they are and say so, drop the rest.
+      const plan = planReload(
+        col.entries.map((e) => e.id),
+        (id) => isDirty(id)
+      )
+      const ids = new Set(plan.drop)
       setRequestsById((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !ids.has(k))))
       for (const id of ids) delete savedText.current[id]
+      if (plan.kept.length) toast(t('app.toast.unsavedKept', { count: plan.kept.length }), { error: true })
       // Re-read the open request straight from disk so the editor reflects the
       // pulled content immediately (loadRequest would short-circuit on the
       // still-cached copy, so read + commit directly here).
@@ -592,7 +627,9 @@ export default function App() {
         }
       }
     },
-    [collections, activeId, pathById]
+    // isDirty reads pathById and the requestsByIdRef/savedText/editedIds refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [collections, activeId, pathById, toast]
   )
 
   const fKey = (colId: string, path: string[]): string => `${colId}${SEP}${path.join('/')}`
@@ -604,9 +641,29 @@ export default function App() {
   const foldersOf = (colId: string): Array<{ path: string[]; auth?: TigerAuth; docs?: string }> => {
     const own = `${colId}${SEP}`
     return Object.entries(folderSettingsRef.current)
-      .filter(([key]) => key.startsWith(own))
-      .map(([key, value]) => ({ path: key.slice(own.length).split('/').filter(Boolean), ...value }))
+      .filter(([key, value]) => key.startsWith(own) && (value.auth || value.docs))
+      .map(([key, { auth, docs }]) => ({ path: key.slice(own.length).split('/').filter(Boolean), auth, docs }))
   }
+  /** A folder as shown: the name its folder.tiger keeps, else its disk name. */
+  const folderLabel = (colId: string, path: string[]): string =>
+    folderSettings[fKey(colId, path)]?.name || path[path.length - 1]
+  /**
+   * A folder path with every segment as shown, for saving an in-memory
+   * collection: collectionFiles derives the disk name from it and keeps the
+   * shown one in folder.tiger, so a name the disk cannot carry survives Save.
+   */
+  const shownPath = (colId: string, path: string[]): string[] =>
+    path.map((segment, i) => folderSettingsRef.current[fKey(colId, path.slice(0, i + 1))]?.name || segment)
+  /** The same, by the sidebar's tree key, for the folders that have one. */
+  const folderNames = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(folderSettings)) {
+      if (!value.name) continue
+      const at = key.indexOf(SEP)
+      out[JSON.stringify([key.slice(0, at), ...key.slice(at + 1).split('/')])] = value.name
+    }
+    return out
+  }, [folderSettings])
 
   const active = activeId ? requestsById[activeId] : undefined
   const activeCollection = activeId
@@ -698,20 +755,35 @@ export default function App() {
     ? { ...active, auth: resolveAuth(active, inheritedAuth) }
     : undefined
 
+  const requestsByIdRef = useRef(requestsById)
+  requestsByIdRef.current = requestsById
+  /** File reads in flight, so two quick selects of one request read it once. */
+  const inFlightReads = useRef(new Map<string, Promise<TigerRequest | undefined>>())
   const loadRequest = useCallback(
     async (id: string): Promise<TigerRequest | undefined> => {
       if (requestsById[id]) return requestsById[id]
+      const pending = inFlightReads.current.get(id)
+      if (pending) return pending
       const path = pathById[id] ?? freshPaths.current[id]
       if (path && window.tiger) {
-        try {
-          const parsed = parseRequest(await window.tiger.readFile(path))
-          savedText.current[id] = serializeRequest(parsed)
-          editedIds.current.delete(id)
-          setRequestsById((prev) => ({ ...prev, [id]: parsed }))
-          return parsed
-        } catch {
-          return undefined
-        }
+        const read = (async (): Promise<TigerRequest | undefined> => {
+          try {
+            const parsed = parseRequest(await window.tiger!.readFile(path))
+            // Loaded or edited meanwhile: the disk copy must not clobber it.
+            const current = requestsByIdRef.current[id]
+            if (current) return current
+            savedText.current[id] = serializeRequest(parsed)
+            editedIds.current.delete(id)
+            setRequestsById((prev) => (prev[id] ? prev : { ...prev, [id]: parsed }))
+            return parsed
+          } catch {
+            return undefined
+          } finally {
+            inFlightReads.current.delete(id)
+          }
+        })()
+        inFlightReads.current.set(id, read)
+        return read
       }
       return undefined
     },
@@ -736,7 +808,7 @@ export default function App() {
 
   /** Activate any tab kind (used when selecting and when closing a neighbor). */
   const activateTab = useCallback(
-    async (t: OpenTab) => {
+    guarded(async (t: OpenTab) => {
       setView('workspace')
       if (t.kind === 'request') {
         setInspect(null)
@@ -756,7 +828,7 @@ export default function App() {
             .then((text) => {
               const parsed = parseCollectionSettings(text)
               setFolderSettings((prev) =>
-                prev[key] ? prev : { ...prev, [key]: { auth: parsed.auth, docs: parsed.docs } }
+                prev[key] ? prev : { ...prev, [key]: { auth: parsed.auth, docs: parsed.docs, name: parsed.name } }
               )
             })
             .catch(() => {
@@ -764,8 +836,8 @@ export default function App() {
             })
         }
       }
-    },
-    [loadRequest]
+    }),
+    [loadRequest, guarded]
   )
 
   /**
@@ -776,6 +848,14 @@ export default function App() {
    * after applying would close over the not-yet-flushed pathById/collections.
    */
   const sessionRestored = useRef(false)
+  /**
+   * Stored roots that did not open this launch (unmounted drive, folder
+   * briefly renamed). They stay in the persisted session, so the collection
+   * is back when its folder is, instead of being forgotten for good.
+   */
+  const unavailableRoots = useRef<string[]>([])
+  /** Launches in a row each unavailable root did not open (persisted with the roots). */
+  const rootMisses = useRef<Record<string, number>>({})
   const [pendingRestore, setPendingRestore] = useState<{
     tabs: OpenTab[]
     activeKey: string | null
@@ -793,12 +873,34 @@ export default function App() {
       const payloads = await Promise.all(roots.map((r) => window.tiger!.openPath(r)))
       if (cancelled) return
       const openedRoots: string[] = []
-      for (const payload of payloads) {
+      const missing: string[] = []
+      payloads.forEach((payload, i) => {
         if (payload) {
           applyOpenedCollection(payload)
           openedRoots.push(payload.root)
+        } else {
+          missing.push(roots[i])
+        }
+      })
+      // A missing root is retried for a few launches, then forgotten: an
+      // unmounted drive gets its chance to come back, a deleted folder does
+      // not nag forever. A root that opens starts its count over.
+      const misses = parseStoredRootMisses(readStored(SESSION_KEYS.rootMisses))
+      for (const root of openedRoots) delete misses[root]
+      unavailableRoots.current = []
+      for (const path of missing) {
+        const count = (misses[path] ?? 0) + 1
+        if (count >= ROOT_MISS_LIMIT) {
+          delete misses[path]
+          toast(t('app.toast.rootForgotten', { path, count }), { error: false })
+        } else {
+          misses[path] = count
+          unavailableRoots.current.push(path)
+          // Informational: nothing to fix right now, and Tiger says what comes next.
+          toast(t('app.toast.rootUnavailable', { path, count: ROOT_MISS_LIMIT - count }), { error: false })
         }
       }
+      rootMisses.current = misses
       if (!openedRoots.length) {
         // Every persisted root is gone: fall back to the demo bootstrap.
         setCollections([DEMO_COLLECTION])
@@ -1140,7 +1242,14 @@ export default function App() {
     const path = pathById[activeId]
     if (path && window.tiger) {
       const text = serializeRequest(active)
-      await window.tiger.writeFile(path, text)
+      try {
+        await window.tiger.writeFile(path, text)
+      } catch (e) {
+        // A silent failure here would only surface at window close.
+        console.error(e)
+        toast(t('app.toast.saveFailed', { message: (e as Error).message }), { error: true })
+        return
+      }
       savedText.current[activeId] = text
       editedIds.current.delete(activeId)
       toast(t('app.toast.saved'))
@@ -1318,6 +1427,8 @@ export default function App() {
         cycleTab(e.shiftKey ? -1 : 1)
         return
       }
+      // A held key must not create a request (or save) per autorepeat.
+      if (e.repeat) return
       // Strictly the platform's command modifier: Cmd on macOS (Ctrl+K/T/… must
       // keep their emacs-style text-editing meaning in inputs), Ctrl elsewhere
       // (the Windows key must never trigger app shortcuts).
@@ -1370,9 +1481,12 @@ export default function App() {
   // registered exactly once so menu clicks always hit current handlers.
   const menuActionsRef = useRef<Record<string, () => void>>({})
   useEffect(() => {
-    window.tiger?.onShortcut?.((name) => {
+    // Unsubscribe on unmount: a remount (StrictMode, Fast Refresh, recovery)
+    // must not leave a second listener that runs every menu action twice.
+    const off = window.tiger?.onShortcut?.((name) => {
       menuActionsRef.current[name]?.()
     })
+    return () => off?.()
   }, [])
 
   /** Turn an opened-collection payload into state; shared by dialog, clone and restore. */
@@ -1385,6 +1499,8 @@ export default function App() {
         folderPath: r.folder
       }))
       reviveIds(entries.map((e) => e.id))
+      unavailableRoots.current = unavailableRoots.current.filter((r) => r !== opened.root)
+      delete rootMisses.current[opened.root]
       const next: CollectionState = {
         id: opened.root,
         name: opened.settings?.name || opened.name,
@@ -1411,7 +1527,7 @@ export default function App() {
         setFolderSettings((prev) => {
           const next = { ...prev }
           for (const f of opened.folders) {
-            next[`${opened.root}${SEP}${f.folder.join('/')}`] = { auth: f.auth, docs: f.docs }
+            next[`${opened.root}${SEP}${f.folder.join('/')}`] = { auth: f.auth, docs: f.docs, name: f.name }
           }
           return next
         })
@@ -1462,10 +1578,10 @@ export default function App() {
       const requests: Array<{ oldId: string; path: string[]; request: TigerRequest }> = []
       for (const e of col.entries) {
         const request = requestsById[e.id] ?? (await loadRequest(e.id))
-        if (request) requests.push({ oldId: e.id, path: e.folderPath, request })
+        if (request) requests.push({ oldId: e.id, path: shownPath(col.id, e.folderPath), request })
       }
       const own = `${col.id}${SEP}`
-      const folders = foldersOf(col.id)
+      const folders = foldersOf(col.id).map((f) => ({ ...f, path: shownPath(col.id, f.path) }))
       try {
         const saved = await writeCollectionToDisk({
           name: col.name,
@@ -1509,16 +1625,19 @@ export default function App() {
   )
   saveCollectionToDiskRef.current = saveCollectionToDisk
 
-  const openCollection = useCallback(async () => {
-    const opened = await window.tiger?.openCollection()
-    if (!opened) return
-    const entries = applyOpenedCollection(opened)
-    if (entries[0]) selectRequest(entries[0].id)
-  }, [selectRequest, reviveIds])
+  const openCollection = useCallback(
+    guarded(async () => {
+      const opened = await window.tiger?.openCollection()
+      if (!opened) return
+      const entries = applyOpenedCollection(opened)
+      if (entries[0]) selectRequest(entries[0].id)
+    }),
+    [selectRequest, reviveIds, guarded]
+  )
 
   const newCollection = useCallback(() => setNewCollectionOpen(true), [])
   const runNewCollection = useCallback(
-    async (name: string) => {
+    guarded(async (name: string) => {
       setNewCollectionOpen(false)
       if (!window.tiger?.newCollection) {
         toast(t('app.toast.createNeedsDesktop'))
@@ -1529,12 +1648,12 @@ export default function App() {
       const entries = applyOpenedCollection(opened)
       if (entries[0]) selectRequest(entries[0].id)
       toast(t('app.toast.created', { name: opened.name }))
-    },
-    [selectRequest, applyOpenedCollection, toast]
+    }),
+    [selectRequest, applyOpenedCollection, toast, guarded]
   )
 
   const importFromCurl = useCallback(
-    async (command: string) => {
+    guarded(async (command: string) => {
       const req = importCurl(command)
       if (!req) {
         toast(t('app.toast.curlParseFailed'), { error: true })
@@ -1576,8 +1695,8 @@ export default function App() {
       setModal('none')
       setView('workspace')
       toast(t('app.toast.curlImported'))
-    },
-    [activeCollection, collections, inspect, openTab, reviveIds, toast]
+    }),
+    [activeCollection, collections, inspect, openTab, reviveIds, toast, guarded]
   )
 
   /** Pasting a curl command into the URL bar fills in the open request in place. */
@@ -1952,9 +2071,9 @@ export default function App() {
   )
 
   const newRequest = useCallback(
-    async (collectionId: string, folderPath: string[] = []) => {
+    guarded(async (collectionId: string, folderPath: string[] = []): Promise<boolean> => {
       const col = collections.find((c) => c.id === collectionId)
-      if (!col) return
+      if (!col) return false
       const request: TigerRequest = {
         name: 'New request',
         method: 'get',
@@ -1995,13 +2114,14 @@ export default function App() {
       setActiveId(id)
       setView('workspace')
       setInspect(null)
-    },
-    [collections, openTab, reviveIds]
+      return true
+    }),
+    [collections, openTab, reviveIds, guarded]
   )
   newRequestRef.current = newRequest
 
   const duplicateRequest = useCallback(
-    async (entryId: string) => {
+    guarded(async (entryId: string) => {
       const source = requestsById[entryId] ?? (await loadRequest(entryId))
       const col = collections.find((c) => c.entries.some((e) => e.id === entryId))
       const entry = col?.entries.find((e) => e.id === entryId)
@@ -2044,13 +2164,13 @@ export default function App() {
       setActiveId(id)
       setView('workspace')
       toast(t('app.toast.requestDuplicated'))
-    },
-    [requestsById, loadRequest, collections, pathById, openTab, reviveIds, toast]
+    }),
+    [requestsById, loadRequest, collections, pathById, openTab, reviveIds, toast, guarded]
   )
 
   /** Rename a request: the name lives in the file's meta block. */
   const renameRequest = useCallback(
-    async (entryId: string, name: string) => {
+    guarded(async (entryId: string, name: string) => {
       const trimmed = name.trim()
       if (!trimmed) return
       const source = requestsById[entryId] ?? (await loadRequest(entryId))
@@ -2071,8 +2191,8 @@ export default function App() {
         editedIds.current.delete(entryId)
       }
       toast(t('app.toast.renamed'))
-    },
-    [requestsById, loadRequest, pathById, toast]
+    }),
+    [requestsById, loadRequest, pathById, toast, guarded]
   )
 
   /** Move a request into another folder (or the root) of the same collection. */
@@ -2123,12 +2243,21 @@ export default function App() {
         return
       }
       // Valid on every disk (and so for every teammate): no ":?*\"<>|", no
-      // trailing dot, no CON.
-      const trimmed = safeFileName(newName, '')
-      if (!col || !trimmed || trimmed === path[path.length - 1]) return
+      // trailing dot, no CON. When the typed name is not, the folder is shown
+      // under the typed name (kept in its folder.tiger) and the disk gets the
+      // safe one.
+      const typed = newName.replace(/\s+/g, ' ').trim()
+      const trimmed = safeFileName(typed, '')
+      const shown = typed !== trimmed ? typed : undefined
+      const oldKey = `${colId}${SEP}${path.join('/')}`
+      if (!col || !trimmed) return
+      const moved = trimmed !== path[path.length - 1]
+      if (!moved && shown === folderSettingsRef.current[oldKey]?.name) return
+      const newPath = [...path.slice(0, -1), trimmed]
+      const newKey = `${colId}${SEP}${newPath.join('/')}`
       const fromDir = col.root ? `${col.root}/${path.join('/')}` : null
-      const toDir = col.root ? `${col.root}/${[...path.slice(0, -1), trimmed].join('/')}` : null
-      if (fromDir && toDir && window.tiger) {
+      const toDir = col.root ? `${col.root}/${newPath.join('/')}` : null
+      if (moved && fromDir && toDir && window.tiger) {
         try {
           await window.tiger.moveFile(fromDir, toDir)
         } catch (e) {
@@ -2136,20 +2265,42 @@ export default function App() {
           return
         }
       }
-      setCollections((prev) =>
-        prev.map((c) =>
-          c.id === colId
-            ? {
-                ...c,
-                entries: c.entries.map((e) => {
-                  const next = renamedFolderPath(e.folderPath, path, trimmed)
-                  return next ? { ...e, folderPath: next } : e
-                })
-              }
-            : c
+      if (toDir && window.tiger) {
+        // The old shown name must not linger in folder.tiger; its auth, docs
+        // and position stay.
+        const file = `${toDir}/folder.tiger`
+        let kept: ReturnType<typeof parseCollectionSettings> | undefined
+        try {
+          kept = parseCollectionSettings(await window.tiger.readFile(file))
+        } catch {
+          /* no folder.tiger yet */
+        }
+        const { name: _was, ...rest } = kept ?? {}
+        const text = serializeCollectionSettings(shown ? { name: shown, ...rest } : rest)
+        if (text || kept) {
+          try {
+            await window.tiger.writeFile(file, text)
+          } catch (e) {
+            toast(t('app.toast.saveFailed', { message: (e as Error).message }), { error: true })
+          }
+        }
+      }
+      if (moved) {
+        setCollections((prev) =>
+          prev.map((c) =>
+            c.id === colId
+              ? {
+                  ...c,
+                  entries: c.entries.map((e) => {
+                    const next = renamedFolderPath(e.folderPath, path, trimmed)
+                    return next ? { ...e, folderPath: next } : e
+                  })
+                }
+              : c
+          )
         )
-      )
-      if (fromDir && toDir) {
+      }
+      if (moved && fromDir && toDir) {
         setPathById((prev) => {
           const out: Record<string, string> = {}
           for (const [k, v] of Object.entries(prev)) {
@@ -2157,30 +2308,33 @@ export default function App() {
           }
           return out
         })
-        setFolderSettings((prev) => {
-          const out: typeof prev = {}
-          const oldKey = `${colId}${SEP}${path.join('/')}`
-          const newKey = `${colId}${SEP}${[...path.slice(0, -1), trimmed].join('/')}`
-          for (const [k, v] of Object.entries(prev)) {
-            if (k === oldKey) out[newKey] = v
-            else if (k.startsWith(`${oldKey}/`)) out[newKey + k.slice(oldKey.length)] = v
-            else out[k] = v
-          }
-          return out
+      }
+      // Settings follow the folder (and its sub-folders) to the new key; the
+      // ref too, so a save in the same tick builds on the renamed state.
+      const remapped: typeof folderSettingsRef.current = {}
+      for (const [k, v] of Object.entries(folderSettingsRef.current)) {
+        if (k === oldKey) continue
+        if (k.startsWith(`${oldKey}/`)) remapped[newKey + k.slice(oldKey.length)] = v
+        else remapped[k] = v
+      }
+      const { name: _shown, ...ownSettings } = folderSettingsRef.current[oldKey] ?? {}
+      remapped[newKey] = shown ? { ...ownSettings, name: shown } : ownSettings
+      folderSettingsRef.current = remapped
+      setFolderSettings(remapped)
+      if (moved) {
+        setOpenTabs((prev) =>
+          prev.map((t) => {
+            if (t.kind !== 'folder' || t.colId !== colId) return t
+            const next = renamedFolderPath(t.path, path, trimmed)
+            return next ? { ...t, path: next } : t
+          })
+        )
+        setInspect((cur) => {
+          if (!cur || cur.type !== 'folder' || cur.colId !== colId) return cur
+          const next = renamedFolderPath(cur.path, path, trimmed)
+          return next ? { ...cur, path: next } : cur
         })
       }
-      setOpenTabs((prev) =>
-        prev.map((t) => {
-          if (t.kind !== 'folder' || t.colId !== colId) return t
-          const next = renamedFolderPath(t.path, path, trimmed)
-          return next ? { ...t, path: next } : t
-        })
-      )
-      setInspect((cur) => {
-        if (!cur || cur.type !== 'folder' || cur.colId !== colId) return cur
-        const next = renamedFolderPath(cur.path, path, trimmed)
-        return next ? { ...cur, path: next } : cur
-      })
       toast(t('app.toast.folderRenamed'))
     },
     [toast]
@@ -2188,7 +2342,7 @@ export default function App() {
 
   /** Duplicate a folder: copy every request in its subtree into "<name> copy". */
   const duplicateFolder = useCallback(
-    async (colId: string, path: string[]) => {
+    guarded(async (colId: string, path: string[]) => {
       const col = collectionsRef.current.find((c) => c.id === colId)
       if (!col || !path.length) return
       const parent = path.slice(0, -1)
@@ -2240,8 +2394,8 @@ export default function App() {
         prev.map((c) => (c.id === colId ? { ...c, entries: [...c.entries, ...added] } : c))
       )
       toast(t('app.toast.folderDuplicated', { name: copyName }))
-    },
-    [requestsById, loadRequest, pathById, reviveIds, toast]
+    }),
+    [requestsById, loadRequest, pathById, reviveIds, toast, guarded]
   )
 
   const deleteRequest = useCallback(
@@ -2416,10 +2570,13 @@ export default function App() {
   void _legacyUpdateEnvVars
 
 
-  const openHistory = useCallback(async () => {
-    setHistory((await window.tiger?.historyRead()) ?? [])
-    setModal('history')
-  }, [])
+  const openHistory = useCallback(
+    guarded(async () => {
+      setHistory((await window.tiger?.historyRead()) ?? [])
+      setModal('history')
+    }),
+    [guarded]
+  )
 
   const clearHistory = useCallback(async () => {
     await window.tiger?.historyClear()
@@ -2591,17 +2748,35 @@ export default function App() {
     (colId: string, path: string[], patch: { auth?: TigerAuth; docs?: string }, label: string) => {
       const col = collections.find((c) => c.id === colId)
       const key = `${colId}${SEP}${path.join('/')}`
-      setFolderSettings((prev) => {
-        const next = { ...(prev[key] ?? {}), ...patch }
-        if (col?.root && window.tiger) {
-          window.tiger.writeFile(
-            `${col.root}/${path.join('/')}/folder.tiger`,
-            serializeCollectionSettings(next)
-          )
+      // The ref is updated here as well as by its effect, so two saves in one
+      // tick build on each other; the write happens once, outside the updater.
+      const next = { ...(folderSettingsRef.current[key] ?? {}), ...patch }
+      folderSettingsRef.current = { ...folderSettingsRef.current, [key]: next }
+      setFolderSettings((prev) => ({ ...prev, [key]: next }))
+      if (!col?.root || !window.tiger) {
+        toast(label)
+        return
+      }
+      const file = `${col.root}/${path.join('/')}/folder.tiger`
+      void (async () => {
+        // folder.tiger also holds what an import wrote there: the folder's
+        // position among its siblings and its display name. Editing the auth
+        // or the notes must not drop them, or the folder jumps to the end.
+        let kept: { name?: string; seq?: number } = {}
+        try {
+          const existing = parseCollectionSettings(await window.tiger!.readFile(file))
+          kept = { name: existing.name, seq: existing.seq }
+        } catch {
+          /* no folder.tiger yet */
         }
-        return { ...prev, [key]: next }
-      })
-      toast(label)
+        try {
+          await window.tiger!.writeFile(file, serializeCollectionSettings({ ...kept, ...next }))
+          toast(label)
+        } catch (e) {
+          console.error(e)
+          toast(t('app.toast.saveFailed', { message: (e as Error).message }), { error: true })
+        }
+      })()
     },
     [collections, toast]
   )
@@ -2673,7 +2848,10 @@ export default function App() {
    */
   const serializedCache = useRef(new Map<string, { req: TigerRequest; text: string }>())
   const isDirty = (id: string): boolean => {
-    const req = requestsById[id]
+    // Through the ref, so a stale closure (invalidateCollectionCache captured
+    // by a sync that took seconds) judges the request as it is now, not as it
+    // was when the sync started; during render the ref holds this render's map.
+    const req = requestsByIdRef.current[id]
     if (!req || !pathById[id]) return false
     if (req.body.content.length > LARGE_BODY) return editedIds.current.has(id)
     const hit = serializedCache.current.get(id)
@@ -2725,7 +2903,7 @@ export default function App() {
       return [{ key, kind: 'collection' as const, label: col.name }]
     }
     return [
-      { key, kind: 'folder' as const, label: t.path[t.path.length - 1] ?? tr('app.tab.folderFallback') }
+      { key, kind: 'folder' as const, label: t.path.length ? folderLabel(t.colId, t.path) : tr('app.tab.folderFallback') }
     ]
   })
 
@@ -2733,10 +2911,13 @@ export default function App() {
   // so a half-booted state can never clobber the saved session.
   useEffect(() => {
     if (!sessionRestored.current) return
+    // Open roots plus the ones that did not open this launch (see unavailableRoots).
+    const open = collections.flatMap((c) => (c.root ? [c.root] : []))
     writeStored(
       SESSION_KEYS.roots,
-      JSON.stringify(collections.filter((c) => c.root).map((c) => c.root))
+      JSON.stringify([...open, ...unavailableRoots.current.filter((r) => !open.includes(r))])
     )
+    writeStored(SESSION_KEYS.rootMisses, JSON.stringify(rootMisses.current))
     writeStored(SESSION_KEYS.tabs, JSON.stringify(openTabs))
     writeStored(SESSION_KEYS.active, activeTabKey ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2870,14 +3051,16 @@ export default function App() {
       if (!window.tiger?.checkUpdate) return toast(t('app.toast.updatesDesktopOnly'))
       // The website check is off in a Store install; "latest version" would be a guess.
       if (updater.fromStore) return toast(t('app.toast.updatesFromStore'))
-      window.tiger.checkUpdate().then((info) => {
-        if (info) {
-          setUpdate(info)
-          setUpdateModalOpen(true)
-        } else {
-          toast(t('app.toast.latestVersion'))
-        }
-      })
+      void guarded(() =>
+        window.tiger!.checkUpdate().then((info) => {
+          if (info) {
+            setUpdate(info)
+            setUpdateModalOpen(true)
+          } else {
+            toast(t('app.toast.latestVersion'))
+          }
+        })
+      )()
     },
     about: () => setView('settings'),
     'join-team': cloneCollection,
@@ -3030,6 +3213,7 @@ export default function App() {
           onRenameFolder={renameFolder}
           onDuplicateFolder={duplicateFolder}
           onMoveRequest={moveRequest}
+          folderNames={folderNames}
         />
         )}
 
@@ -3136,6 +3320,7 @@ export default function App() {
                       onSaveAuth={(auth) => saveFolderAuth(col.id, inspect.path, auth)}
                       onSaveDocs={(docs) => saveFolderDocs(col.id, inspect.path, docs)}
                       onToast={toast}
+                      labelOf={(p) => folderLabel(col.id, p)}
                     />
                   )
                 }
@@ -3319,7 +3504,7 @@ export default function App() {
         (() => {
           const col = collections.find((c) => c.id === runnerScope.colId)
           const title = runnerScope.path?.length
-            ? runnerScope.path[runnerScope.path.length - 1]
+            ? folderLabel(runnerScope.colId, runnerScope.path)
             : (col?.name ?? t('app.runner.collectionFallback'))
           return (
             <RunnerModal
@@ -3377,12 +3562,10 @@ export default function App() {
             // on Windows, and a teammate on Windows could not clone them.
             const clean = safeFileName(name, '')
             if (!clean) return
-            try {
-              // A folder exists through its files: start it with a first request.
-              await newRequest(target.colId, [...target.path, clean])
+            // A folder exists through its files: start it with a first request
+            // (newRequest reports its own failure).
+            if (await newRequest(target.colId, [...target.path, clean])) {
               toast(t('app.toast.folderCreated', { name: clean }))
-            } catch (e) {
-              toast(t('app.toast.folderCreateFailed', { message: (e as Error).message }), { error: true })
             }
           }}
           onCancel={() => setNewFolderIn(null)}
@@ -3507,11 +3690,15 @@ export default function App() {
       {confirmCloseId && (
         <ConfirmModal
           title={t('app.closeCollection.title')}
-          message={t('app.closeCollection.message', {
-            name:
-              collections.find((c) => c.id === confirmCloseId)?.name ??
-              t('app.closeCollection.fallbackName')
-          })}
+          message={(() => {
+            const col = collections.find((c) => c.id === confirmCloseId)
+            const name = col?.name ?? t('app.closeCollection.fallbackName')
+            // Unsaved edits go with the collection: say so instead of "files stay on disk".
+            const count = col?.entries.filter((e) => isDirty(e.id)).length ?? 0
+            return count
+              ? t('app.closeCollection.unsaved', { name, count })
+              : t('app.closeCollection.message', { name })
+          })()}
           confirmLabel={t('common.close')}
           onConfirm={() => {
             const id = confirmCloseId

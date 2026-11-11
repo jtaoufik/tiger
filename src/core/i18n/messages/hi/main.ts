@@ -14,6 +14,13 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.dialog.restartAnyway': 'फिर भी रीस्टार्ट करें',
   'main.dialog.keepEditing': 'संपादन जारी रखें',
   'main.dialog.saveResponse': 'प्रतिसाद की बॉडी सहेजें',
+  'main.dialog.crashLoopTitle': 'Tiger बार-बार रुक रहा है',
+  'main.dialog.crashLoopDetail': 'विंडो ने लगातार कई बार काम करना बंद कर दिया। {path} पर मौजूद लॉग इसका कारण बताता है।',
+  'main.dialog.unresponsiveTitle': 'Tiger जवाब नहीं दे रहा है',
+  'main.dialog.unresponsiveDetail': 'आप इसके पूरा होने का इंतज़ार कर सकते हैं या विंडो फिर से लोड कर सकते हैं। फिर से लोड करने पर बिना सहेजे बदलाव खो जाते हैं।',
+  'main.dialog.wait': 'इंतज़ार करें',
+  'main.dialog.reload': 'फिर से लोड करें',
+  'main.dialog.quit': 'बंद करें',
   'main.import.postman': 'Postman संग्रह',
   'main.import.insomnia': 'Insomnia निर्यात',
   'main.import.wsdl': 'WSDL दस्तावेज़',
@@ -23,5 +30,6 @@ export const main: NamespaceCatalog<typeof en> = {
   'main.export.title': 'निर्यात',
   'main.http.certRead': 'प्रमाणपत्र फ़ाइल पढ़ी नहीं जा सकी: {reason}',
   'main.http.tokenStatus': 'टोकन एंडपॉइंट ने {status} लौटाया',
-  'main.http.tokenMissing': 'टोकन प्रतिसाद में access_token नहीं था'
+  'main.http.tokenMissing': 'टोकन प्रतिसाद में access_token नहीं था',
+  'main.http.tooLarge': 'प्रतिसाद {limit} MB से बड़ा है और उसे रखा नहीं गया। उसे किसी अन्य टूल से सहेजें।'
 }

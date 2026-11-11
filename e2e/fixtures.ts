@@ -134,8 +134,21 @@ export async function launchTiger(
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
   // A dev server URL would make the app load a Vite server instead of out/.
   delete env.ELECTRON_RENDERER_URL
+  // Chromium refuses to start as root with its sandbox on (containers run the
+  // suite as root); a user account keeps the sandbox.
+  const asRoot = typeof process.getuid === 'function' && process.getuid() === 0
+  // Without a GPU process (a container, a bare virtual display) a hidden
+  // window never paints, so page.screenshot waits forever; software rendering
+  // paints it. TIGER_E2E_NO_GPU=1 asks for that.
+  const noGpu = process.env.TIGER_E2E_NO_GPU === '1'
   const app = await electron.launch({
-    args: [REPO_ROOT, `--user-data-dir=${userDataDir}`, `--lang=${opts.lang ?? 'en-US'}`],
+    args: [
+      REPO_ROOT,
+      ...(asRoot ? ['--no-sandbox'] : []),
+      ...(noGpu ? ['--disable-gpu'] : []),
+      `--user-data-dir=${userDataDir}`,
+      `--lang=${opts.lang ?? 'en-US'}`
+    ],
     cwd: REPO_ROOT,
     env: { ...env, TIGER_E2E: '1', ...extraEnv }
   })

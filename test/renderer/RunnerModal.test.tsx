@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { act, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { setLocale } from '../../src/renderer/src/i18n'
 import { RunnerModal } from '../../src/renderer/src/components/RunnerModal'
 import type { RunnerItem } from '../../src/core/runner'
@@ -107,5 +107,45 @@ describe('RunnerModal variables', () => {
     await act(async () => run.click())
     await screen.findByText('1 passed · 0 failed')
     expect(changed).toEqual([[{ name: 'token', value: 't-9' }]])
+  })
+
+  it('closing the dialog mid-run aborts the in-flight send and runs nothing more', async () => {
+    const release: Array<() => void> = []
+    const send = vi.fn(
+      () =>
+        new Promise<{ status: number; statusText: string; headers: Record<string, string>; body: string; timeMs: number }>(
+          (resolve) => {
+            release.push(() => resolve({ status: 200, statusText: 'OK', headers: {}, body: '{}', timeMs: 1 }))
+          }
+        )
+    )
+    const cancelSend = vi.fn(async () => true)
+    ;(window as unknown as { tiger: unknown }).tiger = { send, cancelSend }
+    const changed: unknown[] = []
+    const { unmount } = render(
+      <RunnerModal
+        title="Two"
+        loadItems={async () => [item('1', 'First'), item('2', 'Second')]}
+        environment={null}
+        onVariablesChanged={(c) => changed.push(c)}
+        timeoutMs={1000}
+        onClose={() => {}}
+      />
+    )
+    const run = await screen.findByRole('button', { name: 'Run 2 requests' })
+    await act(async () => run.click())
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+
+    unmount()
+    expect(cancelSend).toHaveBeenCalledWith('collection-runner')
+
+    // The first send settles after the close; the runner must not start the second.
+    await act(async () => {
+      for (const r of release.splice(0)) r()
+      await Promise.resolve()
+    })
+    await new Promise((r) => setTimeout(r, 10))
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(changed).toEqual([])
   })
 })

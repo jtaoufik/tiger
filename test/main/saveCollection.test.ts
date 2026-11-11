@@ -78,13 +78,14 @@ describe('saving a collection that lived in memory', () => {
       ['', 'Login'],
       ['', 'Health'],
       ['', 'collection'],
-      ['environments 2', 'Inside a folder named environments'],
+      // Folders keep the order the source showed (folder.tiger seq), not alphabetical.
       ['Users', 'Zeta list'],
       ['Users', 'Alpha create'],
       ['Users', 'Alpha create'],
       ['Users', 'alpha CREATE'],
       ['Users', 'folder'],
-      ['Users/Admin- tools', 'CON']
+      ['Users/Admin- tools', 'CON'],
+      ['environments 2', 'Inside a folder named environments']
     ])
   })
 
@@ -94,8 +95,11 @@ describe('saving a collection that lived in memory', () => {
     const root = await saveCollectionFiles(parent, snapshot.name, files)
     const opened = await readOpenedCollection(root)
 
-    expect(opened.folders).toEqual([
-      { folder: ['Users'], auth: { type: 'apikey', key: 'X-Key', value: '{{key}}', in: 'header' } }
+    // Folders whose disk name had to change also carry the name to show.
+    expect(opened.folders.sort((a, b) => a.folder.join('/').localeCompare(b.folder.join('/')))).toEqual([
+      { folder: ['environments 2'], name: 'environments' },
+      { folder: ['Users'], auth: { type: 'apikey', key: 'X-Key', value: '{{key}}', in: 'header' } },
+      { folder: ['Users', 'Admin- tools'], name: 'Admin: tools' }
     ])
     expect(opened.environments.map((e) => e.name).sort()).toEqual(['Dev', 'Prod / EU', 'dev'])
     const dev = opened.environments.find((e) => e.name === 'dev')!

@@ -1,0 +1,21 @@
+meta {
+  name: Create
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/products/42/reviews
+  body: multipartForm
+  auth: inherit
+}
+
+body:multipart-form {
+  stars: 5
+  photo: @file(photos/review.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq {{expectedStatus}}
+  res.body.stars: eq 5
+}

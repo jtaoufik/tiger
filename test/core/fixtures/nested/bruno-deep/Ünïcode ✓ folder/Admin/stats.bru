@@ -1,0 +1,14 @@
+meta {
+  name: Stats
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/unicode/admin/stats
+  body: none
+  auth: inherit
+}
+headers {
+  X-Admin-Key: {{process.env.ADMIN_KEY}}
+}

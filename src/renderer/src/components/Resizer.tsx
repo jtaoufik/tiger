@@ -47,7 +47,7 @@ export function Resizer({
     (e: React.PointerEvent<HTMLDivElement>) => {
       start.current = direction === 'col' ? e.clientX : e.clientY
       const el = e.currentTarget
-      el.setPointerCapture(e.pointerId)
+      el.setPointerCapture?.(e.pointerId)
       // In RTL the pane before a column separator sits on the right, so it
       // grows when the pointer moves left.
       const sign = direction === 'col' && isRtlDocument() ? -1 : 1
@@ -55,13 +55,22 @@ export function Resizer({
       const move = (ev: PointerEvent) => {
         onDrag(sign * ((direction === 'col' ? ev.clientX : ev.clientY) - start.current))
       }
+      // A cancelled pointer (touch scroll, pen lifted, lost capture) must end
+      // the drag too, or `move` stays bound and the pane follows plain hovers.
+      let ended = false
       const up = () => {
+        if (ended) return
+        ended = true
         el.removeEventListener('pointermove', move)
         el.removeEventListener('pointerup', up)
+        el.removeEventListener('pointercancel', up)
+        el.removeEventListener('lostpointercapture', up)
         onEnd?.()
       }
       el.addEventListener('pointermove', move)
       el.addEventListener('pointerup', up)
+      el.addEventListener('pointercancel', up)
+      el.addEventListener('lostpointercapture', up)
     },
     [direction, onDrag, onEnd]
   )

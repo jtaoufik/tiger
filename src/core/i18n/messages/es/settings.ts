@@ -102,6 +102,7 @@ export const settings: NamespaceCatalog<typeof en> = {
     'Sustituye {placeholder} por la ruta absoluta de la carpeta que abriste en Tiger. Puedes tener una entrada por colección.',
   'settings.mcp.copySnippet': 'Copiar fragmento',
   'settings.mcp.snippetCopied': 'Fragmento copiado',
+  'settings.mcp.copyFailed': 'No se pudo copiar el fragmento',
   'settings.mcp.loading': 'Cargando…',
   'settings.mcp.storeNote':
     'Cada actualización de Microsoft Store instala Tiger en una carpeta nueva. Después de actualizar, vuelve a copiar el fragmento.',

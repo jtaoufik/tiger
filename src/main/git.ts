@@ -9,10 +9,10 @@
  */
 
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { readTextFile } from './textFile'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import type { MessageKey } from '../core/i18n'
 import { mainT } from './i18n'
 
@@ -33,6 +33,12 @@ export interface GitStatus {
   hasUpstream: boolean
   /** Whether any remote is configured at all. */
   hasRemote: boolean
+  /**
+   * Set when the folder sits inside a larger repository (its top level). Git
+   * actions would then touch the user's whole project, so the collection is
+   * reported as not tracked and every action refuses.
+   */
+  nestedIn?: string
 }
 
 /**
@@ -49,6 +55,7 @@ export type GitErrorCode =
   | 'identity'
   | 'rejected'
   | 'no-commits'
+  | 'nested-repo'
 
 export interface GitActionResult {
   ok: boolean
@@ -85,7 +92,23 @@ function run(
       // by default. Folders named in any language Tiger speaks must come back
       // as they are on disk, or every per-file action gets a path that does not exist.
       ['-c', 'core.quotePath=false', ...args],
-      { cwd, timeout: timeoutMs, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } },
+      {
+        cwd,
+        timeout: timeoutMs,
+        // A diff of a big collection, or a status with thousands of untracked
+        // files, passed Node's 1 MiB default and came back truncated as a failure.
+        maxBuffer: 64 * 1024 * 1024,
+        env: {
+          ...process.env,
+          GIT_TERMINAL_PROMPT: '0',
+          // No command may wait on an editor nobody can see. The ssh command is
+          // left to the user's own setup (GIT_SSH_COMMAND, GIT_SSH or
+          // core.sshCommand): setting it here overrode core.sshCommand and broke
+          // per-key and agent setups. A GUI app has no terminal for ssh to
+          // prompt on, and a hung command is killed after `timeoutMs` anyway.
+          GIT_EDITOR: ':'
+        }
+      },
       (error, stdout, stderr) =>
         resolve({ ok: !error, stdout: stdout?.toString() ?? '', stderr: stderr?.toString() ?? '' })
     )
@@ -137,7 +160,8 @@ const ERROR_KEYS: Record<GitErrorCode, MessageKey> = {
   network: 'team.git.err.network',
   identity: 'team.git.err.identity',
   rejected: 'team.git.err.rejected',
-  'no-commits': 'team.git.err.noCommits'
+  'no-commits': 'team.git.err.noCommits',
+  'nested-repo': 'team.git.err.nestedRepo'
 }
 
 /** Plain-language message for git's stderr, or `fallback` when unrecognised. */
@@ -178,6 +202,8 @@ export async function gitStatus(root: string): Promise<GitStatus> {
 
   const inside = await run(['rev-parse', '--is-inside-work-tree'], root)
   if (!inside.ok || inside.stdout.trim() !== 'true') return empty
+  const nestedIn = await nestedRepo(root)
+  if (nestedIn) return { ...empty, nestedIn }
 
   const branch = (await run(['rev-parse', '--abbrev-ref', 'HEAD'], root)).stdout.trim()
 
@@ -216,6 +242,40 @@ export async function gitStatus(root: string): Promise<GitStatus> {
     hasRemote
   }
 }
+
+/**
+ * A path as git printed it, in the form Node's fs takes. MSYS2 and Cygwin git
+ * on Windows print `/c/Users/...` or `/cygdrive/c/...` for `--show-toplevel`;
+ * compared as is, every repository looked nested in another.
+ */
+export function nativeGitPath(path: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform !== 'win32') return path
+  const m = /^(?:\/cygdrive)?\/([a-zA-Z])(?=\/|$)(.*)$/.exec(path)
+  return m ? `${m[1]}:${m[2] || '/'}` : path
+}
+
+/** One form of a folder path for comparing: real, forward slashes, no trailing slash, case folded where the disk ignores case. */
+async function comparablePath(path: string): Promise<string> {
+  const native = nativeGitPath(path)
+  const real = await realpath(native).catch(() => resolve(native))
+  const slashed = real.replace(/\\/g, '/').replace(/\/+$/, '')
+  return process.platform === 'win32' || process.platform === 'darwin' ? slashed.toLowerCase() : slashed
+}
+
+/**
+ * The top level of the repository `root` is inside, when that is another
+ * folder: `git add -A`, `stash push` and `status` then work on the whole
+ * repository, not the collection, and would commit, push or stash the user's
+ * unrelated files. Null when `root` is the repository itself or not in one.
+ */
+async function nestedRepo(root: string): Promise<string | null> {
+  const top = await run(['rev-parse', '--show-toplevel'], root)
+  if (!top.ok || !top.stdout.trim()) return null
+  const toplevel = top.stdout.trim()
+  return (await comparablePath(toplevel)) === (await comparablePath(root)) ? null : toplevel
+}
+
+const nestedFailure = (): GitActionResult => ({ ok: false, code: 'nested-repo', message: mainT('team.git.err.nestedRepo') })
 
 async function aheadBehind(root: string): Promise<{ ahead: number; behind: number } | null> {
   const counts = await run(['rev-list', '--left-right', '--count', '@{upstream}...HEAD'], root)
@@ -304,6 +364,8 @@ export async function gitRequestNames(root: string, paths: string[]): Promise<Re
 }
 
 export async function gitCommitAll(root: string, message: string): Promise<GitActionResult> {
+  // No pathspec: add -A would stage the whole repository the folder sits in.
+  if (await nestedRepo(root)) return nestedFailure()
   const add = await run(['add', '-A'], root)
   if (!add.ok) return { ok: false, message: add.stderr.trim() || mainT('team.git.addFailed') }
   const commit = await run(['commit', '-m', message || 'Update collection'], root)
@@ -339,6 +401,10 @@ export async function gitPush(root: string): Promise<GitActionResult> {
 }
 
 export async function gitInit(root: string): Promise<GitActionResult> {
+  // A folder inside another repository must not become one of its own (a nested
+  // work tree the outer git treats as an untracked folder), nor be synced as
+  // part of the outer one.
+  if (await nestedRepo(root)) return nestedFailure()
   // Start on `main` whatever the machine's init.defaultBranch says, so a new team
   // collection matches GitHub/GitLab defaults. Git older than 2.28 lacks the flag.
   let result = await run(['init', '--initial-branch=main'], root)
@@ -364,6 +430,7 @@ export async function gitSync(
   onProgress?: (phase: SyncPhase) => void
 ): Promise<GitActionResult> {
   const status = await gitStatus(root)
+  if (status.nestedIn) return nestedFailure()
   if (!status.isRepo) return { ok: false, message: mainT('team.git.notSetUp') }
   if (status.dirtyCount > 0) {
     onProgress?.('saving')
@@ -482,6 +549,7 @@ export async function gitSyncResolve(
   choices?: Record<string, 'mine' | 'theirs'>
 ): Promise<GitActionResult> {
   const status = await gitStatus(root)
+  if (status.nestedIn) return nestedFailure()
   if (!status.isRepo) return { ok: false, message: mainT('team.git.notSetUp') }
   if (status.dirtyCount > 0) {
     const commit = await gitCommitAll(root, message || 'Update collection')
@@ -598,7 +666,16 @@ export async function gitCheckout(
   branch: string,
   create: boolean
 ): Promise<GitActionResult> {
-  const result = await run(create ? ['checkout', '-b', branch] : ['checkout', branch], root)
+  // A name git would read as an option or a path ("-f", ".") used to reach
+  // checkout as one and discard the working tree. Only a valid branch name
+  // goes on, and `switch` never takes paths.
+  const valid = await run(['check-ref-format', '--branch', branch], root)
+  if (!branch.trim() || !valid.ok) return { ok: false, message: mainT('team.git.badBranchName') }
+  let result = await run(create ? ['switch', '-c', branch] : ['switch', branch], root)
+  // Git before 2.23 has no `switch`; the trailing `--` keeps the name a branch there.
+  if (!result.ok && /is not a git command/i.test(result.stderr)) {
+    result = await run(create ? ['checkout', '-b', branch, '--'] : ['checkout', branch, '--'], root)
+  }
   if (result.ok) {
     return { ok: true, message: create ? mainT('team.git.createdBranch', { branch }) : mainT('team.git.switchedBranch', { branch }) }
   }
@@ -638,6 +715,8 @@ export async function gitLog(root: string, limit = 20): Promise<GitCommit[]> {
  * works before the user has told git their name.
  */
 export async function gitDiscard(root: string, paths?: string[]): Promise<GitActionResult> {
+  // Without a pathspec the stash would take the whole repository's changes with it.
+  if (await nestedRepo(root)) return nestedFailure()
   const head = await run(['rev-parse', '--verify', '--quiet', 'HEAD'], root)
   if (!head.ok) {
     return {

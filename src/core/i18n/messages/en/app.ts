@@ -110,6 +110,27 @@ export const app = {
   'app.closeCollection.title': 'Close collection',
   'app.closeCollection.message': 'Close "{name}"? Your files stay on disk; this only removes it from the sidebar.',
   'app.closeCollection.fallbackName': 'this collection',
+  'app.toast.saveFailed': 'Could not save: {message}',
+  'app.toast.actionFailed': 'Something went wrong: {message}',
+  'app.toast.unsavedKept': {
+    one: 'Kept one request with unsaved edits; save or discard it yourself.',
+    other: 'Kept {count} requests with unsaved edits; save or discard them yourself.'
+  },
+  'app.toast.rootUnavailable': {
+    one: 'Could not reopen {path}. Tiger will try once more next launch, then forget it.',
+    other: 'Could not reopen {path}. Tiger will try again on the next {count} launches, then forget it.'
+  },
+  'app.toast.rootForgotten': {
+    one: 'Forgot {path}: its folder was missing at the last launch.',
+    other: 'Forgot {path}: its folder was missing at the last {count} launches in a row.'
+  },
+  'app.closeCollection.unsaved': {
+    one: 'Close "{name}"? One request has unsaved edits that will be lost. Saved files stay on disk.',
+    other: 'Close "{name}"? {count} requests have unsaved edits that will be lost. Saved files stay on disk.'
+  },
+  'app.crash.title': 'Something went wrong',
+  'app.crash.detail': 'Tiger hit an error it could not recover from. Reload to continue; your saved files are safe.',
+  'app.crash.reload': 'Reload',
   'app.deleteRequest.title': 'Delete request',
   'app.deleteRequest.message': 'Delete "{name}"? This cannot be undone.',
   'app.deleteRequest.fallbackName': 'this request',

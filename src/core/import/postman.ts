@@ -115,7 +115,10 @@ function splitUrl(url: unknown): UrlParts {
     const protocol = str(u.protocol)
     const host = Array.isArray(u.host) ? u.host.join('.') : str(u.host)
     const port = u.port ? `:${scalar(u.port)}` : ''
-    const path = Array.isArray(u.path) ? u.path.map(scalar).join('/') : str(u.path)
+    // A path segment is a string, or `{ type, value }` for a `:variable` one.
+    const segment = (seg: unknown) =>
+      seg && typeof seg === 'object' ? scalar((seg as Json).value) : scalar(seg)
+    const path = Array.isArray(u.path) ? u.path.map(segment).join('/') : str(u.path)
     raw = `${protocol ? `${protocol}://` : ''}${host}${port}${path ? `/${path}` : ''}`
   }
   const idx = raw.indexOf('?')
@@ -144,13 +147,41 @@ function description(raw: unknown): string | undefined {
   return content.trim() ? content : undefined
 }
 
-function toBody(raw: unknown, name: string, path: string[], warnings: ImportWarning[]): TigerBody {
+/**
+ * The language of a raw body when the export does not say (schema v2.0,
+ * older Postman): the request's Content-Type header, else the text itself.
+ */
+function rawLanguage(content: string, contentType: string): 'json' | 'xml' | 'text' {
+  const mime = contentType.split(';')[0].trim().toLowerCase()
+  if (mime === 'application/json' || /\+json$/.test(mime)) return 'json'
+  if (mime === 'application/xml' || mime === 'text/xml' || /\+xml$/.test(mime)) return 'xml'
+  if (mime) return 'text'
+  const text = content.trim()
+  if (/^[[{]/.test(text)) {
+    try {
+      JSON.parse(text)
+      return 'json'
+    } catch {
+      return 'text'
+    }
+  }
+  return text.startsWith('<') ? 'xml' : 'text'
+}
+
+function toBody(
+  raw: unknown,
+  name: string,
+  path: string[],
+  warnings: ImportWarning[],
+  contentType = ''
+): TigerBody {
   const body = (raw ?? {}) as Json
   const mode = str(body.mode)
 
   if (mode === 'raw') {
-    const language = str(((body.options as Json)?.raw as Json)?.language).toLowerCase()
     const content = str(body.raw)
+    const language =
+      str(((body.options as Json)?.raw as Json)?.language).toLowerCase() || rawLanguage(content, contentType)
     if (language === 'json') return { type: 'json', content }
     if (language === 'xml') return { type: 'xml', content }
     return { type: 'text', content }
@@ -351,13 +382,15 @@ function toRequest(
   if (missing.length) {
     warnings.push({ request: name, path, ...pathVariableWarning(missing) })
   }
+  const headers = toKeyValues(r.header)
+  const contentType = headers.find((h) => h.enabled && h.name.toLowerCase() === 'content-type')?.value ?? ''
   const req: TigerRequest = {
     name,
     method,
     url,
-    headers: toKeyValues(r.header),
+    headers,
     query: parts.query,
-    body: toBody(r.body, name, path, warnings)
+    body: toBody(r.body, name, path, warnings, contentType)
   }
   const auth = toAuth(r.auth, { request: name, path }, warnings)
   if (auth) req.auth = auth
@@ -376,10 +409,10 @@ function walk(items: unknown[], path: string[], inherited: Scripts, state: WalkS
   let seq = 1
   const nodes = items.map((item) => (item ?? {}) as Json)
   const folderNodes = nodes.filter((node) => Array.isArray(node.item))
-  const names = uniqueSiblingNames(folderNodes.map((node) => str(node.name, 'Untitled')))
+  const names = uniqueSiblingNames(folderNodes.map(nameOf))
   const folderName = new Map(folderNodes.map((node, i) => [node, names[i]]))
   for (const node of nodes) {
-    const original = str(node.name, 'Untitled')
+    const original = nameOf(node)
     const scripts = scriptsOf(node.event)
     if (Array.isArray(node.item)) {
       const name = folderName.get(node) ?? original
@@ -391,6 +424,16 @@ function walk(items: unknown[], path: string[], inherited: Scripts, state: WalkS
       const docs = description(node.description)
       if (auth || docs) {
         state.folders.push({ path: folderPath, ...(auth ? { auth } : {}), ...(docs ? { docs } : {}) })
+      }
+      // The schema allows variables on a folder; Tiger (like Postman's own
+      // app) has no folder scope, so they are reported rather than lost quietly.
+      const folderVars = toEnvironment(name, node.variable).variables
+      if (folderVars.length) {
+        state.warnings.push({
+          request: name,
+          path,
+          ...warning('imports.folderVariables', { names: folderVars.map((v) => v.name).join(', ') })
+        })
       }
       noteCopiedScripts(`Folder "${name}"`, node.item, scripts, path, state.warnings)
       walk(
@@ -412,6 +455,11 @@ function walk(items: unknown[], path: string[], inherited: Scripts, state: WalkS
       }
     }
   }
+}
+
+/** An item's name as shown: a number is a name too ("2024"), not "Untitled". */
+function nameOf(node: Json): string {
+  return scalar(node.name) || 'Untitled'
 }
 
 function countRequests(items: unknown[]): number {

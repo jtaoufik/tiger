@@ -1,0 +1,52 @@
+type: collection.insomnia.rest/5.0
+name: Deep Insomnia v5
+meta:
+  id: wrk_deep_v5
+  created: 1760000000000
+  modified: 1760000000000
+collection:
+  - name: Users
+    meta:
+      id: fld_users
+      sortKey: -1000
+    children:
+      - name: Admin
+        meta:
+          id: fld_admin
+          sortKey: -900
+        authentication:
+          type: basic
+          username: root
+          password: "{{ _.rootPassword }}"
+        children:
+          - name: Audit
+            meta:
+              id: fld_audit
+              sortKey: -1000
+            children:
+              - url: "{{ _.api.url }}/admin/audit"
+                name: List audit events
+                meta:
+                  id: req_audit
+                  sortKey: -1000
+                method: GET
+      - url: "{{ _.api.url }}/me"
+        name: Me
+        meta:
+          id: req_me
+          sortKey: -1000
+        method: GET
+  - url: "{{ _.api.url }}/ping"
+    name: Ping
+    meta:
+      id: req_ping
+      sortKey: -2000
+    method: GET
+environments:
+  name: Base Environment
+  meta:
+    id: env_base
+  data:
+    api:
+      url: https://api.example.test
+    rootPassword: ""

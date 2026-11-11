@@ -70,6 +70,7 @@ export const modals: NamespaceCatalog<typeof en> = {
   'modals.environments.toastCreated': 'تم إنشاء البيئة',
   'modals.environments.toastNameTaken': 'هذا الاسم مستخدم',
   'modals.environments.toastDeleted': 'تم حذف البيئة',
+  'modals.environments.toastSaveFailed': 'تعذّر حفظ ملف البيئة: {error}',
 
   'modals.runner.title': 'تشغيل · {title}',
   'modals.runner.topic': 'مشغّل المجموعات',

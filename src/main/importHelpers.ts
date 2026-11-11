@@ -7,6 +7,7 @@
  * Kept free of Electron deps so it can be unit-tested without a renderer.
  */
 
+import type { Dirent } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { looksLikeProduction } from '../core/environment'
@@ -18,7 +19,7 @@ import type {
   ImportedRequest,
   ImportWarning
 } from '../core/import'
-import { warning } from '../core/import/common'
+import { uniqueSiblingNames, warning } from '../core/import/common'
 import { layerCollectionVariables } from '../core/import/report'
 
 /**
@@ -52,9 +53,39 @@ export async function scanDroppedFolder(dir: string, exts: string[]): Promise<{ 
   return { files, brunoRoots }
 }
 
-async function walkDir(dir: string, allowed: Set<string>, out: string[], brunoRoots?: string[]): Promise<void> {
-  const entries = await readdir(dir, { withFileTypes: true })
-  if (brunoRoots && entries.some((e) => e.isFile() && e.name === 'bruno.json')) {
+/** Files found only at the root of a Bruno collection. */
+const BRUNO_MARKERS = new Set(['bruno.json', 'collection.bru'])
+/** The one folder Bruno keeps at the collection root, holding `<name>.bru` environments. */
+const BRUNO_ENVIRONMENTS = 'environments'
+
+/**
+ * Whether `dir` is the root of a Bruno collection: it holds bruno.json or
+ * collection.bru, .bru files of its own (requests or a folder.bru), or an
+ * `environments` folder of .bru files. Bruno keeps environments only at the
+ * root, so that folder names its parent as the collection; read on its own,
+ * each environment file became a request.
+ */
+async function isBrunoRoot(dir: string, entries: Dirent[]): Promise<boolean> {
+  if (entries.some((e) => e.isFile() && (BRUNO_MARKERS.has(e.name) || e.name.endsWith('.bru')))) return true
+  if (!entries.some((e) => e.isDirectory() && e.name === BRUNO_ENVIRONMENTS)) return false
+  const names = await readdir(join(dir, BRUNO_ENVIRONMENTS)).catch(() => [] as string[])
+  return names.some((n) => n.endsWith('.bru'))
+}
+
+async function walkDir(dir: string, allowed: Set<string>, out: string[], brunoRoots?: string[], root = dir): Promise<void> {
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch (e) {
+    // A folder the OS protects (a profile junction on Windows, ~/Library on
+    // macOS) is skipped; it used to fail the whole import. The folder the
+    // user picked must be readable, or the error would read as "nothing to import".
+    if (dir === root) throw e
+    return
+  }
+  // A Bruno collection is read whole, so its folders stay folders. Read file
+  // by file, each request became a folder named after its file.
+  if (brunoRoots && (await isBrunoRoot(dir, entries))) {
     brunoRoots.push(dir)
     return
   }
@@ -62,7 +93,7 @@ async function walkDir(dir: string, allowed: Set<string>, out: string[], brunoRo
     // A project folder's dependencies hold thousands of files that are not the user's.
     if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
     const full = join(dir, entry.name)
-    if (entry.isDirectory()) await walkDir(full, allowed, out, brunoRoots)
+    if (entry.isDirectory()) await walkDir(full, allowed, out, brunoRoots, root)
     else if (entry.isFile() && allowed.has(extname(entry.name).toLowerCase())) out.push(full)
   }
 }
@@ -225,8 +256,14 @@ export function mergeImports(
   const folders: ImportedFolder[] = []
   const warnings: ImportWarning[] = []
   const globals: KeyValue[] = []
+  // Two files named alike in different folders ("api/collection.json" twice)
+  // must not pour their requests into one folder. Only files with requests
+  // get a folder, so only those take part in the numbering: an environment
+  // file named like a collection must not leave it as "shop 2" with no "shop".
+  const folderNames = uniqueSiblingNames(withRequests.map((i) => i.name))
   for (const item of items) {
-    const { name: prefix } = item
+    const k = withRequests.indexOf(item)
+    const prefix = k >= 0 ? folderNames[k] : item.name
     const nest = item !== single
     // Globals apply to everything: they are layered under every environment afterwards.
     const { globals: own, ...rest } = item.result

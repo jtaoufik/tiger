@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { Resizer, RESIZE_STEP, RESIZE_STEP_LARGE } from '../../src/renderer/src/components/Resizer'
@@ -68,5 +70,42 @@ describe('Resizer keyboard', () => {
   it('stays pointer-only (not focusable) without a keyboard handler', () => {
     render(<Resizer direction="col" onDrag={() => {}} />)
     expect(screen.getByRole('separator')).not.toHaveAttribute('tabindex')
+  })
+})
+
+describe('Resizer pointer', () => {
+  it('a cancelled pointer ends the drag: later moves do not resize', () => {
+    const onDrag = vi.fn()
+    const onEnd = vi.fn()
+    render(<Resizer direction="col" label="Resize sidebar" onDrag={onDrag} onEnd={onEnd} />)
+    const el = sep()
+    // jsdom has no PointerEvent; a MouseEvent under the pointer type name carries clientX.
+    const pointer = (type: string, clientX: number) => fireEvent(el, new MouseEvent(type, { bubbles: true, clientX }))
+    pointer('pointerdown', 100)
+    pointer('pointermove', 120)
+    expect(onDrag).toHaveBeenCalledWith(20)
+    pointer('pointercancel', 120)
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    pointer('pointermove', 300)
+    expect(onDrag).toHaveBeenCalledTimes(1)
+    // Releasing capture after the cancel does not end the drag a second time.
+    fireEvent(el, new Event('lostpointercapture'))
+    expect(onEnd).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Resizer grab zone', () => {
+  it('overhangs the sidebar (and editor) side by at most 4 px, so the scrollbar thumb stays clickable', () => {
+    // jsdom does not resolve pseudo-element styles, so read the sheet. The
+    // tree's scrollbar is 11 px wide right inside the sidebar's 1 px border and
+    // its thumb has a 3 px transparent fringe: more than 4 px covers the thumb.
+    const styles = readFileSync(join(__dirname, '../../src/renderer/src/styles.css'), 'utf8')
+    const col = styles.match(/\.resizer\.col::before \{([^}]*)\}/)?.[1] ?? ''
+    const row = styles.match(/\.resizer\.row::before \{([^}]*)\}/)?.[1] ?? ''
+    expect(col).toMatch(/inset-inline-start:\s*-4px/)
+    expect(row).toMatch(/inset-block-start:\s*-4px/)
+    // Still a 24 px target across the 6 px track: 4 + 6 + 14.
+    expect(col).toMatch(/inset-inline-end:\s*-14px/)
+    expect(row).toMatch(/inset-block-end:\s*-14px/)
   })
 })

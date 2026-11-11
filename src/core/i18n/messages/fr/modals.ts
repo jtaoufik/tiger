@@ -73,6 +73,7 @@ export const modals: NamespaceCatalog<typeof en> = {
   'modals.environments.toastCreated': 'Environnement créé',
   'modals.environments.toastNameTaken': 'Ce nom est déjà pris',
   'modals.environments.toastDeleted': 'Environnement supprimé',
+  'modals.environments.toastSaveFailed': 'Impossible d’enregistrer le fichier de l’environnement : {error}',
 
   'modals.runner.title': 'Exécution · {title}',
   'modals.runner.topic': 'Exécuteur de collection',

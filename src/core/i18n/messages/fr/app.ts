@@ -112,6 +112,27 @@ export const app: NamespaceCatalog<typeof en> = {
   'app.closeCollection.title': 'Fermer la collection',
   'app.closeCollection.message': 'Fermer « {name} » ? Vos fichiers restent sur le disque ; cela le retire seulement de la barre latérale.',
   'app.closeCollection.fallbackName': 'cette collection',
+  'app.toast.saveFailed': 'Impossible d’enregistrer : {message}',
+  'app.toast.actionFailed': 'Une erreur s’est produite : {message}',
+  'app.toast.unsavedKept': {
+    one: 'Une requête avec des modifications non enregistrées a été conservée ; enregistrez-la ou abandonnez-la vous-même.',
+    other: '{count} requêtes avec des modifications non enregistrées ont été conservées ; enregistrez-les ou abandonnez-les vous-même.'
+  },
+  'app.toast.rootUnavailable': {
+    one: "Impossible de rouvrir {path}. Tiger réessaiera une dernière fois au prochain lancement, puis l'oubliera.",
+    other: "Impossible de rouvrir {path}. Tiger réessaiera lors des {count} prochains lancements, puis l'oubliera."
+  },
+  'app.toast.rootForgotten': {
+    one: '{path} a été oublié : son dossier manquait au dernier lancement.',
+    other: '{path} a été oublié : son dossier manquait lors des {count} derniers lancements.'
+  },
+  'app.closeCollection.unsaved': {
+    one: 'Fermer « {name} » ? Une requête a des modifications non enregistrées qui seront perdues. Les fichiers enregistrés restent sur le disque.',
+    other: 'Fermer « {name} » ? {count} requêtes ont des modifications non enregistrées qui seront perdues. Les fichiers enregistrés restent sur le disque.'
+  },
+  'app.crash.title': 'Une erreur s’est produite',
+  'app.crash.detail': 'Tiger a rencontré une erreur dont il n’a pas pu se remettre. Rechargez pour continuer ; vos fichiers enregistrés sont intacts.',
+  'app.crash.reload': 'Recharger',
   'app.deleteRequest.title': 'Supprimer la requête',
   'app.deleteRequest.message': 'Supprimer « {name} » ? Cette action est irréversible.',
   'app.deleteRequest.fallbackName': 'cette requête',

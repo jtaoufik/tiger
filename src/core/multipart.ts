@@ -64,6 +64,15 @@ export function generateBoundary(): string {
  * Assemble RFC 2046 multipart/form-data bytes. Returns the body and the exact
  * Content-Type header value carrying the boundary.
  */
+/**
+ * A name or file name inside the quotes of Content-Disposition. RFC 7578
+ * section 4.2: a quote or a line break is percent-encoded, so a field named
+ * `a"; filename="x` cannot add its own parameters to the header.
+ */
+function quotedParam(text: string): string {
+  return text.replace(/["\r\n]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`)
+}
+
 export function assembleMultipart(
   parts: MultipartPart[],
   boundary: string
@@ -74,13 +83,14 @@ export function assembleMultipart(
 
   for (const part of parts) {
     push(`--${boundary}\r\n`)
+    const name = quotedParam(part.name)
     if (part.fileName !== undefined) {
       push(
-        `Content-Disposition: form-data; name="${part.name}"; filename="${part.fileName}"\r\n` +
-          `Content-Type: ${part.contentType ?? 'application/octet-stream'}\r\n\r\n`
+        `Content-Disposition: form-data; name="${name}"; filename="${quotedParam(part.fileName)}"\r\n` +
+          `Content-Type: ${(part.contentType ?? 'application/octet-stream').replace(/[\r\n]/g, ' ')}\r\n\r\n`
       )
     } else {
-      push(`Content-Disposition: form-data; name="${part.name}"\r\n\r\n`)
+      push(`Content-Disposition: form-data; name="${name}"\r\n\r\n`)
     }
     chunks.push(typeof part.value === 'string' ? encoder.encode(part.value) : part.value)
     push('\r\n')

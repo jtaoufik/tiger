@@ -15,13 +15,9 @@
   --tg-focus: var(--focus-ring, #7cb2ff);
 }
 
-/* Text on the accent comes from --accent-solid / --accent-solid-ink in
-   styles.css (white on deep orange, 4.8:1, both themes): no override here.
-   Danger buttons inside our surfaces get a deeper red behind white (5.3-6.6:1). */
-:is(.modal-backdrop, .panel.editor, .panel.response) .btn.danger {
-  background: linear-gradient(180deg, #c8321f, #b42318);
-  color: #fff;
-}
+/* Text on the accent comes from --accent-solid / --accent-solid-ink, and on
+   danger buttons from --danger-fill / --danger-ink (white on #b8321f, 6:1),
+   both in styles.css: no override here, so .btn.danger:hover keeps working. */
 
 /* Visually hidden, still announced by screen readers. */
 .tg-sr-only {
