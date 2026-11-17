@@ -207,3 +207,68 @@ describe('string, closeTo, include, members, throw', () => {
     vi(failure(() => expect(null).to.be.an('object'))).toBe('expected null to be a object')
   })
 })
+
+describe('aliases and less common words behave like the words they stand for', () => {
+  it('language chains are no-ops', () => {
+    vi(failure(() => expect(1).to.be.same.but.does.equal(1))).toBeNull()
+  })
+
+  it('includes, contain and contains are include', () => {
+    vi(failure(() => expect([1, 2]).includes(2))).toBeNull()
+    vi(failure(() => expect('abc').to.contain('b'))).toBeNull()
+    vi(failure(() => expect({ a: 1, b: 2 }).contains.keys('a'))).toBeNull()
+    vi(failure(() => expect([1]).to.contain(3))).not.toBeNull()
+  })
+
+  it('gte, greaterThanOrEqual, most, lte, lessThanOrEqual and within, also on a length', () => {
+    vi(failure(() => expect(3).to.be.gte(3).and.greaterThanOrEqual(2))).toBeNull()
+    vi(failure(() => expect(3).to.be.at.most(3).and.lte(4).and.lessThanOrEqual(3))).toBeNull()
+    vi(failure(() => expect(5).to.be.at.most(4))).toBe('expected 5 at most 4')
+    vi(failure(() => expect([1, 2, 3]).to.have.length.within(2, 4))).toBeNull()
+    vi(failure(() => expect([1, 2, 3]).to.have.length.at.most(2))).toBe('expected [1,2,3] to have a length at most 2')
+  })
+
+  it('instanceof, matches, satisfies, throws and Throw', () => {
+    vi(failure(() => expect(new Date(0)).to.be.an.instanceof(Date))).toBeNull()
+    vi(failure(() => expect('abc').matches(/b/))).toBeNull()
+    vi(failure(() => expect(4).satisfies((n: unknown) => (n as number) % 2 === 0))).toBeNull()
+    vi(failure(() => expect(3).to.satisfy((n: unknown) => (n as number) % 2 === 0))).not.toBeNull()
+    vi(failure(() => expect(() => { throw new TypeError('x') }).throws(TypeError))).toBeNull()
+    vi(failure(() => expect(() => { throw new Error('boom') }).to.Throw(/bo/))).toBeNull()
+  })
+
+  it('oneOf compares by identity, or by value after deep', () => {
+    vi(failure(() => expect(2).to.be.oneOf([1, 2]))).toBeNull()
+    vi(failure(() => expect({ a: 1 }).to.be.oneOf([{ a: 1 }]))).not.toBeNull()
+    vi(failure(() => expect({ a: 1 }).to.deep.be.oneOf([{ a: 1 }]))).toBeNull()
+  })
+
+  it('change, increase and decrease, with by, on a property or a getter', () => {
+    const counter = { n: 1 }
+    vi(failure(() => expect(() => { counter.n += 2 }).to.change(counter, 'n').by(2))).toBeNull()
+    vi(failure(() => expect(() => { counter.n += 1 }).changes(counter, 'n'))).toBeNull()
+    vi(failure(() => expect(() => { counter.n += 1 }).to.increase(() => counter.n))).toBeNull()
+    vi(failure(() => expect(() => { counter.n += 1 }).increases(counter, 'n').by(1))).toBeNull()
+    vi(failure(() => expect(() => { counter.n -= 1 }).to.decrease(counter, 'n'))).toBeNull()
+    vi(failure(() => expect(() => { counter.n -= 3 }).decreases(counter, 'n').by(3))).toBeNull()
+    vi(failure(() => expect(() => undefined).to.increase(counter, 'n'))).not.toBeNull()
+    vi(failure(() => expect(5).to.change(counter, 'n'))).toBe('expected 5 to be a function')
+    vi(failure(() => expect(() => undefined).to.change(42))).toBe('expected 42 to be a function')
+  })
+
+  it('throw needs a function', () => {
+    vi(failure(() => expect(5).to.throw())).toBe('expected 5 to be a function')
+  })
+
+  it('deep equality knows regular expressions, maps and sets, and tells them apart', () => {
+    vi(deepEqual(/a/g, /a/g)).toBe(true)
+    vi(deepEqual(/a/g, /a/i)).toBe(false)
+    vi(deepEqual(/a/, 'a')).toBe(false)
+    vi(deepEqual(new Map([['k', { v: 1 }]]), new Map([['k', { v: 1 }]]))).toBe(true)
+    vi(deepEqual(new Map([['k', 1]]), new Map([['k', 2]]))).toBe(false)
+    vi(deepEqual(new Map([['k', 1]]), { k: 1 })).toBe(false)
+    vi(deepEqual(new Set([{ a: 1 }]), new Set([{ a: 1 }]))).toBe(true)
+    vi(deepEqual(new Set([1]), new Set([1, 2]))).toBe(false)
+    vi(deepEqual(new Set([1]), [1])).toBe(false)
+  })
+})
