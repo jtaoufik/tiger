@@ -93,6 +93,13 @@
       together with its environment exports and you get one collection with those environments.
       Drop a Bruno collection folder and it is read as a whole.
     </p>
+    <p>
+      Folders nested at any depth come in as folders, in the order the source tool showed them.
+      You can drop or pick a parent folder too (a whole repository, say): Tiger finds the
+      collections inside it, skips <code>node_modules</code> and hidden folders, and skips a
+      sub-folder it is not allowed to read instead of failing the import. Two files with the same
+      name in different folders become two separate folders, so their requests never mix.
+    </p>
     <h3>The import report</h3>
     <p>
       After every import Tiger shows a short report: how many requests, folders and environments
@@ -204,7 +211,7 @@
           </tr>
           <tr>
             <td>Folder variables</td>
-            <td>Not in Postman</td>
+            <td><span class="partial">Flagged</span></td>
             <td><span class="partial">Flagged</span></td>
             <td><span class="partial">Flagged</span></td>
           </tr>
@@ -279,10 +286,13 @@
     <h3>Scripts written for Postman</h3>
     <p>
       Tiger runs Postman scripts through a compatibility layer. It covers <code>pm.test</code>,
-      <code>pm.expect</code> with the common Chai assertions (<code>equal</code>, <code>eql</code>,
-      <code>a</code>/<code>an</code>, <code>include</code>, <code>property</code>,
-      <code>lengthOf</code>, <code>above</code>/<code>below</code>, <code>match</code>,
-      <code>oneOf</code>, <code>empty</code>, <code>not</code> and friends),
+      <code>pm.expect</code> with the Chai 4 assertion vocabulary (<code>equal</code>,
+      <code>eql</code>, <code>a</code>/<code>an</code>, <code>include</code>, <code>keys</code>,
+      <code>property</code> and <code>nested</code>/<code>own</code> properties,
+      <code>length</code>/<code>lengthOf</code>, <code>above</code>/<code>below</code>,
+      <code>closeTo</code>, <code>match</code>, <code>string</code>, <code>oneOf</code>,
+      <code>members</code>, <code>empty</code>, <code>satisfy</code>, <code>throw</code>,
+      <code>not</code> and friends),
       <code>pm.response</code> (<code>code</code>, <code>status</code>, <code>json()</code>,
       <code>text()</code>, <code>headers</code>, <code>responseTime</code>,
       <code>to.have.status</code>, <code>to.have.header</code>, <code>to.be.ok</code>),
@@ -298,6 +308,13 @@
       <code>require()</code> of libraries such as lodash or CryptoJS, asynchronous code, and flow
       control (<code>setNextRequest</code> is skipped, the runner goes in order). The import report
       lists every request that uses one, and the script is kept so you can adapt it.
+    </p>
+    <p>
+      Assertions behave as they do in Postman: a misspelled word such as <code>.truthy</code>
+      fails the test instead of passing silently, <code>keys()</code> expects exactly the keys
+      listed (use <code>include.keys()</code> for a subset), <code>equal</code> is strict and
+      deep equality compares dates, maps, sets and arrays by value. A test that only passed
+      because of a typo will now show as failed, which is the point.
     </p>
 
     <h3>Insomnia (v4 and v5)</h3>
@@ -321,7 +338,9 @@
     <h3>Bruno</h3>
     <p>
       Nothing to export: choose <strong>Bruno</strong> and pick the collection folder, the one that
-      holds <code>bruno.json</code> (or drop it on the window). Tiger walks it recursively.
+      holds <code>bruno.json</code> (or drop it on the window). Tiger walks it recursively. A
+      folder of <code>.bru</code> files without a <code>bruno.json</code>, or a parent folder that
+      holds the collection somewhere inside it, works as well.
     </p>
     <ul>
       <li><code>bruno.json</code> gives the collection name, <code>folder.bru</code> gives folder
@@ -332,7 +351,8 @@
           <code>none</code>.</li>
       <li><code>params:query</code>, <code>params:path</code>, multipart files
           (<code>@file(...)</code>), scripts, <code>tests</code> and <code>docs</code> carry over.
-          The <code>assert</code> block becomes equivalent tests where the operator maps.</li>
+          The <code>assert</code> block becomes equivalent tests where the operator maps, and a
+          <code>{{variable}}</code> on the right of an assert is resolved first, as in Bruno.</li>
       <li>Environments come from <code>environments/*.bru</code>. Bruno never writes secret values
           to disk, so the report lists the secret names to fill in.</li>
     </ul>
@@ -399,6 +419,9 @@
     <p>
       WSDL import converts a SOAP service description into a set of Tiger requests - one per
       binding operation - ready to fill in and send. Both SOAP 1.1 and SOAP 1.2 are supported.
+      Tiger reads WSDL 1.1 (a <code>&lt;definitions&gt;</code> root); a WSDL 2.0 document
+      (a <code>&lt;description&gt;</code> root) is reported as not supported yet, and a file
+      that is not XML at all is reported as not a WSDL document.
     </p>
 
     <h3>How to import a WSDL file</h3>

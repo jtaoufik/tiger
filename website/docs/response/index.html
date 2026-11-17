@@ -284,6 +284,12 @@
       This design keeps Tiger responsive when an API returns a large paginated dump or a
       diagnostic payload that would otherwise freeze a syntax highlighter.
     </p>
+    <p>
+      Tiger keeps a response in memory to show it, so it refuses one larger than 100 MB, and
+      a compressed response that would unpack to more than that, with a message instead of
+      running out of memory. Download files that large with a tool built for it, such as
+      <code>curl -o</code>. An HTML preview is cut at the same size as the text view.
+    </p>
 
     <h2>Related pages</h2>
     <div class="card-grid">
