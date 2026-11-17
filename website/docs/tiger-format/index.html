@@ -133,8 +133,11 @@ docs {
     <h3>meta</h3>
     <p>
       Holds metadata about the request. <code>name</code> is the display label shown in
-      the sidebar. <code>seq</code> is an optional integer that controls the order Tiger
-      uses when running the collection; lower numbers run first.
+      the sidebar. <code>seq</code> is an optional integer that sets the request's position
+      among its siblings: the sidebar lists a folder's requests by <code>seq</code>, and the
+      collection runner runs them in that order; lower numbers come first. Requests without a
+      <code>seq</code> follow, by name. An import writes <code>seq</code> from the order the
+      source tool showed.
     </p>
 <pre><code>meta {
   name: Get user profile
@@ -191,7 +194,9 @@ docs {
     <h3>body</h3>
     <p>
       The request body. The subtype after the colon selects the body type and drives the
-      <code>Content-Type</code> header when auto-detection is active:
+      <code>Content-Type</code> header when auto-detection is active. An empty block such as
+      <code>body:json {</code> <code>}</code> keeps its type, so a request saved before its
+      body was typed reopens as JSON. A subtype Tiger does not know reads as text:
     </p>
     <div class="table-wrap">
       <table>
@@ -338,6 +343,35 @@ graphqlvars {
       toggled on or off without a line ever being deleted.
     </p>
 
+    <h2 id="quoted-values">Values and names a plain line cannot hold</h2>
+    <p>
+      A plain <code>name: value</code> line trims spaces at both ends and ends at the line
+      break. A value that has spaces at either end or spans several lines (a captured,
+      pretty-printed JSON body, a password ending in a space) is written as a JSON string
+      after a double colon instead:
+    </p>
+<pre><code>vars {
+  lastBody:: "{\n  \"id\": 42\n}"
+  password:: "secret "
+}
+</code></pre>
+    <p>
+      A name that holds a colon, or starts with <code>#</code>, <code>//</code>,
+      <code>~</code> or a double quote, is written as a JSON string too, so it is not read
+      as a comment, a disabled row or the end of the name:
+    </p>
+<pre><code>headers {
+  "X-Trace:Id": abc
+  "#channel": general
+}
+</code></pre>
+    <p>
+      Tiger only uses these forms when it has to: every ordinary value keeps the plain
+      <code>name: value</code> line, so existing files do not change when Tiger saves them.
+      The same rule covers the single fields of the <code>meta</code>, method and
+      <code>auth</code> blocks (a request name, a URL, a token or a password).
+    </p>
+
     <h2>Variable interpolation</h2>
     <p>
       <code>{{variableName}}</code> placeholders are resolved against the active
@@ -360,8 +394,8 @@ graphqlvars {
       <li>Each request is a <code>.tiger</code> file anywhere in the tree.</li>
       <li>Sub-folders group requests; Tiger shows them in the sidebar as folders.</li>
       <li>An optional <code>collection.tiger</code> at the root holds collection-level settings (display name, default auth, documentation).</li>
-      <li>An optional <code>folder.tiger</code> inside any sub-folder holds folder-level settings (display name, default auth, documentation) - identical format to <code>collection.tiger</code>.</li>
-      <li>An <code>environments/</code> sub-folder holds one <code>.tiger</code> environment file per named environment.</li>
+      <li>An optional <code>folder.tiger</code> inside any sub-folder holds folder-level settings (display name, position among its sibling folders, default auth, documentation) - the same format as <code>collection.tiger</code>.</li>
+      <li>An <code>environments/</code> folder at the collection root holds one <code>.tiger</code> environment file per named environment. A deeper folder that happens to be called <code>environments</code> is an ordinary folder of requests.</li>
     </ul>
     <p>A typical layout looks like this:</p>
 <pre><code>my-api/
@@ -386,9 +420,25 @@ graphqlvars {
     <h2>collection.tiger and folder.tiger</h2>
     <p>
       Both files share the same block format. They can contain a <code>meta</code>
-      block (display name), an <code>auth</code> block (default auth inherited by
+      block (display name, and in <code>folder.tiger</code> the folder's <code>seq</code>
+      among its sibling folders), an <code>auth</code> block (default auth inherited by
       requests that do not set their own), and a <code>docs</code> block.
     </p>
+    <p>
+      A folder's <code>name</code> is only written when it differs from the folder's name on
+      disk. Windows refuses characters such as <code>:</code> and <code>?</code> in file
+      names, so a folder imported as <code>Store: front?</code> is saved as
+      <code>Store- front-</code> and its <code>folder.tiger</code> keeps the name it was
+      given; Tiger shows that name everywhere. An imported collection gets a
+      <code>folder.tiger</code> in every folder, so it reopens in the order the source tool
+      showed rather than alphabetically.
+    </p>
+<pre><code># users/folder.tiger
+meta {
+  name: Users: admin only
+  seq: 2
+}
+</code></pre>
 <pre><code>meta {
   name: My API
 }

@@ -81,7 +81,15 @@
       "name": "How do updates work?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Tiger checks for new releases on GitHub automatically at startup and shows a changelog notification when one is available. On macOS and Linux (AppImage) the update can be applied in-app via electron-updater without leaving the application. On Windows the in-app updater tells you when a new version is out. You can also always download the latest build directly from the releases page."
+        "text": "Tiger checks for new releases in the background and offers Restart now when one is ready, or installs it the next time you quit. That covers the Windows Setup installer, the macOS DMG and zip, and the Linux AppImage. Microsoft Store installs are updated by the Store. The portable EXE and zip, the .deb and the tar.gz do not update themselves: Help > Check for Updates links you to the new download. You can also always download the latest build directly from the releases page."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens if Tiger crashes or stops responding?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "If the window's content crashes, Tiger reloads it in place; if it keeps crashing it asks whether to reload or quit. If the window stops answering, Tiger offers to wait or reload. A screen that fails to draw shows the error and a Reload button instead of going blank. Errors are written to logs/main.log in Tiger's profile folder (%APPDATA%\\tiger-api-client on Windows, ~/Library/Application Support/tiger-api-client on macOS, ~/.config/tiger-api-client on Linux). Requests are saved whole or not at all, so a crash never leaves a half-written file."
       }
     },
     {
@@ -275,17 +283,17 @@
         <tbody>
           <tr>
             <td>macOS</td>
-            <td>DMG for Apple Silicon (arm64) and Intel (x64)</td>
+            <td>DMG and zip for Apple Silicon (arm64) and Intel (x64)</td>
             <td>Open the DMG and drag Tiger to Applications. Builds are signed and notarized, so there is no Gatekeeper workaround</td>
           </tr>
           <tr>
             <td>Windows</td>
-            <td>Setup installer, portable EXE</td>
-            <td>Download from GitHub Releases (winget and Microsoft Store are coming soon)</td>
+            <td>Microsoft Store, Setup installer, portable EXE and zip</td>
+            <td>The Microsoft Store version is signed by Microsoft and updates through the Store; winget is coming soon</td>
           </tr>
           <tr>
             <td>Linux</td>
-            <td>AppImage, <code>.deb</code> (Debian/Ubuntu)</td>
+            <td>AppImage, <code>.deb</code> (Debian/Ubuntu), tar.gz</td>
             <td>AppImage supports in-app auto-update via electron-updater</td>
           </tr>
         </tbody>
@@ -297,11 +305,24 @@
 
     <h3>How do updates work?</h3>
     <p>
-      Tiger checks for new releases on GitHub automatically at startup and shows a changelog
-      notification when one is available. On macOS and Linux (AppImage) the update can be
-      applied in-app via electron-updater without leaving the application. On Windows the
-      in-app updater tells you when a new version is out.
+      Tiger checks for new releases in the background and offers <strong>Restart now</strong>
+      when one is ready, or installs it the next time you quit. That covers the Windows Setup
+      installer, the macOS DMG and zip, and the Linux AppImage. Microsoft Store installs are
+      updated by the Store. The portable EXE and zip, the <code>.deb</code> and the tar.gz do
+      not update themselves: Help &gt; Check for Updates links you to the new download.
       You can also always download the latest build directly from the releases page.
+    </p>
+
+    <h3>What happens if Tiger crashes or stops responding?</h3>
+    <p>
+      If the window's content crashes (for example running out of memory), Tiger reloads it in
+      place; if it keeps crashing it asks whether to reload or quit. If the window stops
+      answering, Tiger offers to wait or reload. A screen that fails to draw shows the error and
+      a Reload button instead of going blank. Errors are written to <code>logs/main.log</code> in
+      Tiger's profile folder (<code>%APPDATA%\tiger-api-client</code> on Windows,
+      <code>~/Library/Application Support/tiger-api-client</code> on macOS,
+      <code>~/.config/tiger-api-client</code> on Linux); attach that file to a bug report.
+      Your requests are saved whole or not at all, so a crash never leaves a half-written file.
     </p>
 
     <h2>Migrating from other tools</h2>

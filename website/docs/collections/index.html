@@ -82,9 +82,15 @@
     <p>
       Tiger scans the root recursively. Any <code>.tiger</code> file that is not
       named <code>collection.tiger</code> or <code>folder.tiger</code>, and is not
-      inside the <code>environments/</code> directory, is treated as a request.
+      inside the root <code>environments/</code> directory, is treated as a request.
       Hidden directories (names starting with <code>.</code>) are skipped, so your
-      <code>.git</code> folder is never touched.
+      <code>.git</code> folder is never touched. A sub-folder Tiger cannot read (no
+      permission) is skipped too; the rest of the collection still opens.
+    </p>
+    <p>
+      Folders and requests appear in the order their <code>seq</code> values give, then by
+      name, so a collection imported from Postman, Insomnia or Bruno keeps the order you
+      had there.
     </p>
 
     <div class="callout tip">
@@ -132,10 +138,17 @@ docs {
 
     <h2>folder.tiger - folder-level settings</h2>
     <p>
-      A <code>folder.tiger</code> file inside any subfolder stores the same three fields
+      A <code>folder.tiger</code> file inside any subfolder stores the same fields
       as <code>collection.tiger</code>: a display name, a default auth for requests inside
-      that folder, and a <code>docs</code> block. Folder settings override collection
-      settings for requests inside the folder.
+      that folder, and a <code>docs</code> block, plus the folder's position among its
+      sibling folders (<code>seq</code>). Folder settings override collection settings for
+      requests inside the folder.
+    </p>
+    <p>
+      The display name is the name a folder was given when it differs from the name on
+      disk: Windows refuses characters such as <code>:</code> or <code>?</code>, so
+      <code>Store: front?</code> is saved as the folder <code>Store- front-</code> and shown
+      as <code>Store: front?</code> in the sidebar, the folder page, its tab and search.
     </p>
 
     <h2>Creating a new collection</h2>
@@ -299,13 +312,14 @@ docs {
     <p>
       Renaming a request renames the underlying <code>.tiger</code> file on disk (and
       updates the <code>meta.name</code> field inside it). Renaming a folder renames the
-      directory.
+      directory and keeps its position; a name the disk cannot hold is kept as the folder's
+      display name in its <code>folder.tiger</code>.
     </p>
 
     <h2>Search</h2>
     <p>
       The search box at the top of the sidebar filters across all open collections by
-      request name. Matching requests are shown flat, grouped by collection name, so you
+      request name and folder name. Matching requests are shown flat, grouped by collection name, so you
       can find a request without knowing which folder it lives in. Clear the search to
       return to the full tree view.
     </p>
@@ -391,6 +405,16 @@ docs {
       When you quit and reopen Tiger, the sidebar restores all previously open
       collections, and the tab strip and active tab are exactly as you left them. You
       pick up where you stopped without manually reopening anything.
+    </p>
+    <p>
+      A collection whose folder is missing at launch (a drive that is not mounted yet, a
+      folder briefly renamed) stays in the session: Tiger says it is not available and opens
+      it again once it is back. After three launches in a row without it, Tiger forgets it
+      and says so.
+    </p>
+    <p>
+      Closing a collection with unsaved edits says how many requests have them before
+      anything is discarded.
     </p>
 
     <h3>Right-click tab menu</h3>

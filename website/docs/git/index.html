@@ -177,8 +177,10 @@
     <p>
       Under Advanced, the version line (branch) picker shows all local branches and the current branch.
       Select a branch to check it out. You can also create a new branch by typing a name
-      that does not yet exist in the picker - Tiger runs <code>git checkout -b
-      &lt;name&gt;</code> and switches to it immediately.
+      that does not yet exist in the picker - Tiger runs <code>git switch -c
+      &lt;name&gt;</code> and switches to it immediately. A name git would not accept as a
+      branch (one starting with <code>-</code>, holding spaces or <code>..</code>) is
+      refused with a message rather than passed to git.
     </p>
     <p>
       Switching branches changes the files on disk, so the collection view updates to
@@ -198,7 +200,8 @@
     <h3>Discard</h3>
     <p>
       <strong>Discard all</strong> (or discard a single request's change) throws away
-      unsaved edits. Under the hood Tiger moves them into a Git stash named
+      changes that are saved to disk but not yet in a version. Edits you have not saved
+      yet stay in the editor, and Tiger says how many it kept. Under the hood Tiger moves them into a Git stash named
       <em>Tiger: discarded changes</em>, including new files, and shows an
       <strong>Undo</strong> button right after, so an accidental discard can be brought back.
       Tiger asks for confirmation first.
@@ -210,6 +213,18 @@
       means finding the stash with <code>git stash list</code>, so save a version first if
       you might want the edits back.</p>
     </div>
+
+    <h3 id="nested-repository">A collection inside a larger repository</h3>
+    <p>
+      Team sync works on a collection folder that is a Git repository of its own. When the
+      folder sits inside a bigger repository (for example <code>my-app/api-collection</code>
+      in your application's repo), committing, syncing or discarding would act on the whole
+      application: <code>git add -A</code> stages every file of the project and a discard
+      stashes all of them. Tiger refuses those actions there and says why, and
+      <strong>Turn on version tracking</strong> does not create a repository inside another.
+      Commit the collection with the rest of the project from your usual Git tool, or move
+      it to a folder of its own to use Team sync.
+    </p>
 
     <h3>Init</h3>
     <p>
