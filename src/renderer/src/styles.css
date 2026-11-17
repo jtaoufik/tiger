@@ -26,6 +26,8 @@
   --text: #1a2233;
   --text-dim: #465170;
   --text-faint: #4f5a74;
+  /* Dropdown chevron, drawn in --text-dim (one look on every OS; see select below). */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23465170' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* Brand orange: decorative only (dots, borders, icons, washes). */
   --accent: #ff7a18;
   /* Orange for TEXT on glass (>= 4.5:1). */
@@ -85,6 +87,7 @@
   --text: #e7ebf5;
   --text-dim: #b7bfd1;
   --text-faint: #a7b0c4;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b7bfd1' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --accent: #ff8c42;
   --accent-text: #ffa266;
   --accent-fill: #ff8c42;
@@ -133,6 +136,7 @@
     --text: #e7ebf5;
     --text-dim: #b7bfd1;
     --text-faint: #a7b0c4;
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b7bfd1' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --accent: #ff8c42;
     --accent-text: #ffa266;
     --accent-fill: #ff8c42;
@@ -225,6 +229,23 @@ input,
 select,
 textarea {
   line-height: 1.25;
+}
+
+/* Dropdowns draw their own chevron. The native arrow sat a few pixels from
+   the border whatever the padding, and looks different on Windows, macOS and
+   Linux; this one has the same inset and shape everywhere. Specific enough to
+   win over each control's own `background` shorthand and padding. */
+select:not([multiple]):not([size]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+  background-position: right 11px center;
+  padding-inline-end: 32px;
+}
+[dir='rtl'] select:not([multiple]):not([size]) {
+  background-position: left 11px center;
 }
 
 /* Browser-default placeholders are ~2.3:1; text-faint is measured >= 4.5:1. */
@@ -1957,6 +1978,12 @@ optgroup {
 @media (forced-colors: active) {
   body {
     background: Canvas;
+  }
+  /* System colours: the platform draws its own arrow in ButtonText. */
+  select:not([multiple]):not([size]) {
+    -webkit-appearance: auto;
+    appearance: auto;
+    background-image: none;
   }
   .panel,
   .modal,
